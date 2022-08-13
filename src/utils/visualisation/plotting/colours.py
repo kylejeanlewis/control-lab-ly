@@ -1,8 +1,8 @@
 # %%
 import plotly.graph_objects as go
 import plotly.io as pio
-
 import plotly.colors
+print(f"Import: OK <{__name__}>")
 
 def get_continuous_color(colorscale, intermed):
     # From StackOverflow

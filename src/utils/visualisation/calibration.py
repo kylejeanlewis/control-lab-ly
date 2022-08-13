@@ -1,22 +1,27 @@
 # %% BROKEN
-import sys
-sys.path.append('../')
+# -*- coding: utf-8 -*-
+"""
+Created on 
+
+@author: Chang Jie
+"""
+import os, sys
 import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
 from plotting.plotters import plot_scatter, plot_add_line, plot_add_point
-import data.database as database
 
-def main():
-    from filesearch import get_basedir, locate_paths
-    base_dir = get_basedir(r'\A STAR\QD cocktail party - General')
-    main_dir = base_dir + r'\Characterisation\Profilometry'
-    logs_dir = base_dir + r'\Experiment logs'
-    sample_ids_of_interest = ['G001', 'G002', 'G003', 'G004']
-    relevant_paths = locate_paths(main_dir, '', sample_ids_of_interest, 'file', '.txt')
-    return process(relevant_paths, SpeedCollection, sample_ids_of_interest, 30, logs_dir, force_fit=False)
+THERE = {'data': 'utils\\data'}
+here = os.getcwd()
+base = here.split('src')[0] + 'src'
+there = {k: '\\'.join([base,v]) for k,v in THERE.items()}
+for v in there.values():
+    sys.path.append(v)
 
+import database
+print(f"Import: OK <{__name__}>")
 
+# %%
 def extract_data(all_paths, db_dir, update_db=True):
     '''
     Extracts data from raw text files retreived from surface profiler
@@ -212,7 +217,17 @@ class SpeedCollection(object):
         self.plot(show_recommended=True, show_plot=show_plot)
         return self.opt_speed
 
+# %%
+def main():
+    from filesearch import get_basedir, locate_paths
+    base_dir = get_basedir(r'\A STAR\QD cocktail party - General')
+    main_dir = base_dir + r'\Characterisation\Profilometry'
+    logs_dir = base_dir + r'\Experiment logs'
+    sample_ids_of_interest = ['G001', 'G002', 'G003', 'G004']
+    relevant_paths = locate_paths(main_dir, '', sample_ids_of_interest, 'file', '.txt')
+    return process(relevant_paths, SpeedCollection, sample_ids_of_interest, 30, logs_dir, force_fit=False)
 
+# %%
 if __name__ == '__main__':
     sample = main()
 

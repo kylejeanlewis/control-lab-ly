@@ -1,4 +1,12 @@
+#%%
+# -*- coding: utf-8 -*-
+"""
+Created on 
+
+@author: Chang Jie
+""" 
 import os
+print(f"Import: OK <{__name__}>")
 
 def get_basedir(suffix=''):
     '''

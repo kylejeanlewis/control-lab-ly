@@ -19,8 +19,8 @@ from eis_datatype import ImpedanceSpectrum
 # Depend on computer setup and installation
 THERE = {'misc': 'utils\\misc'}
 here = os.getcwd()
-base = here.split('src')[0] + 'src\\'
-there = {k: base+v for k,v in THERE.items()}
+base = here.split('src')[0] + 'src'
+there = {k: '\\'.join([base,v]) for k,v in THERE.items()}
 for v in there.values():
     sys.path.append(v)
 SENSORPAL_INSTALLATION = r"C:\Users\leongcj\Desktop\Analog Devices\SensorPal" if 'leongcj' in here else r"C:\Program Files (x86)\Analog Devices\SensorPal"
@@ -29,11 +29,10 @@ clr.AddReference('SensorPal.API')
 
 from miscfunctions import display_ports
 from SensorPal.API import API as SensorPalAPI
+print(f"Import: OK <{__name__}>")
 
 COM_PORT = display_ports()
 sensorpal = SensorPalAPI()
-
-print(f"Import: OK <{__name__}>")
 
 # %%
 class Sensorpal(object):
@@ -136,7 +135,7 @@ class SensorEIS(Sensorpal):
     Sensorpal object that controls EIS characterization of sample.
     - filename: name of json file to load settings for EIS measurment
     """
-    def __init__(self, filename='Measurement_Battery Impedance.json', address=COM_PORT):
+    def __init__(self, filename='settings\\Measurement_Battery Impedance.json', address=COM_PORT):
         super().__init__(filename, address)
         self.spectra = {}
         self.sample_num = 0
@@ -207,6 +206,7 @@ class SensorEIS(Sensorpal):
         return
 
 
+# %%
 if __name__ == "__main__":
     eis = SensorEIS()
     eis.measure()

@@ -8,7 +8,6 @@ import time
 import math
 import numpy as np
 from dobot.dobot_api import dobot_api_dashboard, dobot_api_feedback, MyType
-
 print(f"Import: OK <{__name__}>")
 
 # %%

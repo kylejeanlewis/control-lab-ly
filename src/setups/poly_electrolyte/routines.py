@@ -4,25 +4,27 @@ Created on Thu 2022 Jul 28 12:40:00
 
 @author: cjleong
 """
-import os
+import os, sys
 import json
-import time
 import math
 import numpy as np
 import pandas as pd
 
 from PySimpleGUI import WIN_CLOSED, WINDOW_CLOSE_ATTEMPTED_EVENT
 
-import sys
+THERE = {'movement': 'utils\\movement', 'dobot': 'utils\\movement\\dobot', 'gui': 'utils\\gui'}
 here = os.getcwd()
-there_dobot = here.split('src')[0] + 'src\\robotics\\dobot'
-sys.path.append(there_dobot)
-from guibuilder import Builder, Popups
+base = here.split('src')[0] + 'src'
+there = {k: '\\'.join([base,v]) for k,v in THERE.items()}
+for v in there.values():
+    sys.path.append(v)
+
 import dobot_utils
+from guibuilder import Builder
 print(f"Import: OK <{__name__}>")
 
 PRELIM_CALIB = (194,31,0)
-REF_POSITIONS = pd.read_excel(f'{there_dobot}\\Opentrons coordinates.xlsx', index_col=0).round(2).to_dict('index')
+REF_POSITIONS = pd.read_excel(f"{there['dobot']}\\settings\\Opentrons coordinates.xlsx", index_col=0).round(2).to_dict('index')
 REF_POSITIONS = {k: tuple(v.values()) for k,v in REF_POSITIONS.items()}
 
 LEFT = {
@@ -53,7 +55,7 @@ RIGHT = {
 class Setup(object):
     def __init__(self):
         try:
-            settings = self.loadSettings(filename='dobot_settings2.json')
+            settings = self.loadSettings()
             left_arm = settings['left']
             right_arm = settings['right']
             pass
@@ -247,14 +249,14 @@ class Setup(object):
         self.Robot.home()
         return
 
-    def loadSettings(self, filename='dobot_settings.json', location=there_dobot):
+    def loadSettings(self, filename='dobot_settings.json', location=f"{there['dobot']}\\settings"):
         with open(f'{location}\\{filename}') as json_file:
             settings = json.load(json_file)
         for k,v in settings.items():
             settings[k] = self.decodeSetting(v)
         return settings
 
-    def saveSettings(self, filename='dobot_settings.json', location=there_dobot):
+    def saveSettings(self, filename='dobot_settings.json', location=f"{there['dobot']}\\settings"):
         settings = {"left": self.Lobot.getSettings(), "right": self.Robot.getSettings()}
         with open(f'{location}\\{filename}', 'w', encoding='utf-8') as f:
             json.dump(settings, f, ensure_ascii=False, indent=4)

@@ -1,20 +1,15 @@
 # %%
-import sys
-sys.path.append('../')
-import os
+# -*- coding: utf-8 -*-
+"""
+Created on 
+
+@author: Chang Jie
+"""
+import os, sys
 import pandas as pd
 from analysis import Onset
 from plotting.plotters import plot_kinked_fit_points, plot_add_point
-
-def main():
-    from filesearch import get_basedir, locate_paths
-    base_dir = get_basedir(r'\A STAR\QD cocktail party - General')
-    main_dir = base_dir + r'\Characterisation\PESA'
-    sample_ids_of_interest = ['Q025', 'Q026', 'Q027', 'Q028']
-    
-    relevant_paths = locate_paths(main_dir, '', sample_ids_of_interest, 'file', '.csv')
-    process(relevant_paths, PESA)
-
+print(f"Import: OK <{__name__}>")
 
 def process(all_paths, measurement_object):
     '''
@@ -85,6 +80,23 @@ class PESA(Onset):
         return fig
 
 
+# %%
+def main():
+    THERE = {'data': 'utils\\data'}
+    here = os.getcwd()
+    base = here.split('src')[0] + 'src'
+    there = {k: '\\'.join([base,v]) for k,v in THERE.items()}
+    for v in there.values():
+        sys.path.append(v)
+    from filesearch import get_basedir, locate_paths
+    base_dir = get_basedir(r'\A STAR\QD cocktail party - General')
+    main_dir = base_dir + r'\Characterisation\PESA'
+    sample_ids_of_interest = ['Q025', 'Q026', 'Q027', 'Q028']
+    
+    relevant_paths = locate_paths(main_dir, '', sample_ids_of_interest, 'file', '.csv')
+    process(relevant_paths, PESA)
+
+# %%
 if __name__ == '__main__':
     main()
 

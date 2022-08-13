@@ -1,18 +1,15 @@
 # %%
-import sys
-sys.path.append('../')
+# -*- coding: utf-8 -*-
+"""
+Created on 
+
+@author: Chang Jie
+"""
 import pandas as pd
 from datetime import datetime
 import plotly.graph_objects as go
-
 from plotting.colours import get_palette, set_template
-
-def main():
-    config = pd.read_excel('config/config.xlsx', None)
-    log_folder = 'logs/'
-    log_output, tool_log = read_log(log_folder + 'activity_log.txt', config['connects'])
-    gantt_plotter(log_output, tool_log, log_folder, show_plot=True, save_plot='svg')
-    return
+print(f"Import: OK <{__name__}>")
     
 def read_log(activity_log, connects):
     '''
@@ -99,6 +96,16 @@ def gantt_plotter(log_output, tool_log, folder='logs/', show_plot=False, save_pl
         fig.write_image(folder + 'gantt chart.svg')
     return fig
 
+
+# %%
+def main():
+    config = pd.read_excel('config/config.xlsx', None)
+    log_folder = 'logs/'
+    log_output, tool_log = read_log(log_folder + 'activity_log.txt', config['connects'])
+    gantt_plotter(log_output, tool_log, log_folder, show_plot=True, save_plot='svg')
+    return
+
+# %%
 if __name__ == '__main__':
     main()
 

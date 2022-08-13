@@ -1,17 +1,14 @@
 # %%
-import sys
-sys.path.append('../')
+# -*- coding: utf-8 -*-
+"""
+Created on 
+
+@author: Chang Jie
+"""
+import os, sys
 import pandas as pd
 from plotting.plotters import plot_line, plot_scatter
-
-def main():
-    from filesearch import get_basedir, locate_paths
-    global main_dir
-    base_dir = get_basedir(r'\A STAR\QD cocktail party - General')
-    main_dir = base_dir + r'\Characterisation\Ender'
-    sample_ids_of_interest = ['Q143_D', 'Q144_D', 'Q145_D', 'Q143_E', 'Q144_E', 'Q145_E']
-    relevant_paths = locate_paths(main_dir, '', sample_ids_of_interest, 'folder')
-    return process(relevant_paths, FourProbe, sample_ids_of_interest)
+print(f"Import: OK <{__name__}>")
 
 def process(all_paths, measurement_object, sample_ids):
     if len(all_paths):
@@ -41,6 +38,24 @@ class FourProbe(object):
     def __init__(self) -> None:
         pass
 
+
+# %%
+def main():
+    THERE = {'data': 'utils\\data'}
+    here = os.getcwd()
+    base = here.split('src')[0] + 'src'
+    there = {k: '\\'.join([base,v]) for k,v in THERE.items()}
+    for v in there.values():
+        sys.path.append(v)
+    from filesearch import get_basedir, locate_paths
+    global main_dir
+    base_dir = get_basedir(r'\A STAR\QD cocktail party - General')
+    main_dir = base_dir + r'\Characterisation\Ender'
+    sample_ids_of_interest = ['Q143_D', 'Q144_D', 'Q145_D', 'Q143_E', 'Q144_E', 'Q145_E']
+    relevant_paths = locate_paths(main_dir, '', sample_ids_of_interest, 'folder')
+    return process(relevant_paths, FourProbe, sample_ids_of_interest)
+
+# %%
 if __name__ == '__main__':
     out, out_df, figure = main()
     pass

@@ -1,5 +1,20 @@
 # %%
+# -*- coding: utf-8 -*-
+"""
+Created on 
+
+@author: Chang Jie 
+"""
+import os, sys
+THERE = {'data': 'utils\\data', 'visualisation': 'utils\\visualisation', 'plotting': 'utils\\visualisation\\plotting'}
+here = os.getcwd()
+base = here.split('src')[0] + 'src'
+there = {k: '\\'.join([base,v]) for k,v in THERE.items()}
+for v in there.values():
+    sys.path.append(v)
+
 from filesearch import get_basedir, locate_paths
+print(f"Import: OK <{__name__}>")
 
 # Only edit this code block to generate visualisations
 base_dir = get_basedir(r'\A STAR\QD cocktail party - General')
@@ -8,7 +23,7 @@ logs_dir = base_dir + r'\Experiment logs'
 sample_ids_of_interest = ['G001', 'G002', 'G003', 'G004']
 use_demo_samples = True
 do_list = ['FET', 'FTIR', 'PESA', 'HSI', 'spin curve']
-to_do = [True, False, False, False, False]
+to_do = [False, False, False, False, False]
 
 
 '''FET processing'''

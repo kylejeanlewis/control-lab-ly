@@ -5,20 +5,26 @@ Created on Fri 2022/06/18 09:00:00
 
 @author: Chang Jie
 """
-import os
-import numpy as np
+import os, sys
 import pandas as pd
-from sensorpal import ImpedanceSpectrum
+
+THERE = {'electrical': 'utils\\characterisation\\electrical'}
+here = os.getcwd()
+base = here.split('src')[0] + 'src'
+there = {k: '\\'.join([base,v]) for k,v in THERE.items()}
+for v in there.values():
+    sys.path.append(v)
+
+from eis_datatype import ImpedanceSpectrum
 print(f"Import: OK <{__name__}>")
 
 SAMPLE = 'A6'
-# SAMPLE = 'EIS'
 FILE_EXT = '.txt'
-# FILE_EXT = '.csv'
 MAIN_DIR = r'C:\Users\leongcj\Desktop\EIS Data'
+# SAMPLE = 'EIS'
+# FILE_EXT = '.csv'
 # MAIN_DIR = r'C:\Users\leongcj\Desktop\Astar_git\polylectric\characterization\conductivity'
 SRC_DIR = MAIN_DIR + f'\\{SAMPLE}'
-
 
 class EISProcessor(object):
     def __init__(self):
@@ -107,6 +113,7 @@ class AutoLabProcessor(EISProcessor):
         data = data[['Frequency', 'Real', 'Imaginary']].copy()
         return data
 
+# %%
 if __name__ == "__main__":
     processor = AutoLabProcessor()
     processor.findFiles(SRC_DIR, FILE_EXT)

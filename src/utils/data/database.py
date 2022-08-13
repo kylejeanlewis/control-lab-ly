@@ -1,28 +1,15 @@
 # %%
+# -*- coding: utf-8 -*-
+"""
+Created on 
+
+@author: Chang Jie
+"""
 import pyodbc
 import pandas as pd
 import sqlite3
 from sqlite3 import Error
-# import sqlalchemy
-
-def main():
-    global db, accdb
-    
-    db = SQLiteDB('qd_database.db')
-    accdb = AccessDB(r'C:\Users\leongcj\A STAR\QD cocktail party - General\Experiment logs\QD database.accdb')
-    try:
-        if db.conn and accdb.conn:
-            db.setup_database('setup_tables.sql')
-            db.import_all_tables(accdb, 'map_tables.txt')
-            db.setup_database('setup_views.sql')
-        if db.conn:
-            db.get_all_tables()
-    finally:
-        if db.conn:
-            db.close_connections()
-        if accdb.conn:
-            accdb.close_connections()
-    return
+print(f"Import: OK <{__name__}>")
 
 
 class SQLiteDB(object):
@@ -269,6 +256,27 @@ class AccessDB(SQLiteDB):
         if close:
             self.close_connections(cursor)
         return
+
+
+# %%
+def main():
+    global db, accdb
+    
+    db = SQLiteDB('qd_database.db')
+    accdb = AccessDB(r'C:\Users\leongcj\A STAR\QD cocktail party - General\Experiment logs\QD database.accdb')
+    try:
+        if db.conn and accdb.conn:
+            db.setup_database('setup_tables.sql')
+            db.import_all_tables(accdb, 'map_tables.txt')
+            db.setup_database('setup_views.sql')
+        if db.conn:
+            db.get_all_tables()
+    finally:
+        if db.conn:
+            db.close_connections()
+        if accdb.conn:
+            accdb.close_connections()
+    return
 
 if __name__ == '__main__':
     main()

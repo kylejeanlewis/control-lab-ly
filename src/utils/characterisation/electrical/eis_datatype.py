@@ -24,7 +24,6 @@ from plotly.subplots import make_subplots
 from impedance import preprocessing
 from impedance.models.circuits import CustomCircuit
 from impedance.models.circuits.fitting import rmse, extract_circuit_elements
-
 print(f"Import: OK <{__name__}>")
 
 # %%
@@ -400,7 +399,7 @@ class ImpedanceSpectrum(object):
             self.circuit.load(loadCircuit)
             circuits = [self.circuit]
         else:
-            with open('test_circuits.json') as json_file:
+            with open('settings\\test_circuits.json') as json_file:
                 test_circuits = json.load(json_file)
                 circuits_dict = {c['name']: c['string'] for c in test_circuits['standard']}
                 if len(test_circuits['custom']):
@@ -680,6 +679,8 @@ class ImpedanceSpectrum(object):
         self.nyquist_plot.write_html(f'{folder}/{filename}_Nyquist.html')
         return
 
+
+# %%
 if __name__ == "__main__":
     spectrum = ImpedanceSpectrum(filename_data='exampleData.csv', name='Example data')
     spectrum.fit(global_opt=False)

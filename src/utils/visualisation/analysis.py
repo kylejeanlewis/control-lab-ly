@@ -1,8 +1,16 @@
+# %%
+# -*- coding: utf-8 -*-
+"""
+Created on 
+
+@author: Chang Jie
+"""
 import numpy as np
 import pandas as pd
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 import scipy.signal as signal
+print(f"Import: OK <{__name__}>")
 
 class Onset(object):
     """

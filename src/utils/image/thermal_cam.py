@@ -8,7 +8,6 @@ Created on Fri 2022/03/18 09:00:00
 import cv2
 from thermal.ax8.ax8 import Ax8ThermalCamera
 from image_recognition import Vision
-
 print(f"Import: OK <{__name__}>")
 
 DEMO_IRC_PATH = 'demo/demo_irc.png'
@@ -58,3 +57,4 @@ class Thermal(Ax8ThermalCamera):
         """
         frame = cv2.rotate(frame, cv2.ROTATE_180)
         return frame
+

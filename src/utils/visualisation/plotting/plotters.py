@@ -1,10 +1,17 @@
 # %%
+# -*- coding: utf-8 -*-
+"""
+Created on 
+
+@author: Chang Jie
+"""
 import os
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.subplots as sp
+from colours import set_template, update_colours
+print(f"Import: OK <{__name__}>")
 
-from plotting.colours import set_template, update_colours
 set_template()
 
 def plot_add_point(fig, x_coord, y_coord, name, text, mode, text_position, show_plot=False, save_plot=False, save_details=None):

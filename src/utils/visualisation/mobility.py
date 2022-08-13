@@ -1,6 +1,13 @@
 # %%
+# -*- coding: utf-8 -*-
+"""
+Created on 
+
+@author: Chang Jie
+"""
 import numpy as np
 import pandas as pd
+print(f"Import: OK <{__name__}>")
 
 """Mobility functions"""
 def get_oxide_capacitance(t_ox=285E-9, e_r=3.9):

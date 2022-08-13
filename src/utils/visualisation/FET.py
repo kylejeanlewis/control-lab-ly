@@ -1,42 +1,21 @@
 # %%
-import sys
-sys.path.append('../')
-import os
+# -*- coding: utf-8 -*-
+"""
+Created on 
+
+@author: Chang Jie
+"""
+import os,sys
 import numpy as np
 import pandas as pd
 import plotly.express as px
 from plotting.plotters import plot_line, plot_combined, update_colours
 from mobility import get_mobilities
+print(f"Import: OK <{__name__}>")
 
 global mobility, device_summaries
 mobility = []
 device_summaries = True
-
-def main():
-	from filesearch import get_basedir, locate_paths
-	global sample_ids_of_interest
-	base_dir = get_basedir(r'\A STAR\QD cocktail party - General')
-	main_dir = base_dir + r'\Characterisation\Primitiv'
-	sample_ids_of_interest = ['sio2_D']
-	# for inter-digiated pattern
-	# channel_lengths = [50]
-	# width = 18.23E-3
-	# chip_size = (1,1)
-	# for regular 1mm width pattern
-	# channel_lengths = [80,60,30,80,40,30,50,40,60,50]
-	channel_lengths = [80,60,30,80]#,40,30,50,40]
-	width = 1E-3
-	chip_size = (2,2)
-	
-	global mobility, device_summaries
-	mobility = []
-	device_summaries = True
-	relevant_paths = locate_paths(main_dir, '', sample_ids_of_interest, 'folder')
-	process(relevant_paths, FET_grid, channel_lengths, width, chip_size=chip_size, interval=5, y_axis=['Id', 'Id'], save_csv=False)
-
-	mob_df = pd.DataFrame(mobility)
-	return mob_df
-
 
 def read_data(save_details):
 	'''
@@ -481,6 +460,39 @@ class FET_single(object):
 		return
 
 
+# %%
+def main():
+	THERE = {'data': 'utils\\data'}
+	here = os.getcwd()
+	base = here.split('src')[0] + 'src'
+	there = {k: '\\'.join([base,v]) for k,v in THERE.items()}
+	for v in there.values():
+		sys.path.append(v)
+	from filesearch import get_basedir, locate_paths
+	global sample_ids_of_interest
+	base_dir = get_basedir(r'\A STAR\QD cocktail party - General')
+	main_dir = base_dir + r'\Characterisation\Primitiv'
+	sample_ids_of_interest = ['sio2_D']
+	# for inter-digiated pattern
+	# channel_lengths = [50]
+	# width = 18.23E-3
+	# chip_size = (1,1)
+	# for regular 1mm width pattern
+	# channel_lengths = [80,60,30,80,40,30,50,40,60,50]
+	channel_lengths = [80,60,30,80]#,40,30,50,40]
+	width = 1E-3
+	chip_size = (2,2)
+	
+	global mobility, device_summaries
+	mobility = []
+	device_summaries = True
+	relevant_paths = locate_paths(main_dir, '', sample_ids_of_interest, 'folder')
+	process(relevant_paths, FET_grid, channel_lengths, width, chip_size=chip_size, interval=5, y_axis=['Id', 'Id'], save_csv=False)
+
+	mob_df = pd.DataFrame(mobility)
+	return mob_df
+
+# %%
 if __name__ == '__main__':
 	mob_df = main()
 

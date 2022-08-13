@@ -1,25 +1,20 @@
 # %%
-import sys
-sys.path.append('../')
-import os
+# -*- coding: utf-8 -*-
+"""
+Created on 
+
+@author: Chang Jie
+"""
+import os, sys
 import numpy as np
 import pandas as pd
 from analysis import Onset
 from plotting.plotters import plot_line, plot_kinked_fit_points, plot_add_point
+print(f"Import: OK <{__name__}>")
 
 PLANCKS_CONST = 6.626E-34
 LIGHT_SPEED = 2.998E8
 J_TO_EV = 1/1.602E-19
-
-def main():
-    from filesearch import get_basedir, locate_paths
-    base_dir = get_basedir(r'\A STAR\QD cocktail party - General')
-    main_dir = base_dir + r'\Characterisation\HSI'
-    sample_ids_of_interest = ['G001', 'G002', 'G003', 'G004', 'G005', 'G006']
-    
-    batch_ids_of_interest = ['BG001']
-    relevant_paths = locate_paths(main_dir, '', batch_ids_of_interest, 'file', '.txt')
-    process(relevant_paths, HSI, sample_ids_of_interest)
 
 
 def process(all_paths, measurement_object, sample_ids):
@@ -143,6 +138,24 @@ class HSI_sample(HSI):
         return fig
 
 
+# %%
+def main():
+    THERE = {'data': 'utils\\data'}
+    here = os.getcwd()
+    base = here.split('src')[0] + 'src'
+    there = {k: '\\'.join([base,v]) for k,v in THERE.items()}
+    for v in there.values():
+        sys.path.append(v)
+    from filesearch import get_basedir, locate_paths
+    base_dir = get_basedir(r'\A STAR\QD cocktail party - General')
+    main_dir = base_dir + r'\Characterisation\HSI'
+    sample_ids_of_interest = ['G001', 'G002', 'G003', 'G004', 'G005', 'G006']
+    
+    batch_ids_of_interest = ['BG001']
+    relevant_paths = locate_paths(main_dir, '', batch_ids_of_interest, 'file', '.txt')
+    process(relevant_paths, HSI, sample_ids_of_interest)
+
+# %%
 if __name__ == '__main__':
     main()
 

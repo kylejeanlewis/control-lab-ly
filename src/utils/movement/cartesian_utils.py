@@ -9,7 +9,6 @@ import time
 import numpy as np
 import serial
 import serial.tools.list_ports
-
 print(f"Import: OK <{__name__}>")
 
 # %%
