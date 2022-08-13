@@ -1,0 +1,62 @@
+{
+    "standard": [
+        {
+            "name": "Randles",
+            "string": "R0-p(R1-W1,C1)"
+        },
+        {
+            "name": "Randles w/ CPE",
+            "string": "R0-p(R1-W1,CPE1)"
+        },
+        {
+            "name": "Randles w/ CPE w/ Warburg",
+            "string": "R0-p(R1-W1,CPE1)-W2"
+        },
+        {
+            "name": "RC-RC",
+            "string": "R0-p(R1,C1)-p(R2,C2)"
+        },
+        {
+            "name": "RC-RC w/ CPE",
+            "string": "R0-p(R1,CPE1)-p(R2,CPE2)"
+        },
+        {
+            "name": "RC-RC w/ Warburg",
+            "string": "R0-p(R1,C1)-p(R2,C2)-W1"
+        },
+        {
+            "name": "RC-RC w/ Warburg w/ CPE",
+            "string": "R0-p(R1,CPE1)-p(R2,CPE2)-Wo1"
+        },
+        {
+            "name": "Polymer electrolyte",
+            "string": "R0-C1-p(R1,C2)-C3"
+        },
+        {
+            "name": "Polymer electrolyte w/ CPE",
+            "string": "R0-CPE1-p(R1,CPE2)-CPE3"
+        }
+    ],
+    "custom": [
+        {
+            "name": "Mingyan",
+            "string": "R0-p(R1-CPE1,CPE2)"
+        },
+        {
+            "name": "Mingyan w/o CPE",
+            "string": "R0-p(R1-C1,C2)"
+        },
+        {
+            "name": "Mingyan (CPE in series)",
+            "string": "R0-p(R1,CPE1)-CPE2"
+        },
+        {
+            "name": "Derrick",
+            "string": "R0-p(R1,CPE1)-R2"
+        },
+        {
+            "name": "Derrick (R in parallel)",
+            "string": "R0-p(R1-CPE1,R2)"
+        }        
+    ]
+}

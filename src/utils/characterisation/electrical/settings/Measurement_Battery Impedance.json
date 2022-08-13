@@ -1,0 +1,45 @@
+{
+    "technique": "Battery Impedance",
+    "data columns": [
+      "Frequency",
+      "Real",
+      "Imaginary"
+    ],
+    "plot": {
+      "plot_type": "Nyquist",
+      "x_axis": "Real",
+      "y_axis": "Imaginary"
+    },
+    "parameters": [
+      {
+        "name": "Start Frequency",
+        "value": "5"
+      },
+      {
+        "name": "Points",
+        "value": "100"
+      },
+      {
+        "name": "AC Amplitude",
+        "value": "25"
+      },
+      {
+        "name": "DC Bias",
+        "value": "0"
+      },
+      {
+        "name": "Enable",
+        "value": "1"
+      },
+      {
+        "name": "Logarithmic",
+        "value": "1"
+      },
+      {
+        "name": "Stop Frequency",
+        "value": "50000"
+      }
+    ]
+  }
+  
+  
