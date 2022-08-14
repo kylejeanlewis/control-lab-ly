@@ -4,10 +4,21 @@ Created on Wed 2022 Jul 20 11:54:04
 
 @author: cjleong
 """
+import os, sys
 import time
 import math
 import numpy as np
 from dobot.dobot_api import dobot_api_dashboard, dobot_api_feedback, MyType
+
+THERE = {'electrical': 'utils\\characterisation\\electrical'}
+here = os.getcwd()
+base = here.split('src')[0] + 'src'
+there = {k: '\\'.join([base,v]) for k,v in THERE.items()}
+for v in there.values():
+    sys.path.append(v)
+
+from sensorpal import SensorEIS
+from keithley import KeithleyLSV
 print(f"Import: OK <{__name__}>")
 
 # %%
@@ -387,177 +398,177 @@ class Instrument(Dobot):
         return
 
 
-# class ForceSense(Instrument):
-#     """
-#     ForceSense class 
-#     - address_sensor: serial address of attachment
-#     - address: IP address of arm
-#     - home_position: position to home in arm coordinates
-#     - home_orientation: orientation to home
-#     - orientate_matrix: matrix to transform arm axes to workspace axes
-#     - translate_vector: vector to transform arm position to workspace position
-#     """
-#     def __init__(self, address_sensor=('COM4', 115200), **kwargs):
-#         super().__init__(**kwargs)
-#         self.connect_sensor(address_sensor)
-#         self.setImplementOffset((0,0,0))
-#         self.home()
-#         return
+class ForceSense(Instrument):
+    """
+    ForceSense class 
+    - address_sensor: serial address of attachment
+    - address: IP address of arm
+    - home_position: position to home in arm coordinates
+    - home_orientation: orientation to home
+    - orientate_matrix: matrix to transform arm axes to workspace axes
+    - translate_vector: vector to transform arm position to workspace position
+    """
+    def __init__(self, address_sensor=('COM4', 115200), **kwargs):
+        super().__init__(**kwargs)
+        self.connect_sensor(address_sensor)
+        self.setImplementOffset((0,0,0))
+        self.home()
+        return
     
-#     def connect_sensor(self, address_sensor):
-#         self.sensor = serial.Serial(*address_sensor)
-#         self.sensor.flushInput()
-#         return
+    def connect_sensor(self, address_sensor):
+        self.sensor = serial.Serial(*address_sensor)
+        self.sensor.flushInput()
+        return
 
 
-# class EISMeasure(Instrument):
-#     """
-#     EISMeasure class 
-#     - address_sensor: serial address of attachment
-#     - address: IP address of arm
-#     - home_position: position to home in arm coordinates
-#     - home_orientation: orientation to home
-#     - orientate_matrix: matrix to transform arm axes to workspace axes
-#     - translate_vector: vector to transform arm position to workspace position
-#     """
-#     def __init__(self, address_sensor='COM4', **kwargs):
-#         super().__init__(**kwargs)
-#         self.connect_sensor(address_sensor)
-#         self.setImplementOffset((0,0,0))
-#         self.home()
-#         return
+class EISMeasure(Instrument):
+    """
+    EISMeasure class 
+    - address_sensor: serial address of attachment
+    - address: IP address of arm
+    - home_position: position to home in arm coordinates
+    - home_orientation: orientation to home
+    - orientate_matrix: matrix to transform arm axes to workspace axes
+    - translate_vector: vector to transform arm position to workspace position
+    """
+    def __init__(self, address_sensor='COM4', **kwargs):
+        super().__init__(**kwargs)
+        self.connect_sensor(address_sensor)
+        self.setImplementOffset((0,0,0))
+        self.home()
+        return
 
-#     def configure(self, settings={}):
-#         return self.sensor.configure(settings)
+    def configure(self, settings={}):
+        return self.sensor.configure(settings)
 
-#     def connect_sensor(self, address_sensor):
-#         self.sensor = SensorEIS(f'{there_eis}\\Measurement_Battery Impedance.json', address=address_sensor)
-#         return
+    def connect_sensor(self, address_sensor):
+        self.sensor = SensorEIS(f'{there_eis}\\Measurement_Battery Impedance.json', address=address_sensor)
+        return
 
-#     def measure(self):
-#         return self.sensor.measure()
+    def measure(self):
+        return self.sensor.measure()
 
-#     def plot(self, sample_num=0, plot_type='nyquist'):
-#         return self.sensor.plot(sample_num, plot_type)
+    def plot(self, sample_num=0, plot_type='nyquist'):
+        return self.sensor.plot(sample_num, plot_type)
     
-#     def save(self, sample_num=0):
-#         return self.sensor.save(sample_num)
+    def save(self, sample_num=0):
+        return self.sensor.save(sample_num)
 
-#     def setName(self, sample_num=-1, name=''):
-#         return self.sensor.setName(sample_num, name)
+    def setName(self, sample_num=-1, name=''):
+        return self.sensor.setName(sample_num, name)
 
 
-# class LSVMeasure(Instrument):
-#     """
-#     Keithley
-#     """
-#     def __init__(self, address_sensor=None, **kwargs):
-#         super().__init__(address_sensor, **kwargs)
-#         self.connect_sensor(address_sensor)
-#         self.setImplementOffset((0,0,0))
-#         self.home()
-#         return
+class LSVMeasure(Instrument):
+    """
+    Keithley
+    """
+    def __init__(self, address_sensor=None, **kwargs):
+        super().__init__(address_sensor, **kwargs)
+        self.connect_sensor(address_sensor)
+        self.setImplementOffset((0,0,0))
+        self.home()
+        return
 
-#     def connect_sensor(self, address_sensor):
-#         self.sensor = Keithley(address_sensor, 'sweep')
-#         return
+    def connect_sensor(self, address_sensor):
+        self.sensor = KeithleyLSV(address_sensor, 'sweep')
+        return
 
-#     def measure(self, name):
-#         bias = self.measure_bias()
-#         margin = 0.5
-#         lsv_df = robot.measure_sweep((bias-margin, bias+margin, margin*200+1))
-#         lsv_df.to_csv(f'{name}.csv')
-#         return lsv_df
+    def measure(self, name):
+        # bias = self.measure_bias()
+        # margin = 0.5
+        # lsv_df = self.measure_sweep((bias-margin, bias+margin, margin*200+1))
+        # lsv_df.to_csv(f'{name}.csv')
+        return self.sensor.measure(name)
     
-#     def measure_bias(self):
-#         keithley = self.sensor
-#         settings = [
-#             '*RST',
-#             'OUTP:SMOD HIMP',
-#             'SOUR:FUNC CURR',
-#             'SOUR:CURR 0',
-#             'SOUR:CURR:RANG 1',
-#             'SOUR:CURR:VLIM 20',
+    def measure_bias(self):
+        keithley = self.sensor
+        settings = [
+            '*RST',
+            'OUTP:SMOD HIMP',
+            'SOUR:FUNC CURR',
+            'SOUR:CURR 0',
+            'SOUR:CURR:RANG 1',
+            'SOUR:CURR:VLIM 20',
             
-#             'SENS:FUNC "VOLT"',
-#             'SENS:VOLT:RANG 20',
+            'SENS:FUNC "VOLT"',
+            'SENS:VOLT:RANG 20',
 
-#             'SENS:COUN 3',
-#             'TRAC:MAKE "biasdata", 100',
+            'SENS:COUN 3',
+            'TRAC:MAKE "biasdata", 100',
 
-#             'SOUR:CURR 0',
-#             'TRAC:CLE "biasdata"',
-#             'OUTP ON',
-#             'TRAC:TRIG "biasdata"'
-#         ]
-#         keithley.set_parameters(settings)
-#         volt = 0
-#         try:
-#             keithley.inst.write('TRAC:DATA? 1, 3, "biasdata", READ')
-#             volt = None
-#         except:
-#             pass
-#         while volt is None:
-#             try:
-#                 volt = keithley.inst.read()
-#             except:
-#                 pass
-#         self.outp = [float(v) for v in volt.split(',')]
-#         avg = round( sum(self.outp) / len(self.outp), 3)
-#         print(f'OCV = {avg}V')
-#         return avg
+            'SOUR:CURR 0',
+            'TRAC:CLE "biasdata"',
+            'OUTP ON',
+            'TRAC:TRIG "biasdata"'
+        ]
+        keithley.set_parameters(settings)
+        volt = 0
+        try:
+            keithley.inst.write('TRAC:DATA? 1, 3, "biasdata", READ')
+            volt = None
+        except AttributeError as e:
+            print(e)
+        while volt is None:
+            try:
+                volt = keithley.inst.read()
+            except AttributeError as e:
+                print(e)
+        self.outp = [float(v) for v in volt.split(',')]
+        avg = round( sum(self.outp) / len(self.outp), 3)
+        print(f'OCV = {avg}V')
+        return avg
 
-#     def measure_sweep(self, volt_range=(np.nan, np.nan, np.nan)):
-#         keithley = self.sensor
-#         sweep = ', '.join(str(v) for v in volt_range)
+    def measure_sweep(self, volt_range=(np.nan, np.nan, np.nan)):
+        keithley = self.sensor
+        sweep = ', '.join(str(v) for v in volt_range)
 
-#         settings = [
-#             '*RST',
-#             'OUTP:SMOD HIMP',
-#             'SENS:FUNC "CURR"',
-#             'SENS:CURR:RANG:AUTO ON',
-#             'SENS:CURR:RSEN OFF',
-#             'SOUR:FUNC VOLT',
-#             'SOUR:VOLT:RANG 20',
-#             'SOUR:VOLT:ILIM 1',
-#             f'SOUR:SWE:VOLT:LIN {sweep}, 0.1, 1, BEST, OFF, ON',
-#             'INIT',
-#             '*WAI',
-#         ]
-#         keithley.set_parameters(settings)
-#         time.sleep(2*volt_range[2] / 5)
+        settings = [
+            '*RST',
+            'OUTP:SMOD HIMP',
+            'SENS:FUNC "CURR"',
+            'SENS:CURR:RANG:AUTO ON',
+            'SENS:CURR:RSEN OFF',
+            
+            'SOUR:FUNC VOLT',
+            'SOUR:VOLT:RANG 20',
+            'SOUR:VOLT:ILIM 1',
+            f'SOUR:SWE:VOLT:LIN {sweep}, 0.1, 1, BEST, OFF, ON',
+            'INIT',
+            '*WAI',
+        ]
+        keithley.set_parameters(settings)
+        time.sleep(2*volt_range[2] / 5)
 
-#         settings = [f'TRAC:DATA? 1, {2*volt_range[2]-1}, "defbuffer1", SOUR, READ, REL']
-#         keithley.set_parameters(settings)
-#         self.outp = keithley.inst.read().split(',')
-#         keithley.inst.write('OUTP OFF')
+        settings = [f'TRAC:DATA? 1, {2*volt_range[2]-1}, "defbuffer1", SOUR, READ, REL']
+        keithley.set_parameters(settings)
+        self.outp = keithley.inst.read().split(',')
+        keithley.inst.write('OUTP OFF')
 
-#         data = np.reshape(np.array(self.outp), (-1,3))
-#         df = pd.DataFrame(data, columns=['V', 'I', 't'], dtype=np.float64)
-#         df.plot('V', 'I')
+        data = np.reshape(np.array(self.outp), (-1,3))
+        df = pd.DataFrame(data, columns=['V', 'I', 't'], dtype=np.float64)
+        df.plot('V', 'I')
 
-#         diff = df.diff()
-#         df['Q'] = df['I'] * diff['t']
-#         df['dQdV'] = df['Q'].diff() / df['V'].diff()
-#         df.plot('V', 'dQdV')
-#         px.line(df, 'V', ['I', 'dQdV'])
-#         return df
+        diff = df.diff()
+        df['Q'] = df['I'] * diff['t']
+        df['dQdV'] = df['Q'].diff() / df['V'].diff()
+        df.plot('V', 'dQdV')
+        return df
 
 
-# # %%
-# if __name__ == '__main__':
-#     robot = LSVMeasure('123')
-#     robot.measure('LSV_data_sample')
-#     bias = robot.measure_bias()
-#     margin = 0.5
-#     lsv_df = robot.measure_sweep((bias-margin, bias+margin, margin*200+1))
-#     lsv_df.to_csv('LSV_data_sample.csv')
 # %%
-# if __name__ == '__main__':
-#     df = pd.read_csv('LSV_data_sample 1.csv')
-#     diff = df.diff()
-#     df['Q'] = df['I'] * diff['t']
-#     df['dQdV'] = df['Q'].diff() / df['V'].diff()
-#     px.line(df, 'V', ['I', 'dQdV'])
-#     df.to_csv('LSV_data_sample.csv')
+if __name__ == '__main__':
+    robot = LSVMeasure('123')
+    robot.measure('LSV_data_sample')
+    bias = robot.measure_bias()
+    margin = 0.5
+    lsv_df = robot.measure_sweep((bias-margin, bias+margin, margin*200+1))
+    lsv_df.to_csv('LSV_data_sample.csv')
+# %%
+if __name__ == '__main__':
+    df = pd.read_csv('LSV_data_sample 1.csv')
+    diff = df.diff()
+    df['Q'] = df['I'] * diff['t']
+    df['dQdV'] = df['Q'].diff() / df['V'].diff()
+    px.line(df, 'V', ['I', 'dQdV'])
+    df.to_csv('LSV_data_sample.csv')
 # %%
