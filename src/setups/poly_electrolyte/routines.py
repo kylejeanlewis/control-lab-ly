@@ -202,13 +202,15 @@ class Setup(object):
         arm.moveTo( tuple(np.append(space_pt_1[:2],30)) )
         self.run_program()
         robot_pt_1 = np.array(arm.getWorkspacePosition())
+        arm.home()
 
         ref_pos_2 = int(input("Input reference position 2:"))
         space_pt_2 = np.array(REF_POSITIONS[ref_pos_2])
         arm.moveTo( tuple(np.append(space_pt_2[:2],30)) )
         self.run_program()
         robot_pt_2 = np.array(arm.getWorkspacePosition())
-
+        arm.home()
+        
         space_vector = space_pt_2 - space_pt_1
         robot_vector = robot_pt_2 - robot_pt_1
         space_mag = np.linalg.norm(space_vector)
