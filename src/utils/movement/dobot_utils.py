@@ -295,12 +295,12 @@ class Dobot(object):
             print("Not connected to arm!")
         return
 
-    def transform_vector_in(self, coord, offset=False, stretch=False):
+    def transform_vector_in(self, coord, offset=False, stretch=True):
         translate = self.translate_vector if offset else np.zeros(3)
         scale = self.scale if stretch else 1
         return tuple( np.matmul(self.orientate_matrix, (np.array(coord)-translate)/scale) )
 
-    def transform_vector_out(self, coord, offset=False, stretch=False):
+    def transform_vector_out(self, coord, offset=False, stretch=True):
         translate = self.translate_vector if offset else np.zeros(3)
         scale = self.scale if stretch else 1
         return tuple( scale * np.matmul(np.linalg.inv(self.orientate_matrix), np.array(coord)) + translate )
