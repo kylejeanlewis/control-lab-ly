@@ -16,7 +16,8 @@ for v in there.values():
     sys.path.append(v)
 
 import setup
-import cartesian_utils, miscfunctions
+from cartesian_utils import Primitiv, Ender
+from miscfunctions import display_ports
 from guibuilder import Builder, Popups
 print("Import: OK")
 
@@ -40,9 +41,9 @@ def main():
     platform = None
     platform_option = pop.combo(['Primitiv', 'Ender'], 'Pick a platform:', '-PLATFORM-')
     if platform_option.lower() == 'primitiv':
-        platform = cartesian_utils.Primitiv
+        platform = Primitiv
     elif platform_option.lower() == 'ender':
-        platform = cartesian_utils.Ender
+        platform = Ender
 
     tool_option = pop.combo(TOOLS, 'Pick a tool:', '-TOOL-')
     if tool_option.lower() == 'movement':
@@ -64,7 +65,7 @@ def main():
                 calib_unit=18.935)
         paths['savefolder'] = f'{cwd}/users/{user}/{tool_option}'
 
-    miscfunctions.display_ports()
+    display_ports()
     print("\nDisplaying GUI")
     print('-' * 50)
     if CUSTOM_GUI:

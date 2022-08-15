@@ -174,7 +174,7 @@ class Dobot(object):
         relative_angle = relative_angle + (0,) * (6-len(relative_angle))
         try:
             self.feedback.RelMovJ(*relative_angle)
-        except AttributeError:
+        except (AttributeError, OSError):
             print("Not connected to arm!")
         return
 
@@ -185,7 +185,7 @@ class Dobot(object):
         absolute_angle = absolute_angle + (0,) * (6-len(absolute_angle))
         try:
             self.feedback.JointMovJ(*absolute_angle)
-        except AttributeError:
+        except (AttributeError, OSError):
             print("Not connected to arm!")
         return
 
@@ -195,7 +195,7 @@ class Dobot(object):
         """
         try:
             self.feedback.RelMovL(*relative_coord)
-        except AttributeError:
+        except (AttributeError, OSError):
             print("Not connected to arm!")
         
         # Rotate to orientation
@@ -221,7 +221,7 @@ class Dobot(object):
         
         try:
             self.feedback.MovJ(*absolute_arm_coord, *orientation)
-        except AttributeError:
+        except (AttributeError, OSError):
             print("Not connected to arm!")
         
         # Update values
@@ -237,7 +237,7 @@ class Dobot(object):
         try:
             self.dashboard.ClearError()
             self.dashboard.EnableRobot()
-        except AttributeError:
+        except (AttributeError, OSError):
             print("Not connected to arm!")
         return
 
@@ -265,7 +265,7 @@ class Dobot(object):
         """
         try:
             self.dashboard.SpeedFactor(speed)
-        except AttributeError:
+        except (AttributeError, OSError):
             print("Not connected to arm!")
         return
 
@@ -277,7 +277,7 @@ class Dobot(object):
         try:
             self.dashboard.close()
             self.feedback.close()
-        except AttributeError:
+        except (AttributeError, OSError):
             print("Not connected to arm!")
 
         self.dashboard = None
@@ -291,7 +291,7 @@ class Dobot(object):
         try:
             self.dashboard.ResetRobot()
             self.dashboard.DisableRobot()
-        except AttributeError:
+        except (AttributeError, OSError):
             print("Not connected to arm!")
         return
 
@@ -326,7 +326,7 @@ class JawGripper(Dobot):
         # Close gripper
         try:
             self.dashboard.DOExecute(1,0)
-        except AttributeError:
+        except (AttributeError, OSError):
             print("Not connected to arm!")
         return
 
@@ -334,7 +334,7 @@ class JawGripper(Dobot):
         # Open gripper
         try:
             self.dashboard.DOExecute(1,1)
-        except AttributeError:
+        except (AttributeError, OSError):
             print("Not connected to arm!")
         return
 
@@ -361,7 +361,7 @@ class VacuumGrip(Dobot):
             time.sleep(3)
             self.dashboard.DOExecute(1,0)
             time.sleep(1)
-        except AttributeError:
+        except (AttributeError, OSError):
             print("Not connected to arm!")
         return
 
@@ -372,7 +372,7 @@ class VacuumGrip(Dobot):
             time.sleep(0.5)
             self.dashboard.DOExecute(2,0)
             time.sleep(1)
-        except AttributeError:
+        except (AttributeError, OSError):
             print("Not connected to arm!")
         return
 
@@ -506,12 +506,12 @@ class LSVMeasure(Instrument):
         try:
             keithley.inst.write('TRAC:DATA? 1, 3, "biasdata", READ')
             volt = None
-        except AttributeError as e:
+        except (AttributeError, OSError) as e:
             print(e)
         while volt is None:
             try:
                 volt = keithley.inst.read()
-            except AttributeError as e:
+            except (AttributeError, OSError) as e:
                 print(e)
         self.outp = [float(v) for v in volt.split(',')]
         avg = round( sum(self.outp) / len(self.outp), 3)

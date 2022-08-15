@@ -19,6 +19,9 @@ THERE = {
     'movement': 'utils\\movement', 
     'electrical': 'utils\\characterisation\\electrical', 
     'image': 'utils\\image',
+    'demo': 'utils\\image\\demo',
+    'thermal': 'utils\\image\\thermal',
+    'ax8': 'utils\\image\\thermal\\ax8',
     'gui': 'utils\\gui',
     'misc': 'utils\\misc'
 }
@@ -168,7 +171,7 @@ class Setup(object):
         x, y = self.def_cam
         z = 0
         
-        stage.to_position((x,y,z))
+        stage.moveTo((x,y,z))
         stage.selected_position = 'camera'
         print("At camera position")
         return
@@ -239,7 +242,7 @@ class Setup(object):
             x = stage.current_x - self.probe_offset[0]
             y = stage.current_y - self.probe_offset[1]
             z = stage.current_z
-        stage.to_position((x,y,z))
+        stage.moveTo((x,y,z))
         stage.selected_position = final
         print(f"At {final} position")
         return
@@ -305,7 +308,7 @@ class BasicMovement(Setup):
                 x = float(values['-X-CURRENT-'])
                 y = float(values['-Y-CURRENT-'])
                 z = float(values['-Z-CURRENT-'])
-                stage.to_position((x,y,z))
+                stage.moveTo((x,y,z))
             if self.update_position:
                 self.window['-X-CURRENT-'].update(stage.current_x)
                 self.window['-Y-CURRENT-'].update(stage.current_y)
@@ -424,7 +427,7 @@ class FieldEffectTransistor(Setup):
                 self.update_position = True
             ### 1.1 Home
             if event in ('<XY>', '<Z>'):
-                stage.stagezero()
+                stage.home()
             ### 1.2 XYZ buttons
             if event in movement_buttons.keys():
                 axis, displacement = movement_buttons[event]
@@ -435,7 +438,7 @@ class FieldEffectTransistor(Setup):
                 x = float(values['-X-CURRENT-'])
                 y = float(values['-Y-CURRENT-'])
                 z = float(values['-Z-CURRENT-'])
-                stage.to_position((x,y,z))
+                stage.moveTo((x,y,z))
             if self.update_position:
                 self.window['-X-CURRENT-'].update(stage.current_x)
                 self.window['-Y-CURRENT-'].update(stage.current_y)
@@ -647,7 +650,7 @@ class FieldEffectTransistor(Setup):
                 'sense:current:UNIT AMP'
             ]
         keithley = Keithley(address, name)
-        keithley.getI, keithley.getV = keithley.apply_settings(settings, 'V', 5, 100)
+        keithley.getI, keithley.getV = keithley.applySettings(settings, 'V', 5, 100)
         return keithley
   
     def make_contact(self, measure=False):
@@ -676,12 +679,12 @@ class FieldEffectTransistor(Setup):
             print(row)
             self.frame_display = vis.annotate_one(row, self.frame_display, (0,0,255))
 
-            stage.to_position((x,y,self.z_up))
+            stage.moveTo((x,y,self.z_up))
             self.update_position = True
             if count == 0:
                 time.sleep(5)
             time.sleep(1)
-            stage.to_position((x,y,self.z_down))
+            stage.moveTo((x,y,self.z_down))
             self.update_position = True
             time.sleep(1)
             if measure:
@@ -689,7 +692,7 @@ class FieldEffectTransistor(Setup):
             
             ## Finishing up device
             time.sleep(2)
-            stage.to_position((x,y,self.z_up))
+            stage.moveTo((x,y,self.z_up))
             self.update_position = True
             time.sleep(2)
             count += 1
@@ -702,7 +705,7 @@ class FieldEffectTransistor(Setup):
         self.freeze_cam = False
         self.disable_buttons = False
 
-        stage.stagezero()
+        stage.home()
         time.sleep(2)
         self.update_position = True
         self.window['-TIMER-'].update(visible=False)
@@ -745,7 +748,7 @@ class FieldEffectTransistor(Setup):
                     f'trace:clear "{fixed.name}data"',
                     'output ON'
                 ]
-                fixed.set_parameters(params)
+                fixed.setParameters(params)
                 time.sleep(0.5)
                 for v in volts_varied:
                     if self.stop_measure:
@@ -757,8 +760,8 @@ class FieldEffectTransistor(Setup):
                         varied.inst.write('output ON')
                         varied.inst.write(f'trace:trigger "{varied.name}data"')
                         fixed.inst.write(f'trace:trigger "{fixed.name}data"')
-                        drain.read_data()
-                        gate.read_data()
+                        drain.readData()
+                        gate.readData()
                     except:
                         print(f'Fixed: {f}V | Varied: {v}V')
             try:
@@ -940,7 +943,7 @@ class FourPointProbe(Setup):
                 x = float(values['-X-CURRENT-'])
                 y = float(values['-Y-CURRENT-'])
                 z = float(values['-Z-CURRENT-'])
-                stage.to_position((x,y,z))
+                stage.moveTo((x,y,z))
             if self.update_position:
                 self.window['-X-CURRENT-'].update(stage.current_x)
                 self.window['-Y-CURRENT-'].update(stage.current_y)
@@ -1079,7 +1082,7 @@ class FourPointProbe(Setup):
 
             ## 5. Keithley
             if event == 'Set Id-Vg':
-                self.amp_range = (int(values['-G-START-']), int(values['-G-STOP-']), int(values['-G-STEP-']))
+                self.amp_range = (float(values['-G-START-']), float(values['-G-STOP-']), float(values['-G-STEP-']))
                 self.window['-IDVG-G-'].update(value=f'Id-Vg, gate: {self.amp_range}')
 
         vis.close()
@@ -1151,7 +1154,7 @@ class FourPointProbe(Setup):
                 'SENS:VOLT:UNIT VOLT'
             ]
         keithley = Keithley(address, name)
-        keithley.getI, keithley.getV = keithley.apply_settings(settings, 'I', 3, 100)
+        keithley.getI, keithley.getV = keithley.applySettings(settings, 'I', 3, 100)
         return keithley
 
     def log_data(self, current=1e-7):
@@ -1165,9 +1168,9 @@ class FourPointProbe(Setup):
                 break
             temp4 = self.thermal.get_spotmeter_temps([4])
             # temp4 = 25
-            # gate.read_data()
+            # gate.readData()
             voc = None
-            gate.set_parameters(['TRAC:TRIG "defbuffer1"', 'FETCH? "defbuffer1", READ'])
+            gate.setParameters(['TRAC:TRIG "defbuffer1"', 'FETCH? "defbuffer1", READ'])
             while voc is None:
                 try:
                     voc = gate.inst.read()
@@ -1205,7 +1208,7 @@ class FourPointProbe(Setup):
         #     ]
         # self.gate = None
         # self.gate = Keithley(address, 'gate')
-        # self.gate.getI, self.gate.getV = self.gate.apply_settings(settings, 'V', 5, 100)
+        # self.gate.getI, self.gate.getV = self.gate.applySettings(settings, 'V', 5, 100)
         gate = self.gate
 
         self.disable_buttons = True
@@ -1239,7 +1242,7 @@ class FourPointProbe(Setup):
                         break
                     time.sleep(1)
                 print("Done!")
-                gate.set_parameters([':syst:beep 262,1'])
+                gate.setParameters([':syst:beep 262,1'])
             
             self.threads_active = False
             thread.join()
@@ -1258,7 +1261,7 @@ class FourPointProbe(Setup):
                 # plt.show()
                 
         # Play music
-        gate.set_parameters([
+        gate.setParameters([
             'OUTP OFF',
             ':syst:beep 350,0.3; :syst:beep 392,0.3; :syst:beep 440,0.3; :syst:beep 262,1',
             ':syst:beep 350,0.3; :syst:beep 392,0.3; :syst:beep 440,0.3; :syst:beep 262,1'
@@ -1286,7 +1289,7 @@ class FourPointProbe(Setup):
         #Input measurement range
         curr = np.arange(*self.amp_range).tolist()
         print("Starting measurement")
-        # gate.set_parameters(['SENS:VOLT:AZER ON'])
+        # gate.setParameters(['SENS:VOLT:AZER ON'])
 
         self.disable_buttons = True
         for c in curr:
@@ -1298,8 +1301,8 @@ class FourPointProbe(Setup):
                 'output ON',
                 f'trace:trigger "{gate.name}data"'
             ]
-            gate.set_parameters(params)
-            gate.read_data()
+            gate.setParameters(params)
+            gate.readData()
         gate.inst.write('OUTP OFF')
         highest_run_number = 0
         filepath = f'{self.savepath}/4pp_run{str(highest_run_number).rjust(2, "0")}.csv'

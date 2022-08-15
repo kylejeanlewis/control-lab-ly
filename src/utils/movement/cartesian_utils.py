@@ -12,19 +12,6 @@ import serial.tools.list_ports
 print(f"Import: OK <{__name__}>")
 
 # %%
-def display_ports():
-    """
-    Displays available ports.
-    """
-    ports = serial.tools.list_ports.comports()
-    for port, desc, hwid in sorted(ports):
-        print("{}: {} [{}]".format(port, desc, hwid))
-    if len(ports) == 0:
-        print("No ports detected!")
-        print("Simulating platform...")
-    return
-
-
 class CNC(object):
     """
     Controller for cnc xyz-movements.

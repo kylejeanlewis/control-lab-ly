@@ -5,12 +5,15 @@ Created on Fri 2022/03/18 09:00:00
 
 @author: Chang Jie
 """
+import os
 import numpy as np
 import pandas as pd
 import cv2
 print(f"Import: OK <{__name__}>")
 
-DEMO_CAM_PATH = 'demo/demo_cam.png'
+here = os.getcwd()
+base = here.split('src')[0] + 'src'
+DEMO_CAM_PATH = f"{base}\\utils\\image\\demo\\demo_cam.png"
 
 # %% Computer Vision
 class Vision(object):

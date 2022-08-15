@@ -5,12 +5,15 @@ Created on Fri 2022/03/18 09:00:00
 
 @author: Chang Jie
 """
+import os
 import cv2
 from thermal.ax8.ax8 import Ax8ThermalCamera
 from image_recognition import Vision
 print(f"Import: OK <{__name__}>")
 
-DEMO_IRC_PATH = 'demo/demo_irc.png'
+here = os.getcwd()
+base = here.split('src')[0] + 'src'
+DEMO_IRC_PATH = f"{base}\\utils\\image\\demo\\demo_irc.png"
 
 # %% Thermal
 class Thermal(Ax8ThermalCamera):

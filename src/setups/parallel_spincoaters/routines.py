@@ -1,4 +1,5 @@
 # %%
+import os, sys
 import time
 import pandas as pd
 import threading
@@ -6,10 +7,16 @@ import PySimpleGUI as sg
 from PySimpleGUI import WIN_CLOSED, WINDOW_CLOSE_ATTEMPTED_EVENT
 
 import spinutils
+
+THERE = {'gui': 'utils\\gui', 'visualisation': 'utils\\visualisation', 'plotting': 'utils\\visualisation\\plotting'}
+here = os.getcwd()
+base = here.split('src')[0] + 'src'
+there = {k: '\\'.join([base,v]) for k,v in THERE.items()}
+for v in there.values():
+    sys.path.append(v)
+
 from gantt import gantt_plotter
-import sys
-sys.path.append('../')
-from tools.guibuilder import Builder, Popups
+from guibuilder import Builder, Popups
 print(f"Import: OK <{__name__}>")
 
 PRINT_LOGS = True
