@@ -22,7 +22,7 @@ import dobot_utils
 from guibuilder import Builder
 print(f"Import: OK <{__name__}>")
 
-CONFIG_JSON = "config/dobot_settings.json"
+CONFIG_JSON = "config/dobot_settings L3.json"
 REF_POSITIONS = pd.read_excel("config/Opentrons coordinates.xlsx", index_col=0).round(2).to_dict('index')
 REF_POSITIONS = {k: tuple(v.values()) for k,v in REF_POSITIONS.items()}
 
@@ -179,6 +179,9 @@ class Setup(object):
         setting['details'] = dobot_utils.decodeDetails(details)
         return setting
 
+    def getArm(self, name):
+        return [arm[1] for arm in self.arms if arm[0]==name][0]
+
     def home(self):
         for arm in self.arms:
             arm[1].home()
@@ -195,7 +198,7 @@ class Setup(object):
         settings = {arm[0].lower(): arm[1].getSettings() for arm in self.arms}
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(settings, f, ensure_ascii=False, indent=4)
-        print(f'Save to {filename} !')
+        print(f'Saved to {filename} !')
         return
 
 
