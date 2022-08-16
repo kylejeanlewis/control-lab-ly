@@ -210,7 +210,7 @@ class Setup(object):
         self.run_program()
         robot_pt_2 = np.array(arm.getWorkspacePosition())
         arm.home()
-        
+
         space_vector = space_pt_2 - space_pt_1
         robot_vector = robot_pt_2 - robot_pt_1
         space_mag = np.linalg.norm(space_vector)
@@ -256,12 +256,14 @@ class Setup(object):
             settings = json.load(json_file)
         for k,v in settings.items():
             settings[k] = self.decodeSetting(v)
+        # print(settings)
         return settings
 
     def saveSettings(self, filename='dobot_settings.json', location=f"{there['dobot']}\\settings"):
         settings = {"left": self.Lobot.getSettings(), "right": self.Robot.getSettings()}
         with open(f'{location}\\{filename}', 'w', encoding='utf-8') as f:
             json.dump(settings, f, ensure_ascii=False, indent=4)
+        # print(f'{location}\\{filename}')
         return
 
 
