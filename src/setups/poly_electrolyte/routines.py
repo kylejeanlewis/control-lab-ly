@@ -6,7 +6,6 @@ Created on Thu 2022 Jul 28 12:40:00
 """
 import os, sys
 import json
-import math
 import numpy as np
 import pandas as pd
 
@@ -23,53 +22,24 @@ import dobot_utils
 from guibuilder import Builder
 print(f"Import: OK <{__name__}>")
 
-PRELIM_CALIB = (194,31,0)
-REF_POSITIONS = pd.read_excel(f"{there['dobot']}\\settings\\Opentrons coordinates.xlsx", index_col=0).round(2).to_dict('index')
+CONFIG_JSON = "config/dobot_settings.json"
+REF_POSITIONS = pd.read_excel("config/Opentrons coordinates.xlsx", index_col=0).round(2).to_dict('index')
 REF_POSITIONS = {k: tuple(v.values()) for k,v in REF_POSITIONS.items()}
-
-LEFT = {
-    'arm': dobot_utils.Dobot,
-    'details': {
-        'address': '192.168.2.8',
-        # 'home_position': '',
-        # 'home_orientation': '',
-        'orientate_matrix': np.array([[0,-1,0],[1,0,0],[0,0,1]]),
-        'translate_vector': np.array([343.6,-57.9,-222.5]) * (-1) + np.array(PRELIM_CALIB),
-        'scale': 1
-    }
-}
-
-RIGHT = {
-    'arm': dobot_utils.JawGripper,
-    'details': {
-        'address': '192.168.2.7',
-        # 'home_position': '',
-        # 'home_orientation': '',
-        'orientate_matrix': np.array([[-1,0,0],[0,-1,0],[0,0,1]]),
-        'translate_vector': np.array([-175.6,-330.3,-222.5]) * (-1) + np.array(PRELIM_CALIB),
-        'scale': 1
-    }
-}
 
 # %%
 class Setup(object):
     def __init__(self):
+        self.arms = []
         try:
             settings = self.loadSettings()
-            left_arm = settings['left']
-            right_arm = settings['right']
+            self.arms = [(k.upper(), v['arm'](**v['details'])) for k,v in settings.items()]
             pass
         except Exception as e:
             print(e)
-            left_arm = LEFT
-            right_arm = RIGHT
-
-        self.Lobot = left_arm['arm'](**left_arm['details'])
-        self.Robot = right_arm['arm'](**right_arm['details'])
-        self.Lobot.calibrationMode()
 
         self.window = None
         self.update_position = True
+        self.begin_calibrate = None
         return
 
     # Main methods (build_window, gui_loop, run_program)
@@ -79,7 +49,7 @@ class Setup(object):
         """
         bd = Builder()
         bd.addLayout('-FINAL-', [
-            [bd.getB('LEFT', key='-SWITCH-ARM-'), bd.getB('RESET', key='-RESET-ARM-'), bd.getB('CALIBRATE', key='-CALIB-ARM-')],
+            [bd.getB(self.arms[0][0], key='-SWITCH-ARM-'), bd.getB('RESET', key='-RESET-ARM-'), bd.getB('CALIBRATE', key='-CALIB-ARM-')],
             [bd.getB('Grab', key='-ARM-GRAB-'), bd.getB('Release', key='-ARM-RELEASE-')],
             [bd.getXYZControls()],
             [bd.getTitle("", (64,1))],
@@ -93,10 +63,8 @@ class Setup(object):
         Run a loop to keep GUI window open
         - paths: dict of paths to save output
         """
-        arms = [('LEFT', self.Lobot), ('RIGHT', self.Robot)]
         arm_id = 0
-        arm = arms[arm_id][1]
-
+        arm = self.arms[arm_id][1]
         movement_buttons = {}
         for axis in ['X', 'Y', 'Z']:
             for displacement in ['-10', '-1', '-0.1', '+0.1', '+1', '+10']:
@@ -145,15 +113,16 @@ class Setup(object):
             ### 2.1 Switch arms
             if event == '-SWITCH-ARM-':
                 arm_id += 1
-                label, arm = arms[(arm_id)%len(arms)]
+                label, arm = self.arms[(arm_id)%len(self.arms)]
                 self.window['-SWITCH-ARM-'].update(label)
                 self.update_position = True
             ### 2.2 Reset arms
             if event == '-RESET-ARM-':
                 arm.reset()
-            ### 2.3 Reset arms
-            # if event == '-CALIB-ARM-':
-            #     self.calibrate(arm)
+            ### 2.3 Calibrate arms
+            if event == '-CALIB-ARM-':
+                self.begin_calibrate = arm
+                break
             ### 2.4 Grab object
             if event == '-ARM-GRAB-':
                 try:
@@ -166,7 +135,6 @@ class Setup(object):
                     arm.release()
                 except AttributeError as e:
                     print(e)
-
         return
 
     def run_program(self, paths={}, maximize=False):
@@ -175,16 +143,6 @@ class Setup(object):
         - paths: dict of paths to save output
         - maximize: whether to maximize window
         """
-        # try:
-        #     savefolder = paths['savefolder']
-        # except:
-        #     savefolder = ''
-        # self.savefolder = savefolder
-        # if len(self.savefolder) == 0:
-        #     self.savefolder = os.getcwd().replace('\\', '/')
-        # elif not os.path.exists(self.savefolder):
-        #     os.makedirs(self.savefolder)
-        
         self.build_window()
         self.window.Finalize()
         if maximize:
@@ -193,85 +151,58 @@ class Setup(object):
         self.gui_loop(paths)
         self.window.close()
         self.update_position = True
+        if type(self.begin_calibrate) != type(None):
+            return self.calibrate(self.begin_calibrate)
         return
 
     # Other methods
     def calibrate(self, arm):
-        ref_pos_1 = int(input("Input reference position 1:"))
-        space_pt_1 = np.array(REF_POSITIONS[ref_pos_1])
-        arm.moveTo( tuple(np.append(space_pt_1[:2],30)) )
-        self.run_program()
-        robot_pt_1 = np.array(arm.getWorkspacePosition())
-        arm.home()
-
-        ref_pos_2 = int(input("Input reference position 2:"))
-        space_pt_2 = np.array(REF_POSITIONS[ref_pos_2])
-        arm.moveTo( tuple(np.append(space_pt_2[:2],30)) )
-        self.run_program()
-        robot_pt_2 = np.array(arm.getWorkspacePosition())
-        arm.home()
-
-        space_vector = space_pt_2 - space_pt_1
-        robot_vector = robot_pt_2 - robot_pt_1
-        space_mag = np.linalg.norm(space_vector)
-        robot_mag = np.linalg.norm(robot_vector)
-
-        space_unit_vector = space_vector / space_mag
-        robot_unit_vector = robot_vector / robot_mag
-        dot_product = np.dot(robot_unit_vector, space_unit_vector)
-        cross_product = np.cross(robot_unit_vector, space_unit_vector)
-
-        cos_theta = dot_product
-        sin_theta = math.copysign(np.linalg.norm(cross_product), cross_product[2])
-        rot_angle = math.acos(cos_theta) if sin_theta>0 else 2*math.pi - math.acos(cos_theta)
-
-        rot_matrix = np.array([[cos_theta,-sin_theta,0],[sin_theta,cos_theta,0],[0,0,1]])
-        arm.orientate_matrix = np.matmul(rot_matrix, arm.orientate_matrix)
-        arm.translate_vector = arm.translate_vector + (space_pt_1 - robot_pt_1)
-        arm.scale = (space_mag / robot_mag) * arm.scale
-        
-        print(f'Address: {arm.address}')
-        print(f'Rotation matrix:\n{arm.orientate_matrix}')
-        print(f'Translate vector: {arm.translate_vector}')
-        print(f'Scale factor: {arm.scale}')
-        print(f'Offset angle: {rot_angle/math.pi*180} degree')
-        print(f'Offset vector: {(space_pt_1 - robot_pt_1)}')
+        self.begin_calibrate = None
+        positions = []
+        for p in [1,2]:
+            ref_pos = int(input(f"Input reference position {p}:"))
+            space_pt = np.array(REF_POSITIONS[ref_pos])
+            positions.append(space_pt)
+            arm.moveTo( tuple(np.append(space_pt[:2],30)) )
+            self.run_program()
+            robot_pt = np.array(arm.getWorkspacePosition())
+            positions.append(robot_pt)
+            arm.home()
+        print(positions)
+        arm.calibrate(*positions)
         return
 
     def decodeSetting(self, setting):
         dobot_type = setting['arm']
-        setting['arm'] = dobot_utils.__dict__[dobot_type]
-
         details = setting['details']
+        setting['arm'] = dobot_utils.__dict__[dobot_type]
         setting['details'] = dobot_utils.decodeDetails(details)
         return setting
 
     def home(self):
-        self.Lobot.home()
-        self.Robot.home()
+        for arm in self.arms:
+            arm[1].home()
         return
 
-    def loadSettings(self, filename='dobot_settings.json', location=f"{there['dobot']}\\settings"):
-        with open(f'{location}\\{filename}') as json_file:
+    def loadSettings(self, filename=CONFIG_JSON):
+        with open(filename) as json_file:
             settings = json.load(json_file)
         for k,v in settings.items():
             settings[k] = self.decodeSetting(v)
-        # print(settings)
         return settings
 
-    def saveSettings(self, filename='dobot_settings.json', location=f"{there['dobot']}\\settings"):
-        settings = {"left": self.Lobot.getSettings(), "right": self.Robot.getSettings()}
-        with open(f'{location}\\{filename}', 'w', encoding='utf-8') as f:
+    def saveSettings(self, filename=CONFIG_JSON):
+        settings = {arm[0].lower(): arm[1].getSettings() for arm in self.arms}
+        with open(filename, 'w', encoding='utf-8') as f:
             json.dump(settings, f, ensure_ascii=False, indent=4)
-        # print(f'{location}\\{filename}')
+        print(f'Save to {filename} !')
         return
 
 
 # %%
 if __name__ == '__main__':
-    setup = Setup()
+    if 'setup' not in dir():
+        setup = Setup()
     setup.run_program()
-    # setup.calibrate(setup.Lobot)
-    # setup.calibrate(setup.Robot)
 
 # %%
