@@ -113,24 +113,6 @@ class Dobot(object):
             del self.tool_offset
         return
 
-    def isFeasible(self, coord):
-        """
-        Checks if specified coordinates is a feasible position for robot to access.
-        """
-        coord = tuple(np.array(coord) + np.array(self.implement_offset))
-        x,y,z = coord
-
-        j1 = round(math.degrees(math.atan(x/(y + 1E-6))), 3)
-        if y < 0:
-            j1 += (180 * math.copysign(1, x))
-        if abs(j1) > 160:
-            return False
-
-        # if not -150 < z < 230:
-        #     return False
-
-        return True
-
     def connect(self, address):
         """
         Establish connection with robot arm.
@@ -189,6 +171,24 @@ class Dobot(object):
         self.moveCoordTo(self.home_position, self.home_orientation)
         print("Homed")
         return
+
+    def isFeasible(self, coord):
+        """
+        Checks if specified coordinates is a feasible position for robot to access.
+        """
+        coord = tuple(np.array(coord) + np.array(self.implement_offset))
+        x,y,z = coord
+
+        j1 = round(math.degrees(math.atan(x/(y + 1E-6))), 3)
+        if y < 0:
+            j1 += (180 * math.copysign(1, x))
+        if abs(j1) > 160:
+            return False
+
+        # if not -150 < z < 230:
+        #     return False
+
+        return True
 
     def moveBy(self, vector, angles=(0,0,0)):
         """
@@ -343,14 +343,22 @@ class Dobot(object):
         return
 
     def transform_vector_in(self, coord, offset=False, stretch=SCALE):
-        translate = self.translate_vector if offset else np.zeros(3)
-        scale = self.scale if stretch else 1
-        return tuple( np.matmul(self.orientate_matrix, (np.array(coord)-translate)/scale) )
+        """
+        Order of transformations (scale, rotate, translate)
+        """
+        translate = (-1*self.translate_vector) if offset else np.zeros(3)
+        scale = (1/self.scale) if stretch else 1
+        # return tuple( np.matmul(self.orientate_matrix.T, (np.array(coord)-translate)/scale) )
+        return tuple( translate + np.matmul(self.orientate_matrix.T, scale * np.array(coord)) )
 
     def transform_vector_out(self, coord, offset=False, stretch=SCALE):
+        """
+        Order of transformations (translate, rotate, scale)
+        """
         translate = self.translate_vector if offset else np.zeros(3)
         scale = self.scale if stretch else 1
-        return tuple( scale * np.matmul(np.linalg.inv(self.orientate_matrix), np.array(coord)) + translate )
+        # return tuple( scale * np.matmul(self.orientate_matrix, np.array(coord)) + translate )
+        return tuple( scale * np.matmul(self.orientate_matrix, translate + np.array(coord)) )
 
     def tuck(self):
         self.moveCoordTo((0,225,75), self.home_orientation, offset=False)
