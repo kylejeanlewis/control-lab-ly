@@ -21,6 +21,8 @@ from sensorpal import SensorEIS
 from keithley import KeithleyLSV
 print(f"Import: OK <{__name__}>")
 
+SCALE = False
+
 # %%
 def decodeDetails(details):
     """
@@ -105,6 +107,7 @@ class Dobot(object):
         for pt in [external_pt1, external_pt2]:
             self.home()
             self.moveTo( tuple(np.append(pt[:2],10)) )
+            input("Press Enter to verify reference point")
         self.home()
         return
 
@@ -156,14 +159,16 @@ class Dobot(object):
         """"
         Read the current position and orientation of arm.
         """
-        # self.feedback.WaitReply()
+        # reply = self.feedback.WaitReply()
+        # print(reply)
         return self.orientation
 
     def getPosition(self):
         """"
         Read the current position and orientation of arm.
         """
-        # self.feedback.WaitReply()
+        # reply = self.feedback.WaitReply()
+        # print(reply)
         return self.coordinates
     
     def getSettings(self):
@@ -186,7 +191,7 @@ class Dobot(object):
         Home the robot arm.
         """
         # Tuck arm in to avoid collision
-        self.moveCoordTo((0,225,75), self.home_orientation, offset=False)
+        self.tuck()
         # Go to home position
         self.moveCoordTo(self.home_position, self.home_orientation)
         print("Homed")
@@ -199,10 +204,12 @@ class Dobot(object):
         vector = self.transform_vector_in(vector)
         return self.moveCoordBy(vector)
 
-    def moveTo(self, coord):
+    def moveTo(self, coord, tuck=True):
         """
         Absolute Cartesian movement, using workspace coordinates.
         """
+        if tuck:
+            self.tuck()
         coord = self.transform_vector_in(coord, offset=True)
         return self.moveCoordTo(coord)
 
@@ -334,15 +341,19 @@ class Dobot(object):
             print("Not connected to arm!")
         return
 
-    def transform_vector_in(self, coord, offset=False, stretch=True):
+    def transform_vector_in(self, coord, offset=False, stretch=SCALE):
         translate = self.translate_vector if offset else np.zeros(3)
         scale = self.scale if stretch else 1
         return tuple( np.matmul(self.orientate_matrix, (np.array(coord)-translate)/scale) )
 
-    def transform_vector_out(self, coord, offset=False, stretch=True):
+    def transform_vector_out(self, coord, offset=False, stretch=SCALE):
         translate = self.translate_vector if offset else np.zeros(3)
         scale = self.scale if stretch else 1
         return tuple( scale * np.matmul(np.linalg.inv(self.orientate_matrix), np.array(coord)) + translate )
+
+    def tuck(self):
+        self.moveCoordTo((0,225,75), self.home_orientation, offset=False)
+        return
 
 
 # First-party implement attachments
