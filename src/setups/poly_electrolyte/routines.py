@@ -38,11 +38,12 @@ CALIB_POINTS = 2
 
 # %%
 class Setup(object):
-    def __init__(self):
-        self.arms = []
+    def __init__(self, config_filename=CONFIG_JSON):
+        self.filename = config_filename
+        self.arms = {}
+        self.arms_index = []
         try:
-            settings = self.loadSettings()
-            self.arms = [(k.upper(), v['arm'](**v['details'])) for k,v in settings.items()]
+            self.loadSettings(config_filename)
             pass
         except Exception as e:
             print(e)
@@ -60,7 +61,7 @@ class Setup(object):
         """
         bd = Builder()
         bd.addLayout('-FINAL-', [
-            [bd.getB(self.arms[0][0], key='-SWITCH-ARM-'), bd.getB('RESET', key='-RESET-ARM-'), bd.getB('CALIBRATE', key='-CALIB-ARM-')],
+            [bd.getB(self.arms_index[0], key='-SWITCH-ARM-'), bd.getB('RESET', key='-RESET-ARM-'), bd.getB('CALIBRATE', key='-CALIB-ARM-')],
             [bd.getB('Grab', key='-ARM-GRAB-'), bd.getB('Release', key='-ARM-RELEASE-')],
             [bd.getXYZControls()],
             [bd.getTitle("", (64,1))],
@@ -75,7 +76,7 @@ class Setup(object):
         - paths: dict of paths to save output
         """
         arm_id = 0
-        arm = self.arms[arm_id][1]
+        arm = self.arms[self.arms_index[arm_id]]
         movement_buttons = {}
         for axis in ['X', 'Y', 'Z']:
             for displacement in ['-10', '-1', '-0.1', '+0.1', '+1', '+10']:
@@ -130,7 +131,8 @@ class Setup(object):
             ### 2.1 Switch arms
             if event == '-SWITCH-ARM-':
                 arm_id += 1
-                label, arm = self.arms[(arm_id)%len(self.arms)]
+                label = self.arms_index[arm_id%len(self.arms_index)]
+                arm = self.arms[label]
                 self.window['-SWITCH-ARM-'].update(label)
                 self.update_position = True
             ### 2.2 Reset arms
@@ -203,25 +205,31 @@ class Setup(object):
     def getArm(self, name):
         this_arm = None
         try:
-            this_arm = [arm[1] for arm in self.arms if arm[0]==name][0]
+            this_arm = self.arms[name.upper()]
         except:
             print("Arm not found!")
         return this_arm
 
     def home(self):
-        for arm in self.arms:
-            arm[1].home()
+        for _, arm in self.arms.items():
+            arm.home()
         return
 
-    def loadSettings(self, filename=CONFIG_JSON):
+    def loadSettings(self, filename=''):
+        if len(filename) == 0:
+            filename = self.filename
         with open(filename) as json_file:
             settings = json.load(json_file)
         for k,v in settings.items():
-            settings[k] = self.decodeSetting(v)
+            setting = self.decodeSetting(v)
+            self.arms[k.upper()] = setting['arm'](**setting['details'])
+            self.arms_index.append(k.upper())
         return settings
 
-    def saveSettings(self, filename=CONFIG_JSON):
-        settings = {arm[0].lower(): arm[1].getSettings() for arm in self.arms}
+    def saveSettings(self, filename=''):
+        if len(filename) == 0:
+            filename = self.filename
+        settings = {name.lower(): arm.getSettings() for name,arm in self.arms}
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(settings, f, ensure_ascii=False, indent=4)
         print(f'Saved to {filename} !')
