@@ -3,22 +3,16 @@
 Created on Wed 2022 Jul 20 11:54:04
 
 @author: cjleong
+
+Notes:
+- Movement time not accounted for
+- Combine xyz movement and theta rotation
 """
 import os, sys
 import time
 import math
 import numpy as np
 from dobot.dobot_api import dobot_api_dashboard, dobot_api_feedback, MyType
-
-THERE = {'electrical': 'utils\\characterisation\\electrical'}
-here = os.getcwd()
-base = here.split('src')[0] + 'src'
-there = {k: '\\'.join([base,v]) for k,v in THERE.items()}
-for v in there.values():
-    sys.path.append(v)
-
-from sensorpal import SensorEIS
-from keithley import KeithleyLSV
 print(f"Import: OK <{__name__}>")
 
 SCALE = False
