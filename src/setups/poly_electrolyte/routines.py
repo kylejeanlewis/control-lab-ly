@@ -3,6 +3,12 @@
 Created on Thu 2022 Jul 28 12:40:00
 
 @author: cjleong
+
+Notes:
+Issues faced when calibrating points, such as 
+1) decimal precision during matrix math;
+2) deck not being level;
+3) precision of eyeballing crosshairs / blunt tip
 """
 import os, sys
 import json
@@ -25,6 +31,7 @@ print(f"Import: OK <{__name__}>")
 CONFIG_JSON = "config/dobot_settings L3.json"
 REF_POSITIONS = pd.read_excel("config/Opentrons coordinates.xlsx", index_col=0).round(2).to_dict('index')
 REF_POSITIONS = {k: tuple(v.values()) for k,v in REF_POSITIONS.items()}
+CALIB_POINTS = 3
 
 # %%
 class Setup(object):
@@ -157,9 +164,10 @@ class Setup(object):
 
     # Other methods
     def calibrate(self, arm):
+        arm.calibrationMode(True)
         self.begin_calibrate = None
         positions = []
-        for p in [1,2]:
+        for p in range(1,CALIB_POINTS+1):
             ref_pos = int(input(f"Input reference position {p}:"))
             space_pt = np.array(REF_POSITIONS[ref_pos])
             positions.append(space_pt)
@@ -170,6 +178,7 @@ class Setup(object):
             arm.home()
         print(positions)
         arm.calibrate(*positions)
+        arm.calibrationMode(False)
         return
 
     def decodeSetting(self, setting):
