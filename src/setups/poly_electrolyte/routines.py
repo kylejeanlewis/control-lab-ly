@@ -7,8 +7,11 @@ Created on Thu 2022 Jul 28 12:40:00
 Notes:
 Issues faced when calibrating points, such as 
 1) decimal precision during matrix math;
-2) deck not being level;
-3) precision of eyeballing crosshairs / blunt tip
+2) CAD deck model slightly different from physical measurments -- > use calipers to measure;
+2) deck not being level --> use spirit bubble to level arm and deck;
+3) precision of eyeballing crosshairs / blunt tip --> use laser crosshair for calibration
+
+GUI does not show actual position after reset
 """
 import os, sys
 import json
@@ -31,7 +34,7 @@ print(f"Import: OK <{__name__}>")
 CONFIG_JSON = "config/dobot_settings L3.json"
 REF_POSITIONS = pd.read_excel("config/Opentrons coordinates.xlsx", index_col=0).round(2).to_dict('index')
 REF_POSITIONS = {k: tuple(v.values()) for k,v in REF_POSITIONS.items()}
-CALIB_POINTS = 3
+CALIB_POINTS = 2
 
 # %%
 class Setup(object):
@@ -189,7 +192,12 @@ class Setup(object):
         return setting
 
     def getArm(self, name):
-        return [arm[1] for arm in self.arms if arm[0]==name][0]
+        this_arm = None
+        try:
+            this_arm = [arm[1] for arm in self.arms if arm[0]==name][0]
+        except:
+            print("Arm not found!")
+        return this_arm
 
     def home(self):
         for arm in self.arms:
