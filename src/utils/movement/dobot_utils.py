@@ -5,8 +5,6 @@ Created on Wed 2022 Jul 20 11:54:04
 @author: cjleong
 
 Notes:
-- Movement time not accounted for
-- Combine xyz movement and theta rotation
 """
 import os, sys
 import time
@@ -16,6 +14,7 @@ from dobot.dobot_api import dobot_api_dashboard, dobot_api_feedback, MyType
 print(f"Import: OK <{__name__}>")
 
 SCALE = False
+MOVE_TIME = 1.5
 
 # %%
 def decodeDetails(details):
@@ -191,21 +190,21 @@ class Dobot(object):
         print("Homed")
         return
 
-    def moveBy(self, vector):
+    def moveBy(self, vector, angles=(0,0,0)):
         """
         Relative Cartesian movement, using workspace coordinates.
         """
         vector = self.transform_vector_in(vector)
-        return self.moveCoordBy(vector)
+        return self.moveCoordBy(vector, angles)
 
-    def moveTo(self, coord, tuck=True):
+    def moveTo(self, coord, orientation=(0,0,0), tuck=True):
         """
         Absolute Cartesian movement, using workspace coordinates.
         """
         if tuck:
             self.tuck()
         coord = self.transform_vector_in(coord, offset=True)
-        return self.moveCoordTo(coord)
+        return self.moveCoordTo(coord, orientation)
 
     def moveJointBy(self, relative_angle=(0,0,0,0,0,0)):
         """
@@ -214,6 +213,7 @@ class Dobot(object):
         relative_angle = relative_angle + (0,) * (6-len(relative_angle))
         try:
             self.feedback.RelMovJ(*relative_angle)
+            time.sleep(MOVE_TIME)
         except (AttributeError, OSError):
             print("Not connected to arm!")
         return
@@ -225,6 +225,7 @@ class Dobot(object):
         absolute_angle = absolute_angle + (0,) * (6-len(absolute_angle))
         try:
             self.feedback.JointMovJ(*absolute_angle)
+            time.sleep(MOVE_TIME)
         except (AttributeError, OSError):
             print("Not connected to arm!")
         return
@@ -235,6 +236,7 @@ class Dobot(object):
         """
         try:
             self.feedback.RelMovL(*relative_coord)
+            time.sleep(MOVE_TIME)
         except (AttributeError, OSError):
             print("Not connected to arm!")
         
@@ -261,6 +263,7 @@ class Dobot(object):
         
         try:
             self.feedback.MovJ(*absolute_arm_coord, *orientation)
+            time.sleep(MOVE_TIME)
         except (AttributeError, OSError):
             print("Not connected to arm!")
         
@@ -298,6 +301,10 @@ class Dobot(object):
         self.home()
         return
 
+    def setPosition(self, coord):
+        self.coordinates = self.transform_vector_in(coord, offset=True, stretch=SCALE)
+        return
+
     def setSpeed(self, speed):
         """
         Setting the Global rate   
@@ -311,7 +318,7 @@ class Dobot(object):
 
     def shutdown(self):
         """
-        halt robot and close conenctions.
+        Halt robot and close conenctions.
         """
         self.halt()
         try:
@@ -326,7 +333,7 @@ class Dobot(object):
 
     def halt(self):
         """
-        halt and disable robot.
+        Halt and disable robot.
         """
         try:
             self.dashboard.ResetRobot()
