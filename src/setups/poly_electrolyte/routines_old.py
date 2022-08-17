@@ -14,15 +14,19 @@ import pandas as pd
 from PySimpleGUI import WIN_CLOSED, WINDOW_CLOSE_ATTEMPTED_EVENT
 
 import sys
+THERE = {'movement': 'utils\\movement', 'dobot': 'utils\\movement\\dobot', 'gui': 'utils\\gui'}
 here = os.getcwd()
-there_dobot = here.split('src')[0] + 'src\\robotics\\dobot'
-sys.path.append(there_dobot)
-from guibuilder import Builder, Popups
+base = here.split('src')[0] + 'src'
+there = {k: '\\'.join([base,v]) for k,v in THERE.items()}
+for v in there.values():
+    sys.path.append(v)
+
 import dobot_utils
+from guibuilder import Builder
 print(f"Import: OK <{__name__}>")
 
 PRELIM_CALIB = (194,31,0)
-REF_POSITIONS = pd.read_excel(f'{there_dobot}\\settings\\Opentrons coordinates.xlsx', index_col=0).round(2).to_dict('index')
+REF_POSITIONS = pd.read_excel(f'config/Opentrons coordinates.xlsx', index_col=0).round(2).to_dict('index')
 REF_POSITIONS = {k: tuple(v.values()) for k,v in REF_POSITIONS.items()}
 
 LEFT = {
@@ -53,9 +57,9 @@ RIGHT = {
 class Setup(object):
     def __init__(self):
         try:
-            settings = self.loadSettings(filename='dobot_settings.json')
+            settings = self.loadSettings()
             left_arm = settings['left']
-            right_arm = settings['right']
+            # right_arm = settings['right']
             pass
         except Exception as e:
             print(e)
@@ -63,8 +67,8 @@ class Setup(object):
             right_arm = RIGHT
 
         self.Lobot = left_arm['arm'](**left_arm['details'])
-        self.Robot = right_arm['arm'](**right_arm['details'])
-        self.Lobot.calibrationMode()
+        # self.Robot = right_arm['arm'](**right_arm['details'])
+        self.Lobot.calibrationMode(True)
 
         self.window = None
         self.update_position = True
@@ -91,7 +95,7 @@ class Setup(object):
         Run a loop to keep GUI window open
         - paths: dict of paths to save output
         """
-        arms = [('LEFT', self.Lobot), ('RIGHT', self.Robot)]
+        arms = [('LEFT', self.Lobot)]#, ('RIGHT', self.Robot)]
         arm_id = 0
         arm = arms[arm_id][1]
 
@@ -247,7 +251,7 @@ class Setup(object):
         self.Robot.home()
         return
 
-    def loadSettings(self, filename='dobot_settings.json', location=there_dobot+'\\settings'):
+    def loadSettings(self, filename='dobot_settings L3.json', location='config'):
         with open(f'{location}\\{filename}') as json_file:
             settings = json.load(json_file)
         for k,v in settings.items():
@@ -255,8 +259,8 @@ class Setup(object):
         # print(settings)
         return settings
 
-    def saveSettings(self, filename='dobot_settings.json', location=there_dobot+'\\settings'):
-        settings = {"left": self.Lobot.getSettings(), "right": self.Robot.getSettings()}
+    def saveSettings(self, filename='dobot_settings L3.json', location='config'):
+        settings = {"left": self.Lobot.getSettings()}#, "right": self.Robot.getSettings()}
         with open(f'{location}\\{filename}', 'w', encoding='utf-8') as f:
             json.dump(settings, f, ensure_ascii=False, indent=4)
         # print(f'{location}\\{filename}')
