@@ -11,7 +11,7 @@ Issues faced when calibrating points, such as
 2) deck not being level --> use spirit bubble to level arm and deck;
 3) precision of eyeballing crosshairs / blunt tip --> use laser crosshair for calibration
 
-GUI does not show actual position after reset
+~GUI does not show actual position after reset~
 """
 import os, sys
 import json
@@ -50,6 +50,7 @@ class Setup(object):
         self.window = None
         self.update_position = True
         self.begin_calibrate = None
+        self.prev_position = (0,0,0)
         return
 
     # Main methods (build_window, gui_loop, run_program)
@@ -112,6 +113,12 @@ class Setup(object):
                     print('Input float only!')
                 arm.moveTo((x,y,z))
             if self.update_position:
+                # Read last known position
+                x = float(values['-X-CURRENT-'])
+                y = float(values['-Y-CURRENT-'])
+                z = float(values['-Z-CURRENT-'])
+                self.prev_position = (x,y,z)
+                # Get arm position
                 workspace_coord = arm.getWorkspacePosition()
                 workspace_coord = tuple([round(wc,2) for wc in workspace_coord])
                 self.window['-X-CURRENT-'].update(workspace_coord[0])
@@ -129,6 +136,8 @@ class Setup(object):
             ### 2.2 Reset arms
             if event == '-RESET-ARM-':
                 arm.reset()
+                arm.setPosition(self.prev_position)
+                self.update_position = True
             ### 2.3 Calibrate arms
             if event == '-CALIB-ARM-':
                 self.begin_calibrate = arm
