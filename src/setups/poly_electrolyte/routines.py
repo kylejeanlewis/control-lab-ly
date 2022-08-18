@@ -31,8 +31,8 @@ import dobot_utils
 from guibuilder import Builder
 print(f"Import: OK <{__name__}>")
 
-CONFIG_JSON = "config/dobot_settings L3.json"
-REF_POSITIONS = pd.read_excel("config/Opentrons coordinates.xlsx", index_col=0).round(2).to_dict('index')
+CONFIG_JSON = f"{here}\\config\\dobot_settings L3.json"
+REF_POSITIONS = pd.read_excel(f"{here}\\config\\Opentrons coordinates.xlsx", index_col=0).round(2).to_dict('index')
 REF_POSITIONS = {k: tuple(v.values()) for k,v in REF_POSITIONS.items()}
 CALIB_POINTS = 2
 
@@ -187,7 +187,7 @@ class Setup(object):
             positions.append(space_pt)
             arm.moveTo( tuple(np.append(space_pt[:2],30)) )
             self.run_program()
-            robot_pt = np.array(arm.getWorkspacePosition())
+            robot_pt = np.array(arm.getPosition())
             positions.append(robot_pt)
             arm.home()
         print(positions)
