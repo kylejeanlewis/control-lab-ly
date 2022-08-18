@@ -199,7 +199,7 @@ class Dobot(object):
         vector = self.transform_vector_in(vector)
         return self.moveCoordBy(vector, angles)
 
-    def moveTo(self, coord, orientation=(0,0,0), tuck=True):
+    def moveTo(self, coord, orientation=(0,0,0), tuck=False):
         """
         Absolute Cartesian movement, using workspace coordinates.
         """
@@ -430,6 +430,7 @@ class VacuumGrip(Dobot):
     
     def stop(self):
         try:
+            self.dashboard.DOExecute(1,0)
             self.dashboard.DOExecute(2,0)
             time.sleep(1)
         except (AttributeError, OSError):
