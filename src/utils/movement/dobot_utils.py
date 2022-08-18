@@ -13,7 +13,7 @@ import numpy as np
 from dobot.dobot_api import dobot_api_dashboard, dobot_api_feedback, MyType
 print(f"Import: OK <{__name__}>")
 
-SCALE = False
+SCALE = True
 MOVE_TIME = 1.5
 
 # %%
@@ -348,7 +348,6 @@ class Dobot(object):
         """
         translate = (-1*self.translate_vector) if offset else np.zeros(3)
         scale = (1/self.scale) if stretch else 1
-        # return tuple( np.matmul(self.orientate_matrix.T, (np.array(coord)-translate)/scale) )
         return tuple( translate + np.matmul(self.orientate_matrix.T, scale * np.array(coord)) )
 
     def transform_vector_out(self, coord, offset=False, stretch=SCALE):
@@ -357,7 +356,6 @@ class Dobot(object):
         """
         translate = self.translate_vector if offset else np.zeros(3)
         scale = self.scale if stretch else 1
-        # return tuple( scale * np.matmul(self.orientate_matrix, np.array(coord)) + translate )
         return tuple( scale * np.matmul(self.orientate_matrix, translate + np.array(coord)) )
 
     def tuck(self):
