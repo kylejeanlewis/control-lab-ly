@@ -14,7 +14,7 @@ from dobot.dobot_api import dobot_api_dashboard, dobot_api_feedback, MyType
 print(f"Import: OK <{__name__}>")
 
 SCALE = True
-MOVE_TIME = 1.5
+MOVE_TIME = 0.5
 
 # %%
 def decodeDetails(details):
@@ -85,9 +85,9 @@ class Dobot(object):
         rot_angle = math.acos(cos_theta) if sin_theta>0 else 2*math.pi - math.acos(cos_theta)
 
         rot_matrix = np.array([[cos_theta,-sin_theta,0],[sin_theta,cos_theta,0],[0,0,1]])
-        self.orientate_matrix = np.matmul(rot_matrix, self.orientate_matrix)
-        self.translate_vector = self.translate_vector + (external_pt1 - internal_pt1)
-        self.scale = (space_mag / robot_mag) * self.scale
+        self.orientate_matrix = rot_matrix #np.matmul(rot_matrix, self.orientate_matrix)
+        self.translate_vector = (external_pt1 - internal_pt1) #+ self.translate_vector
+        self.scale = (space_mag / robot_mag) #* self.scale
         
         print(f'Address: {self.address}')
         print(f'Orientate matrix:\n{self.orientate_matrix}')
@@ -168,7 +168,7 @@ class Dobot(object):
         Home the robot arm.
         """
         # Tuck arm in to avoid collision
-        self.tuck()
+        self.tuck(self.home_position)
         # Go to home position
         self.moveCoordTo(self.home_position, self.home_orientation)
         print("Homed")
@@ -203,9 +203,9 @@ class Dobot(object):
         """
         Absolute Cartesian movement, using workspace coordinates.
         """
-        if tuck:
-            self.tuck()
         coord = self.transform_vector_in(coord, offset=True)
+        if tuck:
+            self.tuck(coord)
         return self.moveCoordTo(coord, orientation)
 
     def moveJointBy(self, relative_angle=(0,0,0,0,0,0)):
@@ -360,8 +360,19 @@ class Dobot(object):
         scale = self.scale if stretch else 1
         return tuple( scale * np.matmul(self.orientate_matrix, translate + np.array(coord)) )
 
-    def tuck(self):
-        self.moveCoordTo((0,225,75), self.home_orientation, offset=False)
+    def tuck(self, target=None):
+        x,y,_ = self.getPosition()
+        if any((x,y)):
+            w = ( (225*225)/(x*x + y*y) )**0.5
+            x,y = (x*w,y*w)
+        else:
+            x,y = (0,225)
+        self.moveCoordTo((x,y,75), self.home_orientation, offset=False)
+
+        if type(target) != type(None) and len(target) == 3:
+            x1,y1,_ = target
+            w1 = ( (225*225)/(x1*x1 + y1*y1) )**0.5
+            self.moveCoordTo((x1*w1,y1*w1,75), self.home_orientation, offset=False)
         return
 
 
