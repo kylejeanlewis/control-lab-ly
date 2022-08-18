@@ -229,10 +229,10 @@ class Setup(object):
     def saveSettings(self, filename=''):
         if len(filename) == 0:
             filename = self.filename
-        settings = {name.lower(): arm.getSettings() for name,arm in self.arms}
+        settings = {name.lower(): arm.getSettings() for name,arm in self.arms.items()}
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(settings, f, ensure_ascii=False, indent=4)
-        print(f'Saved to {filename} !')
+        print(f'Saved to {filename}')
         return
 
 
