@@ -274,7 +274,7 @@ class Modules(Elements):
             [self.getText("X:  ", size, 'right'), self.getI(0, size, '-X-CURRENT-'),
             self.getText("Y:  ", size, 'right'), self.getI(0, size, '-Y-CURRENT-'),
             self.getText("Z:  ", size, 'right'), self.getI(0, size, '-Z-CURRENT-'),
-            self.getB('Go To', size), self.getB('Reset', size)]
+            self.getB('Go To', size), self.getB('Clear', size)]
         ]
         return sg.Column(module, background_color=self.bg_color)
 
