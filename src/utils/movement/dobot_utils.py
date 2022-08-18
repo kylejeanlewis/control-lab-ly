@@ -106,9 +106,11 @@ class Dobot(object):
 
     def calibrationMode(self, on, tip_length=21):
         if on:
+            tip_length = int(input(f"Please swap to calibration tip and enter tip length in mm (Default: {tip_length}mm)") or str(tip_length))
             self.tool_offset = self.implement_offset
             self.setImplementOffset((0,0,tip_length))
         else:
+            input("Please swap back to original tool")
             self.setImplementOffset(self.tool_offset)
             del self.tool_offset
         return
