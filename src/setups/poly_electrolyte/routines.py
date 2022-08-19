@@ -182,7 +182,7 @@ class Setup(object):
         self.begin_calibrate = None
         positions = []
         for p in range(1,CALIB_POINTS+1):
-            ref_pos = int(input(f"Input reference position {p}:"))
+            ref_pos = -1*int(input(f"Input reference position {p}:"))
             space_pt = np.array(REF_POSITIONS[ref_pos])
             positions.append(space_pt)
             arm.moveTo( tuple(np.append(space_pt[:2],30)) )
@@ -242,4 +242,20 @@ if __name__ == '__main__':
         setup = Setup()
     setup.run_program()
 
+# %%
+def demo(wait=False):
+    setup.Lobot.calibrationMode(True)
+    for r in (1,501,4,504,7,507,10,510):
+        setup.Lobot.tuck()
+        space_pt = np.array(REF_POSITIONS[r])
+        setup.Lobot.moveTo(tuple(np.append(space_pt[:2],10)))
+        if wait:
+            input()
+    setup.Lobot.home()
+    setup.Lobot.calibrationMode(False)
+    return
+
+if __name__ == '__main__':
+    demo(wait=True)
+    
 # %%
