@@ -243,16 +243,17 @@ if __name__ == '__main__':
     setup.run_program()
 
 # %%
-def demo(wait=False):
-    setup.Lobot.calibrationMode(True)
-    for r in (1,501,4,504,7,507,10,510):
-        setup.Lobot.tuck()
+def demo(ref_points=(1,501,4,504,7,507,10,510), arm_idx=0, wait=False):
+    arm = setup.arms[setup.arms_index[arm_idx]]
+    arm.calibrationMode(True)
+    for r in ref_points:
+        arm.tuck()
         space_pt = np.array(REF_POSITIONS[r])
-        setup.Lobot.moveTo(tuple(np.append(space_pt[:2],10)))
+        arm.moveTo(tuple(np.append(space_pt[:2],10)))
         if wait:
             input()
-    setup.Lobot.home()
-    setup.Lobot.calibrationMode(False)
+    arm.home()
+    arm.calibrationMode(False)
     return
 
 if __name__ == '__main__':
