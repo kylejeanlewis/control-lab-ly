@@ -15,7 +15,7 @@ TRAC:MAKE "<buff_name>", <buff_size>
 SYST:BEEP 440, 1
 
 ###
-SOUR:VOLT <volt>
+SOUR:VOLT <value>
 TRAC:CLE "<buff_name>"
 OUTP ON
 TRAC:TRIG "<buff_name>"
