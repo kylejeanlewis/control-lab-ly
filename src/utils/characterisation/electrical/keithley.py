@@ -1,7 +1,7 @@
 # %%
 # -*- coding: utf-8 -*-
 """
-Created on Fri 2022/03/18 09:00:00
+Created on Fri 2022/08/15 09:00:00
 
 @author: Chang Jie
 """
@@ -13,6 +13,7 @@ print(f"Import: OK <{__name__}>")
 
 NUM_READINGS = 3
 BUFFER_SIZE = 100
+MAX_BUFFER_SIZE = 10000
 
 # %% Keithley
 class SCPI(object):
@@ -68,6 +69,10 @@ class Keithley(object):
         self.buffersize = BUFFER_SIZE
         self.numreadings = NUM_READINGS
         self.scpi = None
+
+        self.flags = {
+            'stop_measure': False
+        }
         return
 
     def connect(self, address):
@@ -112,24 +117,35 @@ class Keithley(object):
             return []
         return self.scpi.parse()
 
-    def measure(self, columns=[], batch=False, average=False, cache=False, pause=0, reset=False):
+    def logData(self, columns, average=False):
+        start_time = time.time()
+        while not self.flags['stop_measure'] and len(self.buffer_df) < MAX_BUFFER_SIZE:
+            recv_msg = ['TRAC:TRIG "defbuffer1"', 'FETCH? "defbuffer1", READ, REL']
+            self.readData(recv_msg, columns, average=average, cache=True)
+            time.sleep(1)
+        return
+
+    def measure(self, columns=[], values=[], iterate=False, average=False, cache=False, pause=0, reset=False):
         if reset:
             self.reset()
         settings, send_msg, recv_msg = self.scpi.parse()
+        send_scpi = SCPI(send_msg)
 
         df = pd.DataFrame()
         self.setParameters(settings)
-        if batch:
+        if iterate:
+            for value in values:
+                if self.flags['stop_measure']:
+                    break
+                send_msg = send_scpi.replace(value=value)
+                self.setParameters(send_msg)
+                self.readData(recv_msg, columns=columns, average=average, cache=True)
+            df = self.buffer_df
+        else:
             self.setParameters(send_msg)
             time.sleep(pause)
             df = self.readData(recv_msg, columns=columns, average=average, cache=cache)
-        else:
-            # for loop
-            # self.setParameters(send_msg)
-            # df = self.readData(recv_msg, columns=columns, average=average, cache=cache)
-            print("looping")
-            pass
-        
+
         self.setParameters(['OUTP OFF'])
         return df
 
@@ -158,8 +174,6 @@ class Keithley(object):
 
     def reset(self):
         self.buffer_df = pd.DataFrame()
-        self.buffersize = BUFFER_SIZE
-        self.numreadings = NUM_READINGS
         self.setParameters(['*RST'])
         return
 
@@ -197,12 +211,19 @@ class KeithleyFET(object):
             keithley.parsed = keithley.scpi.parse()
             keithley.setParameters(keithley.parsed[0])
         
-        
+        fixed_send_scpi = SCPI(scpi_list=fixed.parsed[1])
+        varied_send_scpi = SCPI(scpi_list=varied.parsed[1])
         for f in fixed_values:
-            fixed.setParameters(fixed.parsed[1])
+            if fixed.flags['stop_mesaure']:
+                break
+            send_msg = fixed_send_scpi.replace(value=f)
+            fixed.setParameters(send_msg)
             time.sleep(0.5)
             for v in varied_values:
-                varied.setParameters(varied.parsed[1])
+                if varied.flags['stop_mesaure']:
+                    break
+                send_msg = varied_send_scpi.replace(value=v)
+                varied.setParameters(send_msg)
                 fixed.setParameters([p for p in fixed.parsed[1] if p.startswith('TRAC:')])
                 for keithley in keithleys.values():
                     keithley.readData(keithley.parsed[2], ['V', 'I'], average=True, cache=True)
@@ -217,9 +238,11 @@ class KeithleyHYS(Keithley):
         super().__init__(address, name)
         return
 
-    def measure(self, batch=False):
+    def measure(self, sample_name, values):
         self.getSCPI('keithley/SCPI_hysteresis.txt', count=self.numreadings, buff_name=self.buffer, buff_size=self.buffersize)
-        return super().measure(['I', 'V'], average=True, cache=True)
+        df = super().measure(['I', 'V'], values=values, iterate=True, average=True, cache=True)
+        self.buffer_df.to_csv(f'{sample_name}.csv')
+        return df
 
 
 class KeithleyIV(Keithley):
@@ -227,9 +250,11 @@ class KeithleyIV(Keithley):
         super().__init__(address, name)
         return
 
-    def measure(self):
+    def measure(self, sample_name, values):
         self.getSCPI('keithley/SCPI_iv.txt', count=self.numreadings, buff_name=self.buffer, buff_size=self.buffersize)
-        return super().measure(['I', 'V'], average=True, cache=True)
+        df = super().measure(['I', 'V'], values=values, iterate=True, average=True, cache=True)
+        self.buffer_df.to_csv(f'{sample_name}.csv')
+        return df
 
 
 class KeithleyLSV(Keithley):
@@ -237,11 +262,11 @@ class KeithleyLSV(Keithley):
         super().__init__(address, name)
         return
 
-    def measure(self, name, margin=0.5):
+    def measure(self, sample_name, margin=0.5):
         bias = self.measure_bias()
-        lsv_df = self.measure_sweep((bias-margin, bias+margin, margin*2*100+1))
-        lsv_df.to_csv(f'{name}.csv')
-        return lsv_df
+        df = self.measure_sweep((bias-margin, bias+margin, margin*2*100+1))
+        df.to_csv(f'{sample_name}.csv')
+        return df
 
     def measure_bias(self):
         self.getSCPI('keithley/SCPI_bias.txt', count=self.numreadings, buff_name=self.buffer, buff_size=self.buffersize)
@@ -255,8 +280,9 @@ class KeithleyLSV(Keithley):
         num_points = 2 * volt_range[2] - 1
         voltages = ", ".join(str(v) for v in volt_range)
         pause_time = 2*volt_range[2] * 2*dwell_time
+        
         self.getSCPI('keithley/SCPI_sweep_volt.txt', voltages=voltages, dwell_time=dwell_time, num_points=num_points)
-        df = super().measure(['V', 'I', 't'], batch=True, pause=pause_time)
+        df = super().measure(['V', 'I', 't'], iterate=True, pause=pause_time)
         
         df.plot('V', 'I')
         diff = df.diff()
