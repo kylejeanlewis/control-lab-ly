@@ -32,7 +32,7 @@ for v in there.values():
     sys.path.append(v)
 
 from cartesian_utils import Primitiv, Ender
-from keithley import Keithley
+from keithley_utils import Keithley
 from image_recognition import Vision
 from thermal_cam import Thermal
 from guibuilder import Builder, Popups
