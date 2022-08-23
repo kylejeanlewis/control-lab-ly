@@ -129,7 +129,7 @@ class Keithley(object):
         if reset:
             self.reset()
         settings, send_msg, recv_msg = self.scpi.parse()
-        send_scpi = SCPI(send_msg)
+        send_scpi = SCPI(scpi_list=[send_msg])
 
         df = pd.DataFrame()
         self.setParameters(settings)
@@ -137,8 +137,8 @@ class Keithley(object):
             for value in values:
                 if self.flags['stop_measure']:
                     break
-                send_msg = send_scpi.replace(value=value)
-                self.setParameters(send_msg)
+                send_value_scpi = SCPI(send_scpi.replace(value=value))
+                self.setParameters(send_value_scpi.parse())
                 self.readData(recv_msg, columns=columns, average=average, cache=True)
             df = self.buffer_df
         else:
@@ -155,18 +155,21 @@ class Keithley(object):
         """
         outp = ''
         try:
-            self.inst.write(recv_msg)
+            self.inst.write(recv_msg[0])
             outp = None
             while outp is None:
                 outp = self.inst.read()
         except AttributeError as e:
             print(e)
-        data = np.reshape(np.array(outp.split(',')), (-1,len(columns)))
+        print(f"outp: {outp}")
+        data = np.reshape(np.array(outp.split(','), dtype=np.float64), (-1,len(columns)))
+        print(f"data: {data}")
         if average:
             avg = np.mean(data, axis=0)
             std = np.std(data, axis=0)
             data = np.concatenate([avg, std])
             columns = columns + [c+'_std' for c in columns]
+            data = np.reshape(data, (-1,len(columns)))
         df = pd.DataFrame(data, columns=columns, dtype=np.float64)
         if cache:
             self.buffer_df = pd.concat([self.buffer_df, df])
@@ -211,19 +214,19 @@ class KeithleyFET(object):
             keithley.parsed = keithley.scpi.parse()
             keithley.setParameters(keithley.parsed[0])
         
-        fixed_send_scpi = SCPI(scpi_list=fixed.parsed[1])
-        varied_send_scpi = SCPI(scpi_list=varied.parsed[1])
+        fixed_send_scpi = SCPI(scpi_list=[fixed.parsed[1]])
+        varied_send_scpi = SCPI(scpi_list=[varied.parsed[1]])
         for f in fixed_values:
             if fixed.flags['stop_mesaure']:
                 break
-            send_msg = fixed_send_scpi.replace(value=f)
-            fixed.setParameters(send_msg)
+            send_scpi = SCPI(fixed_send_scpi.replace(value=f))
+            fixed.setParameters(send_scpi.parse())
             time.sleep(0.5)
             for v in varied_values:
                 if varied.flags['stop_mesaure']:
                     break
-                send_msg = varied_send_scpi.replace(value=v)
-                varied.setParameters(send_msg)
+                send_scpi = SCPI(varied_send_scpi.replace(value=v))
+                varied.setParameters(send_scpi.parse())
                 fixed.setParameters([p for p in fixed.parsed[1] if p.startswith('TRAC:')])
                 for keithley in keithleys.values():
                     keithley.readData(keithley.parsed[2], ['V', 'I'], average=True, cache=True)
@@ -263,7 +266,7 @@ class KeithleyLSV(Keithley):
         return
 
     def measure(self, sample_name, margin=0.5):
-        bias = self.measure_bias()
+        bias = 3.618#self.measure_bias()
         df = self.measure_sweep((bias-margin, bias+margin, margin*2*100+1))
         df.to_csv(f'{sample_name}.csv')
         return df
