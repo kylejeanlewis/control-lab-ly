@@ -199,10 +199,12 @@ class Dobot(object):
         vector = self.transform_vector_in(vector)
         return self.moveCoordBy(vector, angles)
 
-    def moveTo(self, coord, orientation=(0,0,0), tuck=False):
+    def moveTo(self, coord, orientation=(0,), tuck=False):
         """
         Absolute Cartesian movement, using workspace coordinates.
         """
+        if len(orientation) == 1 and orientation[0] == 0:
+            orientation = self.orientation
         coord = self.transform_vector_in(coord, offset=True)
         if tuck:
             self.tuck(coord)
@@ -254,10 +256,12 @@ class Dobot(object):
         self.orientation = tuple(np.array(orientation) + np.array(self.orientation))
         return
 
-    def moveCoordTo(self, absolute_coord, orientation=(0,0,0), offset=True):
+    def moveCoordTo(self, absolute_coord, orientation=(0,), offset=True):
         """
         Absolute Cartesian movement and tool orientation, using robot coordinates.
         """
+        if len(orientation) == 1 and orientation[0] == 0:
+            orientation = self.orientation
         absolute_arm_coord = tuple(np.array(absolute_coord) + np.array(self.implement_offset)) if offset else absolute_coord
         if not self.isFeasible(absolute_arm_coord):
             print(f"Infeasible coordinates! {absolute_arm_coord}")
@@ -367,12 +371,12 @@ class Dobot(object):
             x,y = (x*w,y*w)
         else:
             x,y = (0,225)
-        self.moveCoordTo((x,y,75), self.home_orientation, offset=False)
+        self.moveCoordTo((x,y,75), self.orientation, offset=False)
 
         if type(target) != type(None) and len(target) == 3:
             x1,y1,_ = target
             w1 = ( (225*225)/(x1*x1 + y1*y1) )**0.5
-            self.moveCoordTo((x1*w1,y1*w1,75), self.home_orientation, offset=False)
+            self.moveCoordTo((x1*w1,y1*w1,75), self.orientation, offset=False)
         return
 
 
