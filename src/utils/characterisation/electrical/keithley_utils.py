@@ -139,6 +139,7 @@ class Keithley(object):
                     break
                 send_value_scpi = SCPI(send_scpi.replace(value=value))
                 self.setParameters(send_value_scpi.parse())
+                time.sleep(pause)
                 self.readData(recv_msg, columns=columns, average=average, cache=True)
             df = self.buffer_df
         else:
@@ -161,9 +162,7 @@ class Keithley(object):
                 outp = self.inst.read()
         except AttributeError as e:
             print(e)
-        print(f"outp: {outp}")
         data = np.reshape(np.array(outp.split(','), dtype=np.float64), (-1,len(columns)))
-        print(f"data: {data}")
         if average:
             avg = np.mean(data, axis=0)
             std = np.std(data, axis=0)
@@ -172,7 +171,7 @@ class Keithley(object):
             data = np.reshape(data, (-1,len(columns)))
         df = pd.DataFrame(data, columns=columns, dtype=np.float64)
         if cache:
-            self.buffer_df = pd.concat([self.buffer_df, df])
+            self.buffer_df = pd.concat([self.buffer_df, df], ignore_index=True)
         return df
 
     def reset(self):
@@ -266,7 +265,7 @@ class KeithleyLSV(Keithley):
         return
 
     def measure(self, sample_name, margin=0.5):
-        bias = 3.618#self.measure_bias()
+        bias = self.measure_bias()
         df = self.measure_sweep((bias-margin, bias+margin, margin*2*100+1))
         df.to_csv(f'{sample_name}.csv')
         return df
@@ -275,7 +274,7 @@ class KeithleyLSV(Keithley):
         self.getSCPI('keithley/SCPI_bias.txt', count=self.numreadings, buff_name=self.buffer, buff_size=self.buffersize)
         df = super().measure(['V'], average=True)
 
-        ocv = round(df.at[0,0], 3)
+        ocv = round(df.at[0,'V'], 3)
         print(f'OCV = {ocv}V')
         return ocv
 
@@ -285,7 +284,7 @@ class KeithleyLSV(Keithley):
         pause_time = 2*volt_range[2] * 2*dwell_time
         
         self.getSCPI('keithley/SCPI_sweep_volt.txt', voltages=voltages, dwell_time=dwell_time, num_points=num_points)
-        df = super().measure(['V', 'I', 't'], iterate=True, pause=pause_time)
+        df = super().measure(['V', 'I', 't'], iterate=False, pause=pause_time)
         
         df.plot('V', 'I')
         diff = df.diff()
