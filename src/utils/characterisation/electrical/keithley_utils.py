@@ -201,7 +201,7 @@ class KeithleyFET(object):
         self.drain = Keithley(*drain_details)
         return
 
-    def measure(self, sample_name, sweep_drain, fixed_values, varied_values, reset=False):
+    def measure(self, save_name, sweep_drain, fixed_values, varied_values, reset=False):
         fixed, varied = (self.gate, self.drain) if sweep_drain else (self.drain, self.gate)
         test_name = 'Id-Vd' if sweep_drain else 'Id-Vg'
         
@@ -231,7 +231,7 @@ class KeithleyFET(object):
                     keithley.readData(keithley.parsed[2], ['V', 'I'], average=True, cache=True)
             for keithley in keithleys.values():
                 keithley.setParameters(['OUTP OFF'])
-                keithley.buffer_df.to_csv(f'{sample_name} {test_name}, {keithley.name.upper()[0]}.csv')
+                keithley.buffer_df.to_csv(f'{save_name} {test_name}, {keithley.name.upper()[0]}.csv')
         return
 
 
@@ -240,10 +240,10 @@ class KeithleyHYS(Keithley):
         super().__init__(address, name)
         return
 
-    def measure(self, sample_name, values):
+    def measure(self, save_name, values):
         self.getSCPI('keithley/SCPI_hysteresis.txt', count=self.numreadings, buff_name=self.buffer, buff_size=self.buffersize)
         df = super().measure(['I', 'V'], values=values, iterate=True, average=True, cache=True)
-        self.buffer_df.to_csv(f'{sample_name}.csv')
+        self.buffer_df.to_csv(f'{save_name}.csv')
         return df
 
 
@@ -252,10 +252,10 @@ class KeithleyIV(Keithley):
         super().__init__(address, name)
         return
 
-    def measure(self, sample_name, values):
+    def measure(self, save_name, values):
         self.getSCPI('keithley/SCPI_iv.txt', count=self.numreadings, buff_name=self.buffer, buff_size=self.buffersize)
         df = super().measure(['I', 'V'], values=values, iterate=True, average=True, cache=True)
-        self.buffer_df.to_csv(f'{sample_name}.csv')
+        self.buffer_df.to_csv(f'{save_name}.csv')
         return df
 
 
@@ -264,10 +264,10 @@ class KeithleyLSV(Keithley):
         super().__init__(address, name)
         return
 
-    def measure(self, sample_name, margin=0.5):
+    def measure(self, save_name, margin=0.5):
         bias = self.measure_bias()
         df = self.measure_sweep((bias-margin, bias+margin, margin*2*100+1))
-        df.to_csv(f'{sample_name}.csv')
+        df.to_csv(f'{save_name}.csv')
         return df
 
     def measure_bias(self):
