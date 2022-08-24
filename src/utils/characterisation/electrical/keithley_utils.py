@@ -4,6 +4,9 @@
 Created on Fri 2022/08/15 09:00:00
 
 @author: Chang Jie
+
+Notes:
+- key in sweep rate for LSV
 """
 import time
 import numpy as np
@@ -266,7 +269,7 @@ class KeithleyLSV(Keithley):
 
     def measure(self, save_name, margin=0.5):
         bias = self.measure_bias()
-        df = self.measure_sweep((bias-margin, bias+margin, margin*2*100+1))
+        df = self.measure_sweep((bias-margin, bias+margin, 0.001))
         df.to_csv(f'{save_name}.csv')
         return df
 
@@ -278,18 +281,23 @@ class KeithleyLSV(Keithley):
         print(f'OCV = {ocv}V')
         return ocv
 
-    def measure_sweep(self, volt_range=(np.nan, np.nan, np.nan), dwell_time=0.1):
-        num_points = 2 * volt_range[2] - 1
-        voltages = ", ".join(str(v) for v in volt_range)
-        pause_time = 2*volt_range[2] * 2*dwell_time
+    def measure_sweep(self, volt_range=(0, 1, 1), sweep_rate=0.01, dual=True):
+        start, stop, step = volt_range
+        points = ((stop - start) / step) + 1
+        num_points = 2 * points - 1 if dual else points
+
+        voltages = ", ".join(str(v) for v in (start,stop,points))
+        dwell_time = step / sweep_rate
+        pause_time = num_points * dwell_time * 2
         
         self.getSCPI('keithley/SCPI_sweep_volt.txt', voltages=voltages, dwell_time=dwell_time, num_points=num_points)
         df = super().measure(['V', 'I', 't'], iterate=False, pause=pause_time)
-        
-        df.plot('V', 'I')
         diff = df.diff()
         df['Q'] = df['I'] * diff['t']
         df['dQdV'] = df['Q'].diff() / df['V'].diff()
+        self.buffer_df = df
+
+        df.plot('V', 'I')
         df.plot('V', 'dQdV')
         return df
 
