@@ -5,6 +5,9 @@ Created on Wed 2022 Jul 20 11:54:04
 @author: cjleong
 
 Notes:
+- workspace itself is not unique; moveTo function having workspace type parameter
+- lead-in points / path when moving between workspaces
+- save the path in the json file
 """
 import os, sys
 import time

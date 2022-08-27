@@ -7,6 +7,7 @@ Created on Fri 2022/08/15 09:00:00
 
 Notes:
 - key in sweep rate for LSV
+- validation on copper 
 """
 import time
 import numpy as np
