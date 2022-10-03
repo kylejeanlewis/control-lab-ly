@@ -135,7 +135,7 @@ class SensorEIS(Sensorpal):
     Sensorpal object that controls EIS characterization of sample.
     - filename: name of json file to load settings for EIS measurment
     """
-    def __init__(self, filename='settings\\Measurement_Battery Impedance.json', address=COM_PORT):
+    def __init__(self, filename='sensorpal\\Measurement_Battery Impedance.json', address=COM_PORT):
         super().__init__(filename, address)
         self.spectra = {}
         self.sample_num = 0
