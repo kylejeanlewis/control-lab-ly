@@ -270,7 +270,7 @@ class KeithleyLSV(Keithley):
 
     def measure(self, save_name, margin=0.5):
         bias = self.measure_bias()
-        df = self.measure_sweep((bias-margin, bias+margin, 0.001))
+        df = self.measure_sweep((bias-margin, bias+margin, 0.01))
         df.to_csv(f'{save_name}.csv')
         return df
 
@@ -290,7 +290,9 @@ class KeithleyLSV(Keithley):
         voltages = ", ".join(str(v) for v in (start,stop,points))
         dwell_time = step / sweep_rate
         pause_time = num_points * dwell_time * 2
-        
+        print(time.time())
+        print(f'Expected measurement time: {pause_time}s')
+
         self.getSCPI('keithley/SCPI_sweep_volt.txt', voltages=voltages, dwell_time=dwell_time, num_points=num_points)
         df = super().measure(['V', 'I', 't'], iterate=False, pause=pause_time)
         diff = df.diff()
@@ -303,4 +305,7 @@ class KeithleyLSV(Keithley):
         return df
 
 
+# %%
+keith = KeithleyLSV(113, 'LSV')
+keith.measure('LSV_test', margin=0.7)
 # %%
