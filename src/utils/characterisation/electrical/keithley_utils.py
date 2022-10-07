@@ -6,7 +6,6 @@ Created on Fri 2022/08/15 09:00:00
 @author: Chang Jie
 
 Notes:
-- key in sweep rate for LSV
 - validation on copper 
 """
 import time
@@ -21,6 +20,13 @@ MAX_BUFFER_SIZE = 10000
 
 # %% Keithley
 class SCPI(object):
+    """
+    SCPI input class for Keithley.
+    
+    Args:
+        string (str): text string of SCPI commands or filename of txt file where SCPI commands are saved
+        scpi_list (list): list of SCPI commands line-by-line
+    """
     def __init__(self, string='', scpi_list=[]):
         if len(string) == 0 and len(scpi_list):
             scpi_join = ['\n'.join(s) for s in scpi_list]
@@ -31,8 +37,18 @@ class SCPI(object):
         if len(string) == 0:
             raise Exception('Please input either filename or SCPI instruction string/list!')
         self.string = string
+        return
 
     def replace(self, inplace=False, **kwargs):
+        """
+        Replace placeholder text in SCPI commands with desired values.
+        
+        Args:
+            inplace (bool): whether to replace text in place
+        
+        Retruns:
+            str: SCPI commands with desired values
+        """
         string = self.string
         for k,v in kwargs.items():
             if type(v) == bool:
@@ -44,6 +60,12 @@ class SCPI(object):
         return string
 
     def parse(self):
+        """
+        Parse SCPI command into blocks corresponding to settings prompt, input prompt, and output prompt.
+        
+        Returns:
+            list: SCPI prompts for settings, inputs, and outputs
+        """
         scpi_split = self.string.split('###')
         for i,s in enumerate(scpi_split):
             scpi_split[i] = [l.strip() for l in s.split('\n') if len(l)]
@@ -54,12 +76,11 @@ class SCPI(object):
 
 class Keithley(object):
     """
-    Keithley relay.
-    - address: (short) IP address of Keithley
-    - settings: settings to be applied
-    - numreadings: number of readings at each I-V combination
-    - buffersize: size of buffer
-    - name: nickname for Keithley
+    Keithley class.
+    
+    Args:
+        address (str/int): short IP address of Keithley
+        name (str): nickname for Keithley
     """
     def __init__(self, address, name=''):
         print(f"\nSetting up {name.title()} Keithley comms...")
@@ -81,10 +102,13 @@ class Keithley(object):
 
     def connect(self, address):
         """
-        Establish connection with Keithley
-        - address: (short) IP address of Keithley
+        Establish connection with Keithley.
+        
+        Args:
+            address (str/int): short IP address of Keithley
 
-        Return: Keithley instance
+        Returns: 
+            pyvisa.Resource: Keithley instance
         """
         inst = None
         try:
@@ -105,7 +129,14 @@ class Keithley(object):
 
     def getSCPI(self, filename='', string='', **kwargs):
         """
+        Retrieves the SCPI commands from either a file or text string, and replaces placeholder variables. 
         
+        Args:
+            filename (str): filename of txt file where SCPI commands are saved
+            string (str): text string of SCPI commands
+            
+        Returns:
+            list: SCPI prompts for settings, inputs, and outputs
         """
         if len(filename):
             self.scpi = SCPI(filename)
@@ -122,6 +153,13 @@ class Keithley(object):
         return self.scpi.parse()
 
     def logData(self, columns, average=False):
+        """
+        Logs data output as well as timestamp.
+        
+        Args:
+            columns (list): list of parameters to read and log
+            average  (bool): whether to calculate the average and standard deviation of multiple readings
+        """
         start_time = time.time()
         while not self.flags['stop_measure'] and len(self.buffer_df) < MAX_BUFFER_SIZE:
             recv_msg = ['TRAC:TRIG "defbuffer1"', 'FETCH? "defbuffer1", READ, REL']
@@ -130,6 +168,21 @@ class Keithley(object):
         return
 
     def measure(self, columns=[], values=[], iterate=False, average=False, cache=False, pause=0, reset=False):
+        """
+        Perform the desired measurement.
+        
+        Args:
+            columns (list): list of parameters to read
+            values (list): list of values to iterate through
+            iterate (bool): whether an iterative reading process is required
+            average (bool): whether to calculate the average and standard deviation of multiple readings
+            cache (bool): whetehr to save the measurements in a buffer dataframe
+            pause (int/float): duration in seconds to wait before sending output prompt
+            reset (bool): whether to reset Keithley before performing measurement
+            
+        Returns:
+            pandas.DataFrame: dataframe of measurements
+        """
         if reset:
             self.reset()
         settings, send_msg, recv_msg = self.scpi.parse()
@@ -156,7 +209,16 @@ class Keithley(object):
 
     def readData(self, recv_msg, columns, average=False, cache=False):
         """
-        Read data from Keithley and saving to self.buffer_df
+        Read data output from Keithley.
+        
+        Args:
+            recv_msg (str): SCPI prompt for retrieving output
+            columns (list): list of parameters to read
+            average (bool): whether to calculate the average and standard deviation of multiple readings
+            cache (bool): whetehr to save the measurements in a buffer dataframe
+            
+        Returns:
+            pandas.DataFrame: dataframe of readings
         """
         outp = ''
         try:
@@ -179,14 +241,17 @@ class Keithley(object):
         return df
 
     def reset(self):
+        """Reset the Keithley."""
         self.buffer_df = pd.DataFrame()
         self.setParameters(['*RST'])
         return
 
     def setParameters(self, params=[]):
         """
-        Relay parameters to Keithley
-        - params: list of parameters to write to Keithley
+        Relay parameters to Keithley.
+        
+        Args:
+            params (list): list of parameters to write to Keithley
         """
         try:
             for param in params:
@@ -200,12 +265,29 @@ class Keithley(object):
 
 
 class KeithleyFET(object):
+    """
+    KeithleyFET class for FET measurements.
+    
+    Args:
+        gate_details (tuple/list): address and name of gate Keithley
+        drain_details (tuple/list): address and name of drain Keithley
+    """
     def __init__(self, gate_details, drain_details):
         self.gate = Keithley(*gate_details)
         self.drain = Keithley(*drain_details)
         return
 
     def measure(self, save_name, sweep_drain, fixed_values, varied_values, reset=False):
+        """
+        Perform FET measurement.
+        
+        Args:
+            save_name (str): filename of output file
+            sweep_drain (bool): whether to sweep through values for drain (as opoosed to gate)
+            fixed_values (list): step values
+            varied_values (list): sweep values
+            reset (bool): whether to reset Keithley before performing measurement
+        """
         fixed, varied = (self.gate, self.drain) if sweep_drain else (self.drain, self.gate)
         test_name = 'Id-Vd' if sweep_drain else 'Id-Vg'
         
@@ -240,11 +322,28 @@ class KeithleyFET(object):
 
 
 class KeithleyHYS(Keithley):
+    """
+    KeithleyHYS for hysteresis measurements.
+    
+    Args:
+        address (str/int): short IP address of Keithley
+        name (str): nickname for Keithley
+    """
     def __init__(self, address, name=''):
         super().__init__(address, name)
         return
 
     def measure(self, save_name, values):
+        """
+        Perform hysteresis measurement.
+        
+        Args:
+            save_name (str): filename of output file
+            values (list): sweep values
+            
+        Returns:
+            pandas.DataFrame: dataframe of readings
+        """
         self.getSCPI('keithley/SCPI_hysteresis.txt', count=self.numreadings, buff_name=self.buffer, buff_size=self.buffersize)
         df = super().measure(['I', 'V'], values=values, iterate=True, average=True, cache=True)
         self.buffer_df.to_csv(f'{save_name}.csv')
@@ -252,11 +351,28 @@ class KeithleyHYS(Keithley):
 
 
 class KeithleyIV(Keithley):
+    """
+    KeithleyIV for I-V measurements.
+    
+    Args:
+        address (str/int): short IP address of Keithley
+        name (str): nickname for Keithley
+    """
     def __init__(self, address, name=''):
         super().__init__(address, name)
         return
 
     def measure(self, save_name, values):
+        """
+        Perform hysteresis measurement.
+        
+        Args:
+            save_name (str): filename of output file
+            values (list): sweep values
+            
+        Returns:
+            pandas.DataFrame: dataframe of readings
+        """
         self.getSCPI('keithley/SCPI_iv.txt', count=self.numreadings, buff_name=self.buffer, buff_size=self.buffersize)
         df = super().measure(['I', 'V'], values=values, iterate=True, average=True, cache=True)
         self.buffer_df.to_csv(f'{save_name}.csv')
@@ -264,17 +380,40 @@ class KeithleyIV(Keithley):
 
 
 class KeithleyLSV(Keithley):
+    """
+    KeithleyLSV for linear sweep voltammetry measurements.
+    
+    Args:
+        address (str/int): short IP address of Keithley
+        name (str): nickname for Keithley
+    """
     def __init__(self, address, name=''):
         super().__init__(address, name)
         return
 
     def measure(self, save_name, margin=0.5):
+        """
+        Perform LSV measurement by first measuring the open-circuit voltage (OCV) of the cell, then sweep through a range of values within the specific margin from the OCV.
+        
+        Args:
+            save_name (str): filename of output file
+            margin (float): margin from the OCV to sweep voltage values
+            
+        Returns:
+            pandas.DataFrame: dataframe of readings
+        """
         bias = self.measure_bias()
         df = self.measure_sweep((bias-margin, bias+margin, 0.01))
         df.to_csv(f'{save_name}.csv')
         return df
 
     def measure_bias(self):
+        """
+        Measures the OCV of the cell.
+        
+        Returns:
+            float: open-circuit voltage of cell
+        """
         self.getSCPI('keithley/SCPI_bias.txt', count=self.numreadings, buff_name=self.buffer, buff_size=self.buffersize)
         df = super().measure(['V'], average=True)
 
@@ -283,6 +422,17 @@ class KeithleyLSV(Keithley):
         return ocv
 
     def measure_sweep(self, volt_range=(0, 1, 1), sweep_rate=0.01, dual=True):
+        """
+        Performs linear sweep voltammetry within specified range at specified sweep rate.
+        
+        Args:
+            volt_range (tuple): start, stop and step values for voltage
+            sweep_rate (float): sweep rate in V/s
+            dual (bool): whether to sweep up and down (as opposed to just one direction/up)
+        
+        Returns:
+            pandas.DataFrame: dataframe of readings and calculated values
+        """
         start, stop, step = volt_range
         points = ((stop - start) / step) + 1
         num_points = 2 * points - 1 if dual else points
