@@ -5,49 +5,73 @@ Created on Fri 2022/06/18 09:00:00
 
 @author: Chang Jie
 
-Impedance package documentation can be found at:
-https://impedancepy.readthedocs.io/en/latest/index.html
+Metrohm Autolab package documentation can be found at:
+https://github.com/shuayliu/pyMetrohmAUTOLAB
 """
 import os, sys
-import clr
+import clr # pip install pythonnet
 import time
-import Metrohm.AUTOLAB as EC
+import Metrohm.AUTOLAB as EC # pip install pyMetrohmAUTOLAB
 
-hdw=r'C:\Users\leongcj\Desktop\Metrohm Autolab\Autolab SDK 2.1\Hardware Setup Files\PGSTAT302N\HardwareSetup.FRA32M.xml',
-sdk=r"C:\Users\leongcj\Desktop\Metrohm Autolab\Autolab SDK 2.1\EcoChemie.Autolab.Sdk"
-adx=r"C:\Users\leongcj\Desktop\Metrohm Autolab\Autolab SDK 2.1\Hardware Setup Files\Adk.x"
+from eis_datatype import ImpedanceSpectrum
 
+# Depend on computer setup and installation
 AUTOLAB_INSTALLATION = r"C:\Users\leongcj\Desktop\Metrohm Autolab\Autolab SDK 2.1"
 sys.path.append(AUTOLAB_INSTALLATION)
 clr.AddReference('EcoChemie.Autolab.Sdk')
 
-from EcoChemie.Autolab.Sdk import Instrument
-
-# try:
-#     clr.AddReference(sdk)
-#     from EcoChemie.Autolab.Sdk import Instrument
-# except SystemError:
-#     pass
-
-from eis_datatype import ImpedanceSpectrum
-
+n_import = 0
+while n_import < 3:
+    success_import = False
+    try:
+        n_import += 1
+        import EcoChemie.Autolab.Sdk as Autolab
+        success_import = True
+    except SystemError:
+        print(f"Attempted ({n_import}) importing EcoChemie.Autolab.Sdk")
+    else:
+        success_import = 'Success' if success_import else 'Fail'
+        print(f"{success_import} importing EcoChemie.Autolab.Sdk")
+        break
 print(f"Import: OK <{__name__}>")
 
+SDK = AUTOLAB_INSTALLATION + "\\EcoChemie.Autolab.Sdk"
+ADX = AUTOLAB_INSTALLATION + "\\Hardware Setup Files\Adk.x"
+HDW = AUTOLAB_INSTALLATION + "\\Hardware Setup Files\\PGSTAT302N\\HardwareSetup.FRA32M.xml"
+NOX = AUTOLAB_INSTALLATION + "\\Standard Nova Procedures\\FRA impedance potentiostatic.nox"
 # %%
 # initializing the class first
-autolab = EC.AUTOLAB(sdk=sdk,adx=adx)
-# autolab.sdk = sdk
-# autolab.autolab = Instrument()
-
+autolab = EC.AUTOLAB(sdk=SDK,adx=ADX)
 autolab.CMD = True # optional: Enable CMDLOG or not, it's good if you want to trace the code
 
 # %%
+
 try:
-    if autolab.connectToAutolab(hdw): # first we need to connect to our instrument
+    if autolab.connectToAutolab(HDW): # first we need to connect to our instrument
         print("Connecting to AUTOLAB successfully....")
+        autolab.setMode('Galvanostatic')
+        autolab.setCurrentRange(0.001)
+        
+        # load procedure and command
+        myProcedure = autolab.autolab.LoadProcedure(NOX)
+        myCommand = myProcedure.Commnads('FIAScan')
+        
+        # adjust input parameters 
+        param = Autolab.CommandParameterDouble(myCommand.Signals['parameter name'])
+        param.value = 2
+        
+        # read measured data (potential)
+        data = Autolab.CommandParameterDoubleList(myCommand.Signals['Potential'])
+        point = data.value
+        
         # do measurement
-        autolab.measure(R"*.nox file path") # it will take times till measrement finish
-        autolab.saveAs(R"save file name")
+        # autolab.measure(NOX) # it will take times till measrement finish
+        
+        # monitor time and potential/current
+        reading = autolab.Ei.Sampler.GetSignals("WE(1).Potential")
+        value = reading.value
+        
+        # autolab.saveAs("test_file")
 except:
     print("Connecting to AUTOLAB FAIL....")
 
@@ -56,3 +80,23 @@ except:
 # it is a good habit to del the instance at the end of the script
 del autolab
 # %%
+instrument = Autolab.Instrument()
+instrument.set_HardwareSetupFile(HDW)
+instrument.AutolabConnection.set_EmbeddedExeFileToStart(ADX)
+instrument.Connect()
+myProcedure = instrument.LoadProcedure(NOX)
+myCommand = myProcedure.Commands['FIAScan']
+
+# adjust parameter
+UpperVertex = Autolab.CommandParameterDouble(myCommand.Signals['Upper vertex'])
+UpperVertex.Value = 2
+
+# monitor readings (except FRA measurement)
+potential = instrument.Ei.Sampler.GetSignal('WE(1).Potential')
+Potential = potential.Value
+
+# read data
+potential = Autolab.CommandParameterDoubleList(myCommand.Signals['Potential'])
+MeasuredPotential = potential.Value
+
+instrument.Disconnect()
