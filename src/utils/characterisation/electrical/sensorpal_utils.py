@@ -4,15 +4,12 @@
 Created on Fri 2022/06/18 09:00:00
 
 @author: Chang Jie
-
-Impedance package documentation can be found at:
-https://impedancepy.readthedocs.io/en/latest/index.html
 """
 import os, sys
-import clr
+import clr # pip install pythonnet
 import json
 import pandas as pd
-import plotly.express as px
+import plotly.express as px # pip install plotly-express
 
 from eis_datatype import ImpedanceSpectrum
 
