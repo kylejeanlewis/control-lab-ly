@@ -1,0 +1,76 @@
+01. auspex
+    https://auspex.readthedocs.io/en/latest/api/auspex.instruments.html#module-auspex.instruments.keithley
+
+02. Autolab
+    https://github.com/qcha41/autolab/tree/master/autolab/drivers
+
+03. hardware-control
+    https://bitbucket.org/berkeleylab/hardware-control/src/main/hardware_control/instruments/
+
+04. Instrumental
+    https://instrumental-lib.readthedocs.io/en/stable/overview.html
+
+05. InstrumentKit
+    https://instrumentkit.readthedocs.io/en/latest/apiref/index.html
+
+06. Labber-software
+    https://github.com/Labber-software/Drivers
+
+07. labdevices
+    https://github.com/jkrauth/labdevices
+
+08. LabDrivers
+    https://github.com/masonlab/labdrivers/tree/master/labdrivers
+
+09. LabExT
+    https://github.com/LabExT/LabExT
+
+10. LabToolkit
+    https://github.com/DavidLutton/LabToolkit
+
+11. measurement-automation-tools
+    https://github.com/jsbangsund/measurement-automation-tools
+
+12. PyExpLabSys
+    https://github.com/CINF/PyExpLabSys
+
+13. PyInstrument
+    https://pyinstrument.readthedocs.io/en/latest/how-it-works.html
+
+14. pylablib
+    https://pylablib.readthedocs.io/en/latest/devices/devices_root.html
+
+15. PyMeasure
+    https://pymeasure.readthedocs.io/en/latest/api/instruments/index.html
+
+16. Python IVI
+    https://github.com/python-ivi/python-ivi
+
+17. PyXperiment
+    https://bitbucket.org/PetrushaS/pyxperiment/src/master/pyxperiment/devices/
+
+18. QCoDeS
+    http://qcodes.github.io/Qcodes/drivers_api/index.html
+
+19. "Slave"
+    https://github.com/p3trus/slave/tree/develop/slave
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
