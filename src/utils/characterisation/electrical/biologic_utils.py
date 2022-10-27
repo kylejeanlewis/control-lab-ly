@@ -10,15 +10,21 @@ https://github.com/bicarlsen/easy-biologic
 """
 import os, sys
 import time
+import numpy as np
+import pandas as pd
+import nest_asyncio
+
 import easy_biologic as ebl # pip install easy-biologic
 import easy_biologic.base_programs as blp
 
 from eis_datatype import ImpedanceSpectrum
 print(f"Import: OK <{__name__}>")
 
+nest_asyncio.apply()
+
 # %%
 # create device
-bl = ebl.BiologicDevice('192.109.209.128 ', populate_info=True)
+bl = ebl.BiologicDevice('192.109.209.128', populate_info=True)
 
 #%% create GEIS program
 '''
@@ -43,24 +49,31 @@ wait: Adds a delay before the measurement at each frequency. The delay
     is expressed as a fraction of the period. [Default: 0]
 '''
 params = {
-	'run_time': 10* 60,
-    'current': 0,
-    'amplitude_current': 5E-3,
-    'initial_frequency': 5,
-    'final_frequency': 5E4,
-    'frequency_number': 100,
-    'duration': 1
+	'voltage': 0,
+    'amplitude_voltage': 0.01,
+    'initial_frequency': 200E3,
+    'final_frequency': 100E-3,
+    'frequency_number': 38,
+    'duration': 120,
+    'repeat': 2,
+    'wait': 0.10
 }
 
-geis = blp.GEIS(
-    bl,
-    params, 	
-    channels = [0]        
-)
+peis = blp.PEIS(bl, params, channels=[0])
 
 # %%run program
-geis.run( 'data' )
+peis.run()
 
+# %%
+params = {
+	'time':1,
+    'voltage_interval':0.01
+}
+
+ocv = blp.OCV(bl, params, channels=[0])
+
+# %%run program
+ocv.run()
 # %%
 """
 First-party recommended way
