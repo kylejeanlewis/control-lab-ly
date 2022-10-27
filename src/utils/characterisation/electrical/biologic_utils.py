@@ -18,9 +18,9 @@ print(f"Import: OK <{__name__}>")
 
 # %%
 # create device
-bl = ebl.BiologicDevice('192.168.1.2', populate_info=False)
+bl = ebl.BiologicDevice('192.109.209.128 ', populate_info=True)
 
-# create GEIS program
+#%% create GEIS program
 '''
 current: Initial current in Ampere.
 amplitude_current: Sinus amplitude in Ampere.
@@ -58,21 +58,78 @@ geis = blp.GEIS(
     channels = [0]        
 )
 
-# run program
+# %%run program
 geis.run( 'data' )
 
 # %%
 """
 First-party recommended way
 """
+import time
+from bio_logic import SP150, OCV, GeneralPotentiostat
 
+class SP300(GeneralPotentiostat):
+    """Specific driver for the SP-150 potentiostat"""
 
-class BioLogic(object):
-    def __init__(self, address, timeout=5, populate_info=True):
-        super().__init__(address, timeout, populate_info)
-        
-    def connect(self, bin_file=None, xlx_file=None):
-        return super().connect(bin_file, xlx_file)
-    
-    def measure(self, chs=None):
-        return super().start_channels(chs)
+    def __init__(self, address, EClib_dll_path=None):
+        """Initialize the SP150 potentiostat driver
+
+        See the __init__ method for the GeneralPotentiostat class for an
+        explanation of the arguments.
+        """
+        super(SP300, self).__init__(
+            type_='KBIO_DEV_SP300',
+            address=address,
+            EClib_dll_path=EClib_dll_path
+        )
+
+# %%
+def run_ocv(device_class):
+    """Test the OCV technique"""
+    global device
+    ip_address = b'192.168.0.135'  # REPLACE THIS WITH A VALID IP
+    # Instantiate the instrument and connect to it
+    device = device_class(ip_address)
+    device.connect()
+
+    # Instantiate the technique. Make sure to give values for all the
+    # arguments where the default values does not fit your purpose. The
+    # default values can be viewed in the API documentation for the
+    # technique.
+    ocv = OCV(rest_time_T=0.2,
+              record_every_dE=10.0,
+              record_every_dT=0.01)
+
+    # Load the technique onto channel 0 of the potentiostat and start it
+    device.load_technique(0, ocv)
+    device.start_channel(0)
+
+    time.sleep(0.1)
+    while True:
+        # Get the currently available data on channel 0 (only what has
+        # been gathered since last get_data)
+        data_out = device.get_data(0)
+
+        # If there is none, assume the technique has finished
+        if data_out is None:
+            break
+
+        # The data is available in lists as attributes on the data
+        # object. The available data fields are listed in the API
+        # documentation for the technique.
+        print("Time:", data_out.time)
+        print("Ewe:", data_out.Ewe)
+
+        # If numpy is installed, the data can also be retrieved as
+        # numpy arrays
+        #print('Time:', data_out.time_numpy)
+        #print('Ewe:', data_out.Ewe_numpy)
+        time.sleep(0.1)
+
+    device.stop_channel(0)
+    device.disconnect()
+
+if __name__ == '__main__':
+    run_ocv(SP300)
+
+# %%
