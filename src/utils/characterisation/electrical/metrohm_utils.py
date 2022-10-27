@@ -16,7 +16,7 @@ import inspect
 # from eis_datatype import ImpedanceSpectrum
 
 # Depend on computer setup and installation
-AUTOLAB_INSTALLATION = r"C:\Users\Asus\Desktop\Metrohm Autolab\Autolab SDK 2.1"
+AUTOLAB_INSTALLATION = r"C:\Users\leongcj\Desktop\Metrohm Autolab\Autolab SDK 2.1"
 sys.path.append(AUTOLAB_INSTALLATION)
 clr.AddReference('EcoChemie.Autolab.Sdk')
 
@@ -36,8 +36,8 @@ def retry(func):
 
 @retry
 def import_sdk():
-    global Autolab
-    import EcoChemie.Autolab.Sdk as Autolab
+    global Instrument
+    from EcoChemie.Autolab.Sdk import Instrument as Instrument
     return 
 
 import_sdk()
@@ -61,12 +61,12 @@ ADX = AUTOLAB_INSTALLATION + "\\Hardware Setup Files\Adk.x"
 HDW = AUTOLAB_INSTALLATION + "\\Hardware Setup Files\\PGSTAT302N\\HardwareSetup.FRA32M.xml"
 NOX = AUTOLAB_INSTALLATION + "\\Standard Nova Procedures\\FRA impedance potentiostatic.nox"
 
-instrument = Autolab.Instrument()
+instrument = Instrument()
 
 @retry
 def connect():
     global instrument
-    inspect.getmembers(instrument)
+    # inspect.getmembers(instrument)
     # print(instrument.__dir__)
     instrument.set_HardwareSetupFile(HDW)
     instrument.get_AutolabConnection()
