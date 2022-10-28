@@ -581,7 +581,7 @@ class VacuumGrip(Dobot):
         return
 
 
-# Third-party implement attachments
+# Third-party implement attachments, connected though Dobot ports
 class Instrument(Dobot):
     """
     Instrument class.
