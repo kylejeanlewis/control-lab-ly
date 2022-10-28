@@ -1,5 +1,4 @@
-# %%
-# -*- coding: utf-8 -*-
+# %% -*- coding: utf-8 -*-
 """
 Created on Fri 2022/06/18 09:00:00
 
@@ -7,26 +6,74 @@ Created on Fri 2022/06/18 09:00:00
 
 Easy BioLogic package documentation can be found at:
 https://github.com/bicarlsen/easy-biologic
+
+Notes:
+- (actionables)
 """
-import os, sys
-import time
-import numpy as np
-import pandas as pd
+# Standard library imports
 import nest_asyncio
+import numpy as np
+import os
+import pandas as pd
+import sys
+import time
 
-import easy_biologic as ebl # pip install easy-biologic
-import easy_biologic.base_programs as blp
+# Third party imports
+import easy_biologic as biologic_api # pip install easy-biologic
+import easy_biologic.base_programs as programs
+from easy_biologic.program import BiologicProgram
+import plotly.express as px # pip install plotly-express
 
+# Local application imports
 from eis_datatype import ImpedanceSpectrum
 print(f"Import: OK <{__name__}>")
 
+# CONSTANTS
+IP_ADDRESS = '192.109.209.128'
+
+# INITIALIZING
 nest_asyncio.apply()
 
 # %%
-# create device
-bl = ebl.BiologicDevice('192.109.209.128', populate_info=True)
-
+class BioLogic(object):
+    def __init__(self, name='', address=IP_ADDRESS):
+        self.name = name
+        self.flags = {}
+        self.address = address
+        self.inst = biologic_api.BiologicDevice(address, populate_info=True)
+        self.buffer_df = pd.DataFrame()
+        self.program = None
+        return
+    
+    def _connect(self):
+        return self.inst.connect()
+    
+    def loadProgram(self, program: BiologicProgram, params={}, channels=[0]):
+        self.program = program(self.inst, params, channels)
+        return
+    
+    def measure(self):
+        self.program.run()
+        return
+    
+    def readData(self):
+        return self.program.data
+    
+    def reset(self):
+        self.program = None
+        return
+    
+    def saveData(self, filename):
+        self.program.save_data(filename)
+        return
+    
+    def setParameters(self, params={}):
+        return
+    
 #%% create GEIS program
+# create device
+# bl = biologic_api.BiologicDevice(IP_ADDRESS, populate_info=True)
+device = BioLogic(address=IP_ADDRESS)
 '''
 current: Initial current in Ampere.
 amplitude_current: Sinus amplitude in Ampere.
@@ -59,21 +106,22 @@ params = {
     'wait': 0.10
 }
 
-peis = blp.PEIS(bl, params, channels=[0])
-
+# peis = programs.PEIS(bl, params, channels=[0])
+device.loadProgram(programs.PEIS, params, [0])
 # %%run program
-peis.run()
-
+# peis.run()
+device.measure()
 # %%
 params = {
 	'time':1,
     'voltage_interval':0.01
 }
 
-ocv = blp.OCV(bl, params, channels=[0])
+ocv = programs.OCV(bl, params, channels=[0])
 
 # %%run program
 ocv.run()
+ocv.save_data()
 # %%
 """
 First-party recommended way
