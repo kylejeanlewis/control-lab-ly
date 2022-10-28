@@ -9,10 +9,10 @@ Notes:
 - validation on copper 
 - rewrite the operation modes as programs, instead of subclasses
 """
-import time
 import numpy as np
 import pandas as pd
 import pyvisa as visa
+import time
 print(f"Import: OK <{__name__}>")
 
 NUM_READINGS = 3
