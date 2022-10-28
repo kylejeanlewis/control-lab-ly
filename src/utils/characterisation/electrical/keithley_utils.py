@@ -7,6 +7,7 @@ Created on Fri 2022/08/15 09:00:00
 
 Notes:
 - validation on copper 
+- rewrite the operation modes as programs, instead of subclasses
 """
 import time
 import numpy as np
@@ -321,6 +322,7 @@ class KeithleyFET(object):
         return
 
 
+# Rewrite the following as "programs" to load into the Keithley object
 class KeithleyHYS(Keithley):
     """
     KeithleyHYS for hysteresis measurements.
