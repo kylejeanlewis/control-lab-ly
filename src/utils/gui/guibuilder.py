@@ -5,7 +5,7 @@ Created on Fri 2022/03/18 09:00:00
 
 @author: Chang Jie
 """
-import PySimpleGUI as sg
+import PySimpleGUI as sg # pip install PySimpleGUI
 print(f"Import: OK <{__name__}>")
 
 WIDTH, HEIGHT = sg.Window.get_screen_size()

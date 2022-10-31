@@ -1,5 +1,5 @@
 # %%
-import plotly.graph_objects as go
+import plotly.graph_objects as go # pip install plotly
 import plotly.io as pio
 import plotly.colors
 print(f"Import: OK <{__name__}>")

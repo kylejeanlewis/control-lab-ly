@@ -9,10 +9,10 @@ import time
 import numpy as np
 import pandas as pd
 
-import cv2
-import serial
+import cv2 # pip install opencv-python
+import serial # pip install pyserial
 import serial.tools.list_ports
-import pyvisa as visa
+import pyvisa as visa # pip install -U pyvisa
 
 RASP_PI = False
 DEMO_CAM_PATH = 'demo/demo_cam.png'

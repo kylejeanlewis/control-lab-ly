@@ -8,7 +8,7 @@ Created on Fri 2022/03/18 09:00:00
 import os
 import numpy as np
 import pandas as pd
-import cv2
+import cv2 # pip install opencv-python
 print(f"Import: OK <{__name__}>")
 
 here = os.getcwd()

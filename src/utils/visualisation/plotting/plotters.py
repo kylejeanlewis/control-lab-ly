@@ -6,8 +6,8 @@ Created on
 @author: Chang Jie
 """
 import os
-import plotly.express as px
-import plotly.graph_objects as go
+import plotly.express as px # pip install plotly-express
+import plotly.graph_objects as go # pip install plotly
 import plotly.subplots as sp
 from colours import set_template, update_colours
 print(f"Import: OK <{__name__}>")

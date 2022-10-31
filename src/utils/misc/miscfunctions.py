@@ -5,7 +5,7 @@ Created on Fri 2022/03/18 09:00:00
 
 @author: Chang Jie
 """
-import serial.tools.list_ports
+import serial.tools.list_ports # pip install pyserial
 print(f"Import: OK <{__name__}>")
 
 def display_ports():

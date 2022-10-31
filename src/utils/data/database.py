@@ -5,7 +5,7 @@ Created on
 
 @author: Chang Jie
 """
-import pyodbc
+import pyodbc # pip install pyodbc
 import pandas as pd
 import sqlite3
 from sqlite3 import Error

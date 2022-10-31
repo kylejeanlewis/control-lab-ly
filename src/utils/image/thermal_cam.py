@@ -6,7 +6,8 @@ Created on Fri 2022/03/18 09:00:00
 @author: Chang Jie
 """
 import os
-import cv2
+import cv2 # pip install opencv-python 
+
 from thermal.ax8.ax8 import Ax8ThermalCamera
 from image_recognition import Vision
 print(f"Import: OK <{__name__}>")

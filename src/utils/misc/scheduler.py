@@ -10,7 +10,7 @@ import time
 import random as rd
 import numpy as np
 import pandas as pd
-import plotly.express as px
+import plotly.express as px  # pip install plotly-express
 
 CAPACITY = 12 # number of people
 MAX_SPEED = 5 # metres per second

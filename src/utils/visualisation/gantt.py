@@ -7,7 +7,7 @@ Created on
 """
 import pandas as pd
 from datetime import datetime
-import plotly.graph_objects as go
+import plotly.graph_objects as go # pip install plotly
 from plotting.colours import get_palette, set_template
 print(f"Import: OK <{__name__}>")
     

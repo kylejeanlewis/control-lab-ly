@@ -11,7 +11,7 @@ Notes:
 """
 import numpy as np
 import pandas as pd
-import pyvisa as visa
+import pyvisa as visa # pip install -U pyvisa
 import time
 print(f"Import: OK <{__name__}>")
 

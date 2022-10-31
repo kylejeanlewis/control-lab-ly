@@ -7,7 +7,7 @@ Created on Fri 2022/03/18 09:00:00
 """
 import time
 import numpy as np
-import serial
+import serial # pip install pyserial
 import serial.tools.list_ports
 print(f"Import: OK <{__name__}>")
 
