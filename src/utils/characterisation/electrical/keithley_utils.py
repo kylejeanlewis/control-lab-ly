@@ -458,6 +458,7 @@ class KeithleyLSV(Keithley):
 
 
 # %%
-keith = KeithleyLSV(113, 'LSV')
-keith.measure('LSV_test', margin=0.7)
+if __name__ == "__main__":
+    keith = KeithleyLSV(113, 'LSV')
+    keith.measure('LSV_test', margin=0.7)
 # %%
