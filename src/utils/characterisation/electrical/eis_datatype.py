@@ -17,11 +17,11 @@ import cmath
 from scipy.signal import argrelextrema
 
 import matplotlib.pyplot as plt
-import plotly.express as px
-import plotly.graph_objects as go
+import plotly.express as px # pip install plotly-express
+import plotly.graph_objects as go # pip install plotly
 from plotly.subplots import make_subplots
 
-from impedance import preprocessing
+from impedance import preprocessing # pip install impedance
 from impedance.models.circuits import CustomCircuit
 from impedance.models.circuits.fitting import rmse, extract_circuit_elements
 print(f"Import: OK <{__name__}>")
