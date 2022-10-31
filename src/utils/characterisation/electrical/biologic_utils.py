@@ -111,29 +111,29 @@ class BioLogic(object):
         return
     
 # %%
-device = BioLogic(address=IP_ADDRESS)
+if __name__ == "__main__":
+    device = BioLogic(address=IP_ADDRESS)
 
-params = {
-	'voltage': 0,
-    'amplitude_voltage': 0.01,
-    'initial_frequency': 200E3,
-    'final_frequency': 100E-3,
-    'frequency_number': 38,
-    'duration': 120,
-    'repeat': 2,
-    'wait': 0.10
-}
+    params = {
+        'voltage': 0,
+        'amplitude_voltage': 0.01,
+        'initial_frequency': 200E3,
+        'final_frequency': 100E-3,
+        'frequency_number': 38,
+        'duration': 120,
+        'repeat': 2,
+        'wait': 0.10
+    }
 
-device.loadProgram('PEIS', params, channels=[0])
-device.measure()
+    device.loadProgram('PEIS', params, channels=[0])
+    device.measure()
+
 # %%
-# params = {
-# 	'time':1,
-#     'voltage_interval':0.01
-# }
+if __name__ == "__main__":
+    params = {
+        'time': 1,
+        'voltage_interval': 0.01
+    }
 
-# ocv = base_programs.OCV(bl, params, channels=[0])
-
-# %%run program
-# ocv.run()
-# ocv.save_data()
+    device.loadProgram('OCV', params, channels=[0])
+    device.measure()
