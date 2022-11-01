@@ -46,12 +46,12 @@ class EISProcessor(object):
                 self.collection[name] = ImpedanceSpectrum(name=name, data=data)
         return self.paths_of_interest
 
-    def fitFile(self, name, save=True, folder='', global_opt=False, component_guesses={}, load_memory=False):
+    def fitFile(self, name, save=True, folder='', global_opt=False, tryCircuits={}, constants={}, load_memory=False):
         try:
             spectrum = self.collection[name]
         except:
             spectrum = self.getSpectrum(name)
-        spectrum.fit(global_opt=global_opt, component_guesses=component_guesses)
+        spectrum.fit(global_opt=global_opt, tryCircuits=tryCircuits, constants=constants)
         spectrum.plotNyquist(show_plot=False)
         spectrum.plotBode(show_plot=False)
         if save:
@@ -60,15 +60,15 @@ class EISProcessor(object):
             self.collection[name] = spectrum
         return spectrum
 
-    def fitFiles(self, names=[], save=True, folder='', global_opt=False, component_guesses={}, load_memory=False):
+    def fitFiles(self, names=[], save=True, folder='', global_opt=False, tryCircuits={}, constants={}, load_memory=False):
         if type(names) == str:
             name = names
-            self.fitFile(name, save, folder, global_opt, component_guesses, load_memory)
+            self.fitFile(name, save, folder, global_opt, tryCircuits, constants, load_memory)
         elif type(names) == list:
             if len(names) == 0:
                 names = [n for n in self.paths_of_interest.keys()]
             for name in names:
-                self.fitFile(name, save, folder, global_opt, component_guesses, load_memory)
+                self.fitFile(name, save, folder, global_opt, tryCircuits, constants, load_memory)
         return
 
     def getSpectrum(self, name):
