@@ -7,10 +7,11 @@ Created on Fri 2022/06/18 09:00:00
 Easy BioLogic package documentation can be found at:
 https://github.com/bicarlsen/easy-biologic
 
-Notes:
-- (actionables)
+Notes / actionables:
+- add LSV function to BioLogic
 """
 # Standard library imports
+import math
 import nest_asyncio
 import numpy as np
 import os
@@ -50,9 +51,18 @@ class BioLogic(object):
     def _connect(self):
         return self.inst.connect()
     
+    def _mapColumnNames(self):
+        name_map = {
+            "Impendance phase": "Impedance phase [rad]",
+            "Impendance_ce phase": "Impedance_ce phase [rad]"
+        }
+        self.buffer_df.rename(columns=name_map, inplace=True)
+        return
+    
     def _readData(self):
         try:
             self.buffer_df = pd.DataFrame(self.program.data[0], columns=self.program.field_titles)
+            self._mapColumnNames()
             if len(self.program.data[0]):
                 self.flags['read'] = True
             else:
@@ -88,8 +98,13 @@ class BioLogic(object):
     def plotNyquist(self):
         if self.flags['measured']:
             df = pd.DataFrame(self.program.data[0], columns=self.program.field_titles)
-            df['Impedance magnitude']= df['abs( Voltage ) [V]']/df['abs( Current ) [A]']
-            df = df[['Frequency [Hz]', 'Impedance magnitude', 'Impendance phase']].copy()
+            df['Impedance magnitude [ohm]'] = df['abs( Voltage ) [V]'] / df['abs( Current ) [A]']
+            
+            polar = list(zip(df['Impedance magnitude [ohm]'].to_list(), df['Impedance phase [rad]'].to_list()))
+            df['Real'] = [p[0]*math.cos(p[1]) for p in polar]
+            df['Imaginary'] = [p[0]*math.sin(p[1]) for p in polar]
+            
+            df = df[['Frequency [Hz]', 'Real', 'Imaginary']].copy()
             df.columns = ['Frequency', 'Real', 'Imaginary']
             df.dropna(inplace=True)
 
@@ -104,12 +119,36 @@ class BioLogic(object):
         return
     
     def saveData(self, filename):
-        self.program.save_data(filename)
+        self.buffer_df.to_csv(filename)
+        # self.program.save_data(filename)
         return
     
     def setParameters(self, params={}):
         return
     
+# %%
+if __name__ == "__main__":
+    df = pd.read_csv('examples/biologic_test3.csv', header=1)
+    df['Impedance magnitude [ohm]'] = df['abs( Voltage ) [V]'] / df['abs( Current ) [A]']
+    
+    df = df[(abs(df['Impedance magnitude [ohm]']) < 5000)&(abs(df['Impedance phase [rad]']) < 3000)]
+    
+    polar = list(zip(df['Impedance magnitude [ohm]'].to_list(), df['Impedance phase [rad]'].to_list()))
+    df['Real'] = [p[0]*math.cos(p[1]) for p in polar]
+    df['Imaginary'] = [p[0]*math.sin(p[1]) for p in polar]
+    
+    df = df[['Frequency [Hz]', 'Real', 'Imaginary']].copy()
+    df.columns = ['Frequency', 'Real', 'Imaginary']
+    df.dropna(inplace=True)
+    
+    spectrum = ImpedanceSpectrum(df)
+    spectrum.plotNyquist()
+    # spectrum.fit()
+    spectrum.fit()
+    spectrum.getCircuitDiagram()
+    spectrum.plotNyquist()
+    pass
+
 # %%
 if __name__ == "__main__":
     device = BioLogic(address=IP_ADDRESS)
