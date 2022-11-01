@@ -26,6 +26,9 @@ from impedance.models.circuits import CustomCircuit
 from impedance.models.circuits.fitting import rmse, extract_circuit_elements
 print(f"Import: OK <{__name__}>")
 
+here = os.getcwd()
+base = here.split('src')[0] + 'src'
+
 # %%
 class CircuitDiagram(object):
     """
@@ -274,6 +277,9 @@ class ImpedanceSpectrum(object):
 
         all_min_idx = argrelextrema(y, np.less, order=order)
         all_min_idx = np.concatenate( (np.array( [np.argmax(f)] ), all_min_idx[0]) )
+        if y[-1] < np.mean(y[-1-order:-1]):
+            all_min_idx = np.concatenate((all_min_idx, np.array( [np.argmin(f)] )) )
+            pass
         window = 0.05 * max(x)
         min_idx = []
         for i, idx in enumerate(all_min_idx):
@@ -354,12 +360,13 @@ class ImpedanceSpectrum(object):
 
         return f, x, y, min_idx, max_idx, r0_est, a ,b
 
-    def fit(self, loadCircuit='', tryCircuits={}, global_opt=False, component_guesses={}):
+    def fit(self, loadCircuit='', tryCircuits={}, global_opt=False, constants={}):
         """
         Fits the data to an equivalent circuit
         - loadCircuit: json filename of loaded circuit
         - tryCircuits: dict of name, circuit string pairs to try fitting
-        - global_opt: whether to find global optimum when fitting model; takes quite a bit longer
+        - global_opt: whether to find global optimum when fitting model; takes very long (not in use)
+        - constants: components for which to be given fixed values;
         """
         frequencies, complex_Z = preprocessing.ignoreBelowX(self.f, self.Z)
         circuits = []
@@ -399,7 +406,7 @@ class ImpedanceSpectrum(object):
             self.circuit.load(loadCircuit)
             circuits = [self.circuit]
         else:
-            with open('settings\\test_circuits.json') as json_file:
+            with open(f'{base}\\utils\\characterisation\\electrical\\settings\\test_circuits.json') as json_file:
                 test_circuits = json.load(json_file)
                 circuits_dict = {c['name']: c['string'] for c in test_circuits['standard']}
                 if len(test_circuits['custom']):
@@ -407,8 +414,8 @@ class ImpedanceSpectrum(object):
                         circuits_dict[c['name']] = c['string']
             if len(tryCircuits):
                 circuits_dict = tryCircuits
-            circuits_dict = {k: (v, self.generateGuess(v, *stationary)) for k, v in circuits_dict.items()}
-            circuits = [CustomCircuit(name=k, initial_guess=v[1][0], constants= v[1][1], circuit=v[0]) for k,v in circuits_dict.items()]
+            circuits_dict = {k: (v, self.generateGuess(v, *stationary, constants)) for k, v in circuits_dict.items()}
+            circuits = [CustomCircuit(name=k, initial_guess=v[1][0], constants=v[1][1], circuit=v[0]) for k,v in circuits_dict.items()]
 
         jac = None
         weight_by_modulus = False
@@ -424,7 +431,7 @@ class ImpedanceSpectrum(object):
             # print(f'Trying {circuit.circuit}')
             circuit.fit(
                 frequencies_trim, complex_Z_trim, 
-                global_opt=global_opt, weight_by_modulus=weight_by_modulus, 
+                weight_by_modulus=weight_by_modulus, 
                 jac=jac
             )
             fit_vector = circuit.predict(frequencies)
@@ -443,35 +450,32 @@ class ImpedanceSpectrum(object):
         self.isFitted = True
         return
 
-    def generateGuess(self, circuit_string, f, x, y, min_idx, max_idx, r0, a, b):
+    def generateGuess(self, circuit_string, f, x, y, min_idx, max_idx, r0, a, b, constants={}):
         """
         Generate initial guesses from circuit string
         - circuit_string: string representation of circuit model
         Return: initial guess
         """
         init_guess = []
-        constants = {}
+        new_constants = {}
 
         count_R = 0
         count_C = 0
         circuit_ele = extract_circuit_elements(circuit_string)
         for c in circuit_ele:
+            if c in constants.keys():
+                continue
             if 'R' in c:
                 if c == 'R0':
                     guess = max(r0,0.01)
-                    # constants[f'R{count_R}'] = guess
-                    # init_guess.append(None)
                 else:
                     try:
                         guess = x[min_idx[count_R]] - x[min_idx[count_R-1]]
-                        guess = max(guess, 0)
+                        guess = max(guess,0)
                         if guess == 0:
                             guess = max(r0,0.1)
-                        # constants[f'R{count_R}'] = guess
-                        # init_guess.append(None)
                     except IndexError:
                         guess = max(r0,0.1)
-                        # init_guess.append(guess)
                 init_guess.append(guess)
                 count_R += 1
             if 'C' in c:
@@ -492,7 +496,10 @@ class ImpedanceSpectrum(object):
             if 'Wo' in c:
                 guess = 200
                 init_guess.append(guess)
-        return init_guess, constants
+        for k in constants.keys():
+            if k in circuit_ele:
+                new_constants[k] = constants[k]
+        return init_guess, new_constants
 
     def getCircuitDiagram(self, verbose=True):
         simplifiedCircuit = diagram.simplifyCircuit(self.circuit.circuit, verbose=verbose)
