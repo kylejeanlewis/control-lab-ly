@@ -1,0 +1,58 @@
+src/
+├─ utils/
+│  ├─ characterisation/
+│  │  ├─ electrical/
+│  │  │  ├─ biologic_utils.py
+│  │  │  ├─ eis_datatype.py
+│  │  │  ├─ keithley_utils.py
+│  │  │  ├─ metrohm_utils.py
+│  │  │  ├─ sensorpal_utils.py
+│  ├─ data/
+│  │  ├─ database.py
+│  │  ├─ filesearch.py
+│  ├─ gui/
+│  │  ├─ guibuilder.py
+│  ├─ image/
+│  │  ├─ thermal/
+│  │  │  ├─ ax8/
+│  │  │  │  ├─ ax8.py
+│  │  │  │  ├─ ax8_camera_feed.py
+│  │  │  │  ├─ ax8_modbus_regs.py
+│  │  │  │  ├─ ax8_modbus_utils.py
+│  │  ├─ image_recognition.py
+│  │  ├─ thermal_cam.py
+│  ├─ liquid_handling/
+│  │  ├─ opentrons_utils.py
+│  │  ├─ sartorius_utils.py
+│  │  ├─ syringe_utils.py
+│  ├─ misc/
+│  │  ├─ miscfunctions.py
+│  │  ├─ scheduler.py
+│  ├─ movement/
+│  │  ├─ dobot/
+│  │  │  ├─ api/
+│  │  │  │  ├─ dobot_api.py
+│  │  │  │  ├─ ui.py
+│  │  │  ├─ dobot_api.py
+│  │  ├─ cartesian_utils.py
+│  │  ├─ dobot_utils.py
+│  ├─ processing/
+│  │  ├─ thin_film/
+│  │  │  ├─ spinner_utils.py
+│  ├─ visualisation/
+│  │  ├─ plotting/
+│  │  │  ├─ colours.py
+│  │  │  ├─ plotters.py
+│  │  ├─ 4PP.py
+│  │  ├─ analysis.py
+│  │  ├─ calibration.py
+│  │  ├─ eis_analysis.py
+│  │  ├─ FET.py
+│  │  ├─ FTIR.py
+│  │  ├─ gantt.py
+│  │  ├─ HSI.py
+│  │  ├─ mobility.py
+│  │  ├─ PESA.py
+│  ├─ templates
+│  ├─ toolutils.py
+│  ├─ tool_utils.py
