@@ -1,3 +1,5 @@
+0,0,0,0,0,0,0,0,0,0,0,0
+Process,Time [s],Voltage [V],Current [A],abs( Voltage ) [V],abs( Current ) [A],Impedance phase [rad],Voltage_ce [V],abs( Voltage_ce ) [V],abs( Current_ce ) [A],Impedance_ce phase[rad],Frequency [Hz]
 0,1.0000080353711382,0.0005650451639667153,-7.983366145936088e-08,,,,,,,,
 0,2.0000160707422765,0.0007176674553193152,-1.561780180736605e-07,,,,,,,,
 0,3.0000241061134147,0.0007176674553193152,-3.489301070302986e-09,,,,,,,,
