@@ -12,7 +12,8 @@ Notes / actionables:
 
 # Local application imports
 # from controllable.Move import Cartesian, Jointed
-from controllable.builds import mySetup
+# from controllable.builds import mySetup
+from controllable.Measure.Electrical.Biologic import biologic_utils
 print(f"Import: OK <{__name__}>")
 
 # %%
