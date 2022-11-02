@@ -82,12 +82,12 @@ class CNC(object):
         """
         return self._connect(self._port, self._baudrate, self._timeout)
 
-    def heat(self):
+    def heat(self, *args, **kwargs):
         """EMPTY METHOD"""
         print(f"'{self.__class__.__name__}' class has no method 'heat'")
         return
 
-    def home(self):
+    def home(self, *args, **kwargs):
         """EMPTY METHOD"""
         print(f"'{self.__class__.__name__}' class has no method 'home'")
         return
