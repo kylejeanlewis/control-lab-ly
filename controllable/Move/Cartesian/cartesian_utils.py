@@ -14,9 +14,10 @@ import serial # pip install pyserial
 import serial.tools.list_ports
 
 # Local application imports
+from .. import Mover
 print(f"Import: OK <{__name__}>")
 
-class CNC(object):
+class CNC(Mover):
     """
     Controller for cnc xyz-movements.
     - port: serial port of cnc Arduino
@@ -77,16 +78,6 @@ class CNC(object):
         Re-stablish serial connection to cnc controller using exisiting port and baudrate.
         """
         return self._connect(self._port, self._baudrate, self._timeout)
-
-    def heat(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method 'heat'")
-        return
-
-    def home(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method 'home'")
-        return
 
     def isFeasible(self, coord):
         """
