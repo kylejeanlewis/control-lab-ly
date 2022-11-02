@@ -13,17 +13,11 @@ Notes / actionables:
 # Standard library imports
 import math
 import nest_asyncio
-import numpy as np
-import os
 import pandas as pd
-import sys
-import time
 
 # Third party imports
 import easy_biologic as biologic_api # pip install easy-biologic
 import easy_biologic.base_programs as base_programs
-from easy_biologic.program import BiologicProgram
-import plotly.express as px # pip install plotly-express
 
 # Local application imports
 from eis_datatype import ImpedanceSpectrum
@@ -128,7 +122,7 @@ class BioLogic(object):
     
 # %%
 if __name__ == "__main__":
-    df = pd.read_csv('examples/biologic_test3.csv', header=1)
+    df = pd.read_csv('examples/biologic_test.csv', header=1)
     df['Impedance magnitude [ohm]'] = df['abs( Voltage ) [V]'] / df['abs( Current ) [A]']
     
     df = df[(abs(df['Impedance magnitude [ohm]']) < 5000)&(abs(df['Impedance phase [rad]']) < 3000)]
