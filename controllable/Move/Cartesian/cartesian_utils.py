@@ -16,7 +16,6 @@ import serial.tools.list_ports
 # Local application imports
 print(f"Import: OK <{__name__}>")
 
-# %%
 class CNC(object):
     """
     Controller for cnc xyz-movements.
