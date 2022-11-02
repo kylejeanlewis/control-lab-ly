@@ -21,15 +21,19 @@ class CNC(object):
     Controller for cnc xyz-movements.
     - port: serial port of cnc Arduino
     """
-    def __init__(self, port, xyz_bounds = [(0,0,0), (0,0,0)], Z_safe = np.nan, verbose=False):
-        self.port = port
-        self.current_x = 0
-        self.current_y = 0
-        self.current_z = 0
+    def __init__(self, xyz_bounds=[(0,0,0), (0,0,0)], Z_safe=np.nan, verbose=False, **kwargs):
         self.xyz_bounds = xyz_bounds
         self.Z_safe = Z_safe
         self.cnc = None
+        
+        self.current_x = 0
+        self.current_y = 0
+        self.current_z = 0
+        
         self.verbose = verbose
+        self._port = None
+        self._baudrate = None
+        self._timeout = None
         return
 
     def __delete__(self):
@@ -45,13 +49,17 @@ class CNC(object):
         
         Return: serial.Serial object
         """
+        self._port = port
+        self._baudrate = baudrate
+        self._timeout = timeout
         cnc = None
         try:
             cnc = serial.Serial(port, baudrate, timeout=timeout)
         except Exception as e:
             if self.verbose:
                 print(e)
-        return cnc
+        self.cnc = cnc
+        return
     
     def _shutdown(self):
         """
@@ -65,6 +73,14 @@ class CNC(object):
                 print(e)
         self.cnc = None
         return
+
+    def connect(self):
+        """
+        Re-stablish serial connection to cnc controller using exisiting port and baudrate.
+        
+        Return: serial.Serial object
+        """
+        return self._connect(self._port, self._baudrate, self._timeout)
 
     def heat(self):
         """EMPTY METHOD"""

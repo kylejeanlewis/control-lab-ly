@@ -19,12 +19,14 @@ class Primitiv(CNC):
     - port: serial port of cnc Arduino
     - xyz_bounds: range of motion of tool
     """
-    def __init__(self, port, xyz_bounds=[(-410,-290,-120), (0,0,0)], Z_safe=-80, Z_updown=(-94,-104), verbose=False):
-        super().__init__(port, xyz_bounds, Z_safe, verbose)
+    def __init__(self, port, xyz_bounds=[(-410,-290,-120), (0,0,0)], Z_safe=-80, Z_updown=(-94,-104), verbose=False, **kwargs):
+        super().__init__(xyz_bounds, Z_safe, verbose, **kwargs)
         self.Z_up, self.Z_down = Z_updown
         self.selected_position = ''
         
-        self.cnc = self._connect(port)
+        self._connect(port)
+        self.home()
+        print(f"{self.__name__} ready")
         return
     
     def _connect(self, port):
@@ -34,7 +36,8 @@ class Primitiv(CNC):
 
         Return: serial.Serial object
         """
-        cnc = super()._connect(port, 115200, timeout=1)
+        super()._connect(port, 115200, timeout=1)
+        cnc= self.cnc
         try:
             cnc.close()
             cnc.open()
@@ -46,9 +49,7 @@ class Primitiv(CNC):
         except Exception as e:
             if self.verbose:
                 print(e)
-        self.home()
-        print("CNC ready")
-        return cnc
+        return
     
     def home(self):
         """

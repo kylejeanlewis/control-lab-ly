@@ -16,10 +16,12 @@ class Ender(CNC):
     - port: serial port of cnc Arduino
     - xyz_bounds: range of motion of tool
     """
-    def __init__(self, port, xyz_bounds=[(0,0,0), (240,235,210)], Z_safe=30, verbose=False):
-        super().__init__(port, xyz_bounds, Z_safe, verbose)
+    def __init__(self, port, xyz_bounds=[(0,0,0), (240,235,210)], Z_safe=30, verbose=False, **kwargs):
+        super().__init__(xyz_bounds, Z_safe, verbose, **kwargs)
         
-        self.cnc = self._connect(port)
+        self._connect(port)
+        self.home()
+        print(f"{self.__name__} ready")
         return
     
     def _connect(self, port):
@@ -29,10 +31,7 @@ class Ender(CNC):
         
         Return: serial.Serial object
         """
-        cnc = super()._connect(port, 115200)
-        self.home()
-        print("CNC ready")
-        return cnc
+        return super()._connect(port, 115200)
 
     def heat(self, bed_temp):
         """
