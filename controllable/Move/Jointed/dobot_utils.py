@@ -52,7 +52,7 @@ class Dobot(RobotArm):
     """
     def __init__(self, ip_address='192.168.2.8', home_position=(0,300,0), home_orientation=(0,0,0), **kwargs):
         super().__init__(home_position, home_orientation, **kwargs)
-        self._ip_address = ip_address
+        self.ip_address = ip_address
         self._dashboard = None
         self._feedback = None
 
