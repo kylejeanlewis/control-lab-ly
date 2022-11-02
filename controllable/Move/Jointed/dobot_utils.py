@@ -37,6 +37,7 @@ def decodeDetails(details):
             details[k] = np.array(v['array'])
     return details
 
+
 class Dobot(RobotArm):
     """
     Dobot class.
@@ -49,8 +50,8 @@ class Dobot(RobotArm):
         translate_vector (numpy.array, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
     """
-    def __init__(self, ip_address='192.168.2.8', home_position=(0,300,0), home_orientation=(0,0,0), orientate_matrix=np.identity(3), translate_vector=np.zeros(3), scale=1, **kwargs):
-        super().__init__(home_position, home_orientation, orientate_matrix, translate_vector, scale, **kwargs)
+    def __init__(self, ip_address='192.168.2.8', home_position=(0,300,0), home_orientation=(0,0,0), **kwargs):
+        super().__init__(home_position, home_orientation, **kwargs)
         self._ip_address = ip_address
         self._dashboard = None
         self._feedback = None
@@ -141,33 +142,14 @@ class Dobot(RobotArm):
     
     def getSettings(self):
         """Read the arm configuration settings."""
-        arm = str(type(self)).split("'")[1].split('.')[1]
-        param = ["ip_address", "home_position", "home_orientation", "orientate_matrix", "translate_vector", "scale"]
-        details = {k: v for k,v in self.__dict__.items() if k in param}
-        for k,v in details.items():
-            if type(v) == tuple:
-                details[k] = {"tuple": list(v)}
-            elif type(v) == np.ndarray:
-                details[k] = {"array": v.tolist()}
-        settings = {"arm": arm, "details": details}
-        return settings
+        params = ["ip_address", "home_position", "home_orientation", "orientate_matrix", "translate_vector", "scale"]
+        return super().getSettings(params)
     
-    def getWorkspacePosition(self, offset=True):
-        """
-        Retrieve physcial coordinates.
-
-        Args:
-            offset (bool, optional): whether to consider offset of implement. Defaults to True.
-
-        Returns:
-            tuple: position vector
-        """
-        return self._transform_vector_out(self.getPosition(), offset=offset)
-
     def home(self):
         """Home the robot arm."""
         # Tuck arm in to avoid collision
-        self.tuck(self.home_position)
+        if self.doTuck:
+            self.tuck(self.home_position)
         # Go to home position
         self.moveCoordTo(self.home_position, self.home_orientation)
         print("Homed")
@@ -219,7 +201,7 @@ class Dobot(RobotArm):
         if len(orientation) == 1 and orientation[0] == 0:
             orientation = self.orientation
         coord = self._transform_vector_in(coord, offset=True)
-        if tuck:
+        if self.doTuck and tuck:
             self.tuck(coord)
         return self.moveCoordTo(coord, orientation)
 
@@ -253,44 +235,44 @@ class Dobot(RobotArm):
             print("Not connected to arm!")
         return
 
-    def moveCoordBy(self, relative_coord=(0,0,0), orientation=(0,0,0)):
+    def moveCoordBy(self, vector=(0,0,0), angles=(0,0,0)):
         """
         Relative Cartesian movement and tool orientation, using robot coordinates.
 
         Args:
-            relative_coord (tuple, optional): displacement vector. Defaults to (0,0,0).
-            orientation (tuple, optional): rotation angles in degrees. Defaults to (0,0,0).
+            vector (tuple, optional): displacement vector. Defaults to (0,0,0).
+            angles (tuple, optional): rotation angles in degrees. Defaults to (0,0,0).
         """
         try:
-            self._feedback.RelMovL(*relative_coord)
+            self._feedback.RelMovL(*vector)
             time.sleep(MOVE_TIME)
         except (AttributeError, OSError):
             print("Not connected to arm!")
         
         # Rotate to orientation
-        if any(orientation):
-            self.moveJointBy((0,0,0,*orientation))
+        if any(angles):
+            self.moveJointBy((0,0,0,*angles))
 
         # Update values
-        self.current_x += relative_coord[0]
-        self.current_y += relative_coord[1]
-        self.current_z += relative_coord[2]
+        self.current_x += vector[0]
+        self.current_y += vector[1]
+        self.current_z += vector[2]
         self.coordinates = (self.current_x, self.current_y, self.current_z)
-        self.orientation = tuple(np.array(orientation) + np.array(self.orientation))
+        self.orientation = tuple(np.array(angles) + np.array(self.orientation))
         return
 
-    def moveCoordTo(self, absolute_coord, orientation=(0,), offset=True):
+    def moveCoordTo(self, coord, orientation=(0,), offset=True):
         """
         Absolute Cartesian movement and tool orientation, using robot coordinates.
 
         Args:
-            absolute_coord (tuple): position vector
+            coord (tuple): position vector
             orientation (tuple, optional): orientatino angles in degrees. Defaults to (0,).
             offset (bool, optional): whether to consider implement offset. Defaults to True.
         """
         if len(orientation) == 1 and orientation[0] == 0:
             orientation = self.orientation
-        absolute_arm_coord = tuple(np.array(absolute_coord) + np.array(self.implement_offset)) if offset else absolute_coord
+        absolute_arm_coord = tuple(np.array(coord) + np.array(self.implement_offset)) if offset else coord
         if not self.isFeasible(absolute_arm_coord):
             print(f"Infeasible coordinates! {absolute_arm_coord}")
             return
@@ -302,8 +284,8 @@ class Dobot(RobotArm):
             print("Not connected to arm!")
         
         # Update values
-        self.current_x, self.current_y, self.current_z = absolute_coord
-        self.coordinates = absolute_coord
+        self.current_x, self.current_y, self.current_z = coord
+        self.coordinates = coord
         self.orientation = orientation
         return
 
@@ -323,7 +305,7 @@ class Dobot(RobotArm):
         Args:
             angles (tuple): rotation angles in degrees
         """
-        return self.moveCoordBy(orientation=angles)
+        return self.moveCoordBy(angles=angles)
 
     def rotateTo(self, orientation):
         """
@@ -377,7 +359,8 @@ class Dobot(RobotArm):
         """
         safe_radius = 225
         safe_height = 75
-        x,y,_ = self.getPosition()
+        coordinates,_ = self.getPosition()
+        x,y,_ = coordinates
         if any((x,y)):
             w = ( (safe_radius**2)/(x**2 + y**2) )**0.5
             x,y = (x*w,y*w)
@@ -390,6 +373,7 @@ class Dobot(RobotArm):
             w1 = ( (safe_radius**2)/(x1**2 + y1**2) )**0.5
             self.moveCoordTo((x1*w1,y1*w1,75), self.orientation, offset=False)
         return
+
 
 # First-party implement attachments
 class JawGripper(Dobot):
@@ -501,24 +485,25 @@ class VacuumGrip(Dobot):
 
 
 # Third-party implement attachments, connected though Dobot ports
-class Instrument(Dobot):
-    """
-    Instrument class.
+# class Instrument(Dobot):
+#     """
+#     Instrument class.
 
-    Args:
-        ip_address (str, optional): IP address of arm. Defaults to '192.168.2.8'.
-        home_position (tuple, optional): position to home in arm coordinates. Defaults to (0,300,0).
-        home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
-        orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
-        translate_vector (numpy.array, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
-        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
-    """
-    def __init__(self, address_sensor=None, **kwargs):
-        super().__init__(**kwargs)
-        self.sensor = None
-        self.connect_sensor(address_sensor)
-        return
+#     Args:
+#         address_sensor (str): Address of sensor.
+#         ip_address (str, optional): IP address of arm. Defaults to '192.168.2.8'.
+#         home_position (tuple, optional): position to home in arm coordinates. Defaults to (0,300,0).
+#         home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
+#         orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
+#         translate_vector (numpy.array, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
+#         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
+#     """
+#     def __init__(self, address_sensor=None, **kwargs):
+#         super().__init__(**kwargs)
+#         self.sensor = None
+#         self.connect_sensor(address_sensor)
+#         return
 
-    def connect_sensor(self, address_sensor):
-        return
+#     def connect_sensor(self, address_sensor):
+#         return
 

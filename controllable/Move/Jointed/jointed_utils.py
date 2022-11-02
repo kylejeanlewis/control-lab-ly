@@ -15,13 +15,21 @@ import serial # pip install pyserial
 import serial.tools.list_ports
 
 # Local application imports
+from .. import Mover
 print(f"Import: OK <{__name__}>")
 
-SCALE = True
-MOVE_TIME = 0.5
+class RobotArm(Mover):
+    """
+    RobotArm class.
 
-class RobotArm(object):
-    def __init__(self, home_position=(0,0,0), home_orientation=(0,0,0), orientate_matrix=np.identity(3), translate_vector=np.zeros(3), scale=1, **kwargs):
+    Args:
+        home_position (tuple, optional): position to home in arm coordinates. Defaults to (0,0,0).
+        home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
+        orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
+        translate_vector (numpy.array, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
+        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
+    """
+    def __init__(self, home_position=(0,0,0), home_orientation=(0,0,0), orientate_matrix=np.identity(3), translate_vector=np.zeros(3), scale=1, verbose=False, doTuck=True, **kwargs):
         self.home_position = home_position
         self.home_orientation = home_orientation
         self.orientate_matrix = orientate_matrix
@@ -34,35 +42,23 @@ class RobotArm(object):
         self.current_z = 0
         self.coordinates = (self.current_x, self.current_y, self.current_z)
         self.orientation = (0,0,0)
+        
+        self.verbose = verbose
+        self.doTuck = doTuck
         pass
     
     def __delete__(self):
         self._shutdown()
         return
-    
-    def _connect(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method '_freeze'")
-        return
-    
-    def _freeze(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method '_freeze'")
-        return
-    
-    def _shutdown(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method '_shutdown'")
-        return
-    
-    def _transform_vector_in(self, coord, offset=False, stretch=SCALE):
+      
+    def _transform_vector_in(self, coord, offset=False, stretch=True):
         """
         Order of transformations (scale, rotate, translate).
 
         Args:
             coord (tuple): vector
             offset (bool, optional): whether to translate. Defaults to False.
-            stretch (bool, optional): whether to scale. Defaults to SCALE.
+            stretch (bool, optional): whether to scale. Defaults to True.
 
         Returns:
             tuple: converted arm vector
@@ -71,14 +67,14 @@ class RobotArm(object):
         scale = (1/self.scale) if stretch else 1
         return tuple( translate + np.matmul(self.orientate_matrix.T, scale * np.array(coord)) )
 
-    def _transform_vector_out(self, coord, offset=False, stretch=SCALE):
+    def _transform_vector_out(self, coord, offset=False, stretch=True):
         """
         Order of transformations (translate, rotate, scale).
 
         Args:
             coord (tuple): vector
             offset (bool, optional): whether to translate. Defaults to False.
-            stretch (bool, optional): whether to scale. Defaults to SCALE.
+            stretch (bool, optional): whether to scale. Defaults to True.
 
         Returns:
             tuple: converted workspace vector
@@ -122,16 +118,11 @@ class RobotArm(object):
         print(f'Scale factor: {self.scale}')
         print(f'Offset angle: {rot_angle/math.pi*180} degree')
         print(f'Offset vector: {(external_pt1 - internal_pt1)}')
-        
         return
-    
-    def getOrientation(self):
-        """Read the current position and orientation of arm."""
-        return self.orientation
 
     def getPosition(self):
         """Read the current position and orientation of arm."""
-        return self.coordinates
+        return self.coordinates, self.orientation
     
     def getWorkspacePosition(self, offset=True):
         """
@@ -143,9 +134,38 @@ class RobotArm(object):
         Returns:
             tuple: position vector
         """
-        return self._transform_vector_out(self.getPosition(), offset=offset)
+        coordinates, orientation = self.getPosition()
+        return self._transform_vector_out(coordinates, offset=offset), orientation
     
-    def tuck(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method '_tuck'")
+    def getSettings(self, params):
+        """Read the arm configuration settings."""
+        arm = str(type(self)).split("'")[1].split('.')[1]
+        details = {k: v for k,v in self.__dict__.items() if k in params}
+        for k,v in details.items():
+            if type(v) == tuple:
+                details[k] = {"tuple": list(v)}
+            elif type(v) == np.ndarray:
+                details[k] = {"array": v.tolist()}
+        settings = {"arm": arm, "details": details}
+        return settings
+
+    def setImplementOffset(self, implement_offset):
+        """
+        Set offset of implement.
+
+        Args:
+            implement_offset (tuple): x,y,z offset of implement
+        """
+        self.implement_offset = implement_offset
+        self.home()
+        return
+
+    def setPosition(self, coord):
+        """
+        Set robot coordinates.
+
+        Args:
+            coord (tuple): x,y,z workspace coordinates
+        """
+        self.coordinates = self._transform_vector_in(coord, offset=True, stretch=True)
         return
