@@ -10,37 +10,33 @@ Notes / actionables:
 - add LSV function to BioLogic
 """
 # Standard library imports
-import math
 import nest_asyncio
 import pandas as pd
 
 # Third party imports
 import easy_biologic as biologic_api # pip install easy-biologic
 import easy_biologic.base_programs as base_programs
-from easy_biologic.program import BiologicProgram
-import plotly.express as px # pip install plotly-express
 
 # Local application imports
 from ....Analyse.Data.Types.eis_datatype import ImpedanceSpectrum
+from .. import Measurer
 print(f"Import: OK <{__name__}>")
 
 # INITIALIZING
 nest_asyncio.apply()
 
-class BioLogic(object):
-    def __init__(self, name='', address=IP_ADDRESS):
-        self.name = name
-        self.address = address
-        self.inst = biologic_api.BiologicDevice(address, populate_info=True)
+class BioLogic(Measurer):
+    def __init__(self, ip_address='192.109.209.128'):
+        self.ip_address = ip_address
+        self.inst = biologic_api.BiologicDevice(ip_address, populate_info=True)
         self.buffer_df = pd.DataFrame()
+        self.data = None
         self.program = None
         self.flags = {
-            'measured': False
+            'measured': False,
+            'read': False
         }
         return
-    
-    def _connect(self):
-        return self.inst.connect()
     
     def _mapColumnNames(self):
         name_map = {
@@ -62,9 +58,14 @@ class BioLogic(object):
             print("Please load a program first.")
         return
     
-    def getData(self):
+    def connect(self):
+        return self.inst.connect()
+    
+    def getData(self, datatype):
         if not self.flags['read']:
-            self._readData()            
+            self._readData()
+        if self.flags['read']:
+            self.data = datatype(data=self.buffer_df, instrument='biologic_')
         return self.buffer_df
     
     def loadProgram(self, program='', params={}, channels=[0], **kwargs):
@@ -81,37 +82,27 @@ class BioLogic(object):
     def measure(self):
         self.program.run()
         self._readData()
-        self.flags['measured'] = True
-        self.plotNyquist()
+        if len(self.buffer_df):
+            self.flags['measured'] = True
+        self.plot()
         return
     
-    # Program specific
-    def plotNyquist(self):
-        if self.flags['measured']:
-            df = pd.DataFrame(self.program.data[0], columns=self.program.field_titles)
-            df['Impedance magnitude [ohm]'] = df['abs( Voltage ) [V]'] / df['abs( Current ) [A]']
-            
-            polar = list(zip(df['Impedance magnitude [ohm]'].to_list(), df['Impedance phase [rad]'].to_list()))
-            df['Real'] = [p[0]*math.cos(p[1]) for p in polar]
-            df['Imaginary'] = [p[0]*math.sin(p[1]) for p in polar]
-            
-            df = df[['Frequency [Hz]', 'Real', 'Imaginary']].copy()
-            df.columns = ['Frequency', 'Real', 'Imaginary']
-            df.dropna(inplace=True)
-
-            spectrum = ImpedanceSpectrum(df)
-            spectrum.plotNyquist()
+    def plot(self, plot_type=''):
+        if self.flags['measured'] and self.flags['read']:
+            self.data.plot(plot_type)
         return
     
     def reset(self):
+        self.buffer_df = pd.DataFrame()
+        self.data = None
         self.program = None
         self.flags['measured'] = False
         self.flags['read'] = False
         return
     
     def saveData(self, filename):
-        self.buffer_df.to_csv(filename)
-        return
-    
-    def setParameters(self, params={}):
+        if not self.flags['read']:
+            self._readData()
+        if self.flags['read']:
+            self.buffer_df.to_csv(filename)
         return
