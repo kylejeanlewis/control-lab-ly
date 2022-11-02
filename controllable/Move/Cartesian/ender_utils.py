@@ -21,7 +21,6 @@ class Ender(CNC):
         
         self._connect(port)
         self.home()
-        print(f"{self.__name__} ready")
         return
     
     def _connect(self, port):
