@@ -46,8 +46,6 @@ class CNC(object):
         - port: serial port of cnc Arduino
         - baudrate: 
         - timeout:
-        
-        Return: serial.Serial object
         """
         self._port = port
         self._baudrate = baudrate
@@ -77,8 +75,6 @@ class CNC(object):
     def connect(self):
         """
         Re-stablish serial connection to cnc controller using exisiting port and baudrate.
-        
-        Return: serial.Serial object
         """
         return self._connect(self._port, self._baudrate, self._timeout)
 
@@ -91,6 +87,23 @@ class CNC(object):
         """EMPTY METHOD"""
         print(f"'{self.__class__.__name__}' class has no method 'home'")
         return
+
+    def isFeasible(self, coord):
+        """
+        Checks if specified coordinates is a feasible position for robot to access.
+
+        Args:
+            coord (tuple): x,y,z coordinates
+
+        Returns:
+            bool: whether coordinates is a feaible position
+        """
+        l_bound, u_bound = np.array(self.xyz_bounds)
+        next_pos = np.array(coord)
+        if all(np.greater_equal(next_pos, l_bound)) and all(np.less_equal(next_pos, u_bound)):
+            return True
+        print(f"Range limits reached! {self.xyz_bounds}")
+        return False
 
     def move(self, axis, displacement):
         """
@@ -125,6 +138,9 @@ class CNC(object):
         Move cnc to absolute position in 3D
         - coord: (X, Y, Z) coordinates of target
         """
+        if not self.isFeasible(coord):
+            return
+        
         if z_to_safe and self.current_z < self.Z_safe:
             try:
                 self.cnc.write(bytes("G90\n", 'utf-8'))
@@ -141,15 +157,6 @@ class CNC(object):
         
         x, y, z = coord
         z_first = True if self.current_z<z else False
-        l_bound, u_bound = np.array(self.xyz_bounds)
-        next_pos = np.array(coord)
-
-        if all(np.greater_equal(next_pos, l_bound)) and all(np.less_equal(next_pos, u_bound)):
-            pass
-        else:
-            print(f"Range limits reached! {self.xyz_bounds}")
-            return
-
         positionXY = f'X{x}Y{y}'
         position_Z = f'Z{z}'
         moves = [position_Z, positionXY] if z_first else [positionXY, position_Z]
