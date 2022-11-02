@@ -254,11 +254,7 @@ class Dobot(RobotArm):
             self.moveJointBy((0,0,0,*angles))
 
         # Update values
-        self.current_x += vector[0]
-        self.current_y += vector[1]
-        self.current_z += vector[2]
-        self.coordinates = (self.current_x, self.current_y, self.current_z)
-        self.orientation = tuple(np.array(angles) + np.array(self.orientation))
+        self.updatePosition(vector=vector, angles=angles)
         return
 
     def moveCoordTo(self, coord, orientation=(0,), offset=True):
@@ -284,9 +280,7 @@ class Dobot(RobotArm):
             print("Not connected to arm!")
         
         # Update values
-        self.current_x, self.current_y, self.current_z = coord
-        self.coordinates = coord
-        self.orientation = orientation
+        self.updatePosition(coord, orientation)
         return
 
     def reset(self):

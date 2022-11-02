@@ -61,10 +61,7 @@ class Primitiv(CNC):
             if self.verbose:
                 print(e)
         
-        self.current_x = 0
-        self.current_y = 0
-        self.current_z = 0
-        print(f'{self.current_x}, {self.current_y}, {self.current_z}')
+        self.updatePosition((0,0,0))
         return
 
 # %%

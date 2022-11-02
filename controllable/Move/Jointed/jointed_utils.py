@@ -35,12 +35,9 @@ class RobotArm(Mover):
         self.orientate_matrix = orientate_matrix
         self.translate_vector = translate_vector
         self.scale = scale
-        self.implement_offset = (0,0,0)
         
-        self.current_x = 0
-        self.current_y = 0
-        self.current_z = 0
-        self.coordinates = (self.current_x, self.current_y, self.current_z)
+        self.implement_offset = (0,0,0)
+        self.coordinates = (0,0,0)
         self.orientation = (0,0,0)
         
         self.verbose = verbose
@@ -168,4 +165,21 @@ class RobotArm(Mover):
             coord (tuple): x,y,z workspace coordinates
         """
         self.coordinates = self._transform_vector_in(coord, offset=True, stretch=True)
+        return
+
+    def updatePosition(self, coord=(0,), orientation=(0,), vector=(0,0,0), angles=(0,0,0)):
+        """Update to current position"""
+        if len(coord) == 1:
+            new_coord = np.array(self.coordinates) + np.array(vector)
+            self.coordinates = tuple(new_coord)
+        else:
+            self.coordinates = tuple(coord)
+        
+        if len(orientation) == 1:
+            new_orientation = np.array(self.orientation) + np.array(angles)
+            self.orientation = tuple(new_orientation)
+        else:
+            self.orientation = tuple(orientation)
+        
+        print(f'{self.coordinates}, {self.orientation}')
         return

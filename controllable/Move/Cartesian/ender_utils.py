@@ -73,10 +73,7 @@ class Ender(CNC):
             if self.verbose:
                 print(e)
         
-        self.current_x = 0
-        self.current_y = 0
-        self.current_z = self.Z_safe
-        print(f'{self.current_x}, {self.current_y}, {self.current_z}')
+        self.updatePosition((0,0,self.Z_safe))
         try:
             self.cnc.write(bytes("G1 F10000\n", 'utf-8'))
             print(self.cnc.readline())

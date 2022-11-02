@@ -27,9 +27,7 @@ class CNC(Mover):
         self.Z_safe = Z_safe
         self.cnc = None
         
-        self.current_x = 0
-        self.current_y = 0
-        self.current_z = 0
+        self.coordinates = (0,0,0)
         
         self.verbose = verbose
         self._port = None
@@ -90,12 +88,16 @@ class CNC(Mover):
             bool: whether coordinates is a feaible position
         """
         l_bound, u_bound = np.array(self.xyz_bounds)
-        next_pos = np.array(coord)
-        if all(np.greater_equal(next_pos, l_bound)) and all(np.less_equal(next_pos, u_bound)):
+        coord = np.array(coord)
+        if all(np.greater_equal(coord, l_bound)) and all(np.less_equal(coord, u_bound)):
             return True
         print(f"Range limits reached! {self.xyz_bounds}")
         return False
 
+    def getPosition(self):
+        """Get coordinates."""
+        return self.coordinates, None
+    
     def move(self, axis, displacement):
         """
         Move cnc in one axis and displacement
@@ -117,22 +119,19 @@ class CNC(Mover):
         Move cnc in all axes and displacement
         - vector: vector in mm
         """
-        x, y, z = vector
-        next_x = round(self.current_x + x, 2)
-        next_y = round(self.current_y + y, 2)
-        next_z = round(self.current_z + z, 2)
-        next_pos = (next_x, next_y, next_z)
-        return self.moveTo(next_pos, z_to_safe)
+        new_coord = np.round( np.array(self.coordinates) + np.array(vector) , 2)
+        return self.moveTo(new_coord, z_to_safe)
     
     def moveTo(self, coord, z_to_safe=True):
         """
         Move cnc to absolute position in 3D
         - coord: (X, Y, Z) coordinates of target
         """
+        coord = np.array(coord)
         if not self.isFeasible(coord):
             return
         
-        if z_to_safe and self.current_z < self.Z_safe:
+        if z_to_safe and self.coordinates[2] < self.Z_safe:
             try:
                 self.cnc.write(bytes("G90\n", 'utf-8'))
                 print(self.cnc.readline())
@@ -143,13 +142,11 @@ class CNC(Mover):
             except Exception as e:
                 if self.verbose:
                     print(e)
-            self.current_z = self.Z_safe
-            print(f'{self.current_x}, {self.current_y}, {self.current_z}')
+            self.updatePosition((*self.coordinates[0:2], self.Z_safe))
         
-        x, y, z = coord
-        z_first = True if self.current_z<z else False
-        positionXY = f'X{x}Y{y}'
-        position_Z = f'Z{z}'
+        z_first = True if self.current_z<coord[2] else False
+        positionXY = f'X{coord[0]}Y{coord[1]}'
+        position_Z = f'Z{coord[2]}'
         moves = [position_Z, positionXY] if z_first else [positionXY, position_Z]
         try:
             self.cnc.write(bytes("G90\n", 'utf-8'))
@@ -163,8 +160,15 @@ class CNC(Mover):
             if self.verbose:
                 print(e)
 
-        self.current_x = x
-        self.current_y = y
-        self.current_z = z
-        print(f'{self.current_x}, {self.current_y}, {self.current_z}')
+        self.updatePosition(coord)
+        return
+    
+    def updatePosition(self, coord=(0,), vector=(0,0,0)):
+        """Update to current position"""
+        if len(coord) == 1:
+            new_coord = np.round( np.array(self.coordinates) + np.array(vector) , 2)
+            self.coordinates = tuple(new_coord)
+        else:
+            self.coordinates = tuple(coord)
+        print(f'{self.coordinates}')
         return

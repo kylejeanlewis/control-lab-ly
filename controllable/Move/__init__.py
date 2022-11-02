@@ -172,5 +172,10 @@ class Mover(object):
         print(f"'{self.__class__.__name__}' class has no method '_tuck'")
         return
 
+    def updatePosition(self, *args, **kwargs):
+        """EMPTY METHOD"""
+        print(f"'{self.__class__.__name__}' class has no method '_tuck'")
+        return
+
 from . import Cartesian
 from . import Jointed
