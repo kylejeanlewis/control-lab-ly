@@ -1,176 +1,38 @@
-# %%
-# -*- coding: utf-8 -*-
+# %% -*- coding: utf-8 -*-
 """
-Created on Fri 2022/06/18 09:00:00
-
-@author: Chang Jie
-
 Impedance package documentation can be found at:
 https://impedancepy.readthedocs.io/en/latest/index.html
-"""
-import os
-import json
-import time
-import numpy as np
-import pandas as pd
-import cmath
-from scipy.signal import argrelextrema
 
+Created on Fri 2022/06/18 09:00:00
+@author: Chang Jie
+
+Notes / actionables:
+-
+"""
+# Standard library imports
+import cmath
+import json
+import math
 import matplotlib.pyplot as plt
+import numpy as np
+import os
+import pandas as pd
+from scipy.signal import argrelextrema
+import time
+
+# Third party imports
+from impedance import preprocessing # pip install impedance
+from impedance.models.circuits import CustomCircuit
+from impedance.models.circuits.fitting import rmse, extract_circuit_elements
 import plotly.express as px # pip install plotly-express
 import plotly.graph_objects as go # pip install plotly
 from plotly.subplots import make_subplots
 
-from impedance import preprocessing # pip install impedance
-from impedance.models.circuits import CustomCircuit
-from impedance.models.circuits.fitting import rmse, extract_circuit_elements
+# Local application imports
+from .circuit_datatype import circuit_diagram
 print(f"Import: OK <{__name__}>")
 
-here = os.getcwd()
-base = here.split('src')[0] + 'src'
-
-# %%
-class CircuitDiagram(object):
-    """
-    Circuit diagram manipulator.
-    """
-    def __init__(self):
-        return
-
-    def drawCircuit(self, string, parallel_parts, canvas_size=(0,0), pad=5):
-        """
-        Draw circuit diagram from string representation of circuit
-        - string: simplified circuit string
-        - parallel_parts: dictionary of parallel components
-        - canvas_size: size of the circuit (i.e. number of components across and number of components wide)
-        - pad: fixed length for component labels
-        """
-        drawing = ''
-
-        def trim(d):
-            """Trim excess lines from diagram"""
-            lines = list(d.split('\n'))
-            lines = [line for line in lines if not all([(c==' ' or c=='-') for c in line])]
-            d = '\n'.join(lines)
-            return d
-        
-        if canvas_size[0] == 0 and canvas_size[1] == 0:
-            canvas_size = self.sizeCircuit(string, parallel_parts)
-        components = string.split('-')
-
-        if len(components) == 1:
-            component = components[0]
-
-            # Connect components in parallel
-            if component.startswith('Pr'):
-                subs = parallel_parts[component]
-                for sub in subs:
-                    d = self.drawCircuit(sub, parallel_parts, pad=pad)
-                    drawing = self.mergeCircuit(drawing, d, 'v') if len(drawing) else d
-                drawing = trim(drawing)
-                return drawing
-
-            # Single component
-            else:
-                drawing = f"-{component.ljust(pad, '-')}-"
-                drawing = trim(drawing)
-                return drawing
-        
-        # Connect components in series
-        for component in components:
-            if component.startswith('Pr'):
-                sep = '-' + canvas_size[1]*'\n '
-                drawing = self.mergeCircuit(drawing, sep, 'h')
-            d = self.drawCircuit(component, parallel_parts, canvas_size, pad)
-            drawing = self.mergeCircuit(drawing, d, 'h') if len(drawing) else d
-        drawing = trim(drawing)
-        return drawing
-
-    def mergeCircuit(self, this, that, orientation):
-        """
-        Concatenate circuit component diagrams.
-        - this: string representation of first circuit diagram
-        - that: string representation of first circuit diagram
-        - orientation: whether to merge diagrams horizontally or vertically
-        Return: string representation of merged circuit diagram
-        """
-        merged = ''
-        this_lines = list(this.split('\n'))
-        that_lines = list(that.split('\n'))
-        this_size = (max([len(line) for line in this_lines]), len(this_lines))
-        that_size = (max([len(line) for line in that_lines]), len(that_lines))
-        if orientation == 'h':
-            for l in range(max(this_size[1], that_size[1])):
-                this_line = this_lines[l] if l<len(this_lines) else this_size[0]*" "
-                that_line = that_lines[l] if l<len(that_lines) else that_size[0]*" "
-                merged = merged + this_line + that_line + "\n"
-        elif orientation == 'v':
-            max_width = max(this_size[0], that_size[0])
-            this_lines = [line.ljust(max_width, '-') for line in this_lines]
-            that_lines = [line.ljust(max_width, '-') for line in that_lines]
-            merged = "\n".join(this_lines) + "\n" + "\n".join(that_lines)
-        return merged
-
-    def simplifyCircuit(self, string, verbose=True):
-        """
-        Generate parenthesized contents in string as pairs (level, contents).
-        - string: string representation of circuit
-        Return: simplified circuit string, dictionary of parallel components
-        """
-        def find_all(a_str, sub):
-            start = 0
-            while True:
-                start = a_str.find(sub, start)
-                if start == -1: return
-                yield start
-                start += len(sub)
-        
-        parallel_starts = {f'Pr{i+1}': p for i, p in enumerate(list(find_all(string, 'p(')))}
-        parallel_parts = {}
-
-        for i in range(len(parallel_starts),0,-1):
-            abbr = f'Pr{i}'
-            start = parallel_starts[abbr]
-            end = string.find(')', start)
-            parallel_parts[abbr] = tuple(string[start+2:end].split(','))
-            string = string[:start] + abbr + string[end+1:]
-        if verbose:
-            print(string)
-            print(parallel_parts)
-        return string, parallel_parts
-
-    def sizeCircuit(self, string, parallel_parts):
-        """
-        Find the size of the circuit (i.e. number of components across and number of components wide).
-        - string: simplified circuit string
-        - parallel_parts: dictionary of parallel components
-        Return: tuple of size
-        """
-        size = (0,0)
-        components = string.split('-')
-        if len(components) == 1:
-            component = components[0]
-            if component.startswith('Pr'):
-                subs = parallel_parts[component]
-                max_width, max_height = (1, 1)
-                for sub in subs:
-                    s = self.sizeCircuit(sub, parallel_parts)
-                    max_width = max(max_width, s[0])
-                    size = (max_width, size[1]+s[1])
-                return size
-            else:
-                size = (1,1)
-                return size
-        
-        max_height = size[1]
-        for component in components:
-            s = self.sizeCircuit(component, parallel_parts)
-            max_height = max(max_height, s[1])
-            size = (size[0]+s[0], max_height)
-        return size
-
-
-diagram = CircuitDiagram()
+TEST_JSON = 'eis_tests.json'
 
 class ImpedanceSpectrum(object):
     """
@@ -178,44 +40,31 @@ class ImpedanceSpectrum(object):
     as well as provides methods to fit the plot and identify equivalent components
     - data: pd.Dataframe with 3 columns for Frequency, Real, and Imaginary impedance
     - filename_data: filename of data
-    - filename_circuit: filename of circuit model
+    - circuit: filename of circuit model
     - name: sample name
     """
-    def __init__(self, data=pd.DataFrame(), filename_data='', filename_circuit='', name=''):
+    def __init__(self, data, circuit='', name='', instrument=''):
         self.name = name
-        self.data = data
         self.f, self.Z, self.P = np.array([]), np.array([]), np.array([])
-        self.circuit = None
-        self.circuit_draw = ''
-        self.isFitted = False
         self.Z_fitted, self.P_fitted = np.array([]), np.array([])
+        
+        self.circuit = None
+        self.diagram = ''
+        self.isFitted = False
+        
         self.min_rmse = -1
         self.min_nrmse = -1
         self.x_offset = 0
-
-        if len(data)==0 and len(filename_data):
-            self.data = pd.read_csv(filename_data, names=['Frequency', 'Real', 'Imaginary'], header=None)
-        elif len(data)==0 and len(filename_data)==0:
-            print('Please load dataframe or data file!')
-            return
-        self.data['Frequency_log10'] = np.log10(self.data['Frequency'])
-        self.f = self.data['Frequency'].to_numpy()
-        self.Z = self.data['Real'].to_numpy() + 1j*self.data['Imaginary'].to_numpy()
-
-        self.data['Magnitude'] = np.array([abs(z) for z in self.Z])
-        self.data['Phase'] = np.array([cmath.phase(z)/cmath.pi*180 for z in self.Z])
-        self.P = np.array([*zip(self.data['Magnitude'].to_numpy(), self.data['Phase'].to_numpy())])
+        
+        self._readData(data, instrument)
+        self._readCircuit(circuit)
 
         self.bode_plot = None
         self.nyquist_plot = None
-
-        if len(filename_circuit):
-            self.circuit = CustomCircuit()
-            self.circuit.load(filename_circuit)
         return
-
-    def analyse(self, order=4):
-        data = self.data[self.data['Imaginary']<0].copy()
+    
+    def _analyse(self, order=4):
+        data = self.data_df[self.data_df['Imaginary']<0].copy()
         data.sort_values(by='Frequency', ascending=False, inplace=True)
         y = data['Imaginary'].to_numpy() * (-1)
         x = data['Real'].to_numpy()
@@ -360,97 +209,7 @@ class ImpedanceSpectrum(object):
 
         return f, x, y, min_idx, max_idx, r0_est, a ,b
 
-    def fit(self, loadCircuit='', tryCircuits={}, global_opt=False, constants={}):
-        """
-        Fits the data to an equivalent circuit
-        - loadCircuit: json filename of loaded circuit
-        - tryCircuits: dict of name, circuit string pairs to try fitting
-        - global_opt: whether to find global optimum when fitting model; takes very long (not in use)
-        - constants: components for which to be given fixed values;
-        """
-        frequencies, complex_Z = preprocessing.ignoreBelowX(self.f, self.Z)
-        circuits = []
-        fit_vectors = []
-        rmse_values = []
-        print(self.name)
-        stationary = self.analyse()
-        complex_Z = complex_Z + self.x_offset
-
-        def trim(f, Z, x, p=0.15):
-            """
-            Trim the 45-degree straight line to avoid overfit
-            - f: frequencies
-            - Z: complex impedances
-            - x: final minimum point from ImpedanceSpectrum.analyse
-            - p: proportion of data points to trim out
-
-            Return: trimmed frequencies, trimmed complex impedances
-            """
-            f_trim = [f[0]]
-            Z_trim = [Z[0]]
-            end_idx = len(f) - 1 - x # flip index
-            num_to_trim = int(p*len(f))
-            step = (end_idx) % num_to_trim
-            for i in range(len(f)):
-                if i % step or i >= end_idx:
-                    f_trim.append(f[i])
-                    Z_trim.append(Z[i])
-            f = np.array(f_trim)
-            Z = np.array(Z_trim)
-            return f, Z
-
-        if type(self.circuit) != type(None):
-            circuits = [self.circuit]
-        elif len(loadCircuit):
-            self.circuit = CustomCircuit()
-            self.circuit.load(loadCircuit)
-            circuits = [self.circuit]
-        else:
-            with open(f'{base}\\utils\\characterisation\\electrical\\settings\\test_circuits.json') as json_file:
-                test_circuits = json.load(json_file)
-                circuits_dict = {c['name']: c['string'] for c in test_circuits['standard']}
-                if len(test_circuits['custom']):
-                    for c in test_circuits['custom']:
-                        circuits_dict[c['name']] = c['string']
-            if len(tryCircuits):
-                circuits_dict = tryCircuits
-            circuits_dict = {k: (v, self.generateGuess(v, *stationary, constants)) for k, v in circuits_dict.items()}
-            circuits = [CustomCircuit(name=k, initial_guess=v[1][0], constants=v[1][1], circuit=v[0]) for k,v in circuits_dict.items()]
-
-        jac = None
-        weight_by_modulus = False
-        x_intercept_idx = stationary[3][-1]
-        frequencies_trim, complex_Z_trim = frequencies, complex_Z
-        if x_intercept_idx < (0.4*len(self.data)):
-            jac = '3-point'
-        elif x_intercept_idx < (0.45*len(self.data)):
-            frequencies_trim, complex_Z_trim = trim(frequencies, complex_Z, x_intercept_idx)
-            weight_by_modulus = True
-
-        for circuit in circuits:
-            # print(f'Trying {circuit.circuit}')
-            circuit.fit(
-                frequencies_trim, complex_Z_trim, 
-                weight_by_modulus=weight_by_modulus, 
-                jac=jac
-            )
-            fit_vector = circuit.predict(frequencies)
-            rmse_value = rmse(complex_Z, fit_vector)
-            fit_vectors.append(fit_vector)
-            rmse_values.append(rmse_value)
-
-        self.min_rmse = min(rmse_values)
-        self.min_nrmse = self.min_rmse / np.mean(abs(complex_Z))
-        index_min_rmse = np.argmin(np.array(rmse_values))
-        self.circuit = circuits[index_min_rmse]
-        self.Z_fitted = fit_vectors[index_min_rmse] - self.x_offset
-        self.P_fitted = np.array([(abs(z), cmath.phase(z)/cmath.pi*180) for z in self.Z_fitted])
-        print(f'RMSE: {self.min_rmse}\n', f'Normalised RMSE: {self.min_nrmse}\n')
-        print(f'Circuit: {self.circuit.circuit}\n')
-        self.isFitted = True
-        return
-
-    def generateGuess(self, circuit_string, f, x, y, min_idx, max_idx, r0, a, b, constants={}):
+    def _generateGuess(self, circuit_string, f, x, y, min_idx, max_idx, r0, a, b, constants={}):
         """
         Generate initial guesses from circuit string
         - circuit_string: string representation of circuit model
@@ -501,23 +260,154 @@ class ImpedanceSpectrum(object):
                 new_constants[k] = constants[k]
         return init_guess, new_constants
 
-    def getCircuitDiagram(self, verbose=True):
-        simplifiedCircuit = diagram.simplifyCircuit(self.circuit.circuit, verbose=verbose)
-        self.circuit_draw = diagram.drawCircuit(*simplifiedCircuit)
-        if verbose:
-            print(self.circuit_draw)
-            self.identifyComponents()
-        return self.circuit_draw
-
-    def identifyComponents(self):
-        """
-        Display values of circuit compenents
-        """
-        if not self.isFitted:
-            print("Circuit not yet fitted!")
-        else:
-            print(self.circuit)
+    def _readCircuit(self, circuit):
+        if len(circuit):
+            self.circuit = CustomCircuit()
+            self.circuit.load(circuit)
         return
+    
+    def _readData(self, data, instrument=''):
+        """
+        Read data and circuit model from file
+        - data: name of file with data or pd.DataFrame
+        - instrument: measurement instrument
+        """
+        if type(data) == str:
+            try:
+                frequency, impedance = preprocessing.readFile(data, instrument)
+                real, imag = impedance.real, impedance.imag
+                df = pd.DataFrame({'Frequency': frequency,'Real': real,'Imaginary': imag})
+            except Exception as e:
+                print('Unable to read/load data!')
+                print(e)
+                return
+        elif type(data) == pd.DataFrame:
+            df = data
+        else:
+            print('Please load dataframe or data filename!')
+            return
+        
+        if instrument.lower() == 'biologic_':
+            df['Impedance magnitude [ohm]'] = df['abs( Voltage ) [V]'] / df['abs( Current ) [A]']
+            
+            polar = list(zip(df['Impedance magnitude [ohm]'].to_list(), df['Impedance phase [rad]'].to_list()))
+            df['Real'] = [p[0]*math.cos(p[1]) for p in polar]
+            df['Imaginary'] = [p[0]*math.sin(p[1]) for p in polar]
+            
+            df = df[['Frequency [Hz]', 'Real', 'Imaginary']].copy()
+            df.columns = ['Frequency', 'Real', 'Imaginary']
+            df.dropna(inplace=True)
+            pass
+        
+        df['Frequency_log10'] = np.log10(df['Frequency'])
+        self.f = df['Frequency'].to_numpy()
+        self.Z = df['Real'].to_numpy() + 1j*df['Imaginary'].to_numpy()
+
+        df['Magnitude'] = np.array([abs(z) for z in self.Z])
+        df['Phase'] = np.array([cmath.phase(z)/cmath.pi*180 for z in self.Z])
+        self.P = np.array([*zip(df['Magnitude'].to_numpy(), df['Phase'].to_numpy())])
+        
+        self.data_df = df
+        return df
+
+    def fit(self, loadCircuit='', tryCircuits={}, constants={}):
+        """
+        Fits the data to an equivalent circuit
+        - loadCircuit: json filename of loaded circuit
+        - tryCircuits: dict of name, circuit string pairs to try fitting
+        - constants: components for which to be given fixed values;
+        """
+        frequencies, complex_Z = preprocessing.ignoreBelowX(self.f, self.Z)
+        circuits = []
+        fit_vectors = []
+        rmse_values = []
+        print(self.name)
+        stationary = self._analyse()
+        complex_Z = complex_Z + self.x_offset
+
+        def trim(f, Z, x, p=0.15):
+            """
+            Trim the 45-degree straight line to avoid overfit
+            - f: frequencies
+            - Z: complex impedances
+            - x: final minimum point from ImpedanceSpectrum._analyse
+            - p: proportion of data points to trim out
+
+            Return: trimmed frequencies, trimmed complex impedances
+            """
+            f_trim = [f[0]]
+            Z_trim = [Z[0]]
+            end_idx = len(f) - 1 - x # flip index
+            num_to_trim = int(p*len(f))
+            step = (end_idx) % num_to_trim
+            for i in range(len(f)):
+                if i % step or i >= end_idx:
+                    f_trim.append(f[i])
+                    Z_trim.append(Z[i])
+            f = np.array(f_trim)
+            Z = np.array(Z_trim)
+            return f, Z
+
+        if type(self.circuit) != type(None):
+            circuits = [self.circuit]
+        elif len(loadCircuit):
+            self.circuit = CustomCircuit()
+            self.circuit.load(loadCircuit)
+            circuits = [self.circuit]
+        else:
+            with open(TEST_JSON) as json_file:
+                test_circuits = json.load(json_file)
+                circuits_dict = {c['name']: c['string'] for c in test_circuits['standard']}
+                if len(test_circuits['custom']):
+                    for c in test_circuits['custom']:
+                        circuits_dict[c['name']] = c['string']
+            if len(tryCircuits):
+                circuits_dict = tryCircuits
+            circuits_dict = {k: (v, self._generateGuess(v, *stationary, constants)) for k, v in circuits_dict.items()}
+            circuits = [CustomCircuit(name=k, initial_guess=v[1][0], constants=v[1][1], circuit=v[0]) for k,v in circuits_dict.items()]
+
+        jac = None
+        weight_by_modulus = False
+        x_intercept_idx = stationary[3][-1]
+        frequencies_trim, complex_Z_trim = frequencies, complex_Z
+        if x_intercept_idx < (0.4*len(self.data_df)):
+            jac = '3-point'
+        elif x_intercept_idx < (0.45*len(self.data_df)):
+            frequencies_trim, complex_Z_trim = trim(frequencies, complex_Z, x_intercept_idx)
+            weight_by_modulus = True
+
+        for circuit in circuits:
+            # print(f'Trying {circuit.circuit}')
+            circuit.fit(
+                frequencies_trim, complex_Z_trim, 
+                weight_by_modulus=weight_by_modulus, 
+                jac=jac
+            )
+            fit_vector = circuit.predict(frequencies)
+            rmse_value = rmse(complex_Z, fit_vector)
+            fit_vectors.append(fit_vector)
+            rmse_values.append(rmse_value)
+
+        self.min_rmse = min(rmse_values)
+        self.min_nrmse = self.min_rmse / np.mean(abs(complex_Z))
+        index_min_rmse = np.argmin(np.array(rmse_values))
+        self.circuit = circuits[index_min_rmse]
+        self.Z_fitted = fit_vectors[index_min_rmse] - self.x_offset
+        self.P_fitted = np.array([(abs(z), cmath.phase(z)/cmath.pi*180) for z in self.Z_fitted])
+        print(f'RMSE: {self.min_rmse}\n', f'Normalised RMSE: {self.min_nrmse}\n')
+        print(f'Circuit: {self.circuit.circuit}\n')
+        self.isFitted = True
+        return
+
+    def getCircuitDiagram(self, verbose=True):
+        simplifiedCircuit = circuit_diagram.simplifyCircuit(self.circuit.circuit, verbose=verbose)
+        self.diagram = circuit_diagram.drawCircuit(*simplifiedCircuit)
+        if verbose and self.isFitted:
+            print(self.diagram)
+            print(self.circuit)
+        else:
+            print("Circuit not yet fitted!")
+        return self.diagram
 
     def plot(self, plot_type='nyquist', show_plot=True):
         """
@@ -525,7 +415,7 @@ class ImpedanceSpectrum(object):
         - plot_type: choice of either Nyquist or Bode plots
         Return: fig
         """
-        if plot_type.lower() == 'nyquist':
+        if plot_type.lower() == 'nyquist' or len(plot_type) == 0:
             return self.plotNyquist(show_plot)
         elif plot_type.lower() == 'bode':
             return self.plotBode(show_plot)
@@ -547,12 +437,12 @@ class ImpedanceSpectrum(object):
         big_fig.update_layout(title_text=f'{self.name} - Bode plot')
         for r, y_axis in enumerate(('Magnitude', 'Phase')):
             fig = px.scatter(
-                self.data, 'Frequency_log10', y_axis, color='Frequency_log10', title=self.name, color_continuous_scale='plasma'
+                self.data_df, 'Frequency_log10', y_axis, color='Frequency_log10', title=self.name, color_continuous_scale='plasma'
             )
             if self.isFitted:
                 y = np.array([p[r] for p in self.P_fitted])
                 fig.add_trace(go.Scatter(
-                    x=self.data['Frequency_log10'].to_numpy(),
+                    x=self.data_df['Frequency_log10'].to_numpy(),
                     y=y,
                     name=f'Fitted {y_axis}',
                     mode='lines',
@@ -586,7 +476,7 @@ class ImpedanceSpectrum(object):
         Return: fig
         """
         fig = px.scatter(
-            self.data, 'Real', 'Imaginary', color='Frequency_log10', title=f'{self.name} - Nyquist plot',
+            self.data_df, 'Real', 'Imaginary', color='Frequency_log10', title=f'{self.name} - Nyquist plot',
             hover_data={'Real': True, 'Imaginary': True, 'Frequency': True, 'Frequency_log10': False}
         )
         if self.isFitted:
@@ -612,41 +502,40 @@ class ImpedanceSpectrum(object):
         self.nyquist_plot = fig
         return fig
 
-    def readData(self, filename_data, instrument=None, filename_circuit=''):
-        """
-        Read data and circuit model from file
-        - filename_data: name of file with data
-        - instrument: measruement instrument 
-        - filename_circuit: name of json file with circuit model
-        """
-        try:
-            self.f, self.Z = preprocessing.readFile(filename_data, instrument)
-            if len(filename_circuit):
-                self.circuit = CustomCircuit()
-                self.circuit.load(filename_circuit)
-        except:
-            print('Unable to read/load data!')
+    def save(self, filename='', folder=''):
+        if len(filename) == 0:
+            filename = time.strftime('%Y%m%d_%H%M ') + self.name
+        if len(folder) == 0:
+            folder = 'data'
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        self.saveData(filename, folder)
+        self.saveCircuit(filename, folder)
+        self.savePlots(filename, folder)
         return
-    
+
     def saveCircuit(self, filename='', folder=''):
         """
         Save circuit model to file
         - filename: save name of file(s)
         """
-        json_filename = f'{folder}/{filename}.json'
-        self.circuit.save(json_filename)
-        with open(json_filename) as json_file:
-            circuit = json.load(json_file)
-        with open(json_filename, 'w', encoding='utf-8') as f:
-            json.dump(circuit, f, ensure_ascii=False, indent=4)
-        
-        self.getCircuitDiagram(verbose=False)
-        with open(f'{folder}/{filename}_circuit.txt', "w") as text_file:
-            print(filename, file=text_file)
-            print(self.circuit_draw, file=text_file)
-            print(f'RMSE: {self.min_rmse}', file=text_file)
-            print(f'Normalised RMSE: {self.min_nrmse}', file=text_file)
-            print(self.circuit, file=text_file)
+        try:
+            json_filename = f'{folder}/{filename}.json'
+            self.circuit.save(json_filename)
+            with open(json_filename) as json_file:
+                circuit = json.load(json_file)
+            with open(json_filename, 'w', encoding='utf-8') as f:
+                json.dump(circuit, f, ensure_ascii=False, indent=4)
+            
+            self.getCircuitDiagram(verbose=False)
+            with open(f'{folder}/{filename}_circuit.txt', "w") as text_file:
+                print(filename, file=text_file)
+                print(self.diagram, file=text_file)
+                print(f'RMSE: {self.min_rmse}', file=text_file)
+                print(f'Normalised RMSE: {self.min_nrmse}', file=text_file)
+                print(self.circuit, file=text_file)
+        except AttributeError:
+            print('Unable to save circuit model!')
         return
 
     def saveData(self, filename='', folder=''):
@@ -654,46 +543,24 @@ class ImpedanceSpectrum(object):
         Save data, circuit model, and plots to file
         - filename: save name of file(s)
         """
-        if len(filename) == 0:
-            filename = time.strftime('%Y%m%d_%H%M ') + self.name
-        if len(folder) == 0:
-            folder = 'data'
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-        preprocessing.saveCSV(f'{folder}/{filename}.csv', self.f, self.Z)
-        
         try:
             freq, _ = preprocessing.ignoreBelowX(self.f, self.Z)
+            preprocessing.saveCSV(f'{folder}/{filename}.csv', self.f, self.Z)
             preprocessing.saveCSV(f'{folder}/{filename}_fitted.csv', freq, self.Z_fitted)
         except ValueError:
             print('Unable to save fitted data!')
-        try:
-            self.saveCircuit(filename, folder)
-        except AttributeError:
-            print('Unable to save circuit model!')
-        try:
-            self.savePlot(filename, folder)
-        except AttributeError:
-            print('Unable to save plots!')
         return
 
-    def savePlot(self, filename='', folder=''):
+    def savePlots(self, filename='', folder=''):
         """
         Save plots to file
         - filename: save name of file(s)
         """
-        self.bode_plot.write_html(f'{folder}/{filename}_Bode.html')
-        self.nyquist_plot.write_html(f'{folder}/{filename}_Nyquist.html')
+        try:
+            self.bode_plot.write_html(f'{folder}/{filename}_Bode.html')
+            self.nyquist_plot.write_html(f'{folder}/{filename}_Nyquist.html')
+        except AttributeError:
+            print('Unable to save plots!')
         return
-
-
-# %%
-if __name__ == "__main__":
-    spectrum = ImpedanceSpectrum(filename_data='exampleData.csv', name='Example data')
-    spectrum.fit(global_opt=False)
-    n_plot = spectrum.plotNyquist()
-    b_plot = spectrum.plotBode()
-    spectrum.getCircuitDiagram()
-    pass
 
 # %%
