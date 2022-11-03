@@ -19,13 +19,13 @@ import easy_biologic.base_programs as base_programs
 
 # Local application imports
 from ....Analyse.Data.Types.eis_datatype import ImpedanceSpectrum
-from .. import Measurer
+from .. import ElectricalMeasurer
 print(f"Import: OK <{__name__}>")
 
 # INITIALIZING
 nest_asyncio.apply()
 
-class BioLogic(Measurer):
+class BioLogic(ElectricalMeasurer):
     def __init__(self, ip_address='192.109.209.128'):
         self.ip_address = ip_address
         self.inst = biologic_api.BiologicDevice(ip_address, populate_info=True)
@@ -36,6 +36,8 @@ class BioLogic(Measurer):
             'measured': False,
             'read': False
         }
+        
+        self._parameters = {}
         return
     
     def _mapColumnNames(self):
@@ -76,6 +78,7 @@ class BioLogic(Measurer):
             print(f'Select program from list: {program_list}')
             return
         self.program = program_class(self.inst, params, channels=channels, **kwargs)
+        self._parameters = params
         return
     
     def measure(self):
@@ -90,6 +93,9 @@ class BioLogic(Measurer):
         if self.flags['measured'] and self.flags['read']:
             self.data.plot(plot_type)
         return
+    
+    def recallParameters(self):
+        return self._parameters
     
     def reset(self):
         self.buffer_df = pd.DataFrame()
