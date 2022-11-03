@@ -18,14 +18,14 @@ import pyvisa as visa # pip install -U pyvisa
 
 # Local application imports
 from ....Analyse.Data.Types.scpi_datatype import SCPI
-from .. import Measurer
+from .. import ElectricalMeasurer
 print(f"Import: OK <{__name__}>")
 
 NUM_READINGS = 3
 BUFFER_SIZE = 100
 MAX_BUFFER_SIZE = 10000
 
-class Keithley(Measurer):
+class Keithley(ElectricalMeasurer):
     """
     Keithley class.
     
@@ -40,7 +40,9 @@ class Keithley(Measurer):
         self.data = None
         self.program = None # scpi
         self.flags = {
+            'measured': False,
             'parameters_set': False,
+            'read': False,
             'stop_measure': False
         }
         
@@ -51,6 +53,56 @@ class Keithley(Measurer):
         self._program_template = None
         return
 
+    def _readData(self, prompt, field_titles, average=False):
+        """
+        Read data output from Keithley.
+        
+        Args:
+            prompt (str): SCPI prompt for retrieving output
+            field_titles (list): list of parameters to read
+            average (bool): whether to calculate the average and standard deviation of multiple readings
+        """
+        outp = ''
+        try:
+            self.inst.write(prompt[0])
+            outp = None
+            while outp is None:
+                outp = self.inst.read()
+        except AttributeError as e:
+            print(e)
+        data = np.reshape(np.array(outp.split(','), dtype=np.float64), (-1,len(field_titles)))
+        if average:
+            avg = np.mean(data, axis=0)
+            std = np.std(data, axis=0)
+            data = np.concatenate([avg, std])
+            field_titles = field_titles + [c+'_std' for c in field_titles]
+            data = np.reshape(data, (-1,len(field_titles)))
+        df = pd.DataFrame(data, columns=field_titles, dtype=np.float64)
+        self.buffer_df = pd.concat([self.buffer_df, df], ignore_index=True)
+        return
+    
+    def _run_program(self, field_titles=[], values=[], average=False, wait=0):
+        self.reset()
+        prompts = self.program.getPrompts()
+        self.sendMessage(prompts['settings'])
+        
+        if len(values):
+            for value in values:
+                if self.flags['stop_measure']:
+                    break
+                prompt = [l.format(value=value) for l in prompts['inputs']]
+                self.sendMessage(prompt)
+                time.sleep(wait)
+                self._readData(prompts['outputs'], field_titles=field_titles, average=average)
+        else:
+            self.sendMessage(prompts['inputs'])
+            time.sleep(wait)
+            self._readData(prompts['outputs'], field_titles=field_titles, average=average)
+
+        self.sendMessage(['OUTP OFF'])
+        self.reset()
+        return
+    
     def connect(self, ip_address):
         """
         Establish connection with Keithley.
@@ -76,6 +128,13 @@ class Keithley(Measurer):
             print("Unable to connect to Keithley!")
             print(e)
         return inst
+    
+    def getData(self, datatype):
+        if not self.flags['read']:
+            self._readData()
+        if self.flags['read']:
+            self.data = datatype(data=self.buffer_df, instrument='keithley_')
+        return self.buffer_df
 
     def loadProgram(self, program, params={}):
         """
@@ -88,6 +147,7 @@ class Keithley(Measurer):
         Returns:
             list: SCPI prompts for settings, inputs, and outputs
         """
+        program_list = ['OCV', 'IV_Scan']
         if type(program) == str:
             if program.endswith('.txt'):
                 program = pkgutil.get_data(__name__, program).decode('utf-8')
@@ -105,104 +165,64 @@ class Keithley(Measurer):
             self.setParameters(params)
         return
     
-    def logData(self, columns, average=False):
+    def logData(self, field_titles, average=False, timestep=1):
         """
         Logs data output as well as timestamp.
         
         Args:
-            columns (list): list of parameters to read and log
+            field_titles (list): list of parameters to read and log
             average  (bool): whether to calculate the average and standard deviation of multiple readings
+            timestep (int/float): time step between each reading [s]
         """
-        start_time = time.time()
         while not self.flags['stop_measure'] and len(self.buffer_df) < MAX_BUFFER_SIZE:
-            recv_msg = ['TRAC:TRIG "defbuffer1"', 'FETCH? "defbuffer1", READ, REL']
-            self.readData(recv_msg, columns, average=average, cache=True)
-            time.sleep(1)
+            prompt = ['TRAC:TRIG "defbuffer1"', 'FETCH? "defbuffer1", READ, REL']
+            self._readData(prompt, field_titles, average=average, cache=True)
+            time.sleep(timestep)
         return
 
-    def measure(self, columns=[], values=[], iterate=False, average=False, cache=False, pause=0, reset=False):
+    def measure(self, field_titles=[], values=[], average=False, wait=0):
         """
         Perform the desired measurement.
         
         Args:
-            columns (list): list of parameters to read
+            field_titles (list): list of parameters to read
             values (list): list of values to iterate through
-            iterate (bool): whether an iterative reading process is required
             average (bool): whether to calculate the average and standard deviation of multiple readings
-            cache (bool): whetehr to save the measurements in a buffer dataframe
-            pause (int/float): duration in seconds to wait before sending output prompt
-            reset (bool): whether to reset Keithley before performing measurement
+            wait (int/float): duration to wait before sending output prompt [s]
             
         Returns:
             pandas.DataFrame: dataframe of measurements
         """
-        if reset:
-            self.reset()
-        settings, send_msg, recv_msg = self.program.parse()
-        send_scpi = SCPI(scpi_list=[send_msg])
+        self.flags['stop_measure'] = False
+        self._run_program(field_titles, values, average, wait)
+        self.flags['measured'] = True
+        self.plot()
+        return
 
-        df = pd.DataFrame()
-        self.sendMessage(settings)
-        if iterate:
-            for value in values:
-                if self.flags['stop_measure']:
-                    break
-                send_value_scpi = SCPI(send_scpi.replace(value=value))
-                self.sendMessage(send_value_scpi.parse())
-                time.sleep(pause)
-                self.readData(recv_msg, columns=columns, average=average, cache=True)
-            df = self.buffer_df
-        else:
-            self.sendMessage(send_msg)
-            time.sleep(pause)
-            df = self.readData(recv_msg, columns=columns, average=average, cache=cache)
-
-        self.sendMessage(['OUTP OFF'])
-        return df
-
-    def readData(self, recv_msg, columns, average=False, cache=False):
-        """
-        Read data output from Keithley.
-        
-        Args:
-            recv_msg (str): SCPI prompt for retrieving output
-            columns (list): list of parameters to read
-            average (bool): whether to calculate the average and standard deviation of multiple readings
-            cache (bool): whetehr to save the measurements in a buffer dataframe
-            
-        Returns:
-            pandas.DataFrame: dataframe of readings
-        """
-        outp = ''
-        try:
-            self.inst.write(recv_msg[0])
-            outp = None
-            while outp is None:
-                outp = self.inst.read()
-        except AttributeError as e:
-            print(e)
-        data = np.reshape(np.array(outp.split(','), dtype=np.float64), (-1,len(columns)))
-        if average:
-            avg = np.mean(data, axis=0)
-            std = np.std(data, axis=0)
-            data = np.concatenate([avg, std])
-            columns = columns + [c+'_std' for c in columns]
-            data = np.reshape(data, (-1,len(columns)))
-        df = pd.DataFrame(data, columns=columns, dtype=np.float64)
-        if cache:
-            self.buffer_df = pd.concat([self.buffer_df, df], ignore_index=True)
-        return df
+    def plot(self, plot_type=''):
+        if self.flags['measured'] and self.flags['read']:
+            self.data.plot(plot_type)
+        return
 
     def recallParameters(self):
         return self._parameters
 
-    def reset(self):
+    def reset(self, full=False):
         """Reset the Keithley."""
         self.sendMessage(['*RST'])
-        self.buffer_df = pd.DataFrame()
-        self.data = None
-        self.program = None
-        self.flags['stop_measure'] = False
+        if full:
+            self.buffer_df = pd.DataFrame()
+            self.data = None
+            self.program = None
+            for key in self.flags.keys():
+                self.flags[key] = False
+        return
+
+    def saveData(self, filename):
+        if not self.flags['read']:
+            self._readData()
+        if self.flags['read']:
+            self.buffer_df.to_csv(filename)
         return
 
     def sendMessage(self, lines=[]):
@@ -214,15 +234,16 @@ class Keithley(Measurer):
         """
         try:
             for line in lines:
-                if '<' in line or '>' in line:
+                if '{' in line or '}' in line:
                     continue
                 self.inst.write(line)
         except AttributeError as e:
             print(e)
-            pass
         return
     
     def setParameters(self, params={}):
+        if len(params) == 0:
+            raise Exception('Please input parameters.')
         this_program = None
         this_program = SCPI(self._program_template.replace(**params))
         self.flags['parameters_set'] = True
