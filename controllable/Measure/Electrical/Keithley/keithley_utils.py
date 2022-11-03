@@ -105,31 +105,6 @@ class Keithley(Measurer):
             self.setParameters(params)
         return
     
-    def getSCPI(self, filename='', string='', **kwargs):
-        """
-        Retrieves the SCPI commands from either a file or text string, and replaces placeholder variables. 
-        
-        Args:
-            filename (str): filename of txt file where SCPI commands are saved
-            string (str): text string of SCPI commands
-            
-        Returns:
-            list: SCPI prompts for settings, inputs, and outputs
-        """
-        if len(filename):
-            self.program = SCPI(filename)
-        elif len(string) == 0:
-            print('Please input either filename or SCPI instruction string!')
-            return []
-        else:
-            self.program = SCPI(string)
-        
-        self.program.replace(inplace=True, **kwargs)
-        if self.program.string.count('###') != 2:
-            print('Check SCPI input! Please use only 2 "###" dividers.')
-            return []
-        return self.program.parse()
-
     def logData(self, columns, average=False):
         """
         Logs data output as well as timestamp.
