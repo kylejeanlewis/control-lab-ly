@@ -17,15 +17,15 @@ import time
 import pyvisa as visa # pip install -U pyvisa
 
 # Local application imports
-from ....Analyse.Data.Types.scpi_datatype import SCPI
 from .. import ElectricalMeasurer
+from .programs import base_programs
 print(f"Import: OK <{__name__}>")
 
 NUM_READINGS = 3
 BUFFER_SIZE = 100
 MAX_BUFFER_SIZE = 10000
 
-class Device(object):
+class KeithleyDevice(object):
     def __init__(self, ip_address):
         self.ip_address = ip_address
         self.inst = None
@@ -38,9 +38,6 @@ class Device(object):
         
         Args:
             ip_address (str/int): IP address of Keithley
-
-        Returns: 
-            pyvisa.Resource: Keithley instance
         """
         print("Setting up Keithley comms...")
         if len(ip_address) == 0:
@@ -115,7 +112,7 @@ class Keithley(ElectricalMeasurer):
     """
     def __init__(self, ip_address='192.168.1.125', name=''):
         self.ip_address = ip_address
-        self.inst = Device(ip_address)
+        self.inst = KeithleyDevice(ip_address)
         self.buffer_df = pd.DataFrame()
         self.data = None
         self.program = None
@@ -133,7 +130,7 @@ class Keithley(ElectricalMeasurer):
         self._program_template = None
         return
 
-    def _readData(self, prompt, field_titles, average=False):
+    def _readData(self):
         """
         Read data output from Keithley.
         
@@ -142,31 +139,16 @@ class Keithley(ElectricalMeasurer):
             field_titles (list): list of parameters to read
             average (bool): whether to calculate the average and standard deviation of multiple readings
         """
-        df = self.inst._read(prompt, field_titles, average)
-        self.buffer_df = pd.concat([self.buffer_df, df], ignore_index=True)
+        try:
+            self.buffer_df = self.program.data_df
+            if len(self.program.data[0]):
+                self.flags['read'] = True
+            else:
+                print("No data found.")
+        except AttributeError:
+            print("Please load a program first.")
         return
-    
-    def _run_program(self, field_titles=[], values=[], average=False, wait=0):
-        self.reset()
-        prompts = self.program.getPrompts()
-        self.sendMessage(prompts['settings'])
         
-        if len(values):
-            for value in values:
-                if self.flags['stop_measure']:
-                    break
-                prompt = [l.format(value=value) for l in prompts['inputs']]
-                self.sendMessage(prompt)
-                time.sleep(wait)
-                self._readData(prompts['outputs'], field_titles=field_titles, average=average)
-        else:
-            self.sendMessage(prompts['inputs'])
-            time.sleep(wait)
-            self._readData(prompts['outputs'], field_titles=field_titles, average=average)
-
-        self.sendMessage(['OUTP OFF'])
-        return
-    
     def connect(self):
         return self.inst._connect()
     
@@ -188,22 +170,13 @@ class Keithley(ElectricalMeasurer):
         Returns:
             list: SCPI prompts for settings, inputs, and outputs
         """
-        program_list = ['OCV', 'IV', 'LSV', 'Hysteresis']
-        if type(program) == str:
-            if program.endswith('.txt'):
-                program = pkgutil.get_data(__name__, program).decode('utf-8')
-            program = SCPI(program)
-        elif 'SCPI' in str(type(program)):
-            pass
+        program_list = ['OCV', 'IV_Scan', 'LSV', 'SweepV']
+        if program in program_list:
+            program_class = getattr(base_programs, program)
         else:
-            print('Please input either filename or SCPI instruction string!')
+            print(f'Select program from list: {program_list}')
             return
-        
-        if program.string.count('###') != 2:
-            raise Exception('Check SCPI input! Please use exact 2 "###" dividers to separate settings, inputs, and outputs.')
-        self._program_template = program
-        if len(params):
-            self.setParameters(params)
+        self.program = program_class(self.inst, params)
         return
     
     def logData(self, field_titles, average=False, timestep=1):
@@ -221,7 +194,7 @@ class Keithley(ElectricalMeasurer):
             time.sleep(timestep)
         return
 
-    def measure(self, field_titles=[], values=[], average=False, wait=0):
+    def measure(self):
         """
         Perform the desired measurement.
         
@@ -235,8 +208,10 @@ class Keithley(ElectricalMeasurer):
             pandas.DataFrame: dataframe of measurements
         """
         self.flags['stop_measure'] = False
-        self._run_program(field_titles, values, average, wait)
-        self.flags['measured'] = True
+        self.program.run()
+        self._readData()
+        if len(self.buffer_df):
+            self.flags['measured'] = True
         self.plot()
         return
 
@@ -246,7 +221,9 @@ class Keithley(ElectricalMeasurer):
         return
 
     def recallParameters(self):
-        return self._parameters
+        if not self.flags['parameters_set']:
+            raise Exception("Please load a program first.")
+        return self.program.parameters
 
     def reset(self, full=False):
         """Reset the Keithley."""
@@ -276,13 +253,15 @@ class Keithley(ElectricalMeasurer):
         return self.inst._write(lines)
     
     def setParameters(self, params={}):
-        if len(params) == 0:
-            raise Exception('Please input parameters.')
-        this_program = SCPI(self._program_template.replace(**params))
-        self.flags['parameters_set'] = True
-        self.program = this_program
-        self._parameters = params
-        return
+        attr = dict(
+            buff_name=self._buffer,
+            buff_size=self._buffer_size,
+            count=self._num_readings
+        )
+        for k,v in attr.items():
+            if f'{k}' in self.program.scpi.string and k not in params.keys():
+                params[k] = v
+        return self.program.setParameters(params)
 
 
 class KeithleyTwo(object):
