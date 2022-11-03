@@ -69,7 +69,6 @@ class BioLogic(Measurer):
         return self.buffer_df
     
     def loadProgram(self, program='', params={}, channels=[0], **kwargs):
-        program = program.upper()
         program_list = ['OCV', 'CA', 'CP', 'CALimit', 'PEIS', 'GEIS','JV_Scan', 'MPP', 'MPP_Tracking', 'MPP_Cycles']
         if program in program_list:
             program_class = getattr(base_programs, program)
