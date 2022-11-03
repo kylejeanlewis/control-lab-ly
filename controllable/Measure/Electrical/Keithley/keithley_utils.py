@@ -25,35 +25,43 @@ NUM_READINGS = 3
 BUFFER_SIZE = 100
 MAX_BUFFER_SIZE = 10000
 
-class Keithley(ElectricalMeasurer):
-    """
-    Keithley class.
-    
-    Args:
-        ip_address (str/int): IP address of Keithley
-        name (str): nickname for Keithley
-    """
-    def __init__(self, ip_address='192.168.1.125', name=''):
+class Device(object):
+    def __init__(self, ip_address):
         self.ip_address = ip_address
-        self.inst = self.connect(ip_address)
-        self.buffer_df = pd.DataFrame()
-        self.data = None
-        self.program = None # scpi
-        self.flags = {
-            'measured': False,
-            'parameters_set': False,
-            'read': False,
-            'stop_measure': False
-        }
-        
-        self._buffer = f'{name}data'
-        self._buffer_size = BUFFER_SIZE
-        self._num_readings = NUM_READINGS
-        self._parameters = {}
-        self._program_template = None
+        self.inst = None
+        self._connect(ip_address)
         return
+        
+    def _connect(self, ip_address=''):
+        """
+        Establish connection with Keithley.
+        
+        Args:
+            ip_address (str/int): IP address of Keithley
 
-    def _readData(self, prompt, field_titles, average=False):
+        Returns: 
+            pyvisa.Resource: Keithley instance
+        """
+        print("Setting up Keithley comms...")
+        if len(ip_address) == 0:
+            ip_address = self.ip_address
+        inst = None
+        try:
+            rm = visa.ResourceManager('@py')
+            inst = rm.open_resource(f"TCPIP0::{ip_address}::5025::SOCKET")
+
+            inst.write_termination = '\n'
+            inst.read_termination = '\n'
+            inst.write('SYST:BEEP 500, 1')
+            inst.query('*IDN?')
+            self.inst = inst
+            print(f"{self.name.title()} Keithley ready")
+        except Exception as e:
+            print("Unable to connect to Keithley!")
+            print(e) 
+        return
+    
+    def _read(self, prompt, field_titles, average=False):
         """
         Read data output from Keithley.
         
@@ -78,6 +86,63 @@ class Keithley(ElectricalMeasurer):
             field_titles = field_titles + [c+'_std' for c in field_titles]
             data = np.reshape(data, (-1,len(field_titles)))
         df = pd.DataFrame(data, columns=field_titles, dtype=np.float64)
+        return df
+    
+    def _write(self, lines=[]):
+        """
+        Relay parameters to Keithley.
+        
+        Args:
+            params (list): list of parameters to write to Keithley
+        """
+        try:
+            for line in lines:
+                if '{' in line or '}' in line:
+                    continue
+                self.inst.write(line)
+        except AttributeError as e:
+            print(e)
+        return
+
+
+class Keithley(ElectricalMeasurer):
+    """
+    Keithley class.
+    
+    Args:
+        ip_address (str/int): IP address of Keithley
+        name (str): nickname for Keithley
+    """
+    def __init__(self, ip_address='192.168.1.125', name=''):
+        self.ip_address = ip_address
+        self.inst = Device(ip_address)
+        self.buffer_df = pd.DataFrame()
+        self.data = None
+        self.program = None
+        self.flags = {
+            'measured': False,
+            'parameters_set': False,
+            'read': False,
+            'stop_measure': False
+        }
+        
+        self._buffer = f'{name}data'
+        self._buffer_size = BUFFER_SIZE
+        self._num_readings = NUM_READINGS
+        self._parameters = {}
+        self._program_template = None
+        return
+
+    def _readData(self, prompt, field_titles, average=False):
+        """
+        Read data output from Keithley.
+        
+        Args:
+            prompt (str): SCPI prompt for retrieving output
+            field_titles (list): list of parameters to read
+            average (bool): whether to calculate the average and standard deviation of multiple readings
+        """
+        df = self.inst._read(prompt, field_titles, average)
         self.buffer_df = pd.concat([self.buffer_df, df], ignore_index=True)
         return
     
@@ -100,34 +165,10 @@ class Keithley(ElectricalMeasurer):
             self._readData(prompts['outputs'], field_titles=field_titles, average=average)
 
         self.sendMessage(['OUTP OFF'])
-        self.reset()
         return
     
-    def connect(self, ip_address):
-        """
-        Establish connection with Keithley.
-        
-        Args:
-            ip_address (str/int): IP address of Keithley
-
-        Returns: 
-            pyvisa.Resource: Keithley instance
-        """
-        print("Setting up Keithley comms...")
-        inst = None
-        try:
-            rm = visa.ResourceManager('@py')
-            inst = rm.open_resource(f"TCPIP0::{ip_address}::5025::SOCKET")
-
-            inst.write_termination = '\n'
-            inst.read_termination = '\n'
-            inst.write('SYST:BEEP 500, 1')
-            inst.query('*IDN?')
-            print(f"{self.name.title()} Keithley ready")
-        except Exception as e:
-            print("Unable to connect to Keithley!")
-            print(e)
-        return inst
+    def connect(self):
+        return self.inst._connect()
     
     def getData(self, datatype):
         if not self.flags['read']:
@@ -147,7 +188,7 @@ class Keithley(ElectricalMeasurer):
         Returns:
             list: SCPI prompts for settings, inputs, and outputs
         """
-        program_list = ['OCV', 'IV_Scan']
+        program_list = ['OCV', 'IV', 'LSV', 'Hysteresis']
         if type(program) == str:
             if program.endswith('.txt'):
                 program = pkgutil.get_data(__name__, program).decode('utf-8')
@@ -232,22 +273,18 @@ class Keithley(ElectricalMeasurer):
         Args:
             params (list): list of parameters to write to Keithley
         """
-        try:
-            for line in lines:
-                if '{' in line or '}' in line:
-                    continue
-                self.inst.write(line)
-        except AttributeError as e:
-            print(e)
-        return
+        return self.inst._write(lines)
     
     def setParameters(self, params={}):
         if len(params) == 0:
             raise Exception('Please input parameters.')
-        this_program = None
         this_program = SCPI(self._program_template.replace(**params))
         self.flags['parameters_set'] = True
         self.program = this_program
         self._parameters = params
         return
 
+
+class KeithleyTwo(object):
+    def __init__(self) -> None:
+        pass
