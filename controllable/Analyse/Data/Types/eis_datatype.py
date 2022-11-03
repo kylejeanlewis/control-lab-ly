@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
+import pkgutil
 from scipy.signal import argrelextrema
 import time
 
@@ -31,8 +32,6 @@ from plotly.subplots import make_subplots
 # Local application imports
 from .circuit_datatype import circuit_diagram
 print(f"Import: OK <{__name__}>")
-
-TEST_JSON = 'eis_tests.json'
 
 class ImpedanceSpectrum(object):
     """
@@ -355,12 +354,12 @@ class ImpedanceSpectrum(object):
             self.circuit.load(loadCircuit)
             circuits = [self.circuit]
         else:
-            with open(TEST_JSON) as json_file:
-                test_circuits = json.load(json_file)
-                circuits_dict = {c['name']: c['string'] for c in test_circuits['standard']}
-                if len(test_circuits['custom']):
-                    for c in test_circuits['custom']:
-                        circuits_dict[c['name']] = c['string']
+            json_string = pkgutil.get_data(__name__, 'eis_tests.json').decode('utf-8')
+            test_circuits = json.loads(json_string)
+            circuits_dict = {c['name']: c['string'] for c in test_circuits['standard']}
+            if len(test_circuits['custom']):
+                for c in test_circuits['custom']:
+                    circuits_dict[c['name']] = c['string']
             if len(tryCircuits):
                 circuits_dict = tryCircuits
             circuits_dict = {k: (v, self._generateGuess(v, *stationary, constants)) for k, v in circuits_dict.items()}
