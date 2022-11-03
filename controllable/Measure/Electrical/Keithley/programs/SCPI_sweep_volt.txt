@@ -1,0 +1,23 @@
+*RST
+ROUT:TERM FRONT
+OUTP:SMOD HIMP
+
+SOUR:FUNC VOLT
+SOUR:VOLT:RANG 20
+SOUR:VOLT:ILIM 1
+
+SENS:FUNC "CURR"
+SENS:CURR:RANG:AUTO ON
+SENS:CURR:RSEN OFF
+SENS:COUN <count>
+
+TRAC:MAKE "<buff_name>", <buff_size>
+SYST:BEEP 440, 1
+
+###
+SOUR:SWE:VOLT:LIN <voltages>, <dwell_time>, 1, BEST, OFF, ON
+INIT
+*WAI
+
+###
+TRAC:DATA? 1, <num_points>, "defbuffer1", SOUR, READ, REL

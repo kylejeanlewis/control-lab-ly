@@ -1,0 +1,24 @@
+*RST
+ROUT:TERM FRONT
+
+SOUR:FUNC VOLT
+SOUR:VOLT:RANG 200
+SOUR:VOLT:ILIM 0.01
+
+SENS:FUNC "CURR"
+SENS:CURR:RSEN OFF
+SENS:CURR:RANG 10E-6
+SENS:CURR:UNIT AMP
+SENS:COUN <count>
+
+TRAC:MAKE "<buff_name>", <buff_size>
+SYST:BEEP 440, 1
+
+###
+SOUR:VOLT <value>
+TRAC:CLE "<buff_name>"
+OUTP ON
+TRAC:TRIG "<buff_name>"
+
+###
+TRAC:DATA? 1, <count>, "<buff_name>", SOUR, READ
