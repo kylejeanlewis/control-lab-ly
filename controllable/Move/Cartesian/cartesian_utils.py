@@ -11,7 +11,6 @@ import numpy as np
 
 # Third party imports
 import serial # pip install pyserial
-import serial.tools.list_ports
 
 # Local application imports
 from .. import Mover
