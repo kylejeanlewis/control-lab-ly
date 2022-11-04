@@ -173,7 +173,7 @@ class Keithley(ElectricalMeasurer):
         if program in base_programs.PROGRAM_LIST:
             program_class = getattr(base_programs, program)
         else:
-            print(f'Select program from list: {base_programs.PROGRAM_LIST}')
+            print(f"Select program from list: {', '.join(base_programs.PROGRAM_LIST)}")
             return
         self.program = program_class(self.inst, params)
         return

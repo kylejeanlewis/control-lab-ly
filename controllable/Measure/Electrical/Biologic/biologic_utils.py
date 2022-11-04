@@ -78,7 +78,7 @@ class BioLogic(ElectricalMeasurer):
         if program in program_list:
             program_class = getattr(base_programs, program)
         else:
-            print(f'Select program from list: {program_list}')
+            print(f"Select program from list: {', '.join(program_list)}")
             return
         self.program = program_class(self.inst, params, channels=channels, **kwargs)
         self._parameters = params
