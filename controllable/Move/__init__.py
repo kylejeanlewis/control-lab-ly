@@ -179,3 +179,4 @@ class Mover(object):
 
 from . import Cartesian
 from . import Jointed
+from . import Liquid
