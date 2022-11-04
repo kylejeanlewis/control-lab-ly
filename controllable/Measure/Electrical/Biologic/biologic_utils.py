@@ -63,11 +63,14 @@ class BioLogic(ElectricalMeasurer):
     def connect(self):
         return self.inst.connect()
     
-    def getData(self, datatype):
+    def getData(self, datatype=None):
         if not self.flags['read']:
             self._readData()
         if self.flags['read']:
-            self.data = datatype(data=self.buffer_df, instrument='biologic_')
+            try:
+                self.data = datatype(data=self.buffer_df, instrument='biologic_')
+            except Exception as e:
+                print(e)
         return self.buffer_df
     
     def loadProgram(self, program='', params={}, channels=[0], **kwargs):
