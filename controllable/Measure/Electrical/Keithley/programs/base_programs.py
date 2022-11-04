@@ -15,6 +15,9 @@ import time
 from .....Analyse.Data.Types.scpi_datatype import SCPI
 print(f"Import: OK <{__name__}>")
 
+MAX_BUFFER_SIZE = 10000
+PROGRAM_LIST = ['IV_Scan', 'Logging', 'LSV', 'OCV', 'SweepV']
+
 class Program(object):
     def __init__(self, device, params={}):
         self.data_df = pd.DataFrame()
@@ -22,6 +25,10 @@ class Program(object):
         self.parameters = params
         self.scpi = None
         self.sub_program = {}
+        self.flags = {
+            'parameters_set': False,
+            'stop_measure': False,
+        }
         
         self._program_template = None
         pass
@@ -54,8 +61,8 @@ class Program(object):
         
         if len(values):
             for value in values:
-                # if self.flags['stop_measure']:
-                #     break
+                if self.flags['stop_measure']:
+                    break
                 prompt = [l.format(value=value) for l in prompts['inputs']]
                 self.device._write(prompt)
                 time.sleep(wait)
@@ -75,12 +82,13 @@ class Program(object):
             raise Exception('Please input parameters.')
         this_program = None
         this_program = SCPI(self._program_template.replace(**params))
-        # self.flags['parameters_set'] = True
+        self.flags['parameters_set'] = True
         self.scpi = this_program
         self.parameters = params
         return
 
 
+### Single programs
 class IV_Scan(Program):
     def __init__(self, device, params={}):
         super().__init__(device, params)
@@ -89,6 +97,19 @@ class IV_Scan(Program):
     
     def run(self, values):
         return super().run(field_titles=['I', 'V'], values=values, average=True)
+
+
+class Logging(Program):
+    def __init__(self, device, params={}):
+        super().__init__(device, params)
+
+    def run(self, field_titles, average=False, timestep=1):
+        while not self.flags['stop_measure'] and len(self.data_df) < MAX_BUFFER_SIZE:
+            prompt = ['TRAC:TRIG "defbuffer1"', 'FETCH? "defbuffer1", READ, REL']
+            df = self.device._read(prompt, field_titles, average=average)
+            self.data_df = pd.concat([self.data_df, df], ignore_index=True)
+            time.sleep(timestep)
+        return self.data_df
 
 
 class OCV(Program):
@@ -112,6 +133,7 @@ class SweepV(Program):
         return super().run(field_titles=['V', 'I', 't'], wait=wait)
 
 
+### Compound programs
 class LSV(Program):
     def __init__(self, device, params={}):
         super().__init__(device, params)
