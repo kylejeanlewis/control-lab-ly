@@ -19,8 +19,8 @@ class Primitiv(CNC):
     - port: serial port of cnc Arduino
     - xyz_bounds: range of motion of tool
     """
-    def __init__(self, port, xyz_bounds=[(-410,-290,-120), (0,0,0)], Z_safe=-80, Z_updown=(-94,-104), verbose=False, **kwargs):
-        super().__init__(xyz_bounds, Z_safe, verbose, **kwargs)
+    def __init__(self, port, xyz_bounds=[(-410,-290,-120), (0,0,0)], Z_safe=-80, Z_updown=(-94,-104), **kwargs):
+        super().__init__(xyz_bounds, Z_safe, **kwargs)
         self.Z_up, self.Z_down = Z_updown
         self.selected_position = ''
         
