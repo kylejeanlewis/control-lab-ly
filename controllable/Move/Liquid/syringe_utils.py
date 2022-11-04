@@ -127,7 +127,7 @@ class Pump(object):
 
 
 class Syringe(object):
-    def __init__(self, capacity, channel, offset, priming_time=PRIMING_TIME):
+    def __init__(self, capacity, channel, offset=(0,0,0), priming_time=PRIMING_TIME):
         self.capacity = capacity
         self.channel = channel
         self.offset = offset
@@ -159,10 +159,10 @@ class SyringeAssembly(LiquidHandler):
     def __init__(self, port, capacities=[], channels=[], offsets=[], **kwargs):
         self.pump = Pump(port)
         properties = list(zip(capacities, channels, offsets))
-        self.syringes = {chn: Syringe(cap, chn, off) for cap,chn,off in properties}
+        self.channels = {chn: Syringe(cap, chn, off) for cap,chn,off in properties}
         return
 
-    def aspirate(self, channel, reagent, vol, speed=DEFAULT_SPEED, wait=1):
+    def aspirate(self, channel, reagent, vol, speed=DEFAULT_SPEED, wait=1, pause=False):
         '''
         Adjust the valve and aspirate reagent
         - vol: volume
@@ -171,7 +171,7 @@ class SyringeAssembly(LiquidHandler):
         Returns: None
         '''
         self.pump.flags['busy'] = True
-        syringe = self.syringes[channel]
+        syringe = self.channels[channel]
         vol = min(vol, syringe.capacity - syringe.volume)
 
         if vol != 0:
@@ -195,6 +195,8 @@ class SyringeAssembly(LiquidHandler):
         
         time.sleep(wait)
         # log_now(f'Syringe {self.order}: done', save=log)
+        if pause:
+            input("Press 'Enter to proceed.")
         self.pump.flags['busy'] = False
         return
 
@@ -203,7 +205,7 @@ class SyringeAssembly(LiquidHandler):
         self.dispense(channel, vol, speed=speed, wait=wait, force_dispense=True)
         return
 
-    def dispense(self, channel, vol, speed=DEFAULT_SPEED, wait=1, force_dispense=False):
+    def dispense(self, channel, vol, speed=DEFAULT_SPEED, wait=1, pause=False, force_dispense=False):
         '''
         Adjust the valve and dispense reagent
         - vol: volume
@@ -213,7 +215,7 @@ class SyringeAssembly(LiquidHandler):
         Returns: None
         '''
         self.pump.flags['busy'] = True
-        syringe = self.syringes[channel]
+        syringe = self.channels[channel]
         if force_dispense:
             vol = min(vol, syringe.volume)
         elif vol > syringe.volume:
@@ -243,20 +245,29 @@ class SyringeAssembly(LiquidHandler):
         
         time.sleep(wait)
         # log_now(f'Syringe {self.order}: done', save=log)
+        if pause:
+            input("Press 'Enter to proceed.")
         self.pump.flags['busy'] = False
         return
 
-    def empty(self, channel):
+    def empty(self, channel, wait=1, pause=False):
         '''
         Adjust the valve and empty syringe
 
         Returns: None
         '''
-        syringe = self.syringes[channel]
-        self.dispense(channel, syringe.capacity, force_dispense=True)
+        syringe = self.channels[channel]
+        self.dispense(channel, syringe.capacity, wait=wait, pause=pause, force_dispense=True)
+        return
+    
+    def emptyAll(self, channels=[], wait=1, pause=False):
+        if len(channels) == 0:
+            channels = list(self.channels.keys())
+        for channel in channels:
+            self.empty(channel, wait, pause)
         return
 
-    def fill(self, channel, reagent, prewet=True):
+    def fill(self, channel, reagent, prewet=True, wait=1, pause=False):
         '''
         Adjust the valve and fill syringe with reagent
         - reagent: reagent to be filled in syringe
@@ -264,7 +275,7 @@ class SyringeAssembly(LiquidHandler):
 
         Returns: None
         '''
-        syringe = self.syringes[channel]
+        syringe = self.channels[channel]
         vol = syringe.capacity - syringe.volume
 
         if prewet:
@@ -276,17 +287,33 @@ class SyringeAssembly(LiquidHandler):
                     self.cycle(channel, vol=200)
             # log_now(f'Syringe {self.order}: done')
 
-        self.aspirate(channel, reagent, vol)
+        self.aspirate(channel, reagent, vol, wait=wait, pause=pause)
+        return
+    
+    def fillAll(self, channels=[], reagents=[], prewet=True, wait=1, pause=False):
+        if len(channels) == 0:
+            channels = list(self.channels.keys())
+        if len(reagents) != len(channels):
+            raise Exception("Please input the same number of channels and reagents.")
+        for channel,reagent in zip(channels, reagents):
+            self.fill(channel, reagent, prewet, wait, pause)
         return
 
     def isBusy(self):
         return self.pump.flags['busy']
 
     def prime(self, channel):
-        syringe = self.syringes[channel]
+        syringe = self.channels[channel]
         self.pump.flags['busy'] = True
         self.pump.dispense(-300, syringe._priming_time, 0, channel)
         self.pump.flags['busy'] = False
+        return
+    
+    def primeAll(self, channels=[]):
+        if len(channels) == 0:
+            channels = list(self.channels.keys())
+        for channel in channels:
+            self.prime(channel)
         return
     
     def rinse(self, channel, rinse_cycles=3):
@@ -296,5 +323,12 @@ class SyringeAssembly(LiquidHandler):
         # log_now(f'Syringe {self.order}: done')
         return
     
+    def rinseAll(self, channels=[], rinse_cycles=3):
+        if len(channels) == 0:
+            channels = list(self.channels.keys())
+        for channel in channels:
+            self.rinse(channel, rinse_cycles)
+        return
+    
     def update(self, channel, field, value):
-        return  self.syringes[channel].update(field, value)
+        return  self.channels[channel].update(field, value)
