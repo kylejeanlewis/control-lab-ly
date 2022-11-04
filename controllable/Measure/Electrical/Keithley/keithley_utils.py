@@ -10,7 +10,6 @@ Notes / actionables:
 # Standard library imports
 import numpy as np
 import pandas as pd
-import time
 
 # Third party imports
 import pyvisa as visa # pip install -U pyvisa
