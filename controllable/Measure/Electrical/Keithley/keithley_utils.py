@@ -22,7 +22,6 @@ print(f"Import: OK <{__name__}>")
 
 NUM_READINGS = 3
 BUFFER_SIZE = 100
-MAX_BUFFER_SIZE = 10000
 
 class KeithleyDevice(object):
     def __init__(self, ip_address):
@@ -151,11 +150,14 @@ class Keithley(ElectricalMeasurer):
     def connect(self):
         return self.inst._connect()
     
-    def getData(self, datatype):
+    def getData(self, datatype=None):
         if not self.flags['read']:
             self._readData()
         if self.flags['read']:
-            self.data = datatype(data=self.buffer_df, instrument='keithley_')
+            try:
+                self.data = datatype(data=self.buffer_df, instrument='keithley_')
+            except Exception as e:
+                print(e)
         return self.buffer_df
 
     def loadProgram(self, program, params={}):
@@ -169,28 +171,12 @@ class Keithley(ElectricalMeasurer):
         Returns:
             list: SCPI prompts for settings, inputs, and outputs
         """
-        program_list = ['OCV', 'IV_Scan', 'LSV', 'SweepV']
-        if program in program_list:
+        if program in base_programs.PROGRAM_LIST:
             program_class = getattr(base_programs, program)
         else:
-            print(f'Select program from list: {program_list}')
+            print(f'Select program from list: {base_programs.PROGRAM_LIST}')
             return
         self.program = program_class(self.inst, params)
-        return
-    
-    def logData(self, field_titles, average=False, timestep=1):
-        """
-        Logs data output as well as timestamp.
-        
-        Args:
-            field_titles (list): list of parameters to read and log
-            average  (bool): whether to calculate the average and standard deviation of multiple readings
-            timestep (int/float): time step between each reading [s]
-        """
-        while not self.flags['stop_measure'] and len(self.buffer_df) < MAX_BUFFER_SIZE:
-            prompt = ['TRAC:TRIG "defbuffer1"', 'FETCH? "defbuffer1", READ, REL']
-            self._readData(prompt, field_titles, average=average, cache=True)
-            time.sleep(timestep)
         return
 
     def measure(self):
