@@ -20,8 +20,8 @@ from .. import ElectricalMeasurer
 from .programs import base_programs
 print(f"Import: OK <{__name__}>")
 
-NUM_READINGS = 3
 BUFFER_SIZE = 100
+NUM_READINGS = 3
 
 class KeithleyDevice(object):
     def __init__(self, ip_address):
@@ -108,7 +108,7 @@ class Keithley(ElectricalMeasurer):
         ip_address (str/int): IP address of Keithley
         name (str): nickname for Keithley
     """
-    def __init__(self, ip_address='192.168.1.125', name=''):
+    def __init__(self, ip_address='192.168.1.125', name='def'):
         self.ip_address = ip_address
         self.inst = KeithleyDevice(ip_address)
         self.buffer_df = pd.DataFrame()
@@ -139,7 +139,7 @@ class Keithley(ElectricalMeasurer):
         """
         try:
             self.buffer_df = self.program.data_df
-            if len(self.program.data[0]):
+            if len(self.program.data_df):
                 self.flags['read'] = True
             else:
                 print("No data found.")
