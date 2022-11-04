@@ -1,5 +1,7 @@
 # %% -*- coding: utf-8 -*-
 """
+Adapted from @jaycecheng spinutils
+
 Created: Tue 2022/11/01 17:13:35
 @author: Chang Jie
 
@@ -9,6 +11,9 @@ Notes / actionables:
 # Standard library imports
 import time
 
+# Third party imports
+import serial # pip install pyserial
+
 # Local application imports
 from .. import Maker
 print(f"Import: OK <{__name__}>")
@@ -17,16 +22,40 @@ class Spinner(Maker):
     """
     'Spinner' class contains methods to control the spin coater unit.
     """
-    def __init__(self, order, position, mcu):
+    def __init__(self, port, order=0, position=0, verbose=False, **kwargs):
+        self.mcu = None
         self.order = order
         self.position = position
-        self.mcu = mcu
         self.speed = 0
-        self.etc = time.time()
         self.flags = {
             'busy': False,
             'complete': False
         }
+        
+        self.etc = time.time()
+        self.verbose = verbose
+        self._port = None
+        self._baudrate = None
+        self._timeout = None
+        
+        self._connect(port)
+        return
+    
+    def _connect(self, port):
+        self._port = port
+        self._baudrate = 9600
+        self._timeout = 1
+        mcu = None
+        try:
+            mcu = serial.Serial(port, 9600, timeout=1)
+            time.sleep(2)   # Wait for grbl to initialize
+            mcu.flushInput()
+            print(f"Connection opened to {port}")
+        except Exception as e:
+            if self.verbose:
+                print(f"Could not connect to {port}")
+                print(e)
+        self.mcu = mcu
         return
     
     def _run_speed(self, speed):
@@ -108,3 +137,24 @@ class Spinner(Maker):
         self.speed = 0
         return
 
+
+class SpinnerAssembly(Maker):
+    def __init__(self, ports=[], channels=[], positions=[]):
+        properties = list(zip(ports, channels, positions))
+        self.spinners = {chn: Spinner(port, chn, pos) for port,chn,pos in properties}
+        return
+        
+    def execute(self, channel, soak_time, spin_speed, spin_time):
+        return self.spinners[channel].execute(soak_time, spin_speed, spin_time)
+    
+    def isBusy(self, channel):
+        return self.spinners[channel].flags['busy']
+    
+    def isComplete(self, channel):
+        return self.spinners[channel].flags['complete']
+    
+    def soak(self, channel, seconds):
+        return self.spinners[channel].soak(seconds)
+    
+    def spin(self, channel, speed, seconds):
+        return self.spinners[channel].spin(speed, seconds)
