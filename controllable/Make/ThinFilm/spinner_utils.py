@@ -22,7 +22,7 @@ class Spinner(Maker):
     """
     'Spinner' class contains methods to control the spin coater unit.
     """
-    def __init__(self, port, order=0, position=0, verbose=False, **kwargs):
+    def __init__(self, port, order=0, position=(0,0,0), verbose=False, **kwargs):
         self.mcu = None
         self.order = order
         self.position = position
@@ -141,20 +141,20 @@ class Spinner(Maker):
 class SpinnerAssembly(Maker):
     def __init__(self, ports=[], channels=[], positions=[]):
         properties = list(zip(ports, channels, positions))
-        self.spinners = {chn: Spinner(port, chn, pos) for port,chn,pos in properties}
+        self.channels = {chn: Spinner(port, chn, pos) for port,chn,pos in properties}
         return
         
     def execute(self, channel, soak_time, spin_speed, spin_time):
-        return self.spinners[channel].execute(soak_time, spin_speed, spin_time)
+        return self.channels[channel].execute(soak_time, spin_speed, spin_time)
     
     def isBusy(self, channel):
-        return self.spinners[channel].flags['busy']
+        return self.channels[channel].flags['busy']
     
     def isComplete(self, channel):
-        return self.spinners[channel].flags['complete']
+        return self.channels[channel].flags['complete']
     
     def soak(self, channel, seconds):
-        return self.spinners[channel].soak(seconds)
+        return self.channels[channel].soak(seconds)
     
     def spin(self, channel, speed, seconds):
-        return self.spinners[channel].spin(speed, seconds)
+        return self.channels[channel].spin(speed, seconds)
