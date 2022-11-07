@@ -10,7 +10,6 @@ Notes / actionables:
 """
 # Standard library imports
 import numpy as np
-import pandas as pd
 import threading
 import time
 
@@ -172,4 +171,14 @@ class Setup(object):
         self.liquid.rinseAll(channels, rinse_cycles)
         return
     
+    def _isOverrun(self):
+        return
+    def checkPositions(self):
+        return
+    def checkSelf(self):
+        return
+    def prepare(self):
+        return
+    def reset(self):
+        return
     
