@@ -77,6 +77,12 @@ class CNC(Mover):
         """
         return self._connect(self._port, self._baudrate, self._timeout)
 
+    def isConnected(self):
+        if self.cnc == None:
+            print(f"{self.__class__} ({self._port}) not connected.")
+            return False
+        return True
+    
     def isFeasible(self, coord):
         """
         Checks if specified coordinates is a feasible position for robot to access.

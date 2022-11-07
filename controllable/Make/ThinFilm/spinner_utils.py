@@ -85,14 +85,14 @@ class Spinner(Maker):
         while(True):
             time.sleep(0.1)
             if (interval <= time.time() - starttime):
-                self.printer(run_time - interval)
+                # self.printer(run_time - interval)
                 interval += 1
             if (run_time <= time.time() - starttime):
-                self.printer(time.time() - starttime)
+                # self.printer(time.time() - starttime)
                 self._run_speed(0)
                 break
 
-    def execute(self, soak_time, spin_speed, spin_time):
+    def execute(self, soak_time=0, spin_speed=2000, spin_time=1):
         '''
         Executes the soak and spin steps
         - soak_time: soak time
@@ -107,6 +107,12 @@ class Spinner(Maker):
         self.flags['busy'] = False
         # self.flags['complete'] = True
         return
+    
+    def isConnected(self):
+        if self.mcu == None:
+            print(f"{self.__class__} ({self._port}) not connected.")
+            return False
+        return True
 
     def soak(self, seconds):
         '''
@@ -152,6 +158,12 @@ class SpinnerAssembly(Maker):
     
     def isComplete(self, channel):
         return self.channels[channel].flags['complete']
+    
+    def isConnected(self):
+        connects = [spinner.isConnected() for spinner in self.channels.values()]
+        if all(connects):
+            return True
+        return False
     
     def soak(self, channel, seconds):
         return self.channels[channel].soak(seconds)

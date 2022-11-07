@@ -177,6 +177,12 @@ class Dobot(RobotArm):
         # if not -150 < z < 230:
         #     return False
         return True
+    
+    def isConnected(self):
+        if any([True for connect in (self._dashboard, self._feedback) if connect==None]):
+            print(f"{self.__class__} ({self.ip_address}) not connected.")
+            return False
+        return True
 
     def moveBy(self, vector, angles=(0,0,0)):
         """

@@ -102,10 +102,10 @@ class Pump(object):
         while(True):
             time.sleep(0.001)
             if (interval <= time.time() - starttime):
-                self.printer(run_time - interval)
+                # self.printer(run_time - interval)
                 interval += 0.1
             if (run_time <= time.time() - starttime):
-                self.printer(time.time() - starttime)
+                # self.printer(time.time() - starttime)
                 break
         
         starttime = time.time()
@@ -116,15 +116,21 @@ class Pump(object):
         while(True):
             time.sleep(0.001)
             if (interval <= time.time() - starttime):
-                self.printer(prime_time - interval)
+                # self.printer(prime_time - interval)
                 interval += 0.1
             if (prime_time <= time.time() - starttime):
-                self.printer(time.time() - starttime)
+                # self.printer(time.time() - starttime)
                 self._run_pump(10)
                 self._run_solenoid(channel) # close channel
                 break
         return
-
+    
+    def isConnected(self):
+        if self.mcu == None:
+            print(f"{self.__class__} ({self._port}) not connected.")
+            return False
+        return True
+        
 
 class Syringe(object):
     def __init__(self, capacity, channel, offset=(0,0,0), priming_time=PRIMING_TIME):
@@ -301,6 +307,9 @@ class SyringeAssembly(LiquidHandler):
 
     def isBusy(self):
         return self.pump.flags['busy']
+    
+    def isConnected(self):
+        return self.pump.isConnected()
 
     def prime(self, channel):
         syringe = self.channels[channel]
