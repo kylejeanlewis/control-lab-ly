@@ -206,6 +206,9 @@ class SyringeAssembly(LiquidHandler):
         self.pump.flags['busy'] = False
         return
 
+    def calibrate(self, *args, **kwargs):
+        return super().calibrate(*args, **kwargs)
+
     def cycle(self, channel, vol, speed=DEFAULT_SPEED, wait=1):
         self.aspirate(channel, vol, speed=speed, wait=wait)
         self.dispense(channel, vol, speed=speed, wait=wait, force_dispense=True)
