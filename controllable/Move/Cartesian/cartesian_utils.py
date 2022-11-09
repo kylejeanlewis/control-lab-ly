@@ -22,7 +22,7 @@ class CNC(Mover):
     - port: serial port of cnc Arduino
     """
     def __init__(self, xyz_bounds=[(0,0,0), (0,0,0)], Z_safe=np.nan, move_speed=0, verbose=False, **kwargs):
-        self.xyz_bounds = xyz_bounds
+        self.xyz_bounds = [tuple(xyz_bounds[0]), tuple(xyz_bounds[1])]
         self.Z_safe = Z_safe
         self.cnc = None
         
@@ -150,7 +150,7 @@ class CNC(Mover):
                     print(e)
             self.updatePosition((*self.coordinates[0:2], self.Z_safe))
         
-        z_first = True if self.current_z<coord[2] else False
+        z_first = True if self.coordinates[2]<coord[2] else False
         positionXY = f'X{coord[0]}Y{coord[1]}'
         position_Z = f'Z{coord[2]}'
         moves = [position_Z, positionXY] if z_first else [positionXY, position_Z]
