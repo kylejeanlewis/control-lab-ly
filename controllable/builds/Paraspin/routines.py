@@ -90,9 +90,9 @@ class Setup(object):
         return
 
     def align(self, offset, position):
-        if not self.mover.isFeasible(position):
-            raise Exception("Selected position is not feasible.")
         coord = np.array(position) - np.array(offset)
+        if not self.mover.isFeasible(coord):
+            raise Exception("Selected position is not feasible.")
         self.mover.moveTo(coord)
         # self.at_home = False
         
