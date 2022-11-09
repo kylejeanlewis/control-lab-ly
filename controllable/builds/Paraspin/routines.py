@@ -35,31 +35,26 @@ class Setup(object):
         self.flags = {
             'aligning': False
         }
-        
         self.positions = {}
-        self.rest_position = None
         
         self._config = config
         self._connect(ignore_connections=ignore_connections)
         pass
     
+    def _checkPositions(self, wait=2, pause=False):
+        for maker_chn in self.maker.channels.values():
+            for liquid_chn in self.liquid.channels.values():
+                self.align(liquid_chn.offset, maker_chn.position)
+                time.sleep(wait)
+                if pause:
+                    input("Press 'Enter to proceed.")
+        return
+    
     def _connect(self, diagnostic=True, ignore_connections=False):
-        mover_kwargs = {}
-        liquid_kwargs = {}
-        maker_kwargs = {}
-        
-        # self.mover = mover_class(**mover_kwargs)
-        # self.liquid = liquid_class(**liquid_kwargs)
-        # self.maker = maker_class(**maker_kwargs)
-        
-        self.mover = mover_class("COM8", [(-470,0,0), (0,0,0)], Z_safe=0, Z_updown=(0,0))
-        self.liquid = liquid_class("COM4", [3000]*5, [3,4,5,6,7], [(x,0,0) for x in [-100,-75,-50,-25,0]])
-        self.maker = maker_class(["COM16","COM15","COM14","COM13"], [0,1,2,3], [(x,0,0) for x in [-325,-250,-175,-100]])
-        
-        # self.mover = Move.Cartesian.Primitiv("COM8", [(-470,0,0), (0,0,0)], Z_safe=0, Z_updown=(0,0))
-        # self.liquid = Move.Liquid.SyringeAssembly("COM4", [3000]*5, [3,4,5,6,7], offsets=[-100,-75,-50,-25,0])
-        # self.maker
-        
+        self.mover = mover_class(**self._config['mover_settings'])
+        self.liquid = liquid_class(**self._config['liquid_settings'])
+        self.maker = maker_class(**self._config['maker_settings'])
+
         if diagnostic:
             self._run_diagnostic(ignore_connections)
         return
@@ -81,6 +76,7 @@ class Setup(object):
 
         # Test self.mover
         self.home()
+        self._checkPositions()
         self.rest()
         
         # Test liquid
@@ -163,22 +159,16 @@ class Setup(object):
         if home:
             self.mover.home()
         else:
-            self.mover.moveTo(self.rest_position)
+            self.mover.moveTo(self.positions['rest'])
         return
     
     def rinseAll(self, channels=[], rinse_cycles=3):
         self.emptyLiquids(channels)
         self.liquid.rinseAll(channels, rinse_cycles)
         return
-    
-    def _isOverrun(self):
-        return
-    def checkPositions(self):
-        return
-    def checkSelf(self):
-        return
-    def prepare(self):
-        return
-    def reset(self):
+
+    def reset(self, home=True, wait=0, pause=False):
+        self.emptyLiquids(wait=wait, pause=pause)
+        self.rest(home)
         return
     
