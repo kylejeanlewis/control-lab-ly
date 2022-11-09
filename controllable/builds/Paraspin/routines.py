@@ -41,6 +41,12 @@ class Setup(object):
         self._connect(ignore_connections=ignore_connections)
         pass
     
+    def _checkInputs(self, **kwargs):
+        keys = list(kwargs.keys())
+        if any(len(kwargs[key]) != len(kwargs[keys[0]]) for key in keys):
+            raise Exception(f"Ensure the lengths of these inputs are the same: {', '.join(keys)}")
+        return
+    
     def _checkPositions(self, wait=2, pause=False):
         for maker_chn in self.maker.channels.values():
             for liquid_chn in self.liquid.channels.values():
@@ -71,8 +77,8 @@ class Setup(object):
         
         # Test self.maker
         for c,m in self.maker.channels.items():
-            t = threading.Thread(target=m.execute, name=f'maker_diag_{c}')
-            t.start()
+            thread = threading.Thread(target=m.execute, name=f'maker_diag_{c}')
+            thread.start()
 
         # Test self.mover
         self.home()
@@ -109,14 +115,14 @@ class Setup(object):
             self.liquid.dispense(liquid_chn, vol)
 
         # Start new thread from here
-        self.maker.channels[maker_chn].etc = time.time() + 1 + sum([t for k,t in maker_kwargs.items() if 'time' in k])
+        self.maker.channels[maker_chn].etc = time.time() + 1 + sum([v for k,v in maker_kwargs.items() if 'time' in k])
         if new_thread:
-            t = threading.Thread(target=self.maker.channels[maker_chn].execute, name=f'maker_{self.maker.channels[maker_chn].order}', kwargs=maker_kwargs)
-            t.start()
+            thread = threading.Thread(target=self.maker.channels[maker_chn].execute, name=f'maker_{self.maker.channels[maker_chn].order}', kwargs=maker_kwargs)
+            thread.start()
             if rest:
                 self.rest()
                 self.liquid.primeAll()
-            return t
+            return thread
         else:
             if rest:
                 self.rest()
@@ -128,28 +134,44 @@ class Setup(object):
         if len(channels) == 0:
             channels = list(self.liquid.channels.keys())
         for channel in channels:
-            # log_now(f'CNC align: syringe {syringe.order} with dump station...')
-            self.align(self.liquid.channels[channel].offset, self.positions['dump'])
+            if not pause:
+                # log_now(f'CNC align: syringe {syringe.order} with spill station...')
+                self.align(self.liquid.channels[channel].offset, self.positions['spill'])
             self.liquid.empty(channel, wait, pause)
         return
     
     def fillLiquids(self, channels=[], reagents=[], vols=[], wait=0, pause=False):
         if len(channels) == 0:
             channels = list(self.liquid.channels.keys())
-        if len(reagents) != len(channels):
-            raise Exception("Please input the same number of channels and reagents.")
-        if len(vols) != len(channels):
-            raise Exception("Please input the same number of channels and volumes.")
+        self._checkInputs(channels=channels, reagents=reagents, vols=vols)
+        
+        self.align(0, self.positions['fill'])
         for channel,reagent,vol in zip(channels, reagents, vols):
-            # log_now(f'CNC align: syringe {syringe.order} with dump station...')
             self.liquid.prime(channel)
-            self.align(self.liquid.channels[channel].offset, self.positions['dump'])
+            if vol == 0 or self.liquid.channels[channel].volume == self.liquid.channels[channel].capacity:
+                continue
+            if not pause:
+                # log_now(f'CNC align: syringe {syringe.order} with fill station...')
+                self.align(self.liquid.channels[channel].offset, self.positions['fill'])
             self.liquid.aspirate(channel, reagent, vol, wait=wait, pause=pause)
             self.liquid.prime(channel)
         return
     
     def home(self):
         return self.mover.home()
+    
+    def labelPosition(self, name, coord, overwrite=False):
+        if name not in self.positions.keys() or overwrite:
+            self.positions[name] = coord
+        else:
+            raise Exception(f"The position '{name}' has already been defined at: {self.positions[name]}")
+        return
+    
+    def labelPositions(self, names, coords, overwrite=False):
+        self._checkInputs(names=names, coords=coords)
+        for name,coord in zip(names, coords):
+            self.labelPosition(name, coord, overwrite)
+        return
     
     def primeAll(self, channels=[]):
         return self.liquid.primeAll(channels)
@@ -159,7 +181,10 @@ class Setup(object):
         if home:
             self.mover.home()
         else:
-            self.mover.moveTo(self.positions['rest'])
+            try:
+                self.mover.moveTo(self.positions['rest'])
+            except KeyError:
+                raise Exception('Rest position not yet labelled.')
         return
     
     def rinseAll(self, channels=[], rinse_cycles=3):
