@@ -35,15 +35,15 @@ class Primitiv(CNC):
         Return: serial.Serial object
         """
         super()._connect(port, 115200, timeout=1)
-        cnc= self.cnc
+        mcu= self.mcu
         try:
-            cnc.close()
-            cnc.open()
+            mcu.close()
+            mcu.open()
 
             # Start grbl 
-            cnc.write(bytes("\r\n\r\n", 'utf-8'))
+            mcu.write(bytes("\r\n\r\n", 'utf-8'))
             time.sleep(2)
-            cnc.flushInput()
+            mcu.flushInput()
         except Exception as e:
             if self.verbose:
                 print(e)
@@ -54,8 +54,8 @@ class Primitiv(CNC):
         Homing cycle for Primitiv platform
         """
         try:
-            self.cnc.write(bytes("$H\n", 'utf-8'))
-            print(self.cnc.readline())
+            self.mcu.write(bytes("$H\n", 'utf-8'))
+            print(self.mcu.readline())
         except Exception as e:
             if self.verbose:
                 print(e)

@@ -41,7 +41,7 @@ class Ender(CNC):
         """
         bed_temp = round( min(max(bed_temp,0), 110) )
         try:
-            self.cnc.write(bytes('M140 S{}\n'.format(bed_temp), 'utf-8'))
+            self.mcu.write(bytes('M140 S{}\n'.format(bed_temp), 'utf-8'))
         except Exception as e:
             print('Unable to heat stage!')
             if self.verbose:
@@ -54,29 +54,29 @@ class Ender(CNC):
         Homing cycle for Ender platform
         """
         try:
-            self.cnc.write(bytes("G90\n", 'utf-8'))
-            print(self.cnc.readline())
-            self.cnc.write(bytes("G0 " + f"Z{self.Z_safe}" + "\n", 'utf-8'))
-            print(self.cnc.readline())
-            self.cnc.write(bytes("G90\n", 'utf-8'))
-            print(self.cnc.readline())
+            self.mcu.write(bytes("G90\n", 'utf-8'))
+            print(self.mcu.readline())
+            self.mcu.write(bytes("G0 " + f"Z{self.heights['safe']}" + "\n", 'utf-8'))
+            print(self.mcu.readline())
+            self.mcu.write(bytes("G90\n", 'utf-8'))
+            print(self.mcu.readline())
 
-            self.cnc.write(bytes("G28\n", 'utf-8'))
+            self.mcu.write(bytes("G28\n", 'utf-8'))
 
-            self.cnc.write(bytes("G90\n", 'utf-8'))
-            print(self.cnc.readline())
-            self.cnc.write(bytes("G0 " + f"Z{self.Z_safe}" + "\n", 'utf-8'))
-            print(self.cnc.readline())
-            self.cnc.write(bytes("G90\n", 'utf-8'))
-            print(self.cnc.readline())
+            self.mcu.write(bytes("G90\n", 'utf-8'))
+            print(self.mcu.readline())
+            self.mcu.write(bytes("G0 " + f"Z{self.heights['safe']}" + "\n", 'utf-8'))
+            print(self.mcu.readline())
+            self.mcu.write(bytes("G90\n", 'utf-8'))
+            print(self.mcu.readline())
         except Exception as e:
             if self.verbose:
                 print(e)
         
-        self.updatePosition((0,0,self.Z_safe))
+        self.updatePosition((0,0,self.heights['safe']))
         try:
-            self.cnc.write(bytes("G1 F10000\n", 'utf-8'))
-            print(self.cnc.readline())
+            self.mcu.write(bytes("G1 F10000\n", 'utf-8'))
+            print(self.mcu.readline())
         except Exception as e:
             if self.verbose:
                 print(e)

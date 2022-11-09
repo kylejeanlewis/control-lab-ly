@@ -23,8 +23,10 @@ class CNC(Mover):
     """
     def __init__(self, port, xyz_bounds=[(0,0,0), (0,0,0)], Z_safe=np.nan, move_speed=0, verbose=False, **kwargs):
         self.xyz_bounds = [tuple(xyz_bounds[0]), tuple(xyz_bounds[1])]
-        self.Z_safe = Z_safe
-        self.cnc = None
+        self.mcu = None
+        self.heights = {
+            'safe': Z_safe
+        }
         
         self.coordinates = (0,0,0)
         
@@ -49,13 +51,13 @@ class CNC(Mover):
         self._port = port
         self._baudrate = baudrate
         self._timeout = timeout
-        cnc = None
+        mcu = None
         try:
-            cnc = serial.Serial(port, baudrate, timeout=timeout)
+            mcu = serial.Serial(port, baudrate, timeout=timeout)
         except Exception as e:
             if self.verbose:
                 print(e)
-        self.cnc = cnc
+        self.mcu = mcu
         return
     
     def _shutdown(self):
@@ -64,11 +66,11 @@ class CNC(Mover):
         """
         self.home()
         try:
-            self.cnc.close()
+            self.mcu.close()
         except Exception as e:
             if self.verbose:
                 print(e)
-        self.cnc = None
+        self.mcu = None
         return
 
     def connect(self):
@@ -78,7 +80,7 @@ class CNC(Mover):
         return self._connect(self._port, self._baudrate, self._timeout)
 
     def isConnected(self):
-        if self.cnc == None:
+        if self.mcu == None:
             print(f"{self.__class__} ({self._port}) not connected.")
             return False
         return True
@@ -137,31 +139,31 @@ class CNC(Mover):
         if not self.isFeasible(coord):
             return
         
-        if z_to_safe and self.coordinates[2] < self.Z_safe:
+        if z_to_safe and self.coordinates[2] < self.heights['safe']:
             try:
-                self.cnc.write(bytes("G90\n", 'utf-8'))
-                print(self.cnc.readline())
-                self.cnc.write(bytes(f"G0 Z{self.Z_safe}\n", 'utf-8'))
-                print(self.cnc.readline())
-                self.cnc.write(bytes("G90\n", 'utf-8'))
-                print(self.cnc.readline())
+                self.mcu.write(bytes("G90\n", 'utf-8'))
+                print(self.mcu.readline())
+                self.mcu.write(bytes(f"G0 Z{self.heights['safe']}\n", 'utf-8'))
+                print(self.mcu.readline())
+                self.mcu.write(bytes("G90\n", 'utf-8'))
+                print(self.mcu.readline())
             except Exception as e:
                 if self.verbose:
                     print(e)
-            self.updatePosition((*self.coordinates[0:2], self.Z_safe))
+            self.updatePosition((*self.coordinates[0:2], self.heights['safe']))
         
         z_first = True if self.coordinates[2]<coord[2] else False
         positionXY = f'X{coord[0]}Y{coord[1]}'
         position_Z = f'Z{coord[2]}'
         moves = [position_Z, positionXY] if z_first else [positionXY, position_Z]
         try:
-            self.cnc.write(bytes("G90\n", 'utf-8'))
-            print(self.cnc.readline())
+            self.mcu.write(bytes("G90\n", 'utf-8'))
+            print(self.mcu.readline())
             for move in moves:
-                self.cnc.write(bytes(f"G0 {move}\n", 'utf-8'))
-                print(self.cnc.readline())
-            self.cnc.write(bytes("G90\n", 'utf-8'))
-            print(self.cnc.readline())
+                self.mcu.write(bytes(f"G0 {move}\n", 'utf-8'))
+                print(self.mcu.readline())
+            self.mcu.write(bytes("G90\n", 'utf-8'))
+            print(self.mcu.readline())
         except Exception as e:
             if self.verbose:
                 print(e)
