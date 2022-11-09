@@ -159,6 +159,7 @@ class SyringeAssembly(LiquidHandler):
     'SyringeAssembly' class contain methods to control the pump and the valve unit.
     """
     def __init__(self, port, capacities=[], channels=[], offsets=[], **kwargs):
+        super().__init__(**kwargs)
         self._checkInputs(capacities=capacities, channels=channels, offsets=offsets)
         self.pump = Pump(port)
         properties = list(zip(capacities, channels, offsets))

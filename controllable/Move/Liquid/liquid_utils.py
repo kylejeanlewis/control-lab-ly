@@ -11,6 +11,6 @@ from .. import Mover
 print(f"Import: OK <{__name__}>")
 
 class LiquidHandler(Mover):
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         super().__init__()
         return
