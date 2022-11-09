@@ -2,7 +2,6 @@ mover_settings:
   port: COM8
   xyz_bounds: [[-470,0,0], [0,0,0]]
   Z_safe: 0
-  Z_updown: [0,0]
 liquid_settings:
   port: COM4
   capacities: [3000,3000,3000,3000,3000]

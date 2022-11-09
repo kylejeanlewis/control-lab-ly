@@ -21,7 +21,7 @@ class CNC(Mover):
     Controller for cnc xyz-movements.
     - port: serial port of cnc Arduino
     """
-    def __init__(self, xyz_bounds=[(0,0,0), (0,0,0)], Z_safe=np.nan, move_speed=0, verbose=False, **kwargs):
+    def __init__(self, port, xyz_bounds=[(0,0,0), (0,0,0)], Z_safe=np.nan, move_speed=0, verbose=False, **kwargs):
         self.xyz_bounds = [tuple(xyz_bounds[0]), tuple(xyz_bounds[1])]
         self.Z_safe = Z_safe
         self.cnc = None
@@ -29,7 +29,7 @@ class CNC(Mover):
         self.coordinates = (0,0,0)
         
         self.verbose = verbose
-        self._port = None
+        self._port = port
         self._baudrate = None
         self._timeout = None
         # self._movement_speed = move_speed
