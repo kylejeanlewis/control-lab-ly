@@ -1,0 +1,17 @@
+mover_settings:
+  port: COM8
+  xyz_bounds: [[-410,-290,-120], [0,0,0]]
+  Z_safe: -80
+measurer_settings:
+  ip_address: '192.168.1.125'
+height_settings:
+  names: ['up','down']
+  z_heights: [-94,-104]
+  overwrite: False
+# ---
+# mover_settings:
+#   port: COM8
+#   xyz_bounds: [[0,0,0], [240,235,210]]
+#   Z_safe: 30
+# measurer_settings:
+#   ip_address: '192.168.1.125'
