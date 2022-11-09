@@ -24,7 +24,7 @@ print(f"Import: OK <{__name__}>")
 CONFIG_FILE = 'config.yaml'
 
 class Program(object):
-    def __init__(self, ignore_connections=False, recover_state_from_file=''):
+    def __init__(self, ignore_connections=False):
         self._config = self._readPlans(CONFIG_FILE)
         self.setup = Setup(self._config, ignore_connections)
         self.window = None
@@ -48,9 +48,6 @@ class Program(object):
         config = yaml.full_load(yml)
         return config
     
-    def _readState(self, filename=''):
-        return 
-    
     def loadRecipe(self, reagents_file='', recipe_file='', reagents_df=None, recipe_df=None):
         return
     
@@ -69,17 +66,14 @@ class Program(object):
     def runExperiment(self, timeout=None):
         return
     
-    def saveState(self, filename=''):
-        return
-    
     def start(self, timeout=None):
         return
     
     # Component methods
-    def getReagents(self, channels=[]):
-        return self.setup.liquid.getReagents(channels=channels)
-    def getVolumes(self, channels=[]):
-        return self.setup.liquid.getVolumes(channels=channels)
+    def labelHeight(self, name, z_height, overwrite=False):
+        return self.setup.labelHeight(self, name, z_height, overwrite)
+    def labelHeights(self, names, z_heights, overwrite=False):
+        return self.setup.labelHeights(self, names, z_heights, overwrite)
     def labelPosition(self, name, coord, overwrite=False):
         return self.setup.labelPosition(name, coord, overwrite)
     def labelPositions(self, names, coords, overwrite=False):
