@@ -136,7 +136,7 @@ class Syringe(object):
     def __init__(self, capacity, channel, offset=(0,0,0), priming_time=PRIMING_TIME):
         self.capacity = capacity
         self.channel = channel
-        self.offset = offset
+        self.offset = tuple(offset)
         
         self.prev_action = ''
         self.reagent = ''
@@ -163,9 +163,16 @@ class SyringeAssembly(LiquidHandler):
     'SyringeAssembly' class contain methods to control the pump and the valve unit.
     """
     def __init__(self, port, capacities=[], channels=[], offsets=[], **kwargs):
+        self._checkInputs(capacities=capacities, channels=channels, offsets=offsets)
         self.pump = Pump(port)
         properties = list(zip(capacities, channels, offsets))
         self.channels = {chn: Syringe(cap, chn, off) for cap,chn,off in properties}
+        return
+    
+    def _checkInputs(self, **kwargs):
+        keys = list(kwargs.keys())
+        if any(len(kwargs[key]) != len(kwargs[keys[0]]) for key in keys):
+            raise Exception(f"Ensure the lengths of these inputs are the same: {', '.join(keys)}")
         return
 
     def aspirate(self, channel, reagent, vol, speed=DEFAULT_SPEED, wait=1, pause=False):
@@ -302,8 +309,7 @@ class SyringeAssembly(LiquidHandler):
     def fillAll(self, channels=[], reagents=[], prewet=True, wait=1, pause=False):
         if len(channels) == 0:
             channels = list(self.channels.keys())
-        if len(reagents) != len(channels):
-            raise Exception("Please input the same number of channels and reagents.")
+        self._checkInputs(channels=channels, reagents=reagents)
         for channel,reagent in zip(channels, reagents):
             self.fill(channel, reagent, prewet, wait, pause)
         return

@@ -25,7 +25,7 @@ class Spinner(Maker):
     def __init__(self, port, order=0, position=(0,0,0), verbose=False, **kwargs):
         self.mcu = None
         self.order = order
-        self.position = position
+        self.position = tuple(position)
         self.speed = 0
         self.flags = {
             'busy': False,
@@ -146,8 +146,15 @@ class Spinner(Maker):
 
 class SpinnerAssembly(Maker):
     def __init__(self, ports=[], channels=[], positions=[]):
+        self._checkInputs(ports=ports, channels=channels, positions=positions)
         properties = list(zip(ports, channels, positions))
         self.channels = {chn: Spinner(port, chn, pos) for port,chn,pos in properties}
+        return
+    
+    def _checkInputs(self, **kwargs):
+        keys = list(kwargs.keys())
+        if any(len(kwargs[key]) != len(kwargs[keys[0]]) for key in keys):
+            raise Exception(f"Ensure the lengths of these inputs are the same: {', '.join(keys)}")
         return
         
     def execute(self, channel, soak_time, spin_speed, spin_time):
