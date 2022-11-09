@@ -146,15 +146,11 @@ class Syringe(object):
         pass
     
     def update(self, field, value):
-        attr = dict(
-            prev_action=self.prev_action,
-            reagent=self.reagent,
-            volume=self.volume
-        )
-        if field not in attr.keys():
-            print(f"Select a field from: {', '.join(attr.keys())}")
+        attrs = ['prev_action', 'reagent', 'volume']
+        if field not in attrs:
+            print(f"Select a field from: {', '.join(attrs)}")
         else:
-            attr[field] = value
+            setattr(self, field, value)
         return
 
 
@@ -174,6 +170,11 @@ class SyringeAssembly(LiquidHandler):
         if any(len(kwargs[key]) != len(kwargs[keys[0]]) for key in keys):
             raise Exception(f"Ensure the lengths of these inputs are the same: {', '.join(keys)}")
         return
+    
+    def _getValues(self, channels, field):
+        if len(channels) == 0:
+            channels = list(self.channels.keys())
+        return [(key, getattr(self.channels[key], field)) for key in channels]
 
     def aspirate(self, channel, reagent, vol, speed=DEFAULT_SPEED, wait=1, pause=False):
         '''
@@ -313,6 +314,12 @@ class SyringeAssembly(LiquidHandler):
         for channel,reagent in zip(channels, reagents):
             self.fill(channel, reagent, prewet, wait, pause)
         return
+    
+    def getReagents(self, channels=[]):
+        return self._getValues(channels, 'reagent')
+    
+    def getVolumes(self, channels=[]):
+        return self._getValues(channels, 'volume')
 
     def isBusy(self):
         return self.pump.flags['busy']
@@ -349,4 +356,4 @@ class SyringeAssembly(LiquidHandler):
         return
     
     def update(self, channel, field, value):
-        return  self.channels[channel].update(field, value)
+        return self.channels[channel].update(field, value)
