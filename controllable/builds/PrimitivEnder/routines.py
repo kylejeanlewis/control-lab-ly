@@ -1,7 +1,5 @@
 # %% -*- coding: utf-8 -*-
 """
-Adapted from @jaycecheng spinutils
-
 Created: Tue 2022/11/01 17:13:35
 @author: Chang Jie
 
@@ -18,48 +16,52 @@ import time
 # Local application imports
 from ... import Measure
 from ... import Move
+from ..build_utils import BaseSetup
 print(f"Import: OK <{__name__}>")
-
-mover_class = Move.Cartesian.Primitiv
-measurer_class = Measure.Electrical.Keithley.Keithley
 
 CNC_SPEED = 200
 
-class Setup(object):
-    def __init__(self, config, ignore_connections=False):
+class Setup(BaseSetup):
+    def __init__(self, config, ignore_connections=False, **kwargs):
+        super().__init__(**kwargs)
         self.mover = None
         self.measurer = None
+        self.viewer = None
         self.flags = {}
         self.positions = {}
+        self.tool_offset = (0,0,0)
         
         self._config = config
         self._connect(ignore_connections=ignore_connections)
         pass
     
-    def _checkInputs(self, **kwargs):
-        keys = list(kwargs.keys())
-        if any(len(kwargs[key]) != len(kwargs[keys[0]]) for key in keys):
-            raise Exception(f"Ensure the lengths of these inputs are the same: {', '.join(keys)}")
-        return
-    
-    def _checkPositions(self, wait=2, pause=False):
+    def checkPositions(self, positions, wait=2, pause=False):
+        for position in positions:
+            self.align(self.tool_offset, position, safe_height=False)
+            time.sleep(wait)
+            if pause:
+                input("Press 'Enter' to proceed.")
         return
     
     def _connect(self, ignore_connections=False):
-        self.mover = mover_class(**self._config['mover_settings'])
-        self.measurer = measurer_class(**self._config['measurer_settings'])
+        mover_class = self._getClass(Move, self._config['mover']['class'])
+        measurer_class = self._getClass(Measure, self._config['measurer']['class'])
+        
+        self.mover = mover_class(**self._config['mover']['settings'])
+        self.measurer = measurer_class(**self._config['measurer']['settings'])
         
         try:
-            self.labelHeights(**self._config['height_settings'])
+            self.labelHeights(**self._config['height']['settings'])
         except KeyError:
             print('Heights not set.')
         return
     
-    def align(self, offset, position):
+    def align(self, offset, position, safe_height=True):
         coord = np.array(position) - np.array(offset)
         if not self.mover.isFeasible(coord):
             raise Exception("Selected position is not feasible.")
-        self.mover.moveTo(coord)
+        jump_z_height = self.mover.heights.get('safe') if safe_height else self.mover.heights.get('up')
+        self.mover.moveTo(coord, jump_z_height=jump_z_height)
         
         # Time the wait
         distance = np.linalg.norm(coord - np.array(self.mover.coordinates))
@@ -69,7 +71,7 @@ class Setup(object):
     
     def home(self):
         return self.mover.home()
-    
+     
     def labelHeight(self, name, z_height, overwrite=False):
         if name not in self.positions.keys() or overwrite:
             self.mover.heights[name] = z_height
@@ -80,7 +82,7 @@ class Setup(object):
     def labelHeights(self, names, z_heights, overwrite=False):
         self._checkInputs(names=names, z_heights=z_heights)
         for name,z_height in zip(names, z_heights):
-            self.labelPosition(name, z_height, overwrite)
+            self.labelHeight(name, z_height, overwrite)
         return
     
     def labelPosition(self, name, coord, overwrite=False):
@@ -96,7 +98,9 @@ class Setup(object):
             self.labelPosition(name, coord, overwrite)
         return
 
-    def reset(self, home=True, wait=0, pause=False):
+    def reset(self):
+        self.mover.home()
+        self.measurer.reset()
         return
     
     
