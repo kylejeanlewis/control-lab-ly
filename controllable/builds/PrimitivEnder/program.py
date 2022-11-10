@@ -30,13 +30,33 @@ class Program(BaseProgram):
         self.flags = {
             'force_stop': False
         }
+        
+        self._all_steps = {}
+        self._default_folder = __name__.split('builds.')[1].replace('.', '/'),
+        self._executed = []
+        self._file_fields = {
+            'folder': '',
+            'name': '',
+            'part': '',
+            'run': 0,
+            'ext': ''
+        }
+        self._file_template = '{folder}/{name}_{part}_{run}.{ext}'
+        self._run = 0
         return
     
     # Main methods
     def _assignSteps(self):
+        self._all_steps = {}
+        for part,position in enumerate(self.setup.positions.get('sample')):
+            self._all_steps[part] = [position]
         return
     
-    def loadRecipe(self, reagents_file='', recipe_file='', reagents_df=None, recipe_df=None):
+    def loadProgram(self, program, params={}):
+        return self.setup.loadProgram(program, params)
+    
+    def getPositions(self):
+        self.setup.positions['sample'] = []
         return
     
     def loadScheduler(self):
@@ -45,16 +65,47 @@ class Program(BaseProgram):
     def prepareSetup(self, fill_sequence=[], manual_fill=False):
         return
     
-    def queue(self, maker_chn, rest=True, new_thread=True):
+    def execute(self, part):
+        position = self._all_steps[part].pop(0)
+        self.setup.measure(position)
+        self.saveData(part)
+        self._executed.append((part, position))
         return
     
     def reset(self, hardware_only=True):
+        self.setup.reset()
+        if not hardware_only:
+            self._all_steps = {}
+            self._executed = []
+            self._file_fields = {
+                'folder': __name__.split('builds.')[1].replace('.', '/'),
+                'name': '',
+                'part': '',
+                'run': 0,
+                'ext': ''
+            }
         return
 
     def runExperiment(self, timeout=None):
         return
     
-    def start(self, timeout=None):
+    def saveData(self, part):
+        folder = self._file_fields.get('folder')
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        
+        self._file_fields['part'] = part
+        self._file_fields['ext'] = 'csv'
+        csv_filename = self._file_template.format(**self._file_fields)
+        while os.path.exists(csv_filename):
+            self._file_fields['run'] += 1
+            csv_filename = self._file_template.format(**self._file_fields)
+        self.setup.saveData(csv_filename)
+        return
+    
+    def start(self, sample_name, folder='', timeout=None):
+        self._file_fields['folder'] = folder
+        self._file_fields['name'] = sample_name
         return
     
     # Component methods
