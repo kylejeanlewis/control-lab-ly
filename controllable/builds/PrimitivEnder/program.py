@@ -55,14 +55,12 @@ class Program(BaseProgram):
     def loadProgram(self, program, params={}):
         return self.setup.loadProgram(program, params)
     
-    def getPositions(self):
+    def getPositions(self, filename=''):
         self.setup.positions['sample'] = []
+        
         return
     
     def loadScheduler(self):
-        return
-    
-    def prepareSetup(self, fill_sequence=[], manual_fill=False):
         return
     
     def execute(self, part):
@@ -78,7 +76,7 @@ class Program(BaseProgram):
             self._all_steps = {}
             self._executed = []
             self._file_fields = {
-                'folder': __name__.split('builds.')[1].replace('.', '/'),
+                'folder': '',
                 'name': '',
                 'part': '',
                 'run': 0,
@@ -104,7 +102,7 @@ class Program(BaseProgram):
         return
     
     def start(self, sample_name, folder='', timeout=None):
-        self._file_fields['folder'] = folder
+        self._file_fields['folder'] = folder if len(folder) else self._default_folder
         self._file_fields['name'] = sample_name
         return
     
