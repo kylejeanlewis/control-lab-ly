@@ -130,7 +130,7 @@ class CNC(Mover):
         new_coord = np.round( np.array(self.coordinates) + np.array(vector) , 2)
         return self.moveTo(new_coord, z_to_safe)
     
-    def moveTo(self, coord, z_to_safe=True):
+    def moveTo(self, coord, z_to_safe=True, jump_z_height=None):
         """
         Move cnc to absolute position in 3D
         - coord: (X, Y, Z) coordinates of target
@@ -138,19 +138,20 @@ class CNC(Mover):
         coord = np.array(coord)
         if not self.isFeasible(coord):
             return
-        
-        if z_to_safe and self.coordinates[2] < self.heights['safe']:
+        if jump_z_height == None:
+            jump_z_height = self.heights['safe']
+        if z_to_safe and self.coordinates[2] < jump_z_height:
             try:
                 self.mcu.write(bytes("G90\n", 'utf-8'))
                 print(self.mcu.readline())
-                self.mcu.write(bytes(f"G0 Z{self.heights['safe']}\n", 'utf-8'))
+                self.mcu.write(bytes(f"G0 Z{jump_z_height}\n", 'utf-8'))
                 print(self.mcu.readline())
                 self.mcu.write(bytes("G90\n", 'utf-8'))
                 print(self.mcu.readline())
             except Exception as e:
                 if self.verbose:
                     print(e)
-            self.updatePosition((*self.coordinates[0:2], self.heights['safe']))
+            self.updatePosition((*self.coordinates[0:2], jump_z_height))
         
         z_first = True if self.coordinates[2]<coord[2] else False
         positionXY = f'X{coord[0]}Y{coord[1]}'
