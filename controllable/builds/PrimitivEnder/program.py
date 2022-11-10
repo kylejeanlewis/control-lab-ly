@@ -1,7 +1,5 @@
 # %% -*- coding: utf-8 -*-
 """
-Adapted from @jaycecheng spinutils
-
 Created: Tue 2022/11/01 17:13:35
 @author: Chang Jie
 
@@ -18,14 +16,15 @@ import yaml
 # Third party imports
 
 # Local application imports
+from ..build_utils import BaseProgram
 from .routines import Setup
 print(f"Import: OK <{__name__}>")
 
 CONFIG_FILE = 'config.yaml'
 
-class Program(object):
-    def __init__(self, ignore_connections=False):
-        self._config = self._readPlans(CONFIG_FILE)
+class Program(BaseProgram):
+    def __init__(self, ignore_connections=False, config_option=0):
+        self._config = self._readPlans(CONFIG_FILE, config_option)
         self.setup = Setup(self._config, ignore_connections)
         self.window = None
         self.flags = {
@@ -36,17 +35,6 @@ class Program(object):
     # Main methods
     def _assignSteps(self):
         return
-    
-    def _isOverrun(self, start_time, timeout):
-        if timeout!=None and time.time() - start_time > timeout:
-            # log_now(f'Exceeded runtime of {timeout}s', True)
-            return True
-        return False
-    
-    def _readPlans(self, config_file):
-        yml = pkgutil.get_data(__name__, config_file).decode('utf-8')
-        config = yaml.full_load(yml)
-        return config
     
     def loadRecipe(self, reagents_file='', recipe_file='', reagents_df=None, recipe_df=None):
         return
@@ -78,6 +66,8 @@ class Program(object):
         return self.setup.labelPosition(name, coord, overwrite)
     def labelPositions(self, names, coords, overwrite=False):
         return self.setup.labelPositions(names, coords, overwrite)
+    def loadProgram(self, program, params={}):
+        return self.setup.measurer.loadProgram(program, params)
 
     # GUI methods
     def _gui_build_window(self):

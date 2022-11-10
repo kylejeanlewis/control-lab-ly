@@ -1,7 +1,5 @@
 # %% -*- coding: utf-8 -*-
 """
-Adapted from @jaycecheng spinutils
-
 Created: Tue 2022/11/01 17:13:35
 @author: Chang Jie
 
@@ -11,21 +9,21 @@ Notes / actionables:
 # Standard library imports
 import os
 import pandas as pd
-import pkgutil
 import time
 import yaml
 
 # Third party imports
 
 # Local application imports
+from ..build_utils import BaseProgram
 from .routines import Setup
 print(f"Import: OK <{__name__}>")
 
 CONFIG_FILE = 'config.yaml'
 
-class Program(object):
-    def __init__(self, ignore_connections=False, recover_state_from_file=''):
-        self._config = self._readPlans(CONFIG_FILE)
+class Program(BaseProgram):
+    def __init__(self, ignore_connections=False, recover_state_from_file='', config_option=0):
+        self._config = self._readPlans(CONFIG_FILE, config_option)
         self.setup = Setup(self._config, ignore_connections)
         self.window = None
         self.flags = {
@@ -68,22 +66,11 @@ class Program(object):
             self._all_steps[key] = steps
         return
     
-    def _isOverrun(self, start_time, timeout):
-        if timeout!=None and time.time() - start_time > timeout:
-            # log_now(f'Exceeded runtime of {timeout}s', True)
-            return True
-        return False
-    
     def _getRequiredVolumes(self):
         df = self.recipe_df.copy()
         df['required_volume'] = [len(row['channels'])*row['volume'] for _,row in df.iterrows()]
         df = df.groupby('reagent')['required_volume'].sum().reset_index()
         return df
-    
-    def _readPlans(self, config_file):
-        yml = pkgutil.get_data(__name__, config_file).decode('utf-8')
-        config = yaml.full_load(yml)
-        return config
     
     def _readState(self, filename=''):
         if len(filename) == 0:
