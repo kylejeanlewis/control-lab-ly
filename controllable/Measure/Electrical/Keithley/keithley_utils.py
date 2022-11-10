@@ -29,7 +29,7 @@ class KeithleyDevice(object):
         self._connect(ip_address)
         return
         
-    def _connect(self, ip_address=''):
+    def _connect(self, ip_address=None):
         """
         Establish connection with Keithley.
         
@@ -37,7 +37,7 @@ class KeithleyDevice(object):
             ip_address (str/int): IP address of Keithley
         """
         print("Setting up Keithley comms...")
-        if len(ip_address) == 0:
+        if ip_address == None:
             ip_address = self.ip_address
         inst = None
         try:
@@ -146,8 +146,11 @@ class Keithley(ElectricalMeasurer):
             print("Please load a program first.")
         return
         
-    def connect(self):
-        return self.inst._connect()
+    def connect(self, ip_address=None):
+        if ip_address == None:
+            ip_address = self.ip_address
+        self.ip_address = ip_address
+        return self.inst._connect(ip_address)
     
     def getData(self, datatype=None):
         if not self.flags['read']:
@@ -236,6 +239,10 @@ class Keithley(ElectricalMeasurer):
         """
         return self.inst._write(lines)
     
+    def setAddress(self, ip_address):
+        self.ip_address = ip_address
+        return
+    
     def setParameters(self, params={}):
         attr = dict(
             buff_name=self._buffer,
@@ -249,5 +256,87 @@ class Keithley(ElectricalMeasurer):
 
 
 class KeithleyTwo(object):
-    def __init__(self) -> None:
+    def __init__(self, ip_addresses=[], names=[]):
+        self._args = list(zip(ip_addresses, names))
+        self.ip_addresses = ip_addresses
+        self.names = names
+        self.keithleys = {name: Keithley(ip_address,name) for ip_address,name in self._args}
+        self.buffer_df = pd.DataFrame()
+        self.data = None
+        self.program = None
+        self.flags = {
+            'measured': False,
+            'parameters_set': False,
+            'read': False,
+            'stop_measure': False
+        }
+
+        self._program_templates = []
         pass
+    
+    def _readData(self):
+        return
+    
+    def connect(self, name, ip_address=None):
+        if ip_address == None:
+            index = self.names.index(name)
+            ip_address = self.ip_addresses[index]
+        self.ip_addresses[index] = ip_address
+        return self.keithleys[name].connect(ip_address)
+    
+    def getData(self):
+        return
+    
+    def loadProgram(self):
+        return
+    
+    def measure(self):
+        self.flags['stop_measure'] = False
+        self.program.run()
+        self._readData()
+        if len(self.buffer_df):
+            self.flags['measured'] = True
+        self.plot()
+        return
+    
+    def plot(self):
+        return
+    
+    def recallParameters(self, names=[]):
+        if len(names) == 0:
+            names = self.names
+        params = {}
+        for name in self.names:
+            params[name] = self.keithleys[name].recallParameters()
+        return params
+    
+    def reset(self, names=[], full=False):
+        if len(names) == 0:
+            names = self.names
+        for name in self.names:
+            self.keithleys[name].reset(full)
+        return
+    
+    def saveData(self, names=[], filenames=[]):
+        if len(names) == 0:
+            names = self.names
+        if len(names) != len(filenames):
+            raise Exception('Ensure input lists are the same lengths.')
+        for i,name in enumerate(self.names):
+            self.keithleys[name].saveData(filenames[i])
+        return
+    
+    def sendMessage(self, name, lines=[]):
+        """
+        Relay parameters to Keithley.
+        
+        Args:
+            params (list): list of parameters to write to Keithley
+        """
+        return self.keithleys[name].sendMessage(lines)
+    
+    def setAddress(self, name, ip_address):
+        return self.keithleys[name].setAddress(ip_address)
+    
+    def setParameters(self, name, params={}):
+        return self.keithleys[name].setParameters(params)
