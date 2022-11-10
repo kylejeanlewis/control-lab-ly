@@ -1,7 +1,5 @@
 # %% -*- coding: utf-8 -*-
 """
-Adapted from @jaycecheng spinutils
-
 Created: Tue 2022/11/01 17:13:35
 @author: Chang Jie
 
@@ -18,17 +16,14 @@ import time
 # Local application imports
 from ... import Make
 from ... import Move
+from ..build_utils import BaseSetup
 print(f"Import: OK <{__name__}>")
-
-mover_class = Move.Cartesian.Primitiv
-# mover_class = Move.Jointed.dobot.Dobot
-liquid_class = Move.Liquid.SyringeAssembly
-maker_class = Make.ThinFilm.SpinnerAssembly
 
 CNC_SPEED = 250
 
-class Setup(object):
-    def __init__(self, config, ignore_connections=False):
+class Setup(BaseSetup):
+    def __init__(self, config, ignore_connections=False, **kwargs):
+        super().__init__(**kwargs)
         self.mover = None
         self.liquid = None
         self.maker = None
@@ -41,25 +36,23 @@ class Setup(object):
         self._connect(ignore_connections=ignore_connections)
         pass
     
-    def _checkInputs(self, **kwargs):
-        keys = list(kwargs.keys())
-        if any(len(kwargs[key]) != len(kwargs[keys[0]]) for key in keys):
-            raise Exception(f"Ensure the lengths of these inputs are the same: {', '.join(keys)}")
-        return
-    
     def _checkPositions(self, wait=2, pause=False):
         for maker_chn in self.maker.channels.values():
             for liquid_chn in self.liquid.channels.values():
                 self.align(liquid_chn.offset, maker_chn.position)
                 time.sleep(wait)
                 if pause:
-                    input("Press 'Enter to proceed.")
+                    input("Press 'Enter' to proceed.")
         return
     
     def _connect(self, diagnostic=True, ignore_connections=False):
-        self.mover = mover_class(**self._config['mover_settings'])
-        self.liquid = liquid_class(**self._config['liquid_settings'])
-        self.maker = maker_class(**self._config['maker_settings'])
+        mover_class = self._getClass(Move, self._config['mover']['class'])
+        liquid_class = self._getClass(Move, self._config['liquid']['class'])
+        maker_class = self._getClass(Make, self._config['maker']['class'])
+        
+        self.mover = mover_class(**self._config['mover']['settings'])
+        self.liquid = liquid_class(**self._config['liquid']['settings'])
+        self.maker = maker_class(**self._config['maker']['settings'])
 
         if diagnostic:
             self._run_diagnostic(ignore_connections)
