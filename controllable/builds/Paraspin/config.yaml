@@ -1,22 +1,29 @@
-mover_settings:
-  port: COM8
-  xyz_bounds: [[-470,0,0], [0,0,0]]
-  Z_safe: 0
-liquid_settings:
-  port: COM4
-  capacities: [3000,3000,3000,3000,3000]
-  channels: [3,4,5,6,7]
-  offsets:
-    - [-100,0,0]
-    - [-75,0,0]
-    - [-50,0,0]
-    - [-25,0,0]
-    - [0,0,0]
-maker_settings:
-  ports: [COM16,COM15,COM14,COM13]
-  channels: [0,1,2,3]
-  positions:
-  - [-325,0,0]
-  - [-250,0,0]
-  - [-175,0,0]
-  - [-100,0,0]
+0:
+  mover: 
+    class: Cartesian.Primitiv
+    settings:
+      port: COM8
+      xyz_bounds: [[-470,0,0], [0,0,0]]
+      Z_safe: 0
+  liquid: 
+    class: Liquid.SyringeAssembly
+    settings:
+      port: COM4
+      capacities: [3000,3000,3000,3000,3000]
+      channels: [3,4,5,6,7]
+      offsets:
+        - [-100,0,0]
+        - [-75,0,0]
+        - [-50,0,0]
+        - [-25,0,0]
+        - [0,0,0]
+  maker: 
+    class: ThinFilm.SpinnerAssembly
+    settings:
+      ports: [COM16,COM15,COM14,COM13]
+      channels: [0,1,2,3]
+      positions:
+      - [-325,0,0]
+      - [-250,0,0]
+      - [-175,0,0]
+      - [-100,0,0]
