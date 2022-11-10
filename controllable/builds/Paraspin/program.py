@@ -34,6 +34,7 @@ class Program(BaseProgram):
         self.recipe_df = None
         
         self._all_steps = {}
+        self._default_folder =  __name__.split('builds.')[1].replace('.', '/')
         self._executed = []
         self._state_filename = recover_state_from_file
         self._threads = []
@@ -91,6 +92,13 @@ class Program(BaseProgram):
             for field,value in values.items():
                 self.setup.liquid.update(channel, field, value)
         return state
+    
+    def execute(self, maker_chn, rest=True, new_thread=True): #give instructions
+        kwargs = self._all_steps[maker_chn].pop(0)
+        thread = self.setup.coat(rest=rest, new_thread=new_thread, **kwargs)
+        self._threads.append(thread)
+        self._executed.append(kwargs)
+        return
 
     def loadRecipe(self, reagents_file='', recipe_file='', reagents_df=None, recipe_df=None): # read recipe
         if type(reagents_df) == type(None):
@@ -144,13 +152,6 @@ class Program(BaseProgram):
         self.setup.fillLiquids(pause=manual_fill, **kwargs)
         return
     
-    def queue(self, maker_chn, rest=True, new_thread=True): #give instructions
-        kwargs = self._all_steps[maker_chn].pop(0)
-        thread = self.setup.coat(rest=rest, new_thread=new_thread, **kwargs)
-        self._threads.append(thread)
-        self._executed.append(kwargs)
-        return
-    
     def reset(self, hardware_only=True):
         self.setup.reset(home=False, pause=True)
         if not hardware_only:
@@ -171,12 +172,12 @@ class Program(BaseProgram):
             pass
         return
     
-    def saveState(self, filename=''):
-        if len(filename) == 0:
-            folder = __name__.split('builds.')[1].replace('.', '/')
-            if not os.path.exists(folder):
-                os.makedirs(folder)
-            filename = f"{folder}/state.yaml"
+    def saveState(self, folder=''):
+        if len(folder) == 0:
+            folder = self._default_folder
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        filename = f"{folder}/state.yaml"
         
         axes = ('x','y','z')
         states = {
