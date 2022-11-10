@@ -56,11 +56,11 @@ class Setup(BaseSetup):
             print('Heights not set.')
         return
     
-    def align(self, offset, position, safe_height=True):
+    def align(self, offset, position, jump_height='safe'):
         coord = np.array(position) - np.array(offset)
         if not self.mover.isFeasible(coord):
             raise Exception("Selected position is not feasible.")
-        jump_z_height = self.mover.heights.get('safe') if safe_height else self.mover.heights.get('up')
+        jump_z_height = self.mover.heights.get(jump_height)
         self.mover.moveTo(coord, jump_z_height=jump_z_height)
         
         # Time the wait
@@ -98,9 +98,19 @@ class Setup(BaseSetup):
             self.labelPosition(name, coord, overwrite)
         return
 
+    def loadProgram(self, program, params={}):
+        return self.measurer.loadProgram(program, params)
+
+    def measure(self, position):
+        self.align(self.tool_offset, position, safe_height='up')
+        self.measurer.measure()
+        return
+
     def reset(self):
         self.mover.home()
         self.measurer.reset()
         return
     
+    def saveData(self, filename):
+        return self.measurer.saveData(filename)
     
