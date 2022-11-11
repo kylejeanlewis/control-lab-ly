@@ -35,14 +35,6 @@ class Setup(BaseSetup):
         self._connect(ignore_connections=ignore_connections)
         pass
     
-    def checkPositions(self, positions, wait=2, pause=False):
-        for position in positions:
-            self.align(self.tool_offset, position, safe_height=False)
-            time.sleep(wait)
-            if pause:
-                input("Press 'Enter' to proceed.")
-        return
-    
     def _connect(self, ignore_connections=False):
         mover_class = self._getClass(Move, self._config['mover']['class'])
         measurer_class = self._getClass(Measure, self._config['measurer']['class'])
@@ -68,6 +60,17 @@ class Setup(BaseSetup):
         t_align = distance / CNC_SPEED + 2
         time.sleep(t_align)
         return
+    
+    def checkPositions(self, positions, wait=2, pause=False):
+        for position in positions:
+            self.align(self.tool_offset, position, safe_height=False)
+            time.sleep(wait)
+            if pause:
+                input("Press 'Enter' to proceed.")
+        return
+    
+    def getData(self):
+        return self.measurer.getData()
     
     def home(self):
         return self.mover.home()

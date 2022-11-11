@@ -46,21 +46,10 @@ class Program(BaseProgram):
         return
     
     # Main methods
-    def _assignSteps(self):
+    def _assign_steps(self):
         self._all_steps = {}
         for part,position in enumerate(self.setup.positions.get('sample')):
             self._all_steps[part] = [position]
-        return
-    
-    def loadProgram(self, program, params={}):
-        return self.setup.loadProgram(program, params)
-    
-    def getPositions(self, filename=''):
-        self.setup.positions['sample'] = []
-        
-        return
-    
-    def loadScheduler(self):
         return
     
     def execute(self, part):
@@ -68,6 +57,19 @@ class Program(BaseProgram):
         self.setup.measure(position)
         self.saveData(part)
         self._executed.append((part, position))
+        return
+    
+    def getData(self):
+        return self.setup.getData()
+    
+    def getPositions(self, filename=''):
+        self.setup.positions['sample'] = []
+        return
+
+    def loadProgram(self, program, params={}):
+        return self.setup.loadProgram(program, params)
+    
+    def loadScheduler(self):
         return
     
     def reset(self, hardware_only=True):
