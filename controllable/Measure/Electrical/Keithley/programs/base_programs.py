@@ -36,8 +36,8 @@ class Program(object):
     def loadSCPI(self, program, params={}):
         if type(program) == str:
             if program.endswith('.txt'):
-                program = pkgutil.get_data(__name__, program).decode('utf-8')
-            program = SCPI(program)
+                commands = pkgutil.get_data(__name__, program).decode('utf-8')
+            program = SCPI(commands)
         elif 'SCPI' in str(type(program)):
             pass
         else:
