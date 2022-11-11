@@ -23,8 +23,8 @@ print(f"Import: OK <{__name__}>")
 CONFIG_FILE = 'config.yaml'
 
 class Program(BaseProgram):
-    def __init__(self, ignore_connections=False, config_option=0):
-        self._config = self._readPlans(CONFIG_FILE, config_option)
+    def __init__(self, config_file=CONFIG_FILE, ignore_connections=False, config_option=0):
+        self._config = self._readPlans(config_file, config_option)
         self.setup = Setup(self._config, ignore_connections)
         self.window = None
         self.flags = {
