@@ -40,7 +40,7 @@ class BioLogic(ElectricalMeasurer):
         self._parameters = {}
         return
     
-    def _mapColumnNames(self):
+    def _map_column_names(self):
         name_map = {
             "Impendance phase": "Impedance phase [rad]",
             "Impendance_ce phase": "Impedance_ce phase [rad]"
@@ -48,10 +48,10 @@ class BioLogic(ElectricalMeasurer):
         self.buffer_df.rename(columns=name_map, inplace=True)
         return
     
-    def _readData(self):
+    def _read_data(self):
         try:
             self.buffer_df = pd.DataFrame(self.program.data[0], columns=self.program.field_titles)
-            self._mapColumnNames()
+            self._map_column_names()
             if len(self.program.data[0]):
                 self.flags['read'] = True
             else:
@@ -65,7 +65,7 @@ class BioLogic(ElectricalMeasurer):
     
     def getData(self, datatype=None):
         if not self.flags['read']:
-            self._readData()
+            self._read_data()
         if self.flags['read']:
             try:
                 self.data = datatype(data=self.buffer_df, instrument='biologic_')
@@ -86,7 +86,7 @@ class BioLogic(ElectricalMeasurer):
     
     def measure(self):
         self.program.run()
-        self._readData()
+        self._read_data()
         if len(self.buffer_df):
             self.flags['measured'] = True
         self.plot()
@@ -110,7 +110,7 @@ class BioLogic(ElectricalMeasurer):
     
     def saveData(self, filename):
         if not self.flags['read']:
-            self._readData()
+            self._read_data()
         if self.flags['read']:
             self.buffer_df.to_csv(filename)
         return

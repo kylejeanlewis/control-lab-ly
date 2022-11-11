@@ -36,7 +36,7 @@ class Setup(BaseSetup):
         self._connect(ignore_connections=ignore_connections)
         pass
     
-    def _checkPositions(self, wait=2, pause=False):
+    def _check_positions(self, wait=2, pause=False):
         for maker_chn in self.maker.channels.values():
             for liquid_chn in self.liquid.channels.values():
                 self.align(liquid_chn.offset, maker_chn.position)
@@ -75,7 +75,7 @@ class Setup(BaseSetup):
 
         # Test self.mover
         self.home()
-        self._checkPositions()
+        self._check_positions()
         self.rest()
         
         # Test liquid

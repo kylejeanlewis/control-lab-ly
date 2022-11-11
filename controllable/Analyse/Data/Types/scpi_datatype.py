@@ -16,10 +16,10 @@ class SCPI(object):
     """
     def __init__(self, data):
         self.string = ''
-        self._readData(data)
+        self._read_data(data)
         return
     
-    def _readData(self, data):
+    def _read_data(self, data):
         string = ''
         if type(data) == dict:
             for k,v in data.items():

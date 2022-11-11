@@ -40,11 +40,11 @@ class Program(BaseProgram):
         self._threads = []
         
         if len(recover_state_from_file):
-            self._readState()
+            self._read_state()
         return
     
     # Main methods
-    def _assignSteps(self):
+    def _assign_steps(self):
         self._all_steps = {}
         for key in self.setup.maker.channels.keys():
             steps = []
@@ -67,13 +67,13 @@ class Program(BaseProgram):
             self._all_steps[key] = steps
         return
     
-    def _getRequiredVolumes(self):
+    def _get_required_volumes(self):
         df = self.recipe_df.copy()
         df['required_volume'] = [len(row['channels'])*row['volume'] for _,row in df.iterrows()]
         df = df.groupby('reagent')['required_volume'].sum().reset_index()
         return df
     
-    def _readState(self, filename=''):
+    def _read_state(self, filename=''):
         if len(filename) == 0:
             filename = self._state_filename
         with open(filename, 'r', encoding='utf-8') as f:
@@ -122,7 +122,7 @@ class Program(BaseProgram):
         recipe_df['channels'] = channels
         self.recipe_df = recipe_df
         
-        self._assignSteps()
+        self._assign_steps()
         return
     
     def loadScheduler(self):
@@ -130,7 +130,7 @@ class Program(BaseProgram):
     
     def prepareSetup(self, fill_sequence=[], manual_fill=False):
         df = self.reagents_df.copy()
-        required_volumes_df = self._getRequiredVolumes()
+        required_volumes_df = self._get_required_volumes()
         current_volumes_df = pd.DataFrame(self.setup.liquid.getVolumes(), columns=['channel','current_volume'])
         df = df.merge(required_volumes_df, on='reagent', how='left')
         df = df.merge(current_volumes_df, on='channel', how='left')

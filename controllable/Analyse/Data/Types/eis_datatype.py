@@ -55,8 +55,8 @@ class ImpedanceSpectrum(object):
         self.min_nrmse = -1
         self.x_offset = 0
         
-        self._readData(data, instrument)
-        self._readCircuit(circuit)
+        self._read_data(data, instrument)
+        self._read_circuit(circuit)
 
         self.bode_plot = None
         self.nyquist_plot = None
@@ -208,7 +208,7 @@ class ImpedanceSpectrum(object):
 
         return f, x, y, min_idx, max_idx, r0_est, a ,b
 
-    def _generateGuess(self, circuit_string, f, x, y, min_idx, max_idx, r0, a, b, constants={}):
+    def _generate_guess(self, circuit_string, f, x, y, min_idx, max_idx, r0, a, b, constants={}):
         """
         Generate initial guesses from circuit string
         - circuit_string: string representation of circuit model
@@ -259,13 +259,13 @@ class ImpedanceSpectrum(object):
                 new_constants[k] = constants[k]
         return init_guess, new_constants
 
-    def _readCircuit(self, circuit):
+    def _read_circuit(self, circuit):
         if len(circuit):
             self.circuit = CustomCircuit()
             self.circuit.load(circuit)
         return
     
-    def _readData(self, data, instrument=''):
+    def _read_data(self, data, instrument=''):
         """
         Read data and circuit model from file
         - data: name of file with data or pd.DataFrame
@@ -362,7 +362,7 @@ class ImpedanceSpectrum(object):
                     circuits_dict[c['name']] = c['string']
             if len(tryCircuits):
                 circuits_dict = tryCircuits
-            circuits_dict = {k: (v, self._generateGuess(v, *stationary, constants)) for k, v in circuits_dict.items()}
+            circuits_dict = {k: (v, self._generate_guess(v, *stationary, constants)) for k, v in circuits_dict.items()}
             circuits = [CustomCircuit(name=k, initial_guess=v[1][0], constants=v[1][1], circuit=v[0]) for k,v in circuits_dict.items()]
 
         jac = None

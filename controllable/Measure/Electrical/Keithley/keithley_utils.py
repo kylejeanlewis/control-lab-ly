@@ -127,7 +127,7 @@ class Keithley(ElectricalMeasurer):
         self._program_template = None
         return
 
-    def _readData(self):
+    def _read_data(self):
         """
         Read data output from Keithley.
         
@@ -154,7 +154,7 @@ class Keithley(ElectricalMeasurer):
     
     def getData(self, datatype=None):
         if not self.flags['read']:
-            self._readData()
+            self._read_data()
         if self.flags['read']:
             try:
                 self.data = datatype(data=self.buffer_df, instrument='keithley_')
@@ -196,7 +196,7 @@ class Keithley(ElectricalMeasurer):
         """
         self.flags['stop_measure'] = False
         self.program.run()
-        self._readData()
+        self._read_data()
         if len(self.buffer_df):
             self.flags['measured'] = True
         self.plot()
@@ -225,7 +225,7 @@ class Keithley(ElectricalMeasurer):
 
     def saveData(self, filename):
         if not self.flags['read']:
-            self._readData()
+            self._read_data()
         if self.flags['read']:
             self.buffer_df.to_csv(filename)
         return
@@ -274,7 +274,7 @@ class KeithleyTwo(object):
         self._program_templates = []
         pass
     
-    def _readData(self):
+    def _read_data(self):
         return
     
     def connect(self, name, ip_address=None):
@@ -293,7 +293,7 @@ class KeithleyTwo(object):
     def measure(self):
         self.flags['stop_measure'] = False
         self.program.run()
-        self._readData()
+        self._read_data()
         if len(self.buffer_df):
             self.flags['measured'] = True
         self.plot()
