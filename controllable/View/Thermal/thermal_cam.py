@@ -9,7 +9,6 @@ import os
 import cv2 # pip install opencv-python 
 
 from thermal.ax8.ax8 import Ax8ThermalCamera
-from image_recognition import Vision
 print(f"Import: OK <{__name__}>")
 
 here = os.getcwd()
