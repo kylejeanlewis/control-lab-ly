@@ -84,9 +84,9 @@ class BioLogic(ElectricalMeasurer):
         self._parameters = params
         return
     
-    def measure(self):
+    def measure(self, datatype):
         self.program.run()
-        self._read_data()
+        self.getData(datatype)
         if len(self.buffer_df):
             self.flags['measured'] = True
         self.plot()
