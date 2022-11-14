@@ -23,9 +23,10 @@ BUFFER_SIZE = 100
 NUM_READINGS = 3
 
 class KeithleyDevice(object):
-    def __init__(self, ip_address):
+    def __init__(self, ip_address, name='def'):
         self.ip_address = ip_address
         self.inst = None
+        self.name = name
         self._connect(ip_address)
         return
         
@@ -109,7 +110,7 @@ class Keithley(ElectricalMeasurer):
     """
     def __init__(self, ip_address='192.168.1.125', name='def'):
         self.ip_address = ip_address
-        self.inst = KeithleyDevice(ip_address)
+        self.inst = KeithleyDevice(ip_address, name)
         self.buffer_df = pd.DataFrame()
         self.data = None
         self.program = None
