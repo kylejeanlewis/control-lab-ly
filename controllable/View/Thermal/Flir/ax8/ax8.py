@@ -6,9 +6,9 @@ Date       : 23-07-2021
 
 """
 
-from ax8_camera_feed import Ax8CameraFeed
-from ax8_modbus_utils import parse_float, float_to_modbus, parse_int, int_to_modbus
-from ax8_modbus_regs import SPOTMETER_REGS
+from .ax8_camera_feed import Ax8CameraFeed
+from .ax8_modbus_utils import parse_float, float_to_modbus, parse_int, int_to_modbus
+from .ax8_modbus_regs import SPOTMETER_REGS
 
 try:
     from pyModbusTCP.client import ModbusClient
