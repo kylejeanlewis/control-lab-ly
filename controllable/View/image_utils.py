@@ -79,6 +79,22 @@ class Image(object):
             self.frame = frame
             return
         return Image(frame)
+    
+    def rotate(self, angle, inplace=False):
+        """
+        Rotates a 2D array in multiples of 90 degrees, clockwise
+        """
+        rotateCodes = {
+            90: cv2.ROTATE_90_CLOCKWISE,
+            180: cv2.ROTATE_180,
+            270: cv2.ROTATE_90_COUNTERCLOCKWISE
+        }
+        frame = self.frame
+        frame = cv2.rotate(frame, rotateCodes.get(angle))
+        if inplace:
+            self.frame = frame
+            return
+        return Image(frame)
 
     def save(self, filename):
         return cv2.imwrite(filename, self.frame)
