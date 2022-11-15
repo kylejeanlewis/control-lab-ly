@@ -18,6 +18,7 @@ import time
 import cv2 # pip install opencv-python
 
 # Local application imports
+# from .image_utils import Image
 from .Thermal.Flir.ax8.ax8 import Ax8ThermalCamera
 print(f"Import: OK <{__name__}>")
 
@@ -33,8 +34,19 @@ class Image(object):
             return
         return Image(frame)
     
-    def convolve(self):
+    def convolve(self, inplace=False):
         return
+    
+    def crosshair(self, inplace=False):
+        frame = self.frame
+        center_x = int(frame.shape[1] / 2)
+        center_y = int(frame.shape[0] / 2)
+        cv2.line(frame, (center_x, center_y+50), (center_x, center_y-50), (255,255,255), 1)
+        cv2.line(frame, (center_x+50, center_y), (center_x-50, center_y), (255,255,255), 1)
+        if inplace:
+            self.frame = frame
+            return
+        return Image(frame)
     
     def encode(self, extension='.png'):
         return cv2.imencode(extension, self.frame)[1].tobytes()
@@ -58,11 +70,14 @@ class Image(object):
     
     def removeNoise(self, open_iter=0, close_iter=0, inplace=False):
         kernel = np.ones((3,3),np.uint8)
-        roi_color = self.frame
-        roi_gray = cv2.cvtColor(roi_color, cv2.COLOR_BGR2GRAY)
-        roi_gray = cv2.morphologyEx(roi_gray,cv2.MORPH_OPEN,kernel,iterations=open_iter)
-        roi_gray = cv2.morphologyEx(roi_gray,cv2.MORPH_CLOSE,kernel,iterations=close_iter)
-        return
+        frame = self.frame
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        frame = cv2.morphologyEx(frame,cv2.MORPH_OPEN,kernel,iterations=open_iter)
+        frame = cv2.morphologyEx(frame,cv2.MORPH_CLOSE,kernel,iterations=close_iter)
+        if inplace:
+            self.frame = frame
+            return
+        return Image(frame)
     
     def resize(self, size, inplace=False):
         frame = cv2.resize(self.frame, size)
@@ -105,6 +120,7 @@ class Camera(object):
         elif img_bytes == None:
             array = np.asarray(bytearray(img_bytes), dtype="uint8")
             frame = self.decodeImage(array)
+        frame = cv2.resize(frame, self.cam_size)
         self.placeholder_image = Image(frame)
         return frame
     
@@ -123,9 +139,14 @@ class Camera(object):
     
     def getImage(self):
         ret = False
-        val = None
-        ret, val = self.feed.read()
-        return ret, val
+        frame = None
+        try:
+            ret, frame = self.feed.read()
+            frame = cv2.resize(frame, self.cam_size)
+            image = Image(frame)
+        except AttributeError:
+            image = self.placeholder_image
+        return ret, image
     
     def loadImage(self, filename):
         frame = cv2.imread(filename)
@@ -200,6 +221,7 @@ class Camera(object):
             print('Please select a trained xml file.')
         return clf
 
+
 class Optical(Camera):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -215,12 +237,12 @@ class Optical(Camera):
     
     def getImage(self):
         return super().getImage()
-    
+
 
 class Thermal(Camera):
     def __init__(self, ip_address, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._connect()
+        self._connect(ip_address)
         
         img_bytes = pkgutil.get_data(__name__, 'placeholders/infrared_camera.png')
         self._set_placeholder(img_bytes=img_bytes)
