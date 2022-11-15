@@ -15,11 +15,12 @@ import pandas as pd
 
 # Third party imports
 import easy_biologic as biologic_api # pip install easy-biologic
-import easy_biologic.base_programs as base_programs
+# import easy_biologic.base_programs as base_programs
 
 # Local application imports
 from ....Analyse.Data.Types.eis_datatype import ImpedanceSpectrum
 from .. import ElectricalMeasurer
+from .programs import base_programs
 print(f"Import: OK <{__name__}>")
 
 # INITIALIZING
@@ -38,6 +39,10 @@ class BioLogic(ElectricalMeasurer):
         }
         
         self._parameters = {}
+        return
+    
+    def __delete__(self):
+        self.inst.disconnect()
         return
     
     def _map_column_names(self):
@@ -73,18 +78,23 @@ class BioLogic(ElectricalMeasurer):
                 print(e)
         return self.buffer_df
     
-    def loadProgram(self, program='', params={}, channels=[0], **kwargs):
-        program_list = ['OCV', 'CA', 'CP', 'CALimit', 'PEIS', 'GEIS','JV_Scan', 'MPP', 'MPP_Tracking', 'MPP_Cycles']
-        if program in program_list:
-            program_class = getattr(base_programs, program)
+    def loadProgram(self, program, params={}, channels=[0], **kwargs):
+        if type(program) == str:
+            if program in base_programs.PROGRAM_LIST:
+                program_class = getattr(base_programs, program)
+            else:
+                print(f"Select program from list: {', '.join(base_programs.PROGRAM_LIST)}")
+                return
+        elif str(type(program)) == "<class 'abc.ABCMeta'>":
+            program_class = program
         else:
-            print(f"Select program from list: {', '.join(program_list)}")
-            return
+            raise Exception('Please input a BioLogic program or a string representation.')
         self.program = program_class(self.inst, params, channels=channels, **kwargs)
         self._parameters = params
         return
     
     def measure(self, datatype):
+        print("Measuring...")
         self.program.run()
         self.getData(datatype)
         if len(self.buffer_df):
@@ -94,7 +104,11 @@ class BioLogic(ElectricalMeasurer):
     
     def plot(self, plot_type=''):
         if self.flags['measured'] and self.flags['read']:
-            self.data.plot(plot_type)
+            try:
+                self.data.plot(plot_type)
+            except AttributeError:
+                print(self.buffer_df.head())
+                print("Please use 'getData' method to load datatype before plotting.")
         return
     
     def recallParameters(self):
