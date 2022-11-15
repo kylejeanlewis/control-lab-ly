@@ -1,12 +1,56 @@
 # %% -*- coding: utf-8 -*-
 """
-Created on Fri 2022/03/18 09:00:00
+Adapted/extended from Easy BioLogic package, documentation can be found at:
+https://github.com/bicarlsen/easy-biologic
 
+Created on Fri 2022/11/14 17:00:00
 @author: Chang Jie
-"""
-from easy_biologic import BiologicProgram
 
-class CPLimit( BiologicProgram ):
+Notes / actionables:
+- 
+"""
+from enum import Enum
+from easy_biologic.base_programs import * # pip install easy-biologic
+
+PROGRAM_LIST = [
+    'OCV', 'CA', 'CP', 'CALimit', 'CPLimit', 'PEIS', 'GEIS', 'JV_Scan', 
+    'MPP_Tracking', 'MPP', 'MPP_Cycles'
+]
+
+class CALIMIT( Enum ):
+    Voltage_step      = float
+    vs_initial        = bool
+    Duration_step     = float
+    Step_number       = int
+    Record_every_dT   = float
+    Record_every_dI   = float
+    Test1_Config      = int
+    Test1_Value       = float
+    Test2_Config      = int
+    Test2_Value       = float
+    Test3_Config      = int
+    Test3_Value       = float
+    Exit_Cond         = int
+    N_Cycles          = int
+
+class CPLIMIT( Enum ):
+    Current_step      = float
+    vs_initial        = bool
+    Duration_step     = float
+    Step_number       = int
+    Record_every_dT   = float
+    Record_every_dE   = float
+    Test1_Config      = int
+    Test1_Value       = float
+    Test2_Config      = int
+    Test2_Value       = float
+    Test3_Config      = int
+    Test3_Value       = float
+    Exit_Cond         = int
+    N_Cycles          = int
+
+
+class CALimit( BiologicProgram ):
     """
     Runs a cyclic amperometry technqiue.
     """
@@ -50,7 +94,7 @@ class CPLimit( BiologicProgram ):
         )
 
         self._techniques = [ 'calimit' ]
-        self._parameter_types = tfs.CALIMIT
+        self._parameter_types = CALIMIT
         self._data_fields = (
             dp.SP300_Fields.CALIMIT
             if ecl.is_in_SP300_family( self.device.kind ) else
@@ -164,6 +208,169 @@ class CPLimit( BiologicProgram ):
             self.device.update_parameters(
                 ch,
                 'calimit',
+                params,
+                types = self._parameter_types
+            )
+
+
+class CPLimit( BiologicProgram ):
+    """
+    Runs a cyclic voltammetry technqiue.
+    """
+    # TODO: Add limit conditions as parameters, not hard coded
+    def __init__(
+        self,
+        device,
+        params,
+        **kwargs
+    ):
+        """
+        :param device: BiologicDevice.
+        :param params: Program parameters.
+            Params are
+            currents: List of currents in Amperes.
+            durations: List of times in seconds.
+            vs_initial: If step is vs. initial or previous.
+                [Default: False]
+            time_interval: Maximum time interval between points.
+                [Default: 1]
+            voltage_interval: Maximum voltage change between points.
+                [Default: 0.001]
+            voltage_range: Voltage range. Use ec_lib.ERange.
+                [Default: ERange.v2_5 ]
+        :param **kwargs: Parameters passed to BiologicProgram.
+        """
+        defaults = {
+            'vs_initial':       False,
+            'time_interval':    1.0,
+            'voltage_interval': 1e-3,
+            'voltage_range':    ecl.ERange.v2_5
+        }
+
+        channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
+        params = set_defaults( params, defaults, channels )
+
+        super().__init__(
+            device,
+            params,
+            **kwargs
+        )
+
+        self._techniques = [ 'cplimit' ] # name of .ecc technique file
+        self._parameter_types = CPLIMIT
+        self._data_fields = (
+            dp.SP300_Fields.CPLIMIT
+            if ecl.is_in_SP300_family( self.device.kind ) else
+            dp.VMP3_Fields.CPLIMIT
+        )
+
+        self.field_titles = [
+            'Time [s]',
+            'Current [A]',
+            'Voltage [V]',
+            'Power [W]',
+            'Cycle'
+        ]
+        
+        self._fields = namedtuple( 'CPLimit_Datum', [
+            'time', 'current', 'voltage', 'power', 'cycle'
+        ] )
+
+        self._field_values = lambda datum, segment: (
+            dp.calculate_time(
+                datum.t_high,
+                datum.t_low,
+                segment.info,
+                segment.values
+            ),
+
+            datum.current,
+            datum.voltage,
+            datum.current* datum.voltage,  # power
+            datum.cycle
+        )
+
+
+    def run( self, retrieve_data = True ):
+        """
+        :param retrieve_data: Automatically retrieve and disconnect from device.
+            [Default: True]
+        """
+        params = {}
+        for ch, ch_params in self.params.items():
+            steps = len( ch_params[ 'currents' ] )
+            params[ ch ] = {
+                'Current_step':      ch_params[ 'currents' ],
+                'vs_initial':        [ ch_params[ 'vs_initial' ] ]* steps,
+                'Duration_step':     ch_params[ 'durations' ],
+                'Step_number':       steps - 1,
+                'Record_every_dT':   ch_params[ 'time_interval' ],
+                'Record_every_dE':   ch_params[ 'voltage_interval' ],
+                'Test1_Config':      0, # TODO
+                'Test1_Value':       0,
+                'Test2_Config':      0,
+                'Test2_Value':       0,
+                'Test3_Config':      0,
+                'Test3_Value':       0,
+                'Exit_Cond':         0,
+                'N_Cycles':          0,
+                'I_Range':           ch_params[ 'voltage_range' ].value
+            }
+
+
+        # run technique
+        data = self._run( 'cplimit', params, retrieve_data = retrieve_data )
+
+
+    def update_currents(
+        self,
+        currents,
+        durations  = None,
+        vs_initial = None
+    ):
+        """
+        Update current and duration parameters.
+        :param currents: Dictionary of currents list keyed by channel,
+            or single current to apply to all channels.
+        :param durations: Dictionary of durations list keyed by channel,
+            or single duration to apply to all channels.
+        :param vs_initial: Dictionary of vs. initials list keyed by channel,
+            or single vs. initial boolean to apply to all channels.
+        """
+        # format params
+        if not isinstance( currents, dict ):
+            # transform to dictionary if needed
+            currents = { ch: currents for ch in self.channels }
+
+        if ( durations is not None ) and ( not isinstance( currents, dict ) ):
+            # transform to dictionary if needed
+            durations = { ch: durations for ch in self.channels }
+
+        if ( vs_initial is not None ) and ( not isinstance( vs_initial, dict ) ):
+            # transform to dictionary if needed
+            vs_initial = { ch: vs_initial for ch in self.channels }
+
+        # update currents
+        for ch, ch_currents in currents.items():
+            if not isinstance( ch_currents, list ):
+                # single voltage given, make list
+                ch_currents = [ ch_currents ]
+
+            steps = len( ch_currents )
+            params = {
+                'Current_step': ch_currents,
+                'Step_number':  steps - 1
+            }
+
+            if ( durations is not None ) and ( durations[ ch ] ):
+                params[ 'Duration_step' ] = durations[ ch ]
+
+            if ( vs_initial is not None ) and ( vs_initial[ ch ] ):
+                params[ 'vs_initial' ] = vs_initial[ ch ]
+
+            self.device.update_parameters(
+                ch,
+                'cplimit',
                 params,
                 types = self._parameter_types
             )
