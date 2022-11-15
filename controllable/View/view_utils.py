@@ -22,74 +22,6 @@ from .image_utils import Image
 from .Thermal.Flir.ax8.ax8 import Ax8ThermalCamera
 print(f"Import: OK <{__name__}>")
 
-class Image(object):
-    def __init__(self, frame):
-        self.frame = frame
-        pass
-    
-    def blur(self, blur_kernel=3, inplace=False):
-        frame = cv2.GaussianBlur(frame, (blur_kernel,blur_kernel), 0)
-        if inplace:
-            self.frame = frame
-            return
-        return Image(frame)
-    
-    def convolve(self, inplace=False):
-        return
-    
-    def crosshair(self, inplace=False):
-        frame = self.frame
-        center_x = int(frame.shape[1] / 2)
-        center_y = int(frame.shape[0] / 2)
-        cv2.line(frame, (center_x, center_y+50), (center_x, center_y-50), (255,255,255), 1)
-        cv2.line(frame, (center_x+50, center_y), (center_x-50, center_y), (255,255,255), 1)
-        if inplace:
-            self.frame = frame
-            return
-        return Image(frame)
-    
-    def encode(self, extension='.png'):
-        return cv2.imencode(extension, self.frame)[1].tobytes()
-    
-    def grayscale(self, inplace=False):
-        frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
-        if inplace:
-            self.frame = frame
-            return
-        return Image(frame)
-    
-    def process(self, alpha, beta, blur_kernel, inplace=False):
-        frame = self.frame
-        frame = cv2.addWeighted(frame, alpha, np.zeros(frame.shape, frame.dtype), 0, beta)
-        if blur_kernel > 0:
-            frame = cv2.GaussianBlur(frame, (blur_kernel,blur_kernel), 0)
-        if inplace:
-            self.frame = frame
-            return
-        return Image(frame)
-    
-    def removeNoise(self, open_iter=0, close_iter=0, inplace=False):
-        kernel = np.ones((3,3),np.uint8)
-        frame = self.frame
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        frame = cv2.morphologyEx(frame,cv2.MORPH_OPEN,kernel,iterations=open_iter)
-        frame = cv2.morphologyEx(frame,cv2.MORPH_CLOSE,kernel,iterations=close_iter)
-        if inplace:
-            self.frame = frame
-            return
-        return Image(frame)
-    
-    def resize(self, size, inplace=False):
-        frame = cv2.resize(self.frame, size)
-        if inplace:
-            self.frame = frame
-            return
-        return Image(frame)
-
-    def save(self, filename):
-        return cv2.imwrite(filename, self.frame)
-
-
 class Camera(object):
     def __init__(self, calib_unit=1, cam_size=(640,480)):
         self.calib_unit = calib_unit
@@ -113,23 +45,41 @@ class Camera(object):
     def _connect(self):
         return
     
+    def _data_to_df(self, data):
+        df = pd.DataFrame(data)
+        df.rename(columns={0: 'x', 1: 'y', 2: 'w', 3: 'h'}, inplace=True)
+        df.sort_values(by='y', ascending=True, inplace=True)
+        df.reset_index(inplace=True, drop=True)
+        df['row'] = np.ones(len(df), dtype='int64')
+        row_num = 1
+        for i in np.arange(1,len(df)): 
+            # If diff in y-coordinates > 30, assign next row (adjustable)
+            if (abs(df.loc[i,'y'] - df.loc[i-1,'y']) > 30):             
+                row_num += 1
+                df.loc[i,'row'] = row_num
+            else:
+                df.loc[i,'row'] = row_num
+        df.sort_values(by=['row','x'], ascending=[True,True], inplace=True) 
+        df.reset_index(inplace = True, drop = True)
+        return df
+    
     def _set_placeholder(self, filename='', img_bytes=None):
-        frame = None
+        image = None
         if len(filename):
-            frame = self.loadImage(filename)
-        elif img_bytes == None:
+            image = self.loadImage(filename)
+        elif type(img_bytes) == bytes:
             array = np.asarray(bytearray(img_bytes), dtype="uint8")
-            frame = self.decodeImage(array)
-        frame = cv2.resize(frame, self.cam_size)
-        self.placeholder_image = Image(frame)
-        return frame
+            image = self.decodeImage(array)
+        image.resize(self.cam_size, inplace=True)
+        self.placeholder_image = image
+        return image
     
     # Image handling
     def decodeImage(self, array):
         frame = cv2.imdecode(array, cv2.IMREAD_COLOR)
         return Image(frame)
     
-    def encodeImage(self, image=None, frame=None, ext='.png'):
+    def encodeImage(self, image:Image=None, frame=None, ext='.png'):
         if type(frame) == type(None):
             if type(image) != type(None):
                 return image.encode(ext)
@@ -137,22 +87,27 @@ class Camera(object):
                 raise Exception('Please input either image or frame.')
         return cv2.imencode(ext, frame)[1].tobytes()
     
-    def getImage(self):
+    def getImage(self, crosshair=False):
         ret = False
         frame = None
         try:
             ret, frame = self.feed.read()
-            frame = cv2.resize(frame, self.cam_size)
-            image = Image(frame)
+            if ret:
+                image = Image(frame)
+                image.resize(self.cam_size, inplace=True)
+            else:
+                image = self.placeholder_image
         except AttributeError:
             image = self.placeholder_image
+        if crosshair:
+            image.crosshair(inplace=True)
         return ret, image
     
     def loadImage(self, filename):
         frame = cv2.imread(filename)
         return Image(frame)
     
-    def saveImage(self, image=None, frame=None, filename='image.png'):
+    def saveImage(self, image:Image=None, frame=None, filename='image.png'):
         if type(frame) == type(None):
             if type(image) != type(None):
                 return image.save(filename)
@@ -203,13 +158,12 @@ class Camera(object):
                 data[f'C{index+1}'] = center
         return data, frame
 
-    def detect(self, frame, scale, neighbors):
+    def detect(self, image:Image, scale, neighbors):
         if type(self.classifier) == type(None):
             raise Exception('Please load a classifier first.')
-        df = pd.DataFrame()
-        gray_img = self.grayscale(frame)
-        detected_items = self.classifier.detectMultiScale(image=gray_img, scaleFactor=scale, minNeighbors=neighbors)
-        df = self.data_to_df(detected_items)
+        image.grayscale(inplace=True)
+        detected_data = self.classifier.detectMultiScale(image=image.frame, scaleFactor=scale, minNeighbors=neighbors)
+        df = self._data_to_df(detected_data)
         return df
     
     def loadClassifier(self, xml_path):
@@ -236,7 +190,7 @@ class Optical(Camera):
         return
     
     def getImage(self):
-        return super().getImage()
+        return super().getImage(crosshair=True)
 
 
 class Thermal(Camera):
@@ -254,5 +208,8 @@ class Thermal(Camera):
         return
     
     def getImage(self):
-        return super().getImage()
+        ret, image = super().getImage(crosshair=True)
+        if ret:
+            image.rotate(180, inplace=True)
+        return ret, image
     
