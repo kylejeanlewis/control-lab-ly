@@ -91,7 +91,7 @@ if __name__ == "__main__":
         wait= 0.5
     )
 
-    measurer.loadProgram(base_programs.GEIS, params, channels=[0])
+    measurer.loadProgram('GEIS', params, channels=[0])
     measurer.measure(ImpedanceSpectrum)
     pass
 
