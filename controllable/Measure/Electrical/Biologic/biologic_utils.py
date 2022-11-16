@@ -109,6 +109,7 @@ class BioLogic(ElectricalMeasurer):
             except AttributeError:
                 print(self.buffer_df.head())
                 print("Please use 'getData' method to load datatype before plotting.")
+                print("Otherwise, use find the dataframe using the 'buffer_df' attribute.")
         return
     
     def recallParameters(self):
