@@ -381,7 +381,6 @@ class CV( BiologicProgram ):
     """
     Runs a cyclic voltammetry technqiue.
     """
-    # TODO: Add limit conditions as parameters, not hard coded
     def __init__(
         self,
         device,
@@ -393,6 +392,7 @@ class CV( BiologicProgram ):
         :param params: Program parameters.
             Params are
             voltages: List of voltages in Volts. [Ei, E1, E2, Ei, Ef]
+                Refers to initial, 1st vertex, 2nd vertex, initial, and final voltages respectively.
             scan_rate: List of scan rates in mV/s.
             vs_initial: If step is vs. initial or previous.
                 [Default: False]
