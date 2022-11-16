@@ -11,6 +11,7 @@ Notes / actionables:
 """
 from enum import Enum
 from easy_biologic.base_programs import * # pip install easy-biologic
+print(f"Import: OK <{__name__}>")
 
 PROGRAM_LIST = [
     'OCV', 'CA', 'CP', 'CALimit', 'CPLimit', 'PEIS', 'GEIS', 'JV_Scan', 
