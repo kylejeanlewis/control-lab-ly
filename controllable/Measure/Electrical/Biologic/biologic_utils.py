@@ -7,7 +7,7 @@ Created: Tue 2022/11/02 17:13:35
 @author: Chang Jie
 
 Notes / actionables:
-- add LSV function to BioLogic
+-
 """
 # Standard library imports
 import nest_asyncio
@@ -27,6 +27,12 @@ print(f"Import: OK <{__name__}>")
 nest_asyncio.apply()
 
 class BioLogic(ElectricalMeasurer):
+    """
+    BioLogic class.
+    
+    Args:
+        ip_address (str, optional): IP address of BioLogic device. Defaults to '192.109.209.128'.
+    """
     def __init__(self, ip_address='192.109.209.128'):
         self.ip_address = ip_address
         self.inst = biologic_api.BiologicDevice(ip_address, populate_info=True)
@@ -66,9 +72,19 @@ class BioLogic(ElectricalMeasurer):
         return
     
     def connect(self):
+        """Make connection to device."""
         return self.inst.connect()
     
     def getData(self, datatype=None):
+        """
+        Read the data and cast into custom data type for extended functions.
+        
+        Args:
+            datatype (class, optional): Custom data type. Defaults to 'None'.
+            
+        Returns:
+            pd.DataFrame: raw dataframe of measurement
+        """
         if not self.flags['read']:
             self._read_data()
         if self.flags['read']:
@@ -79,6 +95,15 @@ class BioLogic(ElectricalMeasurer):
         return self.buffer_df
     
     def loadProgram(self, program, params={}, channels=[0], **kwargs):
+        """
+        Load a program for device to run.
+        
+        Args:
+            program (str or class): String representation of class name [See base_programs.PROGRAM_LIST] or class object.
+            params (dict, optional): Dictionary of parameters. Use help() to find out about program parameters. Defaults to {}.
+            channels (list, optional): List of channels to assign program to. Defaults to [0].
+            **kwargs: other keyword arguments to be passed to program.
+        """
         if type(program) == str:
             if program in base_programs.PROGRAM_LIST:
                 program_class = getattr(base_programs, program)
@@ -93,7 +118,14 @@ class BioLogic(ElectricalMeasurer):
         self._parameters = params
         return
     
-    def measure(self, datatype):
+    def measure(self, datatype=None):
+        """
+        Performs measurement and tries to plot the data.
+        
+        Args:
+            datatype (class, optional): Custom data type. Defaults to 'None'.
+        """
+        self.reset()
         print("Measuring...")
         self.program.run()
         self.getData(datatype)
@@ -103,19 +135,32 @@ class BioLogic(ElectricalMeasurer):
         return
     
     def plot(self, plot_type=''):
+        """
+        Plot the measurement data.
+        
+        Args:
+            plot_type (str, optional): Perform the requested plot of the data. Defaults to '', and use the default plot type of the custom data type.
+        """
         if self.flags['measured'] and self.flags['read']:
             try:
                 self.data.plot(plot_type)
             except AttributeError:
                 print(self.buffer_df.head())
                 print("Please use 'getData' method to load datatype before plotting.")
-                print("Otherwise, use find the dataframe using the 'buffer_df' attribute.")
+                print("Otherwise, retrieve the dataframe using the 'buffer_df' attribute.")
         return
     
     def recallParameters(self):
+        """
+        Recall the last used parameters.
+        
+        Returns:
+            dict: keyword parameters 
+        """
         return self._parameters
     
     def reset(self):
+        """Reset the program, data, and flags."""
         self.buffer_df = pd.DataFrame()
         self.data = None
         self.program = None
@@ -124,8 +169,16 @@ class BioLogic(ElectricalMeasurer):
         return
     
     def saveData(self, filename):
+        """
+        Save dataframe to csv file.
+        
+        Args:
+            filename (str): Filename to which data will be saved.
+        """
         if not self.flags['read']:
             self._read_data()
         if self.flags['read']:
             self.buffer_df.to_csv(filename)
+        else:
+            print('No data available to be saved.')
         return
