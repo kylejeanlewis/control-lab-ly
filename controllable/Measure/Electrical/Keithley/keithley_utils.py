@@ -28,6 +28,12 @@ class KeithleyDevice(object):
         self.inst = None
         self.name = name
         self._connect(ip_address)
+        
+        self._attr = dict(
+            buff_name=f'{name}data',
+            buff_size=BUFFER_SIZE,
+            count=NUM_READINGS
+        )
         return
         
     def _connect(self, ip_address=None):
@@ -56,7 +62,7 @@ class KeithleyDevice(object):
             print(e) 
         return
     
-    def _read(self, prompt, field_titles, average=False):
+    def _read(self, prompt, field_titles, average=False, fill_attributes=False):
         """
         Read data output from Keithley.
         
@@ -67,12 +73,15 @@ class KeithleyDevice(object):
         """
         outp = ''
         try:
-            self.inst.write(prompt[0])
+            self._write(prompt, fill_attributes)
             outp = None
             while outp is None:
                 outp = self.inst.read()
         except AttributeError as e:
             print(e)
+        if type(outp) == type(None):
+            print('No output.')
+            return pd.DataFrame()
         data = np.reshape(np.array(outp.split(','), dtype=np.float64), (-1,len(field_titles)))
         if average:
             avg = np.mean(data, axis=0)
@@ -83,7 +92,7 @@ class KeithleyDevice(object):
         df = pd.DataFrame(data, columns=field_titles, dtype=np.float64)
         return df
     
-    def _write(self, lines=[]):
+    def _write(self, lines=[], fill_attributes=False):
         """
         Relay parameters to Keithley.
         
@@ -92,9 +101,13 @@ class KeithleyDevice(object):
         """
         try:
             for line in lines:
+                if fill_attributes:
+                    for k,v in self._attr.items():
+                            line = line.replace('{'+f'{k}'+'}', str(v)) if k in line else line
                 if '{' in line or '}' in line:
                     continue
                 self.inst.write(line)
+                # print(line)
         except AttributeError as e:
             print(e)
         return
@@ -121,9 +134,11 @@ class Keithley(ElectricalMeasurer):
             'stop_measure': False
         }
         
-        self._buffer = f'{name}data'
-        self._buffer_size = BUFFER_SIZE
-        self._num_readings = NUM_READINGS
+        self._attr = dict(
+            buff_name=f'{name}data',
+            buff_size=BUFFER_SIZE,
+            count=NUM_READINGS
+        )
         self._parameters = {}
         self._program_template = None
         return
@@ -182,7 +197,7 @@ class Keithley(ElectricalMeasurer):
         self.program = program_class(self.inst, params)
         return
 
-    def measure(self):
+    def measure(self, datatype=None, **kwargs):
         """
         Perform the desired measurement.
         
@@ -196,8 +211,8 @@ class Keithley(ElectricalMeasurer):
             pandas.DataFrame: dataframe of measurements
         """
         self.flags['stop_measure'] = False
-        self.program.run()
-        self._read_data()
+        self.program.run(**kwargs)
+        self.getData(datatype)
         if len(self.buffer_df):
             self.flags['measured'] = True
         self.plot()
@@ -205,7 +220,11 @@ class Keithley(ElectricalMeasurer):
 
     def plot(self, plot_type=''):
         if self.flags['measured'] and self.flags['read']:
-            self.data.plot(plot_type)
+            try:
+                self.data.plot(plot_type)
+            except AttributeError:
+                print('\nUnable to plot...')
+                self.program.plot()
         return
 
     def recallParameters(self):
@@ -245,13 +264,8 @@ class Keithley(ElectricalMeasurer):
         return
     
     def setParameters(self, params={}):
-        attr = dict(
-            buff_name=self._buffer,
-            buff_size=self._buffer_size,
-            count=self._num_readings
-        )
-        for k,v in attr.items():
-            if f'{k}' in self.program.scpi.string and k not in params.keys():
+        for k,v in self._attr.items():
+            if k in self.program.scpi.string and k not in params.keys():
                 params[k] = v
         return self.program.setParameters(params)
 
