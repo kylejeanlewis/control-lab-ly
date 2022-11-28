@@ -19,7 +19,7 @@ from controllable.Measure.Electrical import Biologic
 # from controllable.builds.PrimitivEnder import Setup, Program
 # from controllable.View import Optical
 # from controllable.Move.Cartesian import Primitiv, Ender
-# from controllable.Measure.Electrical.Keithley import Keithley
+from controllable.Measure.Electrical import Keithley
 # from controllable.misc.misc_utils import Helper
 from controllable.Measure.Electrical.Biologic.programs import base_programs
 # from controllable.View.view_utils import Optical
@@ -39,9 +39,9 @@ if __name__ == "__main__":
 
 # %% Keithley examples
 if __name__ == "__main__":
-    keith = Keithley.Keithley('192.168.1.100')
-    keith.loadProgram('OCV')
-    keith.measure()
+    keith = Keithley.Keithley('192.168.1.104')
+    keith.loadProgram('LSV')
+    keith.measure(volt_range=(-0.7, 0.7, 0.01))
     # mover = Primitiv('COM5')
     pass
 
