@@ -46,7 +46,7 @@ class SCPI(object):
         scpi_dict = {}
         scpi_split = self.string.split('###')
         for i,s in enumerate(scpi_split):
-            scpi_dict[sections[i]] = [l.strip() for l in s.split('\n') if len(l)]
+            scpi_dict[sections[i]] = [l.strip() for l in s.split('\n') if len(l.strip())]
         return scpi_dict
     
     def replace(self, inplace=False, **kwargs):
@@ -60,7 +60,9 @@ class SCPI(object):
             str: SCPI commands with desired values
         """
         string = self.string
-        string = string.format(**kwargs)
+        for k,v in kwargs.items():
+            string = string.replace('{'+f'{k}'+'}', str(v)) if k in string else string
+        # string = string.format(**kwargs)
         string = string.replace('True', 'ON')
         string = string.replace('False', 'OFF')
         if inplace:
