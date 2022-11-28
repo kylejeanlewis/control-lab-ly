@@ -53,27 +53,31 @@ class Program(object):
             self.setParameters(params)
         return
     
-    def run(self, field_titles=[], values=[], average=False, wait=0):
+    def plot(self):
+        print(self.data_df)
+        return
+    
+    def run(self, field_titles=[], values=[], average=False, wait=0, fill_attributes=False):
         # connect to device
         self.device._write(['*RST'])
         prompts = self.scpi.getPrompts()
-        self.device._write(prompts['settings'])
+        self.device._write(prompts['settings'], fill_attributes)
         
         if len(values):
             for value in values:
                 if self.flags['stop_measure']:
                     break
                 prompt = [l.format(value=value) for l in prompts['inputs']]
-                self.device._write(prompt)
+                self.device._write(prompt, fill_attributes)
                 time.sleep(wait)
                 df = self.device._read(prompts['outputs'], field_titles=field_titles, average=average)
                 self.data_df = pd.concat([self.data_df, df], ignore_index=True)
         else:
-            self.device._write(prompts['inputs'])
+            self.device._write(prompts['inputs'], fill_attributes)
             time.sleep(wait)
-            self.data_df = self.device._read(prompts['outputs'], field_titles=field_titles, average=average)
+            self.data_df = self.device._read(prompts['outputs'], field_titles=field_titles, average=average, fill_attributes=fill_attributes)
 
-        self.device._write(['OUTP OFF'])
+        self.device._write(['OUTP OFF'], fill_attributes)
         # disconnect from device
         return self.data_df
     
@@ -95,6 +99,9 @@ class IV_Scan(Program):
         super().loadSCPI('SCPI_iv.txt')
         return
     
+    def plot(self):
+        return self.data_df.plot.scatter('I', 'V')
+    
     def run(self, values):
         return super().run(field_titles=['I', 'V'], values=values, average=True)
 
@@ -102,11 +109,16 @@ class IV_Scan(Program):
 class Logging(Program):
     def __init__(self, device, params={}):
         super().__init__(device, params)
+        self.field_title = ''
+        
+    def plot(self):
+        return self.data_df.plot.line('t', self.field_title)
 
-    def run(self, field_titles, average=False, timestep=1):
+    def run(self, field_title='value', average=False, timestep=1):
+        self.field_title = field_title
         while not self.flags['stop_measure'] and len(self.data_df) < MAX_BUFFER_SIZE:
             prompt = ['TRAC:TRIG "defbuffer1"', 'FETCH? "defbuffer1", READ, REL']
-            df = self.device._read(prompt, field_titles, average=average)
+            df = self.device._read(prompt, [field_title, 't'], average=average)
             self.data_df = pd.concat([self.data_df, df], ignore_index=True)
             time.sleep(timestep)
         return self.data_df
@@ -119,7 +131,7 @@ class OCV(Program):
         return
     
     def run(self):
-        return super().run(field_titles=['V'], average=True)
+        return super().run(field_titles=['V'], average=True, fill_attributes=True)
 
 
 class SweepV(Program):
@@ -127,6 +139,9 @@ class SweepV(Program):
         super().__init__(device, params)
         super().loadSCPI('SCPI_sweep_volt.txt')
         return
+    
+    def plot(self):
+        return self.data_df.plot.line('V', 'I')
     
     def run(self, voltages, dwell_time, num_points, wait):
         self.setParameters(dict(voltages=voltages, dwell_time=dwell_time, num_points=num_points))
@@ -141,13 +156,18 @@ class LSV(Program):
         self.sub_program['sweep'] = SweepV(device)
         return
     
+    def plot(self):
+        return self.sub_program['sweep'].plot()
+    
     def run(self, volt_range, sweep_rate=0.01, dual=True):
         df = self.sub_program['OCV'].run()
         potential = round(df.at[0,'V'], 3)
         print(f'OCV = {potential}V')
         
-        start, stop, step = volt_range
-        points = ((stop - start) / step) + 1
+        below, above, step = volt_range
+        start = round(potential + below, 3)
+        stop = round(potential + above, 3)
+        points = int( ((stop - start) / step) + 1 )
         num_points = 2 * points - 1 if dual else points
 
         voltages = ", ".join(str(v) for v in (start,stop,points))
@@ -156,5 +176,5 @@ class LSV(Program):
         print(time.time())
         print(f'Expected measurement time: {wait}s')
         
-        self.sub_program['sweep'].run(voltages=voltages, dwell_time=dwell_time, num_points=num_points, wait=wait)
+        self.data_df = self.sub_program['sweep'].run(voltages=voltages, dwell_time=dwell_time, num_points=num_points, wait=wait)
         return
