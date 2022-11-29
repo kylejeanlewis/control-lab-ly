@@ -9,13 +9,11 @@ Notes / actionables:
 # Standard library imports
 import math
 import numpy as np
-import os
-import sys
 import time
 
 # Local application imports
-from . import RobotArm
-from .Dobot.dobot_api import dobot_api_dashboard, dobot_api_feedback, MyType
+from .. import RobotArm
+from .dobot_api import dobot_api_dashboard, dobot_api_feedback, MyType
 print(f"Import: OK <{__name__}>")
 
 SCALE = True
