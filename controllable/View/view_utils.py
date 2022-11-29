@@ -31,15 +31,14 @@ class Camera(object):
         self.device = None
         self.feed = None
         self.placeholder_image = None
+        
+        self.flags = {
+            'isConnected': False
+        }
         pass
     
     def __delete__(self):
-        self._close()
-        return
-        
-    def _close(self):
-        self.feed.release()
-        cv2.destroyAllWindows()
+        self.close()
         return
     
     def _connect(self):
@@ -73,6 +72,12 @@ class Camera(object):
         image.resize(self.cam_size, inplace=True)
         self.placeholder_image = image
         return image
+    
+    def close(self):
+        self.feed.release()
+        cv2.destroyAllWindows()
+        self.flags['isConnected'] = False
+        return
     
     # Image handling
     def decodeImage(self, array):
@@ -187,9 +192,12 @@ class Optical(Camera):
     
     def _connect(self):
         self.feed = cv2.VideoCapture(0)
+        self.flags['isConnected'] = True
         return
     
     def getImage(self):
+        if not self.flags['isConnected']:
+            self._connect()
         return super().getImage(crosshair=True)
 
 
@@ -205,9 +213,12 @@ class Thermal(Camera):
     def _connect(self, ip_address):
         self.device = Ax8ThermalCamera(ip_address)
         self.feed = self.device.video.stream
+        self.flags['isConnected'] = True
         return
     
     def getImage(self):
+        if not self.flags['isConnected']:
+            self._connect()
         ret, image = super().getImage(crosshair=True)
         if ret:
             image.rotate(180, inplace=True)
