@@ -1,2 +1,2 @@
 from .jointed_utils import RobotArm
-from . import dobot_utils as dobot
+from .Dobot.dobot_utils import Dobot, JawGripper, VacuumGrip
