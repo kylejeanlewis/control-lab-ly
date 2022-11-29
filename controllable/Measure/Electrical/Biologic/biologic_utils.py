@@ -125,7 +125,7 @@ class BioLogic(ElectricalMeasurer):
         Args:
             datatype (class, optional): Custom data type. Defaults to 'None'.
         """
-        self.reset()
+        self.reset(keep_program=True)
         print("Measuring...")
         self.program.run()
         self.getData(datatype)
@@ -159,11 +159,12 @@ class BioLogic(ElectricalMeasurer):
         """
         return self._parameters
     
-    def reset(self):
+    def reset(self, keep_program=False):
         """Reset the program, data, and flags."""
         self.buffer_df = pd.DataFrame()
         self.data = None
-        self.program = None
+        if not keep_program:
+            self.program = None
         self.flags['measured'] = False
         self.flags['read'] = False
         return

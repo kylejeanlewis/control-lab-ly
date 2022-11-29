@@ -210,7 +210,8 @@ class Keithley(ElectricalMeasurer):
         Returns:
             pandas.DataFrame: dataframe of measurements
         """
-        self.flags['stop_measure'] = False
+        self.reset(keep_program=True)
+        print("Measuring...")
         self.program.run(**kwargs)
         self.getData(datatype)
         if len(self.buffer_df):
@@ -232,15 +233,15 @@ class Keithley(ElectricalMeasurer):
             raise Exception("Please load a program first.")
         return self.program.parameters
 
-    def reset(self, full=False):
+    def reset(self, keep_program=False):
         """Reset the Keithley."""
         self.sendMessage(['*RST'])
-        if full:
-            self.buffer_df = pd.DataFrame()
-            self.data = None
+        self.buffer_df = pd.DataFrame()
+        self.data = None
+        if not keep_program:
             self.program = None
-            for key in self.flags.keys():
-                self.flags[key] = False
+        for key in self.flags.keys():
+            self.flags[key] = False
         return
 
     def saveData(self, filename):
