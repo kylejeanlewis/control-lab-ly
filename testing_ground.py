@@ -4,7 +4,10 @@ Created: Tue 2022/11/01 17:13:35
 @author: Chang Jie
 
 Notes / actionables:
--
+- test Viewers (Optical / Thermal)
+- test database_utils
+- add 'Visualisation' modules
+- add 'GUI' modules
 """
 # Standard library imports
 import numpy as np
@@ -12,42 +15,44 @@ import pandas as pd
 # Third party imports
 
 # Local application imports
-# from controllable.Move import Cartesian, Jointed
-from controllable.Analyse.Data.Types.eis_datatype import ImpedanceSpectrum
-from controllable.Measure.Electrical import Biologic
 # from controllable.builds.Paraspin import Setup, Program
 # from controllable.builds.PrimitivEnder import Setup, Program
-# from controllable.View import Optical
-# from controllable.Move.Cartesian import Primitiv, Ender
-from controllable.Measure.Electrical import Keithley
-# from controllable.misc.misc_utils import Helper
-from controllable.Measure.Electrical.Biologic.programs import base_programs
-# from controllable.View.view_utils import Optical
 print(f"Import: OK <{__name__}>")
 
+# %% Helper examples
+from controllable.misc import Helper
 if __name__ == "__main__":
-    # helper = Helper()
-    # see = Optical()
-    # helper.display_ports()
+    from controllable.misc.misc_utils import Helper
+    helper = Helper()
+    helper.display_ports()
     pass
 
 # %% Cartesian examples
+from controllable.Move.Cartesian import Primitiv, Ender
 if __name__ == "__main__":
     mover = Ender('COM4')
     # mover = Primitiv('COM5')
     pass
 
-# %% Keithley examples
+# %% Jointed examples
+from controllable.Move.Jointed import Dobot
 if __name__ == "__main__":
-    keith = Keithley.Keithley('192.168.1.104')
-    keith.loadProgram('LSV')
-    keith.measure(volt_range=(-0.7, 0.7, 0.01))
-    # mover = Primitiv('COM5')
+    mover = Dobot('192.168.2.8')
     pass
 
-# %%
+# %% Keithley examples
+from controllable.Measure.Electrical import Keithley
 if __name__ == "__main__":
-    # measurer = Keithley.Keithley('192.168.1.100')
+    measurer = Keithley.Keithley('192.168.1.104')
+    measurer.loadProgram('LSV')
+    measurer.measure(volt_range=(-0.7, 0.7, 0.01))
+    pass
+
+# %% BioLogic examples
+from controllable.Measure.Electrical import Biologic
+from controllable.Measure.Electrical.Biologic.programs import base_programs
+from controllable.Analyse.Data.Types.eis_datatype import ImpedanceSpectrum
+if __name__ == "__main__":
     measurer = Biologic.BioLogic('192.109.209.128')
     measurer.reset()
     params = {
@@ -65,7 +70,7 @@ if __name__ == "__main__":
     measurer.measure(ImpedanceSpectrum)
     pass
 
-# %%
+# %% BioLogic examples
 if __name__ == "__main__":
     measurer.reset()
     params = {
@@ -77,7 +82,7 @@ if __name__ == "__main__":
     measurer.measure(None)
     pass
 
-# %%
+# %% BioLogic examples
 if __name__ == "__main__":
     measurer.reset()
     params = dict(
@@ -95,7 +100,7 @@ if __name__ == "__main__":
     measurer.measure(ImpedanceSpectrum)
     pass
 
-# %%
+# %% BioLogic examples
 if __name__ == "__main__":
     measurer.reset()
     params = dict(
@@ -109,6 +114,13 @@ if __name__ == "__main__":
 
     measurer.loadProgram(base_programs.CV, params, channels=[0])
     measurer.measure(None)
+    pass
+
+# %% Webcam examples
+from controllable.View import Optical
+if __name__ == "__main__":
+    viewer = Optical()
+    viewer.getImage()
     pass
 
 # %%
