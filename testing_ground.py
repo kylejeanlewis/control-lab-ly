@@ -123,4 +123,15 @@ if __name__ == "__main__":
     viewer.getImage()
     pass
 
+# %% GUI examples
+from controllable.Move.Cartesian import Primitiv, Ender
+from controllable.Move.Jointed import Dobot
+from controllable.Control.GUI.gui_utils import MoverPanel
+if __name__ == "__main__":
+    mover = Primitiv('COM4')
+    # mover = Dobot('192.168.2.8')
+    gui = MoverPanel(mover=mover, axes=['X'])
+    gui.runGUI('Mover')
+    pass
+
 # %%
