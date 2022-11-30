@@ -29,6 +29,7 @@ class CNC(Mover):
         }
         
         self.coordinates = (0,0,0)
+        self.orientation = (0,0,0)
         
         self.verbose = verbose
         self._port = ''
@@ -122,7 +123,7 @@ class CNC(Mover):
             vector = (0,0,displacement) 
         return self.moveBy(vector, z_to_safe=True)
 
-    def moveBy(self, vector, z_to_safe=True):
+    def moveBy(self, vector, z_to_safe=True, **kwargs):
         """
         Move cnc in all axes and displacement
         - vector: vector in mm
@@ -130,7 +131,7 @@ class CNC(Mover):
         new_coord = np.round( np.array(self.coordinates) + np.array(vector) , 2)
         return self.moveTo(new_coord, z_to_safe)
     
-    def moveTo(self, coord, z_to_safe=True, jump_z_height=None):
+    def moveTo(self, coord, z_to_safe=True, jump_z_height=None, **kwargs):
         """
         Move cnc to absolute position in 3D
         - coord: (X, Y, Z) coordinates of target
