@@ -181,8 +181,24 @@ class Dobot(RobotArm):
             print(f"{self.__class__} ({self.ip_address}) not connected.")
             return False
         return True
+    
+    def move(self, axis, displacement):
+        """
+        Move cnc in one axis and displacement
+        - axis: X, Y, or Z
+        - displacement: displacement in mm
+        """
+        axis = axis.upper()
+        vector = (0,0,0)    
+        if axis == 'X':
+            vector = (displacement,0,0) 
+        elif axis == 'Y':
+            vector = (0,displacement,0) 
+        elif axis =='Z':
+            vector = (0,0,displacement) 
+        return self.moveBy(vector)
 
-    def moveBy(self, vector, angles=(0,0,0)):
+    def moveBy(self, vector, angles=(0,0,0), **kwargs):
         """
         Relative Cartesian movement, using workspace coordinates.
 
@@ -193,7 +209,7 @@ class Dobot(RobotArm):
         vector = self._transform_vector_in(vector)
         return self.moveCoordBy(vector, angles)
 
-    def moveTo(self, coord, orientation=(0,), tuck=False):
+    def moveTo(self, coord, orientation=(0,), tuck=False, **kwargs):
         """
         Absolute Cartesian movement, using workspace coordinates.
 
