@@ -134,7 +134,7 @@ class Camera(object):
         center = [int(x+(w/2)), int(y+(h/2))]
         cv2.rectangle(frame, (x,y), (x+w, y+h), (0,255,0), 2)
         cv2.circle(frame, (int(x+(w/2)), int(y+(h/2))), 3, (0,0,255), -1)
-        cv2.putText(frame, '{}'.format(index+1), (x-8, y-4), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.6, (255,255,255), 1)
+        cv2.putText(frame, '{}'.format(index+1), (x-8, y-4), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255), 1)
 
         # Morphological Transformations - Noise Removal
         roi_color = frame[y:y+h, x:x+w]
