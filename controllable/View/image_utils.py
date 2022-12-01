@@ -20,8 +20,16 @@ class Image(object):
         self.frame = frame
         pass
     
+    def addText(self, text:str, position, inplace=False):
+        frame = self.frame
+        cv2.putText(frame, text, position, cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255), 1)
+        if inplace:
+            self.frame = frame
+            return
+        return Image(frame)
+    
     def blur(self, blur_kernel=3, inplace=False):
-        frame = cv2.GaussianBlur(frame, (blur_kernel,blur_kernel), 0)
+        frame = cv2.GaussianBlur(self.frame, (blur_kernel,blur_kernel), 0)
         if inplace:
             self.frame = frame
             return
@@ -40,6 +48,9 @@ class Image(object):
             self.frame = frame
             return
         return Image(frame)
+    
+    def denoise(self):
+        return
     
     def encode(self, extension='.png'):
         return cv2.imencode(extension, self.frame)[1].tobytes()
