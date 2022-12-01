@@ -131,9 +131,9 @@ from controllable.Control.GUI.gui_utils import MoverPanel, CompoundPanel, Viewer
 if __name__ == "__main__":
     ensemble = {
         'Camera': (ViewerPanel, dict(viewer=Optical())),
-        'Primitiv': (MoverPanel, dict(mover=Primitiv('COM4'), axes=['X'], group='None')),
-        'Ender': (MoverPanel, dict(mover=Ender('COM5'), axes=['X','Y','Z'], group='None')),
-        # 'Dobot': (MoverPanel, dict(mover=Dobot('COM5'), axes=['X','Y','Z','a','b','g'])),
+        'Primitiv': (MoverPanel, dict(mover=Primitiv('COM4'), axes=['X'])),
+        'Ender': (MoverPanel, dict(mover=Ender('COM5'), axes=['X','Y','Z'])),
+        'Dobot': (MoverPanel, dict(mover=Dobot('COM5'), axes=['X','Y','Z','a','b','g'])),
     }
     gui = CompoundPanel(ensemble)
     gui.runGUI('Primitiv')
