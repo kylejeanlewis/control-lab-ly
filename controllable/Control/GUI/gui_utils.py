@@ -108,12 +108,13 @@ class Panel(object):
     def close(self):
         return
     
-    def configure(self):
-        sg.theme(self.theme)
-        sg.set_options(
-            font=(self.typeface, self.font_sizes[1]),
-            element_padding = (0,0)
-            )
+    def configure(self, **kwargs):
+        theme = self.theme if 'theme' not in kwargs.keys() else kwargs.pop('theme')
+        font = (self.typeface, self.font_sizes[int(len(FONT_SIZES)/2)]) if 'font' not in kwargs.keys() else kwargs.pop('font')
+        element_padding = (0,0) if 'element_padding' not in kwargs.keys() else kwargs.pop('element_padding')
+        
+        sg.theme(theme)
+        sg.set_options(font=font, element_padding=element_padding, **kwargs)
         return
     
     def getLayout(self, title='Panel', title_font_level=0, **kwargs):
@@ -224,7 +225,21 @@ class CompoundPanel(Panel):
             update = panel.listenEvents(event, values)
             updates.update(update)
         return updates
-  
+
+
+class MeasurerPanel(Panel):
+    def __init__(self, name='', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group=None):
+        super().__init__(name, theme, typeface, font_sizes, group)
+        return
+    
+    def close(self):
+        return
+    
+    def getLayout(self, title='Panel', title_font_level=0, **kwargs):
+        return super().getLayout(title, title_font_level, **kwargs)
+    
+    def listenEvents(self, event, values):
+        return super().listenEvents(event, values)
 
 class MoverPanel(Panel):
     def __init__(self, mover, name='MOVE', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group='mover', axes=['X','Y','Z','a','b','g']):
