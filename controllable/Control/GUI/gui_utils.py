@@ -176,9 +176,9 @@ class CompoundPanel(Panel):
             panel.close()
         return
     
-    def getLayout(self, title_font_level=0, **kwargs):
+    def getLayout(self, title='Control Panel', title_font_level=0, **kwargs):
         font = (self.typeface, self.font_sizes[title_font_level], 'bold')
-        layout = super().getLayout('Control Palette', justification='center', font=font)
+        layout = super().getLayout(title, justification='center', font=font)
         
         tab_groups = {'main': []}
         for key, panel in self.panels.items():
