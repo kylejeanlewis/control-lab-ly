@@ -7,6 +7,7 @@ Notes / actionables:
 - 
 """
 # Standard library imports
+import time
 
 # Third party imports
 import PySimpleGUI as sg # pip install PySimpleGUI
@@ -18,14 +19,15 @@ print(f"Import: OK <{__name__}>")
 WIDTH, HEIGHT = sg.Window.get_screen_size()
 THEME = 'LightGreen'
 TYPEFACE = "Helvetica"
-FONT_SIZES = [14,12,10]
+FONT_SIZES = [14,12,10,8,6]
 
 class Panel(object):
-    def __init__(self, name='', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES):
+    def __init__(self, name='', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group=None):
         self.theme = theme
         self.typeface = typeface
         self.font_sizes = font_sizes
         self.name = name
+        self.group = group
         
         self.window = None
         self.configure()
@@ -122,7 +124,7 @@ class Panel(object):
                     **kwargs)
         ]]
         # Build Layout here
-        layout = sg.Column(layout)
+        layout = sg.Column(layout, vertical_alignment='top')
         return layout
     
     def getWindow(self, title='Application', **kwargs):
@@ -159,29 +161,99 @@ class Panel(object):
         self.window.close()
         self.close()
         return
-        
+
+
+class CompoundPanel(Panel):
+    def __init__(self, ensemble={}, theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group=None, priority=None):
+        super().__init__(theme=theme, typeface=typeface, font_sizes=font_sizes, group=group)
+        self.panels = {key: value[0](name= key, **value[1]) for key,value in ensemble.items()}
+        # self.priority_panel = self.panels[priority] if priority else None
+        # self.flags['priority'] = priority
+        return
     
+    def close(self):
+        for panel in self.panels.values():
+            panel.close()
+        return
+    
+    def getLayout(self, title_font_level=0, **kwargs):
+        font = (self.typeface, self.font_sizes[title_font_level], 'bold')
+        layout = super().getLayout('Control Palette', justification='center', font=font)
+        
+        tab_groups = {'main': []}
+        for key, panel in self.panels.items():
+            group = panel.group
+            _layout = panel.getLayout(title_font_level=title_font_level+1)
+            if not group:
+                group = 'main'
+            if group not in tab_groups.keys():
+                tab_groups[group] = []
+            tab_groups[group].append((key, _layout))
+        
+        panels = []
+        excluded = ['main']
+        for group, _layouts in tab_groups.items():
+            if group == 'main':
+                panels = panels + [_layout for _,_layout in _layouts]
+                continue
+            if len(_layouts) == 1:
+                panels.append(_layouts[0][1])
+                excluded.append(group)
+            else:
+                tabs = [sg.Tab(key, [[_layout]], expand_x=True) for key,_layout in tab_groups[group]]
+                tab_group = sg.TabGroup([tabs], tab_location='bottomright', key=f'-{group}-TABS-', 
+                                        expand_x=True, expand_y=True)
+                tab_groups[group] = tab_group
+        panels = panels + [element for group,element in tab_groups.items() if group not in excluded]
+        panel_list = [panels[0]]
+        for p in range(1, len(panels)):
+            panel_list.append(sg.VerticalSeparator(color="#ffffff", pad=5))
+            panel_list.append(panels[p])
+        
+        suite = sg.Column([panel_list], vertical_alignment='top')
+        layout = [
+            [layout],
+            [suite]
+        ]
+        layout = sg.Column(layout, vertical_alignment='top')
+        return layout
+    
+    def listenEvents(self, event, values):
+        updates = {}
+        for panel in self.panels.values():
+            update = panel.listenEvents(event, values)
+            updates.update(update)
+        return updates
+  
+
 class MoverPanel(Panel):
-    def __init__(self, mover, name='MOVE', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, axes=['X','Y','Z','a','b','g']):
-        super().__init__(name=name, theme=theme, typeface=typeface, font_sizes=font_sizes)
+    def __init__(self, mover, name='MOVE', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group='mover', axes=['X','Y','Z','a','b','g']):
+        super().__init__(name=name, theme=theme, typeface=typeface, font_sizes=font_sizes, group=group)
         self.axes = axes
         self.buttons = {}
         self.mover = mover
         self.flags['update_position'] = True
         return
         
-    def getLayout(self):
-        layout = super().getLayout(f'{self.name} Control', justification='center')
+    def getLayout(self, title_font_level=1, **kwargs):
+        font = (self.typeface, self.font_sizes[title_font_level])
+        layout = super().getLayout(f'{self.name} Control', justification='center', font=font)
         
         # yaw (alpha, about z-axis), pitch (beta, about x-axis), roll (gamma, about y-axis)
         axes = ['X','Y','Z','a','b','g']
-        increments = ['-10','-1','0.1',0,'+0.1','+1','+10']
+        increments = ['-10','-1','-0.1',0,'+0.1','+1','+10']
         center_buttons = ['home']*2 + ['safe'] + ['zero']*3
-        font = (self.typeface, self.font_sizes[1])
-        color_code = {
+        font = (self.typeface, self.font_sizes[title_font_level+1])
+        color_codes = {
             'X':None, 'Y':None, 'Z':None,
             # 'X':'#bbbbff', 'Y':'#bbffbb', 'Z':'#ffbbbb',
             'a':'#ffffbb', 'b':'#ffbbff', 'g':'#bbffff'
+        }
+        tooltips = {
+            'X':None, 'Y':None, 'Z':None,
+            'a':'Rotation (in degrees) about Z-axis', 
+            'b':'Rotation (in degrees) about Y-axis', 
+            'g':'Rotation (in degrees) about X-axis'
         }
         labels = {axis: [] for axis in axes}
         elements = {}
@@ -189,18 +261,21 @@ class MoverPanel(Panel):
         
         for axis,center in zip(axes, center_buttons):
             specials = {}
-            bg_color = color_code[axis]
+            bg_color = color_codes[axis]
             column = sg.Column([[sg.Text(axis, font=font)], 
-                                [sg.Input(0, size=(5,2), key=self._mangle(f'-{axis}-VALUE-'), font=font, background_color=bg_color)]],
+                                [sg.Input(0, size=(5,2), key=self._mangle(f'-{axis}-VALUE-'), 
+                                          tooltip=tooltips[axis],
+                                          font=font, background_color=bg_color)]],
                                justification='center', pad=10, visible=(axis in self.axes))
             input_fields.append(column)
             
             if axis in ['a','b','g']:
                 orientation = 'v' if axis=='g' else 'h'
-                size = (15,20) if axis=='g' else (33,20)
+                size = (15,20) if axis=='g' else (36,20)
                 slider = sg.Slider((-180,180), 0, orientation=orientation, size=size, key=self._mangle(f'-{axis}-SLIDER-'), 
-                                   resolution=1, enable_events=True, disable_number_display=True,
-                                   font=font, trough_color=bg_color, visible=(axis in self.axes)
+                                   resolution=1, enable_events=True, disable_number_display=True, 
+                                   font=font, trough_color=bg_color, visible=(axis in self.axes),
+                                   tooltip=tooltips[axis]
                                    )
                 elements[axis] = [[self._pad(), slider, self._pad()]]
                 continue
@@ -235,7 +310,7 @@ class MoverPanel(Panel):
             [sg.Column([self.getButtons(['Go','Clear','Reset'], (5,2), self.name, font)], justification='center')],
             [self._pad()]
         ]
-        layout = sg.Column(layout)
+        layout = sg.Column(layout, vertical_alignment='top')
         return layout
     
     def listenEvents(self, event, values):
@@ -254,8 +329,11 @@ class MoverPanel(Panel):
                 coord = position[:2] + [self.mover.heights['safe']]
             except AttributeError:
                 coord = self.mover.home_position
-            orientation = position[-3:]
-            self.mover.moveTo(coord, orientation)
+            if self.mover.coordinates[2] >= coord[2]:
+                print('Already cleared safe height. Staying put...')
+            else:
+                orientation = position[-3:]
+                self.mover.moveTo(coord, orientation)
             
         # 3. XYZ buttons
         if event in self.buttons.keys():
@@ -292,13 +370,14 @@ class MoverPanel(Panel):
                     updates[self._mangle(f'-{axis}-SLIDER-')] = dict(value=position[i])
         self.flags['update_position'] = False
         return updates
-    
-    
+
+
 class ViewerPanel(Panel):
-    def __init__(self, viewer, name='VIEW', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES):
-        super().__init__(name=name, theme=theme, typeface=typeface, font_sizes=font_sizes)
+    def __init__(self, viewer, name='VIEW', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group='viewer'):
+        super().__init__(name=name, theme=theme, typeface=typeface, font_sizes=font_sizes, group=group)
         self.viewer = viewer
         self.display_box = self._mangle('-IMAGE-')
+        self.last_read_time = time.time()
         self.flags['update_display'] = True
         return
     
@@ -306,48 +385,23 @@ class ViewerPanel(Panel):
         self.viewer.close()
         return
         
-    def getLayout(self, title='Panel', title_font_level=0, **kwargs):
-        layout = super().getLayout(f'{self.name} Control', justification='center')
+    def getLayout(self, title_font_level=1, **kwargs):
+        font = (self.typeface, self.font_sizes[title_font_level])
+        layout = super().getLayout(f'{self.name} Control', justification='center', font=font)
         layout = [
             [layout],
             [sg.Image(filename='', key=self.display_box, enable_events=True)]
-        ]
-        layout = sg.Column(layout)
-        return layout
-    
-    def listenEvents(self, event, values):
-        updates = {}
-        if self.flags['update_display']:
-            ret, image = self.viewer.getImage()
-            updates[self.display_box] = dict(data=image.encode())
-        return updates
-    
-
-class CompoundPanel(Panel):
-    def __init__(self, ensemble={}, theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES):
-        super().__init__(theme=theme, typeface=typeface, font_sizes=font_sizes)
-        self.panels = {key: value[0](name= key, **value[1]) for key,value in ensemble.items()}
-        return
-    
-    def close(self):
-        for panel in self.panels.values():
-            panel.close()
-        return
-    
-    def getLayout(self):
-        font = (self.typeface, self.font_sizes[0], 'bold')
-        layout = super().getLayout('Control Palette', justification='center', font=font)
-        layout = [
-            [layout],
-            [self.panels[key].getLayout() for key in self.panels.keys()]
         ]
         layout = sg.Column(layout, vertical_alignment='top')
         return layout
     
     def listenEvents(self, event, values):
         updates = {}
-        for panel in self.panels.values():
-            update = panel.listenEvents(event, values)
-            updates.update(update)
+        if self.flags['update_display']:
+            latency = time.time() - self.last_read_time
+            fps = round(1/latency, 2)
+            self.last_read_time = time.time()
+            ret, image = self.viewer.getImage()
+            image = image.addText(f'FPS: {fps}', position=(0,image.frame.shape[0]-5), inplace=False)
+            updates[self.display_box] = dict(data=image.encode())
         return updates
-  
