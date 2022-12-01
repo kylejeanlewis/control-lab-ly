@@ -124,17 +124,19 @@ if __name__ == "__main__":
     pass
 
 # %% GUI examples
-from controllable.Move.Cartesian import Primitiv, Ender
-from controllable.Move.Jointed import Dobot
-from controllable.Control.GUI.gui_utils import MoverPanel, CompoundPanel
+from controllable.Move.Cartesian import Ender
+# from controllable.Move.Jointed import Dobot
+from controllable.View import Optical
+from controllable.Control.GUI.gui_utils import MoverPanel, CompoundPanel, ViewerPanel
 if __name__ == "__main__":
-    palette = {
-        'primitiv': dict(mover=Primitiv('COM4'), axes=['X']),
-        'ender': dict(mover=Ender('COM5'), axes=['X','Y','Z']),
-        'dobot': dict(mover=Dobot(), axes=['X','Y','Z','a','b','g']),
+    ensemble = {
+        'Camera': (ViewerPanel, dict(viewer=Optical())),
+        # 'Primitiv': (MoverPanel, dict(mover=Primitiv('COM4'), axes=['X'])),
+        'Ender': (MoverPanel, dict(mover=Ender('COM5'), axes=['X','Y','Z'])),
+        # 'Dobot': (MoverPanel, dict(mover=Dobot('COM5'), axes=['X','Y','Z','a','b','g'])),
     }
-    gui = CompoundPanel(palette)
-    gui.runGUI('Mover')
+    gui = CompoundPanel(ensemble)
+    gui.runGUI('Primitiv')
     pass
 
 # %%
