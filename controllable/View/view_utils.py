@@ -61,6 +61,13 @@ class Camera(object):
         df.reset_index(inplace = True, drop = True)
         return df
     
+    def _read(self):
+        return self.feed.read()
+    
+    def _release(self):
+        self.feed.release()
+        return
+    
     def _set_placeholder(self, filename='', img_bytes=None):
         image = None
         if len(filename):
@@ -73,7 +80,7 @@ class Camera(object):
         return image
     
     def close(self):
-        self.feed.release()
+        self._release()
         cv2.destroyAllWindows()
         self.flags['isConnected'] = False
         return
@@ -95,7 +102,7 @@ class Camera(object):
         ret = False
         frame = None
         try:
-            ret, frame = self.feed.read()
+            ret, frame = self._read()
             if ret:
                 image = Image(frame)
                 image.resize(self.cam_size, inplace=True)
@@ -195,29 +202,40 @@ class Optical(Camera):
         return
     
     def getImage(self):
-        if not self.flags['isConnected']:
-            self._connect()
+        # if not self.flags['isConnected']:
+        #     self._connect()
         return super().getImage(crosshair=True)
 
 
 class Thermal(Camera):
     def __init__(self, ip_address, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._connect(ip_address)
+        self.ip_address = ip_address
+        self._connect()
         
         img_bytes = pkgutil.get_data(__name__, 'placeholders/infrared_camera.png')
         self._set_placeholder(img_bytes=img_bytes)
         return
     
-    def _connect(self, ip_address):
-        self.device = Ax8ThermalCamera(ip_address)
-        self.feed = self.device.video.stream
-        self.flags['isConnected'] = True
+    def _connect(self):
+        self.device = Ax8ThermalCamera(self.ip_address, verbose=False)
+        if self.device.modbus.is_open:
+            self.feed = self.device.video.stream
+            self.flags['isConnected'] = True
+        return
+    
+    def _read(self):
+        return self.device.modbus.is_open, self.feed.read()
+    
+    def _release(self):
+        if self.device.modbus.is_open:
+            self.feed.stop()
+            self.feed.stream.release()
         return
     
     def getImage(self):
-        if not self.flags['isConnected']:
-            self._connect()
+        # if not self.flags['isConnected']:
+        #     self._connect()
         ret, image = super().getImage(crosshair=True)
         if ret:
             image.rotate(180, inplace=True)
