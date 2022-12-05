@@ -5,16 +5,16 @@ Written By : Sharath (IMRE Singapore)
 Date       : 23-07-2021
 
 """
+# Standard library imports
+import numpy as np
 
+# Third party imports
+from pyModbusTCP.client import ModbusClient # pip install pyModbusTCP
+
+# Local application imports
 from .ax8_camera_feed import Ax8CameraFeed
 from .ax8_modbus_utils import parse_float, float_to_modbus, parse_int, int_to_modbus
 from .ax8_modbus_regs import SPOTMETER_REGS
-
-try:
-    from pyModbusTCP.client import ModbusClient
-except:
-    pass
-import numpy as np
 print(f"Import: OK <{__name__}>")
 
 class Ax8ThermalCamera:
@@ -44,9 +44,11 @@ class Ax8ThermalCamera:
         except Exception as ee:
             print("Unable to establish Modbus TCP! Error-", str(ee))
             raise ee
+        if not self.modbus.is_open:
+            return
         # Port opened succesfully
         if self.verbose:
-                print("Established Modbus TCP at", self.modbus.host())
+                print("Established Modbus TCP at", self.modbus.host)
         self.video = Ax8CameraFeed(ip_address, encoding, overlay)
         # Set default spotmeter parameters
         self.__default_params = {
@@ -56,6 +58,7 @@ class Ax8ThermalCamera:
             }
         self.spotmeter_params = {}
         self.set_spotmeter_parameters(self.__default_params)
+        return
                 
     def get_internal_camera_temperature(self):
         """
@@ -66,7 +69,9 @@ class Ax8ThermalCamera:
         cam_temp : float
 
         """
-        self.modbus.unit_id(1)
+        if not self.modbus.is_open:
+            return 0
+        # self.modbus.unit_id(1)
         cam_temp = parse_float(self.modbus.read_holding_registers(reg_addr=1017, reg_nb=2))
         if self.verbose:
             print("Internal Camera Temperature", cam_temp)
