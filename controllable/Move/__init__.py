@@ -176,3 +176,7 @@ class Mover(object):
         """EMPTY METHOD"""
         print(f"'{self.__class__.__name__}' class has no method '_tuck'")
         return
+
+from . import Cartesian
+from . import Jointed
+from . import Liquid
