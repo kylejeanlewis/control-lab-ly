@@ -19,7 +19,7 @@ from ..build_utils import BaseProgram
 from .routines import Setup
 print(f"Import: OK <{__name__}>")
 
-CONFIG_FILE = 'config.yaml'
+CONFIG_FILE = 'Paraspin/config.yaml'
 
 class Program(BaseProgram):
     def __init__(self, config_file=CONFIG_FILE, ignore_connections=False, recover_state_from_file='', config_option=0):
