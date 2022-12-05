@@ -22,7 +22,6 @@ print(f"Import: OK <{__name__}>")
 # %% Helper examples
 from controllable.misc import Helper
 if __name__ == "__main__":
-    from controllable.misc.misc_utils import Helper
     helper = Helper()
     helper.display_ports()
     pass
@@ -123,20 +122,44 @@ if __name__ == "__main__":
     viewer.getImage()
     pass
 
+# %% Thermal cam examples
+from controllable.View import Thermal
+if __name__ == "__main__":
+    viewer = Thermal('192.168.1.111')
+    viewer.getImage()
+    pass
+
 # %% GUI examples
 from controllable.Move.Cartesian import Ender, Primitiv
 from controllable.Move.Jointed import Dobot
-from controllable.View import Optical
+from controllable.View import Optical, Thermal
 from controllable.Control.GUI.gui_utils import MoverPanel, CompoundPanel, ViewerPanel
 if __name__ == "__main__":
     ensemble = {
         'Camera': (ViewerPanel, dict(viewer=Optical())),
-        'Primitiv': (MoverPanel, dict(mover=Primitiv('COM4'), axes=['X'])),
-        'Ender': (MoverPanel, dict(mover=Ender('COM5'), axes=['X','Y','Z'])),
-        'Dobot': (MoverPanel, dict(mover=Dobot('COM5'), axes=['X','Y','Z','a','b','g'])),
+        'Thermal': (ViewerPanel, dict(viewer=Thermal('192.168.1.111'))),
+        'Primitiv': (MoverPanel, dict(mover=Primitiv('COM5'), axes=['X','Y','Z'])),
+        # 'Ender': (MoverPanel, dict(mover=Ender('COM4'), axes=['X','Y','Z'])),
+        # 'Dobot': (MoverPanel, dict(mover=Dobot('COM5'), axes=['X','Y','Z','a','b','g'])),
     }
     gui = CompoundPanel(ensemble)
     gui.runGUI('Primitiv')
+    pass
+
+# %% Spinner examples
+from controllable.Make.ThinFilm import SpinnerAssembly
+if __name__ == "__main__":
+    ports = ['COM6','COM5','COM4','COM3']
+    channels = [0,1,2,3]
+    positions = [[-325,0,0],[-250,0,0],[-175,0,0],[-100,0,0]]
+    spinners = SpinnerAssembly(ports=ports, channels=channels,positions=positions)
+    
+    pass
+
+# %% Paraspin examples
+from controllable.builds.Paraspin import program
+if __name__ == "__main__":
+    spinbot = program.Program()
     pass
 
 # %%
