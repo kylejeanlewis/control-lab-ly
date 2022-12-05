@@ -148,8 +148,8 @@ class Panel(object):
                 self.window.close()
                 break
             updates = self.listenEvents(event, values)
-            for field, kwargs in updates.items():
-                self.window[field].update(**kwargs)
+            for ele_key, kwargs in updates.items():
+                self.window[ele_key].update(**kwargs)
         return
     
     def runGUI(self, title='Application', maximize=False):
@@ -240,6 +240,7 @@ class MeasurerPanel(Panel):
     
     def listenEvents(self, event, values):
         return super().listenEvents(event, values)
+
 
 class MoverPanel(Panel):
     def __init__(self, mover, name='MOVE', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group='mover', axes=['X','Y','Z','a','b','g']):
@@ -392,8 +393,9 @@ class ViewerPanel(Panel):
         super().__init__(name=name, theme=theme, typeface=typeface, font_sizes=font_sizes, group=group)
         self.viewer = viewer
         self.display_box = self._mangle('-IMAGE-')
-        self.last_read_time = time.time()
+        
         self.flags['update_display'] = True
+        self._last_read_time = time.time()
         return
     
     def close(self):
@@ -413,10 +415,10 @@ class ViewerPanel(Panel):
     def listenEvents(self, event, values):
         updates = {}
         if self.flags['update_display']:
-            latency = time.time() - self.last_read_time
-            fps = round(1/latency, 2)
-            self.last_read_time = time.time()
+            frame_interval = time.time() - self._last_read_time
+            fps = round(1/frame_interval, 2)
             ret, image = self.viewer.getImage()
+            self._last_read_time = time.time()
             image = image.addText(f'FPS: {fps}', position=(0,image.frame.shape[0]-5), inplace=False)
             updates[self.display_box] = dict(data=image.encode())
         return updates
