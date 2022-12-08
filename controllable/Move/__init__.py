@@ -1,5 +1,6 @@
 class Mover(object):
     def __init__(self) -> None:
+        self.verbose = False
         pass
     
     def _connect(self, *args, **kwargs):
