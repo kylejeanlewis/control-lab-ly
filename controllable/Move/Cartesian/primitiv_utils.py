@@ -35,7 +35,7 @@ class Primitiv(CNC):
         Return: serial.Serial object
         """
         super()._connect(port, 115200, timeout=1)
-        mcu= self.mcu
+        mcu = self.mcu
         try:
             mcu.close()
             mcu.open()
