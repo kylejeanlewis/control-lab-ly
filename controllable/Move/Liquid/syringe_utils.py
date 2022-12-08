@@ -218,8 +218,8 @@ class SyringeAssembly(LiquidHandler):
     def calibrate(self, *args, **kwargs):
         return super().calibrate(*args, **kwargs)
 
-    def cycle(self, channel, vol, speed=DEFAULT_SPEED, wait=1):
-        self.aspirate(channel, vol, speed=speed, wait=wait)
+    def cycle(self, channel, reagent, vol, speed=DEFAULT_SPEED, wait=1):
+        self.aspirate(channel, reagent, vol, speed=speed, wait=wait)
         self.dispense(channel, vol, speed=speed, wait=wait, force_dispense=True)
         return
 
@@ -300,9 +300,9 @@ class SyringeAssembly(LiquidHandler):
             # log_now(f'Syringe {self.order}: pre-wet syringe...')
             for c in range(WETTING_CYCLES):
                 if c == 0:
-                    self.cycle(channel, vol=vol*1.1, wait=2)
+                    self.cycle(channel, reagent, vol=vol*1.1, wait=2)
                 else:
-                    self.cycle(channel, vol=200)
+                    self.cycle(channel, reagent,  vol=200)
             # log_now(f'Syringe {self.order}: done')
 
         self.aspirate(channel, reagent, vol, wait=wait, pause=pause)
@@ -342,18 +342,18 @@ class SyringeAssembly(LiquidHandler):
             self.prime(channel)
         return
     
-    def rinse(self, channel, rinse_cycles=3):
+    def rinse(self, channel, reagent, rinse_cycles=3):
         # log_now(f'Syringe {self.order}: rinsing syringe...')
         for _ in range(rinse_cycles):
-            self.cycle(channel, vol=2000)
+            self.cycle(channel, reagent, vol=2000)
         # log_now(f'Syringe {self.order}: done')
         return
     
-    def rinseAll(self, channels=[], rinse_cycles=3):
+    def rinseAll(self, channels=[], reagents=[], rinse_cycles=3):
         if len(channels) == 0:
             channels = list(self.channels.keys())
-        for channel in channels:
-            self.rinse(channel, rinse_cycles)
+        for channel,reagent in zip(channels, reagents):
+            self.rinse(channel, reagent, rinse_cycles)
         return
     
     def update(self, channel, field, value):
