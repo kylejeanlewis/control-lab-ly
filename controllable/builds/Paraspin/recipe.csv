@@ -1,0 +1,8 @@
+﻿channels,reagent,volume,soak_time,spin_speed,spin_time
+0 1 2 3,MPTMS,100,0,1500,60
+0 1 2 3,Toluene,100,0,1500,60
+0 1 2 3,QD,100,0,3000,60
+0 1 2 3,NH4Cl,100,120,1500,60
+0 1 2 3,Methanol,100,0,1500,60
+0 1 2 3,Methanol,100,0,1500,60
+0 1 2 3,Methanol,100,0,1500,60
