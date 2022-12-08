@@ -8,7 +8,7 @@
   liquid: 
     class: Liquid.SyringeAssembly
     settings:
-      port: COM4
+      port: COM7
       capacities: [3000,3000,3000,3000,3000]
       channels: [3,4,5,6,7]
       offsets:
