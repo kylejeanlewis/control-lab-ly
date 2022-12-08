@@ -72,6 +72,7 @@ class Setup(BaseSetup):
         for c,m in self.maker.channels.items():
             thread = threading.Thread(target=m.execute, name=f'maker_diag_{c}')
             thread.start()
+            time.sleep(1)
 
         # Test self.mover
         self.home()
@@ -80,6 +81,7 @@ class Setup(BaseSetup):
         
         # Test liquid
         self.primeAll()
+        print('Ready!')
         return
 
     def align(self, offset, position):
