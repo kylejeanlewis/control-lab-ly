@@ -1,6 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Adapted from @jaycecheng sartorius
+Adapted from @jaycecheng sartorius serial
 
 Created: Tue 2022/12/08 11:11:00
 @author: Chang Jie
@@ -15,7 +15,7 @@ import time
 import serial # pip install pyserial
 
 # Local application imports
-from . import LiquidHandler
+from .. import LiquidHandler
 print(f"Import: OK <{__name__}>")
 
 DEFAULT_SPEED = 3000
@@ -23,8 +23,7 @@ PRIMING_TIME = 2
 WETTING_CYCLES = 1
 
 class Sartorius(LiquidHandler):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs)
+    def __init__(self):
         self.attr = {
             'busy': False,
             'connected': False,
@@ -41,7 +40,24 @@ class Sartorius(LiquidHandler):
         self.attr['capacity'] = tip_capacity
         return
     
-    def connect(self):
+    def _connect(self, port):
+        """
+        Establish serial connection to cnc controller.
+        - port: serial port of cnc Arduino
+        - baudrate: 
+        - timeout:
+        """
+        self._port = port
+        self._baudrate = 9600
+        self._timeout = 1
+        mcu = None
+        try:
+            mcu = serial.Serial(port, 9600, timeout=1)
+            print(f"Connection opened to {port}")
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        self.mcu = mcu
         return
     
     def cycle(self, reagent, vol, speed=DEFAULT_SPEED, wait=1):
