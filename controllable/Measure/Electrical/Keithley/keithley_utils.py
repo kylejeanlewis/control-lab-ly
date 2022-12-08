@@ -50,12 +50,12 @@ class KeithleyDevice(object):
         try:
             rm = visa.ResourceManager('@py')
             inst = rm.open_resource(f"TCPIP0::{ip_address}::5025::SOCKET")
+            self.inst = inst
 
             inst.write_termination = '\n'
             inst.read_termination = '\n'
             inst.write('SYST:BEEP 500, 1')
             inst.query('*IDN?')
-            self.inst = inst
             print(f"{self.name.title()} Keithley ready")
         except Exception as e:
             print("Unable to connect to Keithley!")
