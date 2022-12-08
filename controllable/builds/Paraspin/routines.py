@@ -180,9 +180,9 @@ class Setup(BaseSetup):
                 raise Exception('Rest position not yet labelled.')
         return
     
-    def rinseAll(self, channels=[], rinse_cycles=3):
+    def rinseAll(self, channels=[], reagents=[], rinse_cycles=3):
         self.emptyLiquids(channels)
-        self.liquid.rinseAll(channels, rinse_cycles)
+        self.liquid.rinseAll(channels, reagents, rinse_cycles)
         return
 
     def reset(self, home=True, wait=0, pause=False):
