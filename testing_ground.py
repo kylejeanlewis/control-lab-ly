@@ -159,7 +159,10 @@ if __name__ == "__main__":
 # %% Paraspin examples
 from controllable.builds.Paraspin import program
 if __name__ == "__main__":
+    REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\reagents.csv' 
+    RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\recipe.csv'
     spinbot = program.Program()
+    spinbot.loadRecipe(REAGENTS, RECIPE)
     pass
 
 # %%
