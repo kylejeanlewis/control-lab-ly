@@ -55,6 +55,7 @@ class CNC(Mover):
         mcu = None
         try:
             mcu = serial.Serial(port, baudrate, timeout=timeout)
+            print(f"Connection opened to {port}")
         except Exception as e:
             if self.verbose:
                 print(e)
