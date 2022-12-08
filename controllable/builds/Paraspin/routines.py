@@ -23,7 +23,7 @@ CNC_SPEED = 250
 
 class Setup(BaseSetup):
     def __init__(self, config, ignore_connections=False, **kwargs):
-        super().__init__(**kwargs)
+        # super().__init__(**kwargs)
         self.mover = None
         self.liquid = None
         self.maker = None
