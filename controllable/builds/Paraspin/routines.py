@@ -8,7 +8,7 @@ Notes / actionables:
 """
 # Standard library imports
 import numpy as np
-import threading
+from threading import Thread
 import time
 
 # Third party imports
@@ -70,7 +70,7 @@ class Setup(BaseSetup):
         
         # Test self.maker
         for c,m in self.maker.channels.items():
-            thread = threading.Thread(target=m.execute, name=f'maker_diag_{c}')
+            thread = Thread(target=m.execute, name=f'maker_diag_{c}')
             thread.start()
             time.sleep(1)
 
@@ -112,7 +112,7 @@ class Setup(BaseSetup):
         # Start new thread from here
         self.maker.channels[maker_chn].etc = time.time() + 1 + sum([v for k,v in maker_kwargs.items() if 'time' in k])
         if new_thread:
-            thread = threading.Thread(target=self.maker.channels[maker_chn].execute, name=f'maker_{self.maker.channels[maker_chn].order}', kwargs=maker_kwargs)
+            thread = Thread(target=self.maker.channels[maker_chn].execute, name=f'maker_{self.maker.channels[maker_chn].order}', kwargs=maker_kwargs)
             thread.start()
             if rest:
                 self.rest()
