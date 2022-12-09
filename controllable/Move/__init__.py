@@ -1,5 +1,5 @@
 class Mover(object):
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         self.verbose = False
         pass
     
