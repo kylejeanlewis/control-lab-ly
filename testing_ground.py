@@ -153,7 +153,6 @@ if __name__ == "__main__":
     channels = [0,1,2,3]
     positions = [[-325,0,0],[-250,0,0],[-175,0,0],[-100,0,0]]
     spinners = SpinnerAssembly(ports=ports, channels=channels,positions=positions)
-    
     pass
 
 # %% Paraspin examples
@@ -163,6 +162,12 @@ if __name__ == "__main__":
     RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\recipe.csv'
     spinbot = program.Program()
     spinbot.loadRecipe(REAGENTS, RECIPE)
+    pass
+
+# %% Sartorius examples
+from controllable.Move.Liquid.Sartorius import Sartorius
+if __name__ == "__main__":
+    pipet = Sartorius('COM5')
     pass
 
 # %%
