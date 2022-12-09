@@ -9,37 +9,49 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from threading import Thread
+import time
 
 # Third party imports
 import serial # pip install pyserial
 
 # Local application imports
 from .. import LiquidHandler
-from .sartorius_lib import ErrorCodes, SpeedCodes
+from .sartorius_lib import ErrorCodes, ModelInfo
 print(f"Import: OK <{__name__}>")
 
-DEFAULT_SPEED = 3000
 PRIMING_TIME = 2
 WETTING_CYCLES = 1
 
 class Sartorius(LiquidHandler):
     def __init__(self, port):
+        super().__init__()
         self.capacity = 0
         self.reagent = ''
         self.volume = 0
         
+        self.bounds = (0,0)
+        self.home_position = 0
+        
         self._address = 1
         self._flags = {
             'busy': False,
-            'connected': False
+            'connected': False,
+            'running': False
         }
+        self._resolution = 0
         self._speed_in = 0
         self._speed_out = 0
         self._speed_codes = None
+        self._threads = {}
         
+        self.verbose = True
         self._connect(port)
-        self._get_speed_codes()
         return
+    
+    @property
+    def position(self):
+        return self.getPosition()
     
     @property
     def speed(self):
@@ -68,6 +80,10 @@ class Sartorius(LiquidHandler):
     def __cycles__(self):
         return self._query('DX')
     
+    def __delete__(self):
+        self._shutdown()
+        return
+    
     def __model__(self):
         return self._query('DM')
     
@@ -92,18 +108,32 @@ class Sartorius(LiquidHandler):
             mcu = serial.Serial(port, 9600, timeout=1)
             print(f"Connection opened to {port}")
             self._flags['connected'] = True
+            self._flags['running'] = True
+            t = Thread(target=self.listening)
+            t.start()
+            self._threads['listen_loop'] = t
         except Exception as e:
             if self.verbose:
                 print(e)
         self.mcu = mcu
+        
+        self._get_info()
+        self._zero()
         return
     
-    def _get_speed_codes(self):
-        model = self.__model__()
-        models = [m for m in dir(SpeedCodes) if not m.startswith('__') or not m.endswith('__')]
-        if f'rLine_{model}' not in models:
+    def _get_info(self):
+        model_id = self.__model__()
+        model = f'rLine_{model_id}'
+        models = [m for m in dir(ModelInfo) if not m.startswith('__') or not m.endswith('__')]
+        if model not in models:
             raise Exception(f"Please select a valid model from: {', '.join(models)}")
-        self._speed_codes = getattr(SpeedCodes, model).value
+        info = getattr(ModelInfo, model).value
+        
+        self.bounds = (info['tip_eject_position'], info['max_position'])
+        self.capacity = int(model_id)
+        self.home_position = info['home_position']
+        self._resolution = info['resolution']
+        self._speed_codes = info['speed_codes']
         return
     
     def _query(self, string):
@@ -111,56 +141,105 @@ class Sartorius(LiquidHandler):
         return self._read()
     
     def _read(self):
-        response = self.mcu.readline()
-        response = response[1:-5]
-        data = response[2:]
-        errs = [e for e in dir(ErrorCodes)if not e.startswith('__') or not e.endswith('__')]
-        if response in errs:
-            print(getattr(SpeedCodes, response).value)
-        else:
+        response = ''
+        try:
+            response = self.mcu.readline()
+            response = response[1:-5]
+            errs = [e for e in dir(ErrorCodes)if not e.startswith('__') or not e.endswith('__')]
+            if response in errs:
+                print(getattr(ErrorCodes, response).value)
+                return response
+            elif response == 'ok':
+                return response
             print(response)
-        return data
+            response = response[2:]
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        return 
     
     def _set_address(self, new_address):
         if not 0 < new_address < 10:
             raise Exception('Please select a valid rLine address from 1 to 9')
-        self.mcu.write(f'*A{new_address}')
+        response = self._query(f'*A{new_address}')
+        if response == 'ok':
+            self._address = new_address
+        return
+    
+    def _shutdown(self):
+        self._flags['running'] = False
+        self._threads['listen_loop'].join()
+        self.mcu.close()
         return
     
     def _write(self, string):
-        fstring = f'{self._address}{string}º\r'
-        bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
-        self.mcu.write(bstring)
+        try:
+            fstring = f'{self._address}{string}º\r'
+            bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
+            self.mcu.write(bstring)
+        except Exception as e:
+            if self.verbose:
+                print(e)
         return
+    
+    def _zero(self):
+        return self._query('RZ')
     
     def airgap(self):
-        return
+        return self._query(f'RI{5}')
         
-    def aspirate(self, reagent, vol, speed=DEFAULT_SPEED, wait=1, pause=False):
-        steps = 5
-        self._query(f'RI{steps}')
+    def aspirate(self, reagent, vol, speed=0, wait=1, pause=False):
+        steps = int(vol / self._resolution)
+        vol = steps * self._resolution
+        if speed:
+            self.speed = (speed, 'in')
+        
+        if self._query(f'RI{steps}') != 'ok':
+            return
+        self.reagent = reagent
+        self.volume += vol
+        print(f'Aspirate {vol} uL')
+        
+        time.sleep(wait)
+        if pause:
+            input("Press 'Enter to proceed.")
         return
     
-    def blowout(self, position=None):
+    def blowout(self, home):
         self._query(f'RB')
         return
     
-    def cycle(self, reagent, vol, speed=DEFAULT_SPEED, wait=1):
+    def close(self):
+        return self._shutdown()
+    
+    def cycle(self, reagent, vol, speed=0, wait=1):
         self.aspirate(reagent, vol, speed=speed, wait=wait)
         self.dispense(vol, speed=speed, wait=wait, force_dispense=True)
         return
     
-    def detectLevel(self):
-        return self.getLiquidLevel()
-    
-    def dispense(self, vol, speed=DEFAULT_SPEED, wait=1, pause=False, force_dispense=False):
-        steps = 5
+    def dispense(self, vol, speed=0, wait=1, pause=False, force_dispense=False):
+        if force_dispense:
+            vol = min(vol, self.volume)
+        elif vol > self.volume:
+            # log_now(f'Syringe {self.order}: Current volume too low for required dispense', save=log)
+            pass
+        
+        steps = int(vol / self._resolution)
+        vol = steps * self._resolution
+        if speed:
+            self.speed = (speed, 'out')
+        
         self._query(f'RI{steps}')
+        self.volume -= vol
+        print(f'Dispense {vol} uL')
+        
+        time.sleep(wait)
+        if pause:
+            input("Press 'Enter to proceed.")
         return
     
-    def eject(self, position=None):
-        self._query(f'RE')
-        return
+    def eject(self):
+        return self._query(f'RE')
     
     def empty(self, wait=1, pause=False):
         self.dispense(self.capacity, wait=wait, pause=pause, force_dispense=True)
@@ -183,13 +262,16 @@ class Sartorius(LiquidHandler):
         return self._query('DE')
     
     def getLiquidLevel(self):
-        return self._query('DN')
+        return int(self._query('DN'))
     
     def getPosition(self):
-        return self._query('DP')
+        return int(self._query('DP'))
       
     def getStatus(self):
         return self._query('DS')
+    
+    def home(self):
+        return self._query(f'RP{self.home_position}')
     
     def isBusy(self):
         return self._flags['busy']
@@ -197,33 +279,24 @@ class Sartorius(LiquidHandler):
     def isConnected(self):
         return self._flags['connected']
     
-    def listen(self):
+    def listening(self):
+        while self._flags['running']:
+            self.getStatus()
+            self.getLiquidLevel()
+        print('Stop listening...')
         return
     
     def moveTo(self, position):
-        self._query(f'RP{position}')
-        return
-    
-    def prime(self):
-        return
+        return self._query(f'RP{position}')
     
     def pullback(self):
-        return
+        return self._query(f'RI{5}')
     
     def reset(self):
-        return
-    
-    def residual(self):
-        return
+        return self._zero()
     
     def rinse(self, reagent, rinse_cycles=3):
         for _ in range(rinse_cycles):
             self.cycle(reagent, vol=self.capacity)
         return
     
-    def update(self, field, value):
-        return
-    
-    def zero(self):
-        # 'RZ'
-        return
