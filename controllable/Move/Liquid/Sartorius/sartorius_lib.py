@@ -15,7 +15,7 @@ from enum import Enum
 print(f"Import: OK <{__name__}>")
 
 class ModelInfo(Enum):
-    rLine       = dict(
+    rLine_0     = dict(
                     resolution=0.5, home_position=30, max_position=443, tip_eject_position=-40,
                     speed_codes = [0,60,106,164,260,378,448]
                 )
@@ -39,7 +39,7 @@ class ErrorCodes(Enum):
     er4 = 'The drive is on and the command or query cannot be answered'
 
 class SpeedCodes(Enum):
-    rLine       = [0,60,106,164,260,378,448]
+    rLine_0     = [0,60,106,164,260,378,448]
     rLine_200   = [0,31,52,80,115,150,190]
     rLine_1000  = [0,150,265,410,650,945,1120]
     rLine_5000  = [0,550,1000,1500,2500,3650,4350]
