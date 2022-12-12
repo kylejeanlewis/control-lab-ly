@@ -34,9 +34,9 @@ if __name__ == "__main__":
     pass
 
 # %% Jointed examples
-from controllable.Move.Jointed import Dobot
+from controllable.Move.Jointed import MG400
 if __name__ == "__main__":
-    mover = Dobot('192.168.2.21')
+    mover = MG400(ip_address='192.168.1.7')
     pass
 
 # %% Keithley examples
@@ -170,4 +170,10 @@ if __name__ == "__main__":
     pipet = Sartorius('COM17')
     pass
 
+# %%
+# %% Jointed M1 Pro examples
+from controllable.Move.Jointed import M1Pro
+if __name__ == "__main__":
+    mover = M1Pro(ip_address='192.168.2.21', home_position=(300,0,100))
+    pass
 # %%
