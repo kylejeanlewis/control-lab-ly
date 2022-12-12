@@ -17,11 +17,13 @@ import serial # pip install pyserial
 
 # Local application imports
 from .. import LiquidHandler
-from .sartorius_lib import ErrorCode, ModelInfo, StatusCode
+from .sartorius_lib import ErrorCode, ModelInfo, StatusCode, ERRS
 print(f"Import: OK <{__name__}>")
 
+READ_TIMEOUT_S = 1
 STATUS_QUERIES = ['DS','DE','DP','DN']
 STATIC_QUERIES = ['Dv','DM','DX','DI','DO','DR']
+QUERIES = STATUS_QUERIES + STATIC_QUERIES
 WETTING_CYCLES = 1
 
 class Sartorius(LiquidHandler):
@@ -39,15 +41,17 @@ class Sartorius(LiquidHandler):
         self._flags = {
             'busy': False,
             'connected': False,
-            'feedback': False,
-            'incoming':False,
-            'listen': False
+            'get_feedback': False,
+            'pause_feedback':False
         }
+        self._levels = 0
         self._message_pool = {}
+        self._position = 0
         self._resolution = 0
         self._speed_in = 0
         self._speed_out = 0
         self._speed_codes = None
+        self._status = 0
         self._threads = {}
         
         self.verbose = True
@@ -56,7 +60,13 @@ class Sartorius(LiquidHandler):
     
     @property
     def position(self):
-        return self.getPosition()
+        response = self._query('DP')
+        try:
+            self._position = int(self._query('DP'))
+            return self._position
+        except ValueError:
+            pass
+        return response
     
     @property
     def speed(self):
@@ -68,7 +78,7 @@ class Sartorius(LiquidHandler):
     
     @speed.setter
     def speed(self, speed_code, direction):
-        if not 0 < speed_code < len(self._speed_codes):
+        if not (0 < speed_code < len(self._speed_codes)):
             raise Exception(f'Please select a valid speed code from 1 to {len(self._speed_codes)-1}')
         if direction == 'in':
             self._speed_in = speed_code
@@ -119,11 +129,10 @@ class Sartorius(LiquidHandler):
             mcu = serial.Serial(port, 9600, timeout=1)
             self.mcu = mcu
             print(f"Connection opened to {port}")
+            self._flags['connected'] = True
             self._get_info()
             self._zero()
-            
-            self._flags['connected'] = True
-            self.startListening()
+            self.startFeedbackLoop()
         except Exception as e:
             if self.verbose:
                 print(e)
@@ -144,48 +153,55 @@ class Sartorius(LiquidHandler):
         self._speed_codes = info['speed_codes']
         return
     
-    def _query(self, string, timeout_s=0.4):
-        _start_time = time.time()
-        message_code = self._write(string)
-        if message_code not in STATUS_QUERIES+STATIC_QUERIES:
-            message_code = 'main'
-        self._message_pool[message_code] = ''
-        
-        # Reading from message pool
-        while len(self._message_pool[message_code])==0:
-            if time.time() - _start_time > timeout_s:
-                self._message_pool[message_code] = 'er4' # timeout error
-                break
-        response = self._message_pool.pop(message_code, '')
+    def _is_expected_reply(self, message_code:str, response:str):
+        if response in ERRS:
+            return True
+        if message_code not in QUERIES and response == 'ok':
+            return True
+        if message_code in QUERIES and response[:2] == message_code.lower():
+            reply_code, data = response[:2], response[2:]
+            print(f'[{reply_code}] {data}')
+            return True
+        return False
+    
+    def _query(self, string, timeout_s=READ_TIMEOUT_S):
+        message_code = string[:2]
         if message_code not in STATUS_QUERIES:
-            print(f'{response} [{string}]')
+            self._flags['pause_feedback'] = True
+            time.sleep(timeout_s)
+        if self.isBusy():
+            time.sleep(timeout_s)
+        
+        message_code = self._write(string)
+        _start_time = time.time()
+        response = ''
+        while not self._is_expected_reply(message_code, response):
+            if time.time() - _start_time > timeout_s:
+                break
+            response = self._read()
+        if message_code not in STATUS_QUERIES:
+            self._flags['pause_feedback'] = False
         return response
 
     def _read(self):
+        data = ''
         response = ''
         try:
             response = self.mcu.readline()
             response = response[2:-2].decode('utf-8')
-            errs = [e for e in dir(ErrorCode)if not e.startswith('__') or not e.endswith('__')]
-            if response in errs:
+            if response in ERRS:
                 print(getattr(ErrorCode, response).value)
-                for key in self._message_pool.keys():
-                    self._message_pool[key] = response
                 return response
             elif response == 'ok':
-                self._message_pool['main'] = response
                 return response
-            # print(response)
-            message_code = response[:2].upper()
-            response = response[2:]
-            self._message_pool[message_code] = response
+            data = response[2:]
         except Exception as e:
             if self.verbose:
                 print(e)
-        return response
+        return data
     
     def _set_address(self, new_address:int):
-        if not 0 < new_address < 10:
+        if not (0 < new_address < 10):
             raise Exception('Please select a valid rLine address from 1 to 9')
         response = self._query(f'*A{new_address}')
         if response == 'ok':
@@ -193,15 +209,14 @@ class Sartorius(LiquidHandler):
         return
     
     def _shutdown(self):
-        self.stopListening()
+        self.stopFeedbackLoop()
         self._zero()
         self.mcu.close()
         self._flags = {
             'busy': False,
             'connected': False,
-            'feedback': False,
-            'incoming':False,
-            'listen': False
+            'get_feedback': False,
+            'pause_feedback':False
         }
         return
     
@@ -211,13 +226,7 @@ class Sartorius(LiquidHandler):
         fstring = f'{self._address}{string}º\r'
         bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
         try:
-            if message_code not in STATUS_QUERIES:
-                self._flags['incoming'] = True
-            while self._flags['busy']:# and string not in STATUS_QUERIES:
-                time.sleep(0.1)
             self.mcu.write(bstring)
-            if message_code not in STATUS_QUERIES:
-                self._flags['incoming'] = False
         except Exception as e:
             if self.verbose:
                 print(e)
@@ -293,12 +302,13 @@ class Sartorius(LiquidHandler):
         return
     
     def feedbackLoop(self):
-        while self._flags['feedback']:
-            if self._flags['incoming']:
-                self._flags['busy'] = False
+        print('Listening...')
+        while self._flags['get_feedback']:
+            if self._flags['pause_feedback']:
                 continue
             self.getStatus()
             self.getLiquidLevel()
+        print('Stop listening...')
         return
     
     def fill(self, reagent, prewet=True, wait=1, pause=False):
@@ -318,18 +328,20 @@ class Sartorius(LiquidHandler):
         return self._query('DE')
     
     def getLiquidLevel(self):
-        return int(self._query('DN'))
-    
-    def getPosition(self):
-        return int(self._query('DP'))
+        try:
+            self._levels = int(self._query('DN'))
+        except ValueError:
+            pass
+        return
       
     def getStatus(self):
-        response = int(self._query('DS'))
-        if response in [4,6,8]:
+        response = self._query('DS')
+        if response in ['4','6','8']:
             self._flags['busy'] = True
-            print(StatusCode(int(response)).name)
-        elif response in [0]:
+            print(StatusCode(response).name)
+        elif response in ['0']:
             self._flags['busy'] = False
+        self._status = response
         return response
     
     def home(self):
@@ -340,13 +352,6 @@ class Sartorius(LiquidHandler):
     
     def isConnected(self):
         return self._flags['connected']
-    
-    def listening(self):
-        print('Listening...')
-        while self._flags['listen']:
-            self._read()
-        print('Stop listening...')
-        return
     
     def moveBy(self, displacement):
         if displacement > 0:
@@ -370,26 +375,14 @@ class Sartorius(LiquidHandler):
         return
     
     def startFeedbackLoop(self):
-        self._flags['feedback'] = True
+        self._flags['get_feedback'] = True
         t = Thread(target=self.feedbackLoop)
         t.start()
         self._threads['feedback_loop'] = t
         return
-    
-    def startListening(self):
-        self._flags['listen'] = True
-        t = Thread(target=self.listening)
-        t.start()
-        self._threads['listen_loop'] = t
-        return
-    
+     
     def stopFeedbackLoop(self):
-        self._flags['feedback'] = False
+        self._flags['get_feedback'] = False
         self._threads['feedback_loop'].join()
         return
-    
-    def stopListening(self):
-        self._flags['listen'] = False
-        self._threads['listen_loop'].join()
-        return
-    
+  
