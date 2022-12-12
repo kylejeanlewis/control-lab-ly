@@ -164,8 +164,8 @@ class Dobot(RobotArm):
     def home(self):
         """Home the robot arm."""
         # Tuck arm in to avoid collision
-        if self.doTuck:
-            self.tuck(self.home_position)
+        if self._flags['tuck']:
+            self.tuckArm(self.home_position)
         # Go to home position
         self.moveCoordTo(self.home_position, self.home_orientation)
         print("Homed")
@@ -228,8 +228,8 @@ class Dobot(RobotArm):
         if len(orientation) == 1 and orientation[0] == 0:
             orientation = self.orientation
         coord = self._transform_vector_in(coord, offset=True)
-        if self.doTuck and tuck:
-            self.tuck(coord)
+        if self._flags['tuck'] and tuck:
+            self.tuckArm(coord)
         return self.moveCoordTo(coord, orientation)
 
     def moveJointBy(self, relative_angle=(0,0,0,0,0,0)):
@@ -371,28 +371,13 @@ class Dobot(RobotArm):
             print("Not connected to arm!")
         return
 
-    def tuck(self, target=None):
+    def tuckArm(self, target=None):
         """
         Tuck in arm, rotate about base, then extend again.
 
         Args:
             target (tuple, optional): x,y,z coordinates of destination. Defaults to None.
         """
-        safe_radius = 225
-        safe_height = 75
-        coordinates,_ = self.getPosition()
-        x,y,_ = coordinates
-        if any((x,y)):
-            w = ( (safe_radius**2)/(x**2 + y**2) )**0.5
-            x,y = (x*w,y*w)
-        else:
-            x,y = (0,safe_radius)
-        self.moveCoordTo((x,y,safe_height), self.orientation, offset=False)
-
-        if type(target) != type(None) and len(target) == 3:
-            x1,y1,_ = target
-            w1 = ( (safe_radius**2)/(x1**2 + y1**2) )**0.5
-            self.moveCoordTo((x1*w1,y1*w1,75), self.orientation, offset=False)
         return
 
 
@@ -433,6 +418,29 @@ class MG400(Dobot):
             return False
         return True
     
+    def tuckArm(self, target=None):
+        """
+        Tuck in arm, rotate about base, then extend again.
+
+        Args:
+            target (tuple, optional): x,y,z coordinates of destination. Defaults to None.
+        """
+        safe_radius = 225
+        safe_height = 75
+        coordinates,_ = self.getPosition()
+        x,y,_ = coordinates
+        if any((x,y)):
+            w = ( (safe_radius**2)/(x**2 + y**2) )**0.5
+            x,y = (x*w,y*w)
+        else:
+            x,y = (0,safe_radius)
+        self.moveCoordTo((x,y,safe_height), self.orientation, offset=False)
+
+        if type(target) != type(None) and len(target) == 3:
+            x1,y1,_ = target
+            w1 = ( (safe_radius**2)/(x1**2 + y1**2) )**0.5
+            self.moveCoordTo((x1*w1,y1*w1,75), self.orientation, offset=False)
+        return
 
 class M1Pro(Dobot):
     """
@@ -449,6 +457,9 @@ class M1Pro(Dobot):
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self._handedness = ''
+        
+        self.setHandedness('left')
         return
     
     def isFeasible(self, coord):
@@ -462,17 +473,24 @@ class M1Pro(Dobot):
             bool: whether coordinates is a feasible position
         """
         x,y,z = coord
+        
         if not (5 < z < 245):
             return False
-        r = (x**2 + y**2)**0.5
-        if not (153 < r < 400):
-            return False
-        if x < 0 and abs(y) < 230/2:
-            return False
-        else:
-            y_ = abs(y)-200 
-            if (x**2 + y_**2)**0.5 > 200:
+        
+        if x >= 0:
+            r = (x**2 + y**2)**0.5
+            if not (153 <= r <= 400):
                 return False
+        elif abs(y) < 230/2:
+            return False
+        elif (x**2 + (abs(y)-200)**2)**0.5 > 200:
+            return False
+        
+        # x=4, y=3
+        grad = abs(y/(x+1E-6))
+        if grad > 0.75 or x < 0:
+            hand = 'right' if y>0 else 'left'
+            self.setHandedness(hand, stretch=True)
         return True
     
     def moveBy(self, vector, angles=(0, 0, 0), **kwargs):
@@ -481,3 +499,27 @@ class M1Pro(Dobot):
         new_coord = np.array(coord) + np.array(vector)
         new_orientation = np.array(orientation) + np.array(angles)
         return self.moveTo(tuple(new_coord), tuple(new_orientation))
+
+    def setHandedness(self, hand, stretch=False):
+        set_hand = False
+        if hand not in ['left','right']:
+            raise Exception("Please select between 'left' or 'right'")
+        if hand == 'left' and self._handedness != 'left': #0
+            self._dashboard.SetArmOrientation(0,1,1,1)
+            self._handedness = 'left'
+            set_hand = True
+        elif hand == 'right' and self._handedness != 'right': #1
+            self._dashboard.SetArmOrientation(1,1,1,1)
+            self._handedness = 'right'
+            set_hand = True
+        if set_hand and stretch:
+            self.stretchArm()
+        return
+            
+    def stretchArm(self):
+        x,y,z = self.coordinates
+        y = 240 * math.copysign(1, y)
+        self.moveTo((320,y,z))
+        time.sleep(MOVE_TIME)
+        return
+    
