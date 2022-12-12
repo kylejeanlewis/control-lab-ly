@@ -36,7 +36,7 @@ if __name__ == "__main__":
 # %% Jointed examples
 from controllable.Move.Jointed import Dobot
 if __name__ == "__main__":
-    mover = Dobot('192.168.2.8')
+    mover = Dobot('192.168.2.21')
     pass
 
 # %% Keithley examples
@@ -167,7 +167,7 @@ if __name__ == "__main__":
 # %% Sartorius examples
 from controllable.Move.Liquid.Sartorius import Sartorius
 if __name__ == "__main__":
-    pipet = Sartorius('COM5')
+    pipet = Sartorius('COM17')
     pass
 
 # %%
