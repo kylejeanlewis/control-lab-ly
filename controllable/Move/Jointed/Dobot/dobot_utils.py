@@ -100,6 +100,9 @@ class Dobot(RobotArm):
         self._feedback = None
         return
 
+    def addAttachment(self):
+        return
+
     def calibrate(self, external_pt1, internal_pt1, external_pt2, internal_pt2):
         """
         Calibrate internal and external coordinate systems.
@@ -161,19 +164,8 @@ class Dobot(RobotArm):
             coord (tuple): x,y,z coordinates
 
         Returns:
-            bool: whether coordinates is a feaible position
+            bool: whether coordinates is a feasible position
         """
-        coord = tuple(np.array(coord) + np.array(self.implement_offset))
-        x,y,z = coord
-
-        j1 = round(math.degrees(math.atan(x/(y + 1E-6))), 3)
-        if y < 0:
-            j1 += (180 * math.copysign(1, x))
-        if abs(j1) > 160:
-            return False
-
-        # if not -150 < z < 230:
-        #     return False
         return True
     
     def isConnected(self):
@@ -389,6 +381,93 @@ class Dobot(RobotArm):
         return
 
 
+class MG400(Dobot):
+    """
+    MG400 class.
+
+    Args:
+        ip_address (str, optional): IP address of arm. Defaults to '192.168.2.8'.
+        home_position (tuple, optional): position to home in arm coordinates. Defaults to (0,300,0).
+        home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
+        orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
+        translate_vector (numpy.array, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
+        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
+    """
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        return
+    
+    def isFeasible(self, coord):
+        """
+        Checks if specified coordinates is a feasible position for robot to access.
+
+        Args:
+            coord (tuple): x,y,z coordinates
+
+        Returns:
+            bool: whether coordinates is a feasible position
+        """
+        x,y,z = coord
+        j1 = round(math.degrees(math.atan(x/(y + 1E-6))), 3)
+        if y < 0:
+            j1 += (180 * math.copysign(1, x))
+        if abs(j1) > 160:
+            return False
+        if not (-150 < z < 230):
+            return False
+        return True
+    
+
+class M1Pro(Dobot):
+    """
+    M1 Pro class.
+
+    Args:
+        ip_address (str, optional): IP address of arm. Defaults to '192.168.2.8'.
+        home_position (tuple, optional): position to home in arm coordinates. Defaults to (0,300,0).
+        home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
+        orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
+        translate_vector (numpy.array, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
+        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
+    """
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        return
+    
+    def isFeasible(self, coord):
+        """
+        Checks if specified coordinates is a feasible position for robot to access.
+
+        Args:
+            coord (tuple): x,y,z coordinates
+
+        Returns:
+            bool: whether coordinates is a feasible position
+        """
+        x,y,z = coord
+        if not (5 < z < 245):
+            return False
+        r = (x**2 + y**2)**0.5
+        if not (153 < r < 400):
+            return False
+        if x < 0 and abs(y) < 230/2:
+            return False
+        else:
+            y_ = abs(y)-200 
+            if (x**2 + y_**2)**0.5 > 200:
+                return False
+        return True
+    
+    def moveBy(self, vector, angles=(0, 0, 0), **kwargs):
+        vector = self._transform_vector_in(vector)
+        coord, orientation = self.getPosition()
+        new_coord = np.array(coord) + np.array(vector)
+        new_orientation = np.array(orientation) + np.array(angles)
+        return self.moveTo(tuple(new_coord), tuple(new_orientation))
+
+
 # First-party implement attachments
 class JawGripper(Dobot):
     """
@@ -496,28 +575,4 @@ class VacuumGrip(Dobot):
         except (AttributeError, OSError):
             print("Not connected to arm!")
         return
-
-
-# Third-party implement attachments, connected though Dobot ports
-# class Instrument(Dobot):
-#     """
-#     Instrument class.
-
-#     Args:
-#         address_sensor (str): Address of sensor.
-#         ip_address (str, optional): IP address of arm. Defaults to '192.168.2.8'.
-#         home_position (tuple, optional): position to home in arm coordinates. Defaults to (0,300,0).
-#         home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
-#         orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
-#         translate_vector (numpy.array, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
-#         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
-#     """
-#     def __init__(self, address_sensor=None, **kwargs):
-#         super().__init__(**kwargs)
-#         self.sensor = None
-#         self.connect_sensor(address_sensor)
-#         return
-
-#     def connect_sensor(self, address_sensor):
-#         return
 
