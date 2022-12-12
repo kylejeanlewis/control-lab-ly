@@ -22,7 +22,7 @@ print(f"Import: OK <{__name__}>")
 CONFIG_FILE = 'Paraspin/config.yaml'
 
 class Program(BaseProgram):
-    def __init__(self, config_file=CONFIG_FILE, ignore_connections=False, recover_state_from_file='', config_option=0):
+    def __init__(self, config_file=CONFIG_FILE, ignore_connections=False, config_option=0, recover_state_from_file=''):
         self._config = self._readPlans(config_file, config_option)
         self.setup = Setup(self._config, ignore_connections)
         self.window = None
