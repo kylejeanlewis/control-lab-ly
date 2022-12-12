@@ -25,7 +25,7 @@ class RobotArm(Mover):
         translate_vector (numpy.array, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
     """
-    def __init__(self, home_position=(0,0,0), home_orientation=(0,0,0), orientate_matrix=np.identity(3), translate_vector=np.zeros(3), scale=1, verbose=False, doTuck=True, **kwargs):
+    def __init__(self, home_position=(0,0,0), home_orientation=(0,0,0), orientate_matrix=np.identity(3), translate_vector=np.zeros(3), scale=1, verbose=False, tuck=True, **kwargs):
         self.home_position = home_position
         self.home_orientation = home_orientation
         self.orientate_matrix = orientate_matrix
@@ -37,7 +37,9 @@ class RobotArm(Mover):
         self.orientation = (0,0,0)
         
         self.verbose = verbose
-        self.doTuck = doTuck
+        self._flags = {
+            'tuck': tuck
+        }
         pass
     
     def __delete__(self):
