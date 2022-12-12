@@ -14,6 +14,8 @@ from enum import Enum
 # Local application imports
 print(f"Import: OK <{__name__}>")
 
+ERRS = ['er1','er2','er3','er4']
+
 class ModelInfo(Enum):
     BRL0        = dict(
                     resolution=0.5, home_position=30, max_position=443, tip_eject_position=-40,
@@ -39,11 +41,11 @@ class ErrorCode(Enum):
     er4 = 'The drive is on and the command or query cannot be answered'
 
 class StatusCode(Enum):
-    Normal          = 0
-    Braking         = 1
-    Running         = 2
-    Drive_Busy      = 4
-    Running_Busy    = 6
-    General_Error   = 8
+    Normal          = '0'
+    Braking         = '1'
+    Running         = '2'
+    Drive_Busy      = '4'
+    Running_Busy    = '6'
+    General_Error   = '8'
 
 # %%
