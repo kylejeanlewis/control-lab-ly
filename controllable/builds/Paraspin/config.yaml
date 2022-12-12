@@ -27,3 +27,28 @@
       - [-250,0,0]
       - [-175,0,0]
       - [-100,0,0]
+
+1:
+  mover: 
+    class: Jointed.M1Pro
+    settings:
+      address: "192.168.2.21"
+      home_position: {'tuple': [0,0,0]}
+      home_orientation: {'tuple': [0,0,0]}
+      orientate_matrix: {'array': [[1,0,0],[0,1,0],[0,0,1]]}
+      translate_vector: {'array': [0,0,0]}
+      scale: 1
+  liquid: 
+    class: Liquid.Sartorius
+    settings:
+      port: COM17
+  maker: 
+    class: ThinFilm.SpinnerAssembly
+    settings:
+      ports: [COM16,COM15,COM14,COM13]
+      channels: [0,1,2,3]
+      positions:
+      - [100,-75,100]
+      - [100,0,100]
+      - [100,75,100]
+      - [100,150,100]
