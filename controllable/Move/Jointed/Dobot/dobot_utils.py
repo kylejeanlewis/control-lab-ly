@@ -14,6 +14,7 @@ import time
 # Local application imports
 from .. import RobotArm
 from .dobot_api import dobot_api_dashboard, dobot_api_feedback, MyType
+from . import dobot_attachments as attachments
 print(f"Import: OK <{__name__}>")
 
 SCALE = True
@@ -53,6 +54,8 @@ class Dobot(RobotArm):
         self.ip_address = ip_address
         self._dashboard = None
         self._feedback = None
+        
+        self.attachment = None
 
         self._connect(ip_address)
         self.home()
@@ -100,7 +103,19 @@ class Dobot(RobotArm):
         self._feedback = None
         return
 
-    def addAttachment(self):
+    def attachmentOn(self, attach_type):
+        if attach_type not in attachments.ATTACHMENT_LIST:
+            raise Exception(f"Please select valid attachment from: {', '.join(attachments.ATTACHMENT_LIST)}")
+        attach_class = getattr(attachments, attach_type)
+        self.attachment = attach_class(self._dashboard)
+        self.implement_offset = self.attachment.implement_offset
+        self.home()
+        return
+    
+    def attachmentOff(self):
+        self.attachment = None
+        self.implement_offset = (0,0,0)
+        self.home()
         return
 
     def calibrate(self, external_pt1, internal_pt1, external_pt2, internal_pt2):
@@ -466,113 +481,3 @@ class M1Pro(Dobot):
         new_coord = np.array(coord) + np.array(vector)
         new_orientation = np.array(orientation) + np.array(angles)
         return self.moveTo(tuple(new_coord), tuple(new_orientation))
-
-
-# First-party implement attachments
-class JawGripper(Dobot):
-    """
-    JawGripper class.
-    
-    Args:
-        ip_address (str, optional): IP address of arm. Defaults to '192.168.2.8'.
-        home_position (tuple, optional): position to home in arm coordinates. Defaults to (0,300,0).
-        home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
-        orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
-        translate_vector (numpy.array, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
-        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
-    """
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.implement_offset = (0,0,95)
-        self.home()
-        return
-
-    def drop(self):
-        """Open gripper"""
-        try:
-            self._dashboard.DOExecute(1,1)
-        except (AttributeError, OSError):
-            print("Not connected to arm!")
-        return
-    
-    def grab(self):
-        """Close gripper"""
-        try:
-            self._dashboard.DOExecute(1,0)
-        except (AttributeError, OSError):
-            print("Not connected to arm!")
-        return
-
-
-class VacuumGrip(Dobot):
-    """
-    VacuumGrip class.
-
-    Args:
-        ip_address (str, optional): IP address of arm. Defaults to '192.168.2.8'.
-        home_position (tuple, optional): position to home in arm coordinates. Defaults to (0,300,0).
-        home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
-        orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
-        translate_vector (numpy.array, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
-        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
-    """
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.implement_offset = (0,0,60)
-        self.home()
-        return
-
-    def blow(self, duration=0):
-        """
-        Expel air.
-
-        Args:
-            duration (int, optional): number of seconds to expel air. Defaults to 0.
-        """
-        try:
-            self._dashboard.DOExecute(2,1)
-            if duration > 0:
-                time.sleep(duration)
-                self._dashboard.DOExecute(2,0)
-                time.sleep(1)
-        except (AttributeError, OSError):
-            print("Not connected to arm!")
-        return
-
-    def drop(self):
-        """Let go of object."""
-        self.blow(0.5)
-        return
-    
-    def grab(self):
-        """Pick up object."""
-        self.suck(3)
-        return
-    
-    def stop(self):
-        """Stop airflows."""
-        try:
-            self._dashboard.DOExecute(2,0)
-            self._dashboard.DOExecute(1,0)
-            time.sleep(1)
-        except (AttributeError, OSError):
-            print("Not connected to arm!")
-        return
-    
-    def suck(self, duration=0):
-        """
-        Inhale air.
-
-        Args:
-            duration (int, optional): number of seconds to inhale air. Defaults to 0.
-        """
-        try:
-            self._dashboard.DOExecute(1,1)
-            if duration > 0:
-                time.sleep(duration)
-                self._dashboard.DOExecute(1,0)
-                time.sleep(1)
-        except (AttributeError, OSError):
-            print("Not connected to arm!")
-        return
-
