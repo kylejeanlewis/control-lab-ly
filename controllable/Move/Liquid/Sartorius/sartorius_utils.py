@@ -26,10 +26,11 @@ STATIC_QUERIES = ['Dv','DM','DX','DI','DO','DR']
 QUERIES = STATUS_QUERIES + STATIC_QUERIES
 WETTING_CYCLES = 1
 
-class Sartorius(LiquidHandler):
-    def __init__(self, port):
-        super().__init__()
+class SartoriusDevice(object):
+    def __init__(self, port, channel=1, offset=(0,0,0)):
         self.capacity = 0
+        self.channel = channel
+        self.offset = offset
         self.reagent = ''
         self.volume = 0
         
@@ -37,7 +38,7 @@ class Sartorius(LiquidHandler):
         self.home_position = 0
         self.mcu = None
         
-        self._address = 1
+        self._baudrate = 9600
         self._flags = {
             'busy': False,
             'connected': False,
@@ -45,13 +46,14 @@ class Sartorius(LiquidHandler):
             'pause_feedback':False
         }
         self._levels = 0
-        self._message_pool = {}
+        self._port = ''
         self._position = 0
         self._resolution = 0
         self._speed_in = 0
         self._speed_out = 0
         self._speed_codes = None
         self._status = 0
+        self._timeout = 1
         self._threads = {}
         
         self.verbose = True
@@ -62,7 +64,7 @@ class Sartorius(LiquidHandler):
     def position(self):
         response = self._query('DP')
         try:
-            self._position = int(self._query('DP'))
+            self._position = int(response)
             return self._position
         except ValueError:
             pass
@@ -94,8 +96,13 @@ class Sartorius(LiquidHandler):
     
     def __cycles__(self):
         response = self._query('DX')
-        print(f'Total cycles: {response}')
-        return int(response)
+        try:
+            cycles = int(response)
+            print(f'Total cycles: {cycles}')
+            return cycles
+        except ValueError:
+            pass
+        return response
     
     def __delete__(self):
         self._shutdown()
@@ -103,13 +110,18 @@ class Sartorius(LiquidHandler):
     
     def __model__(self):
         response = self._query('DM')
-        print(response)
+        print(f'Model: {response}')
         return response
     
     def __resolution__(self):
         response = self._query('DR')
-        print(f'{response}nL')
-        return int(response)
+        try:
+            res = int(response)
+            print(f'{res}nL')
+            return res
+        except ValueError:
+            pass
+        return response
     
     def __version__(self):
         return self._query('DV')
@@ -122,11 +134,9 @@ class Sartorius(LiquidHandler):
         - timeout:
         """
         self._port = port
-        self._baudrate = 9600
-        self._timeout = 1
         mcu = None
         try:
-            mcu = serial.Serial(port, 9600, timeout=1)
+            mcu = serial.Serial(port, self._baudrate, timeout=self._timeout)
             self.mcu = mcu
             print(f"Connection opened to {port}")
             self._flags['connected'] = True
@@ -160,7 +170,7 @@ class Sartorius(LiquidHandler):
             return True
         if message_code in QUERIES and response[:2] == message_code.lower():
             reply_code, data = response[:2], response[2:]
-            print(f'[{reply_code}] {data}')
+            # print(f'[{reply_code}] {data}')
             return True
         return False
     
@@ -179,12 +189,13 @@ class Sartorius(LiquidHandler):
             if time.time() - _start_time > timeout_s:
                 break
             response = self._read()
+        if message_code in QUERIES:
+            response = response[2:]
         if message_code not in STATUS_QUERIES:
             self._flags['pause_feedback'] = False
         return response
 
     def _read(self):
-        data = ''
         response = ''
         try:
             response = self.mcu.readline()
@@ -194,18 +205,17 @@ class Sartorius(LiquidHandler):
                 return response
             elif response == 'ok':
                 return response
-            data = response[2:]
         except Exception as e:
             if self.verbose:
                 print(e)
-        return data
+        return response
     
-    def _set_address(self, new_address:int):
-        if not (0 < new_address < 10):
+    def _set_channel(self, new_channel:int):
+        if not (0 < new_channel < 10):
             raise Exception('Please select a valid rLine address from 1 to 9')
-        response = self._query(f'*A{new_address}')
+        response = self._query(f'*A{new_channel}')
         if response == 'ok':
-            self._address = new_address
+            self.channel = new_channel
         return
     
     def _shutdown(self):
@@ -223,7 +233,7 @@ class Sartorius(LiquidHandler):
     def _write(self, string:str):
         # Typical timeout wait is 400ms
         message_code = string[:2]
-        fstring = f'{self._address}{string}º\r'
+        fstring = f'{self.channel}{string}º\r'
         bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
         try:
             self.mcu.write(bstring)
@@ -237,8 +247,8 @@ class Sartorius(LiquidHandler):
         time.sleep(2)
         return
     
-    def airgap(self):
-        return self._query(f'RI{5}')
+    def airgap(self, steps=10):
+        return self._query(f'RI{steps}')
         
     def aspirate(self, reagent, vol, speed=0, wait=1, pause=False):
         steps = int(vol / self._resolution)
@@ -260,6 +270,9 @@ class Sartorius(LiquidHandler):
     def blowout(self, home=True):
         string = f'RB{self.home_position}' if home else f'RB'
         return self._query(string)
+    
+    def connect(self):
+        return self._connect(self._port)
     
     def close(self):
         return self._shutdown()
@@ -293,13 +306,12 @@ class Sartorius(LiquidHandler):
         return
     
     def eject(self, home=True):
+        self.reagent = ''
         string = f'RE{self.home_position}' if home else f'RE'
         return self._query(string)
     
     def empty(self, wait=1, pause=False):
-        self.dispense(self.capacity, wait=wait, pause=pause, force_dispense=True)
-        self.reagent = ''
-        return
+        return self.dispense(self.capacity, wait=wait, pause=pause, force_dispense=True)
     
     def feedbackLoop(self):
         print('Listening...')
@@ -313,14 +325,12 @@ class Sartorius(LiquidHandler):
     
     def fill(self, reagent, prewet=True, wait=1, pause=False):
         vol = self.capacity - self.volume
-
         if prewet:
             for c in range(WETTING_CYCLES):
                 if c == 0:
                     self.cycle(reagent, vol=vol, wait=2)
                 else:
                     self.cycle(reagent, vol=200)
-
         self.aspirate(reagent, vol, wait=wait, pause=pause)
         return
     
@@ -338,7 +348,7 @@ class Sartorius(LiquidHandler):
         response = self._query('DS')
         if response in ['4','6','8']:
             self._flags['busy'] = True
-            print(StatusCode(response).name)
+            # print(StatusCode(response).name)
         elif response in ['0']:
             self._flags['busy'] = False
         self._status = response
@@ -353,18 +363,24 @@ class Sartorius(LiquidHandler):
     def isConnected(self):
         return self._flags['connected']
     
-    def moveBy(self, displacement):
-        if displacement > 0:
-            self._query(f'RI{displacement}')
-        elif displacement < 0:
-            self._query(f'RO{-displacement}')
+    def isFeasible(self, position):
+        if (self.bounds[0] < position < self.bounds[1]):
+            return True
+        print(f"Range limits reached! {self.bounds}")
+        return False
+    
+    def moveBy(self, steps):
+        if steps > 0:
+            self._query(f'RI{steps}')
+        elif steps < 0:
+            self._query(f'RO{-steps}')
         return
     
     def moveTo(self, position):
         return self._query(f'RP{position}')
     
-    def pullback(self):
-        return self._query(f'RI{5}')
+    def pullback(self, steps=5):
+        return self._query(f'RI{steps}')
     
     def reset(self):
         return self._zero()
@@ -385,4 +401,38 @@ class Sartorius(LiquidHandler):
         self._flags['get_feedback'] = False
         self._threads['feedback_loop'].join()
         return
-  
+
+
+class Sartorius(LiquidHandler):
+    def __init__(self, ports=[], channels=[], offsets=[], **kwargs):
+        super().__init__(**kwargs)
+        properties = list(zip(ports, channels, offsets))
+        self.channels = {chn: SartoriusDevice(port, chn, off) for port,chn,off in properties}
+        return
+    
+    def aspirate(self, channel, reagent, vol, speed=0, wait=1, pause=False):
+        return self.channels[channel].aspirate(reagent, vol, speed, wait, pause)
+    
+    def cycle(self, channel, reagent, vol, speed=0, wait=1):
+        return self.channels[channel].cycle(reagent, vol, speed, wait)
+    
+    def dispense(self, channel, vol, speed=0, wait=1, pause=False, force_dispense=False):
+        return self.channels[channel].dispense(vol, speed, wait, pause, force_dispense)
+    
+    def empty(self, channel, wait=1, pause=False):
+        return self.channels[channel].empty(wait, pause)
+    
+    def fill(self, channel, reagent, prewet=True, wait=1, pause=False):
+        return self.channels[channel].fill(reagent, prewet, wait, pause)
+    
+    def isConnected(self):
+        connects = [pipette.isConnected() for pipette in self.channels.values()]
+        if all(connects):
+            return True
+        return False
+    
+    def pullback(self, channel):
+        return self.channels[channel].pullback()
+    
+    def rinse(self, channel, reagent, rinse_cycles=3):
+        return self.channels[channel].rinse(reagent, rinse_cycles)
