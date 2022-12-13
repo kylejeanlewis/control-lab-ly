@@ -80,7 +80,7 @@ class Setup(BaseSetup):
         self.rest()
         
         # Test liquid
-        self.primeAll()
+        self.pullbackAll()
         print('Ready!')
         return
 
@@ -116,12 +116,12 @@ class Setup(BaseSetup):
             thread.start()
             if rest:
                 self.rest()
-                self.liquid.primeAll()
+                self.liquid.pullbackAll()
             return thread
         else:
             if rest:
                 self.rest()
-                self.liquid.prime(liquid_chn)
+                self.liquid.pullback(liquid_chn)
             self.maker.channels[maker_chn].execute(maker_kwargs)
         return
     
@@ -142,14 +142,14 @@ class Setup(BaseSetup):
         
         self.align(0, self.positions['fill'])
         for channel,reagent,vol in zip(channels, reagents, vols):
-            self.liquid.prime(channel)
+            self.liquid.pullback(channel)
             if vol == 0 or self.liquid.channels[channel].volume == self.liquid.channels[channel].capacity:
                 continue
             if not pause:
                 # log_now(f'CNC align: syringe {syringe.order} with fill station...')
                 self.align(self.liquid.channels[channel].offset, self.positions['fill'])
             self.liquid.aspirate(channel, reagent, vol, wait=wait, pause=pause)
-            self.liquid.prime(channel)
+            self.liquid.pullback(channel)
         return
     
     def home(self):
@@ -168,8 +168,8 @@ class Setup(BaseSetup):
             self.labelPosition(name, coord, overwrite)
         return
     
-    def primeAll(self, channels=[]):
-        return self.liquid.primeAll(channels)
+    def pullbackAll(self, channels=[]):
+        return self.liquid.pullbackAll(channels)
     
     def rest(self, home=True):
         # log_now(f'CNC align: move to rest position...')
