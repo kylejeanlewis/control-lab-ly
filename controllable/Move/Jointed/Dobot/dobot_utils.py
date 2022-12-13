@@ -20,23 +20,6 @@ print(f"Import: OK <{__name__}>")
 SCALE = True
 MOVE_TIME = 0.5
 
-def decodeDetails(details):
-    """
-    Decode JSON representation of keyword arguments for Dobot initialisation
-
-    Args:
-        details (dict): dictionary of keyword, value pairs.
-    """
-    for k,v in details.items():
-        if type(v) != dict:
-            continue
-        if "tuple" in v.keys():
-            details[k] = tuple(v['tuple'])
-        elif "array" in v.keys():
-            details[k] = np.array(v['array'])
-    return details
-
-
 class Dobot(RobotArm):
     """
     Dobot class.
@@ -155,6 +138,9 @@ class Dobot(RobotArm):
             self.setImplementOffset(self.tool_offset)
             del self.tool_offset
         return
+    
+    def connect(self):
+        return self._connect(self.ip_address)
     
     def getSettings(self):
         """Read the arm configuration settings."""
@@ -290,7 +276,7 @@ class Dobot(RobotArm):
 
         Args:
             coord (tuple): position vector
-            orientation (tuple, optional): orientatino angles in degrees. Defaults to (0,).
+            orientation (tuple, optional): orientation angles in degrees. Defaults to (0,).
             offset (bool, optional): whether to consider implement offset. Defaults to True.
         """
         if len(orientation) == 1 and orientation[0] == 0:
@@ -476,7 +462,6 @@ class M1Pro(Dobot):
         
         if not (5 < z < 245):
             return False
-        
         if x >= 0:
             r = (x**2 + y**2)**0.5
             if not (153 <= r <= 400):
@@ -486,6 +471,12 @@ class M1Pro(Dobot):
         elif (x**2 + (abs(y)-200)**2)**0.5 > 200:
             return False
         
+        # Space constraints
+        if x > 344: # front edge
+            return False
+        if x < 76 and abs(y) < 150: # elevated structure
+            return False
+                
         # x=4, y=3
         grad = abs(y/(x+1E-6))
         if grad > 0.75 or x < 0:
@@ -493,12 +484,11 @@ class M1Pro(Dobot):
             self.setHandedness(hand, stretch=True)
         return True
     
-    def moveBy(self, vector, angles=(0, 0, 0), **kwargs):
-        vector = self._transform_vector_in(vector)
+    def moveCoordBy(self, vector, angles=(0, 0, 0)):
         coord, orientation = self.getPosition()
         new_coord = np.array(coord) + np.array(vector)
         new_orientation = np.array(orientation) + np.array(angles)
-        return self.moveTo(tuple(new_coord), tuple(new_orientation))
+        return self.moveCoordTo(tuple(new_coord), tuple(new_orientation))
 
     def setHandedness(self, hand, stretch=False):
         set_hand = False
@@ -517,9 +507,10 @@ class M1Pro(Dobot):
         return
             
     def stretchArm(self):
-        x,y,z = self.coordinates
+        coord, _ = self.getPosition()
+        x,y,z = coord
         y = 240 * math.copysign(1, y)
-        self.moveTo((320,y,z))
+        self.moveCoordTo((320,y,z))
         time.sleep(MOVE_TIME)
         return
     
