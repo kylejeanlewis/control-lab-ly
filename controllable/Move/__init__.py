@@ -18,21 +18,6 @@ class Mover(object):
         print(f"'{self.__class__.__name__}' class has no method '_shutdown'")
         return
     
-    def _transform_vector_in(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method '_transform_vector_in'")
-        return
-
-    def _transform_vector_out(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method '_transform_vector_out'")
-        return
-    
-    def blow(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method 'blow'")
-        return
-    
     def calibrate(self, *args, **kwargs):
         """EMPTY METHOD"""
         print(f"'{self.__class__.__name__}' class has no method 'calibrate'")
@@ -46,11 +31,6 @@ class Mover(object):
     def connect(self, *args, **kwargs):
         """EMPTY METHOD"""
         print(f"'{self.__class__.__name__}' class has no method 'connect'")
-        return
-    
-    def drop(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method 'drop'")
         return
     
     def getOrientation(self, *args, **kwargs):
@@ -71,16 +51,6 @@ class Mover(object):
     def getSettings(self, *args, **kwargs):
         """EMPTY METHOD"""
         print(f"'{self.__class__.__name__}' class has no method 'getSettings'")
-        return
-    
-    def grab(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method 'grab'")
-        return
-    
-    def heat(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method 'heat'")
         return
     
     def home(self, *args, **kwargs):
@@ -106,26 +76,6 @@ class Mover(object):
     def moveTo(self, *args, **kwargs):
         """EMPTY METHOD"""
         print(f"'{self.__class__.__name__}' class has no method 'moveTo'")
-        return
-
-    def moveJointBy(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method 'moveJointBy'")
-        return
-    
-    def moveJointTo(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method 'moveJointTo'")
-        return
-
-    def moveCoordBy(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method 'moveCoordBy'")
-        return
-    
-    def moveCoordTo(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method 'moveCoordTo'")
         return
     
     def reset(self, *args, **kwargs):
@@ -161,16 +111,6 @@ class Mover(object):
     def stop(self, *args, **kwargs):
         """EMPTY METHOD"""
         print(f"'{self.__class__.__name__}' class has no method 'stop'")
-        return
-    
-    def suck(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method 'suck'")
-        return
-    
-    def tuck(self, *args, **kwargs):
-        """EMPTY METHOD"""
-        print(f"'{self.__class__.__name__}' class has no method '_tuck'")
         return
 
     def updatePosition(self, *args, **kwargs):
