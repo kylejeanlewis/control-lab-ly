@@ -7,6 +7,7 @@ Notes / actionables:
 -
 """
 # Standard library imports
+import numpy as np
 import pkgutil
 import time
 import yaml
@@ -42,6 +43,22 @@ class BaseProgram(object):
     def __init__(self, *args, **kwargs):
         pass
     
+    def _decodeDetails(self, details):
+        """
+        Decode JSON representation of keyword arguments for Dobot initialisation
+
+        Args:
+            details (dict): dictionary of keyword, value pairs.
+        """
+        for k,v in details.items():
+            if type(v) != dict:
+                continue
+            if "tuple" in v.keys():
+                details[k] = tuple(v['tuple'])
+            elif "array" in v.keys():
+                details[k] = np.array(v['array'])
+        return details
+    
     def _isOverrun(self, start_time, timeout):
         if timeout!=None and time.time() - start_time > timeout:
             return True
@@ -51,6 +68,10 @@ class BaseProgram(object):
         yml = pkgutil.get_data(__name__, config_file).decode('utf-8')
         configs = yaml.safe_load(yml)
         config = configs[config_option]
+        for obj in config.keys():
+            settings = config[obj]['settings']
+            print(settings)
+            config[obj]['settings'] = self._decodeDetails(settings)
         return config
     
     # GUI methods
