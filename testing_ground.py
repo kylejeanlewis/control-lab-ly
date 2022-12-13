@@ -160,14 +160,14 @@ from controllable.builds.Paraspin import program
 if __name__ == "__main__":
     REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\reagents.csv' 
     RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\recipe.csv'
-    spinbot = program.Program()
+    spinbot = program.Program(config_option=1)
     spinbot.loadRecipe(REAGENTS, RECIPE)
     pass
 
 # %% Sartorius examples
-from controllable.Move.Liquid.Sartorius import Sartorius
+from controllable.Move.Liquid.Sartorius import SartoriusDevice
 if __name__ == "__main__":
-    pipet = Sartorius('COM17')
+    pipet = SartoriusDevice('COM17')
     pass
 
 # %%
