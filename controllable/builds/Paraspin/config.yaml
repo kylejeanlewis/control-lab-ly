@@ -20,8 +20,16 @@
   maker: 
     class: ThinFilm.SpinnerAssembly
     settings:
-      ports: [COM16,COM15,COM14,COM13]
-      channels: [0,1,2,3]
+      ports: &SpinnerPorts
+      - COM16
+      - COM15
+      - COM14
+      - COM13
+      channels: &SpinnerChannels
+      - 0
+      - 1
+      - 2
+      - 3
       positions:
       - [-325,0,0]
       - [-250,0,0]
@@ -32,21 +40,24 @@
   mover: 
     class: Jointed.M1Pro
     settings:
-      address: "192.168.2.21"
-      home_position: {'tuple': [0,0,0]}
+      ip_address: '192.168.2.21'
+      home_position: {'tuple': [300,0,100]}
       home_orientation: {'tuple': [0,0,0]}
-      orientate_matrix: {'array': [[1,0,0],[0,1,0],[0,0,1]]}
+      orientate_matrix: {'array': [[0,1,0],[-1,0,0],[0,0,1]]}
       translate_vector: {'array': [0,0,0]}
       scale: 1
   liquid: 
     class: Liquid.Sartorius
     settings:
-      port: COM17
+      ports: [COM17]
+      channels: [1]
+      offsets:
+        - [0,0,50]
   maker: 
     class: ThinFilm.SpinnerAssembly
     settings:
-      ports: [COM16,COM15,COM14,COM13]
-      channels: [0,1,2,3]
+      ports: *SpinnerPorts
+      channels: *SpinnerChannels
       positions:
       - [100,-75,100]
       - [100,0,100]
