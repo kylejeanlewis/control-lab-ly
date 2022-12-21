@@ -31,7 +31,8 @@ class Setup(BaseSetup):
         
         self._config = config
         self._flags = {
-            'aligning': False
+            'aligning': False,
+            'at_rest': False
         }
         self._connect(ignore_connections=ignore_connections)
         pass
@@ -89,6 +90,7 @@ class Setup(BaseSetup):
         if not self.mover.isFeasible(coord, transform=True):
             raise Exception("Selected position is not feasible.")
         self.mover.moveTo(coord)
+        self._flags['at_rest'] = False
         # self.at_home = False
         
         # Time the wait
@@ -176,6 +178,8 @@ class Setup(BaseSetup):
     
     def rest(self, home=True):
         # log_now(f'CNC align: move to rest position...')
+        if self._flags['at_rest']:
+            return
         if home:
             self.mover.home()
         else:
@@ -183,6 +187,7 @@ class Setup(BaseSetup):
                 self.mover.moveTo(self.positions['rest'])
             except KeyError:
                 raise Exception('Rest position not yet labelled.')
+        self._flags['at_rest'] = True
         return
     
     def rinseAll(self, channels=[], reagents=[], rinse_cycles=3):
