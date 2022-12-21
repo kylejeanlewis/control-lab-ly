@@ -15,6 +15,7 @@ import yaml
 # Third party imports
 
 # Local application imports
+from ...Control.Schedule import Scheduler
 from ..build_utils import BaseProgram
 from .routines import Setup
 print(f"Import: OK <{__name__}>")
@@ -26,9 +27,7 @@ class Program(BaseProgram):
         self._config = self._readPlans(config_file, config_option)
         self.setup = Setup(self._config, ignore_connections)
         self.window = None
-        self.flags = {
-            'force_stop': False
-        }
+        self.scheduler = None
         
         self.reagents_df = None
         self.recipe_df = None
@@ -36,6 +35,9 @@ class Program(BaseProgram):
         self._all_steps = {}
         self._default_folder =  __name__.split('builds.')[1].replace('.', '/')
         self._executed = []
+        self._flags = {
+            'force_stop': False
+        }
         self._state_filename = recover_state_from_file
         self._threads = []
         
@@ -49,9 +51,8 @@ class Program(BaseProgram):
         for key in self.setup.maker.channels.keys():
             steps = []
             for _, row in self.recipe_df.iterrows():
-                if key not in row['channels']:
-                    # continue
-                    liquid_chn = self.reagents_df[self.reagents_df['reagent']==row['reagent']]['channel'][0]
+                if key in row['channels']:
+                    liquid_chn = self.reagents_df[self.reagents_df['reagent']==row['reagent']]['channel'].iloc[0]
                     maker_kwargs = dict(
                         soak_time=row['soak_time'],
                         spin_speed=row['spin_speed'],
@@ -95,10 +96,19 @@ class Program(BaseProgram):
     
     def execute(self, maker_chn, rest=True, new_thread=True): #give instructions
         kwargs = self._all_steps[maker_chn].pop(0)
+        print(kwargs)
         thread = self.setup.coat(rest=rest, new_thread=new_thread, **kwargs)
         self._threads.append(thread)
         self._executed.append(kwargs)
         return
+    
+    def getStatuses(self):
+        return {chn: spinner._flags for chn,spinner in self.setup.maker.channels.items()}
+    
+    def isComplete(self):
+        all_steps_completed = all([len(steps)==0 for steps in self._all_steps.values()])
+        not_busy = not self.setup.isBusy()
+        return all([all_steps_completed, not_busy])
 
     def loadRecipe(self, reagents_file='', recipe_file='', reagents_df=None, recipe_df=None): # read recipe
         if type(reagents_df) == type(None):
@@ -125,7 +135,9 @@ class Program(BaseProgram):
         self._assign_steps()
         return
     
-    def loadScheduler(self):
+    def loadScheduler(self, scheduler:Scheduler, rest=True):
+        self.scheduler = scheduler
+        self.scheduler.setFlags('rest', rest)
         return
     
     def prepareSetup(self, fill_sequence=[], manual_fill=False):
@@ -164,12 +176,23 @@ class Program(BaseProgram):
 
     def runExperiment(self, timeout=None):
         start_time = time.time()
-        while not all([(len(steps)==0 for steps in self._all_steps.values())]):
+        while not self.isComplete():
             time.sleep(0.05)
-            if self._isOverrun(start_time, timeout) or self.flags['force_stop']:
+            if self._isOverrun(start_time, timeout) or self._flags['force_stop']:
                 break
             # run scheduler and queue actions
+            statuses = self.getStatuses()
+            maker_chn = self.scheduler.decideNext(statuses, self._all_steps)
+            if maker_chn != None:
+                self.execute(maker_chn, rest=self.scheduler._flags['rest'])
+            else:
+                self.setup.rest()
             pass
+        
+        total_time_s = round(time.time() - start_time)
+        m, s = divmod(total_time_s, 60)
+        h, m = divmod(m, 60)
+        print(f'Experiment complete! ({int(h)}hr {int(m)}min {int(s):02}sec)')
         return
     
     def saveState(self, folder=''):
