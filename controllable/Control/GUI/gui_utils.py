@@ -233,7 +233,7 @@ class MeasurerPanel(Panel):
         return
     
     def close(self):
-        return
+        return super().close()
     
     def getLayout(self, title='Panel', title_font_level=0, **kwargs):
         return super().getLayout(title, title_font_level, **kwargs)
@@ -422,3 +422,10 @@ class ViewerPanel(Panel):
             image = image.addText(f'FPS: {fps}', position=(0,image.frame.shape[0]-5), inplace=False)
             updates[self.display_box] = dict(data=image.encode())
         return updates
+
+class LoaderPanel(Panel):
+    def __init__(self, name='', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group=None):
+        super().__init__(name, theme, typeface, font_sizes, group)
+        return
+    
+    
