@@ -26,6 +26,8 @@ STATIC_QUERIES = ['Dv','DM','DX','DI','DO','DR']
 QUERIES = STATUS_QUERIES + STATIC_QUERIES
 WETTING_CYCLES = 1
 
+# z = 250 (w/o tip)
+# z = 330 (w/ tip)
 class SartoriusDevice(object):
     def __init__(self, port, channel=1, offset=(0,0,0)):
         self.capacity = 0
@@ -53,8 +55,8 @@ class SartoriusDevice(object):
         self._speed_out = 0
         self._speed_codes = None
         self._status = 0
-        self._timeout = 1
         self._threads = {}
+        self._timeout = 1
         
         self.verbose = True
         self._connect(port)
