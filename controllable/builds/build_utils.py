@@ -70,7 +70,6 @@ class BaseProgram(object):
         config = configs[config_option]
         for obj in config.keys():
             settings = config[obj]['settings']
-            print(settings)
             config[obj]['settings'] = self._decodeDetails(settings)
         return config
     
