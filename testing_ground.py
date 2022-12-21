@@ -4,7 +4,6 @@ Created: Tue 2022/11/01 17:13:35
 @author: Chang Jie
 
 Notes / actionables:
-- test Viewers (Optical / Thermal)
 - test database_utils
 - add 'Visualisation' modules
 - add 'GUI' modules
