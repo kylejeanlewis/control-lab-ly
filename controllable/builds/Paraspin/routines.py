@@ -27,12 +27,12 @@ class Setup(BaseSetup):
         self.mover = None
         self.liquid = None
         self.maker = None
-        self.flags = {
-            'aligning': False
-        }
         self.positions = {}
         
         self._config = config
+        self._flags = {
+            'aligning': False
+        }
         self._connect(ignore_connections=ignore_connections)
         pass
     
@@ -103,10 +103,10 @@ class Setup(BaseSetup):
         if vol:
             # log_now(f'CNC align: syringe {syringe.order} with spinner {spinner.order}...')
             self.align(self.liquid.channels[liquid_chn].offset, self.maker.channels[maker_chn].position)
-            while self.maker.channels[maker_chn].flags['busy']:
+            while self.maker.channels[maker_chn]._flags['busy']:
                 time.sleep(0.5)
                 # return
-            self.maker.channels[maker_chn].flags['busy'].busy = True
+            self.maker.channels[maker_chn]._flags['busy'] = True
             self.liquid.dispense(liquid_chn, vol)
 
         # Start new thread from here
@@ -154,6 +154,9 @@ class Setup(BaseSetup):
     
     def home(self):
         return self.mover.home()
+    
+    def isBusy(self):
+        return any([self.liquid.isBusy(), self.maker.isBusy()])
     
     def labelPosition(self, name, coord, overwrite=False):
         if name not in self.positions.keys() or overwrite:
