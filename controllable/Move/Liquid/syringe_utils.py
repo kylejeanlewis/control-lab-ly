@@ -125,6 +125,9 @@ class Pump(object):
                 break
         return
     
+    def isBusy(self):
+        return self._flags['busy']
+    
     def isConnected(self):
         if self.mcu == None:
             print(f"{self.__class__} ({self._port}) not connected.")
@@ -313,7 +316,7 @@ class SyringeAssembly(LiquidHandler):
         return
     
     def isBusy(self):
-        return self.pump._flags['busy']
+        return self.pump.isBusy()
     
     def isConnected(self):
         return self.pump.isConnected()
