@@ -54,6 +54,10 @@ class Setup(BaseSetup):
         self.mover = mover_class(**self._config['mover']['settings'])
         self.liquid = liquid_class(**self._config['liquid']['settings'])
         self.maker = maker_class(**self._config['maker']['settings'])
+        
+        if 'labelled_positions' in self._config.keys():
+            names, coords = zip(*self._config['labelled_positions'].items())
+            self.labelPositions(names, coords)
 
         if diagnostic:
             self._run_diagnostic(ignore_connections)
@@ -101,6 +105,19 @@ class Setup(BaseSetup):
         # self.aligning = 0
         return
     
+    def attachTip(self, channel, pipette_tip_length=80):
+        class_name = str(self.liquid.__class__)[8:-2].split('.')[-1]
+        if class_name not in ['Sartorius']:
+            return
+        self.liquid.channels[channel].pipette_tip_length = pipette_tip_length
+        z_safe = self.mover.home_position[2]
+        self.mover.moveTo((*self.positions['tips'][:2], z_safe))
+        self.mover.moveBy((0,0,self.positions['tips'][-1] - z_safe))
+        
+        self.mover.implement_offset = tuple(np.array(self.mover.implement_offset) + np.array([0,0,-pipette_tip_length]))
+        self.mover.moveBy((0,0,pipette_tip_length))
+        return
+    
     def coat(self, maker_chn, liquid_chn, vol, maker_kwargs, rest=True, new_thread=True):
         if vol:
             # log_now(f'CNC align: syringe {syringe.order} with spinner {spinner.order}...')
@@ -125,6 +142,19 @@ class Setup(BaseSetup):
                 self.rest()
                 self.liquid.pullback(liquid_chn)
             self.maker.channels[maker_chn].execute(maker_kwargs)
+        return
+    
+    def ejectTip(self, channel):
+        class_name = str(self.liquid.__class__)[8:-2].split('.')[-1]
+        if class_name not in ['Sartorius']:
+            return
+        pipette_tip_length = self.liquid.channels[channel].pipette_tip_length
+        z_safe = self.mover.home_position[2]
+        self.mover.moveTo((*self.positions['bins'][:2], z_safe))
+        self.liquid.eject(channel)
+        
+        self.mover.implement_offset = tuple(np.array(self.mover.implement_offset) - np.array([0,0,-pipette_tip_length]))
+        self.liquid.channels[channel].pipette_tip_length = 0
         return
     
     def emptyLiquids(self, channels=[], wait=0, pause=False):
