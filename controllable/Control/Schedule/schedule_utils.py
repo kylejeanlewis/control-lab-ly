@@ -16,6 +16,7 @@ print(f"Import: OK <{__name__}>")
 
 class Scheduler(object):
     def __init__(self):
+        self._flags = {}
         return
     
     def decideNext(self, statuses, all_steps):
@@ -26,9 +27,14 @@ class Scheduler(object):
                 return key
         return None
     
+    def setFlags(self, name, value):
+        self._flags[name] = value
+        return
+    
     
 class ScanningScheduler(Scheduler):
     def __init__(self):
+        super().__init__()
         return
         
     def decideNext(self, statuses, all_steps):
