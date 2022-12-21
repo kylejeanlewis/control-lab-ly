@@ -39,6 +39,7 @@ class SartoriusDevice(object):
         self.bounds = (0,0)
         self.home_position = 0
         self.mcu = None
+        self.pipette_tip_length = 0
         
         self._baudrate = 9600
         self._flags = {
@@ -410,6 +411,7 @@ class Sartorius(LiquidHandler):
         super().__init__(**kwargs)
         properties = list(zip(ports, channels, offsets))
         self.channels = {chn: SartoriusDevice(port, chn, off) for port,chn,off in properties}
+        self.implement_offset = (0,0,-250)
         return
     
     def aspirate(self, channel, reagent, vol, speed=0, wait=1, pause=False):
@@ -420,6 +422,9 @@ class Sartorius(LiquidHandler):
     
     def dispense(self, channel, vol, speed=0, wait=1, pause=False, force_dispense=False):
         return self.channels[channel].dispense(vol, speed, wait, pause, force_dispense)
+    
+    def eject(self, channel, home=True):
+        return self.channels[channel].eject(home=home)
     
     def empty(self, channel, wait=1, pause=False):
         return self.channels[channel].empty(wait, pause)
