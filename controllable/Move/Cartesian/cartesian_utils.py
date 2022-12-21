@@ -77,7 +77,7 @@ class CNC(Mover):
 
     def connect(self):
         """
-        Re-stablish serial connection to cnc controller using exisiting port and baudrate.
+        Re-stablish serial connection to cnc controller using existing port and baudrate.
         """
         return self._connect(self._port, self._baudrate, self._timeout)
 
@@ -87,7 +87,7 @@ class CNC(Mover):
             return False
         return True
     
-    def isFeasible(self, coord):
+    def isFeasible(self, coord, transform=False):
         """
         Checks if specified coordinates is a feasible position for robot to access.
 
@@ -95,7 +95,7 @@ class CNC(Mover):
             coord (tuple): x,y,z coordinates
 
         Returns:
-            bool: whether coordinates is a feaible position
+            bool: whether coordinates is a feasible position
         """
         l_bound, u_bound = np.array(self.xyz_bounds)
         coord = np.array(coord)
