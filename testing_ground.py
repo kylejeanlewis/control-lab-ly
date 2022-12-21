@@ -160,11 +160,11 @@ from controllable.Control.Schedule import Scheduler, ScanningScheduler
 if __name__ == "__main__":
     REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\reagents.csv' 
     RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\recipe.csv'
-    spinbot = program.Program(config_option=0)
-    spinbot.loadRecipe(REAGENTS, RECIPE)
-    spinbot.labelPosition('fill', (-100,0,0))
-    spinbot.prepareSetup()
-    spinbot.loadScheduler(ScanningScheduler(), rest=False)
+    spinbot = program.Program(config_option=1)
+    # spinbot.loadRecipe(REAGENTS, RECIPE)
+    # spinbot.labelPosition('fill', (-100,0,0))
+    # spinbot.prepareSetup()
+    # spinbot.loadScheduler(ScanningScheduler(), rest=False)
     # spinbot.runExperiment()
     pass
 
