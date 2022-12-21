@@ -16,6 +16,8 @@ import serial # pip install pyserial
 from .. import Mover
 print(f"Import: OK <{__name__}>")
 
+CNC_SPEED = 250
+
 class CNC(Mover):
     """
     Controller for cnc xyz-movements.
