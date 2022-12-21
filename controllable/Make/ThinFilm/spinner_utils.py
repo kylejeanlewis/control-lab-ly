@@ -27,7 +27,7 @@ class Spinner(Maker):
         self.order = order
         self.position = tuple(position)
         self.speed = 0
-        self.flags = {
+        self._flags = {
             'busy': False,
             'complete': False
         }
@@ -101,11 +101,11 @@ class Spinner(Maker):
 
         Returns: None
         '''
-        self.flags['busy'] = True
+        self._flags['busy'] = True
         self.soak(soak_time)
         self.spin(spin_speed, spin_time)
-        self.flags['busy'] = False
-        # self.flags['complete'] = True
+        self._flags['busy'] = False
+        # self._flags['complete'] = True
         return
     
     def isConnected(self):
@@ -160,17 +160,14 @@ class SpinnerAssembly(Maker):
     def execute(self, channel, soak_time, spin_speed, spin_time):
         return self.channels[channel].execute(soak_time, spin_speed, spin_time)
     
-    def isBusy(self, channel):
-        return self.channels[channel].flags['busy']
+    def isBusy(self):
+        return any([spinner._flags['busy'] for spinner in self.channels.values()])
     
-    def isComplete(self, channel):
-        return self.channels[channel].flags['complete']
+    def isComplete(self):
+        return all([spinner._flags['complete'] for spinner in self.channels.values()])
     
     def isConnected(self):
-        connects = [spinner.isConnected() for spinner in self.channels.values()]
-        if all(connects):
-            return True
-        return False
+        return all([spinner.isConnected() for spinner in self.channels.values()])
     
     def soak(self, channel, seconds):
         return self.channels[channel].soak(seconds)
