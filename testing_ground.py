@@ -156,7 +156,7 @@ if __name__ == "__main__":
 
 # %% Paraspin examples
 from controllable.builds.Paraspin import program
-from controllable.Control.Schedule import Scheduler
+from controllable.Control.Schedule import Scheduler, ScanningScheduler
 if __name__ == "__main__":
     REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\reagents.csv' 
     RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\recipe.csv'
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     spinbot.loadRecipe(REAGENTS, RECIPE)
     spinbot.labelPosition('fill', (-100,0,0))
     spinbot.prepareSetup()
-    spinbot.loadScheduler(Scheduler())
+    spinbot.loadScheduler(ScanningScheduler(), rest=False)
     # spinbot.runExperiment()
     pass
 
