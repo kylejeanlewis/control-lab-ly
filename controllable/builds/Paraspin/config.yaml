@@ -46,20 +46,21 @@
       orientate_matrix: {'array': [[0,1,0],[-1,0,0],[0,0,1]]}
       translate_vector: {'array': [0,0,0]}
       scale: 1
+      # implement_offset: {'tuple': [0,0,250]}
   liquid: 
     class: Liquid.Sartorius
     settings:
       ports: [COM17]
       channels: [1]
       offsets:
-        - [0,0,50]
+        - [0,0,0]
   maker: 
     class: ThinFilm.SpinnerAssembly
     settings:
       ports: *SpinnerPorts
       channels: *SpinnerChannels
       positions:
-      - [100,-75,100]
-      - [100,0,100]
-      - [100,75,100]
-      - [100,150,100]
+      - [-258,-275,90]
+      - [-257,-200,90]
+      - [-255,-124,90]
+      - [-254,-49,90]
