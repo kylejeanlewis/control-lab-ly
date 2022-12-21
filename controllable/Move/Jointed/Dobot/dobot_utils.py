@@ -132,7 +132,7 @@ class Dobot(RobotArm):
         if on:
             tip_length = int(input(f"Please swap to calibration tip and enter tip length in mm (Default: {tip_length}mm)") or str(tip_length))
             self.tool_offset = self.implement_offset
-            self.setImplementOffset((0,0,tip_length))
+            self.setImplementOffset((0,0,-tip_length))
         else:
             input("Please swap back to original tool")
             self.setImplementOffset(self.tool_offset)
@@ -142,18 +142,18 @@ class Dobot(RobotArm):
     def connect(self):
         return self._connect(self.ip_address)
     
-    def getSettings(self):
+    def getConfigSettings(self):
         """Read the arm configuration settings."""
         params = ["ip_address", "home_position", "home_orientation", "orientate_matrix", "translate_vector", "scale"]
-        return super().getSettings(params)
+        return super().getConfigSettings(params)
     
-    def home(self):
+    def home(self, tool_offset=True):
         """Home the robot arm."""
         # Tuck arm in to avoid collision
         if self._flags['tuck']:
             self.tuckArm(self.home_position)
         # Go to home position
-        self.moveCoordTo(self.home_position, self.home_orientation)
+        self.moveCoordTo(self.home_position, self.home_orientation, tool_offset=tool_offset)
         print("Homed")
         return
 
@@ -202,7 +202,7 @@ class Dobot(RobotArm):
         vector = self._transform_vector_in(vector)
         return self.moveCoordBy(vector, angles)
 
-    def moveTo(self, coord, orientation=(0,), tuck=False, **kwargs):
+    def moveTo(self, coord, orientation=(0,), tool_offset=True, tuck=False, **kwargs):
         """
         Absolute Cartesian movement, using workspace coordinates.
 
@@ -216,7 +216,7 @@ class Dobot(RobotArm):
         coord = self._transform_vector_in(coord, offset=True)
         if self._flags['tuck'] and tuck:
             self.tuckArm(coord)
-        return self.moveCoordTo(coord, orientation)
+        return self.moveCoordTo(coord, orientation, tool_offset)
 
     def moveJointBy(self, relative_angle=(0,0,0,0,0,0)):
         """
@@ -270,18 +270,18 @@ class Dobot(RobotArm):
         self.updatePosition(vector=vector, angles=angles)
         return
 
-    def moveCoordTo(self, coord, orientation=(0,), offset=True):
+    def moveCoordTo(self, coord, orientation=(0,), tool_offset=True):
         """
         Absolute Cartesian movement and tool orientation, using robot coordinates.
 
         Args:
             coord (tuple): position vector
             orientation (tuple, optional): orientation angles in degrees. Defaults to (0,).
-            offset (bool, optional): whether to consider implement offset. Defaults to True.
+            tool_offset (bool, optional): whether to consider implement offset. Defaults to True.
         """
         if len(orientation) == 1 and orientation[0] == 0:
             orientation = self.orientation
-        absolute_arm_coord = tuple(np.array(coord) + np.array(self.implement_offset)) if offset else coord
+        absolute_arm_coord = tuple(np.array(coord) + np.array(self.implement_offset)) if tool_offset else coord
         if not self.isFeasible(absolute_arm_coord):
             print(f"Infeasible coordinates! {absolute_arm_coord}")
             return
@@ -384,7 +384,7 @@ class MG400(Dobot):
         super().__init__(**kwargs)
         return
     
-    def isFeasible(self, coord):
+    def isFeasible(self, coord, transform=False):
         """
         Checks if specified coordinates is a feasible position for robot to access.
 
@@ -394,6 +394,8 @@ class MG400(Dobot):
         Returns:
             bool: whether coordinates is a feasible position
         """
+        if transform:
+            coord = self._transform_vector_in(coord, True)
         x,y,z = coord
         j1 = round(math.degrees(math.atan(x/(y + 1E-6))), 3)
         if y < 0:
@@ -420,12 +422,12 @@ class MG400(Dobot):
             x,y = (x*w,y*w)
         else:
             x,y = (0,safe_radius)
-        self.moveCoordTo((x,y,safe_height), self.orientation, offset=False)
+        self.moveCoordTo((x,y,safe_height), self.orientation, tool_offset=False)
 
         if type(target) != type(None) and len(target) == 3:
             x1,y1,_ = target
             w1 = ( (safe_radius**2)/(x1**2 + y1**2) )**0.5
-            self.moveCoordTo((x1*w1,y1*w1,75), self.orientation, offset=False)
+            self.moveCoordTo((x1*w1,y1*w1,75), self.orientation, tool_offset=False)
         return
 
 class M1Pro(Dobot):
@@ -448,7 +450,10 @@ class M1Pro(Dobot):
         self.setHandedness('left')
         return
     
-    def isFeasible(self, coord):
+    def home(self, tool_offset=False):
+        return super().home(tool_offset)
+    
+    def isFeasible(self, coord, transform=False):
         """
         Checks if specified coordinates is a feasible position for robot to access.
 
@@ -458,6 +463,8 @@ class M1Pro(Dobot):
         Returns:
             bool: whether coordinates is a feasible position
         """
+        if transform:
+            coord = self._transform_vector_in(coord, True)
         x,y,z = coord
         
         if not (5 < z < 245):
@@ -472,10 +479,10 @@ class M1Pro(Dobot):
             return False
         
         # Space constraints
-        if x > 344: # front edge
-            return False
-        if x < 76 and abs(y) < 150: # elevated structure
-            return False
+        # if x > 344: # front edge
+        #     return False
+        # if x < 76 and abs(y) < 150: # elevated structure
+        #     return False
                 
         # x=4, y=3
         grad = abs(y/(x+1E-6))
@@ -495,13 +502,21 @@ class M1Pro(Dobot):
         if hand not in ['left','right']:
             raise Exception("Please select between 'left' or 'right'")
         if hand == 'left' and self._handedness != 'left': #0
-            self._dashboard.SetArmOrientation(0,1,1,1)
-            self._handedness = 'left'
-            set_hand = True
+            try:
+                self._dashboard.SetArmOrientation(0,1,1,1)
+            except (AttributeError, OSError):
+                print("Not connected to arm!")
+            finally:
+                self._handedness = 'left'
+                set_hand = True
         elif hand == 'right' and self._handedness != 'right': #1
-            self._dashboard.SetArmOrientation(1,1,1,1)
-            self._handedness = 'right'
-            set_hand = True
+            try:
+                self._dashboard.SetArmOrientation(1,1,1,1)
+            except (AttributeError, OSError):
+                print("Not connected to arm!")
+            finally:
+                self._handedness = 'right'
+                set_hand = True
         if set_hand and stretch:
             self.stretchArm()
         return
