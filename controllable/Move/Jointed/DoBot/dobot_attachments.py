@@ -26,7 +26,7 @@ class JawGripper(object):
     """
     def __init__(self, dashboard):
         self._dashboard = dashboard
-        self.implement_offset = (0,0,95)
+        self.implement_offset = (0,0,-95)
         self.home()
         return
 
@@ -56,7 +56,7 @@ class VacuumGrip(object):
     """
     def __init__(self, dashboard):
         self._dashboard = dashboard
-        self.implement_offset = (0,0,60)
+        self.implement_offset = (0,0,-60)
         self.home()
         return
 
