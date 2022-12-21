@@ -25,14 +25,14 @@ class RobotArm(Mover):
         translate_vector (numpy.array, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
     """
-    def __init__(self, home_position=(0,0,0), home_orientation=(0,0,0), orientate_matrix=np.identity(3), translate_vector=np.zeros(3), scale=1, verbose=False, tuck=True, **kwargs):
+    def __init__(self, home_position=(0,0,0), home_orientation=(0,0,0), orientate_matrix=np.identity(3), translate_vector=np.zeros(3), scale=1, implement_offset=(0,0,0), verbose=False, tuck=True, **kwargs):
         self.home_position = home_position
         self.home_orientation = home_orientation
         self.orientate_matrix = orientate_matrix
         self.translate_vector = translate_vector
         self.scale = scale
         
-        self.implement_offset = (0,0,0)
+        self.implement_offset = implement_offset
         self.coordinates = (0,0,0)
         self.orientation = (0,0,0)
         
@@ -46,7 +46,7 @@ class RobotArm(Mover):
         self._shutdown()
         return
       
-    def _transform_vector_in(self, coord, offset=False, stretch=True):
+    def _transform_vector_in(self, coord, offset=False, stretch=True, tool=False):
         """
         Order of transformations (scale, rotate, translate).
 
@@ -59,10 +59,11 @@ class RobotArm(Mover):
             tuple: converted arm vector
         """
         translate = (-1*self.translate_vector) if offset else np.zeros(3)
+        translate = translate - self.implement_offset if tool else translate
         scale = (1/self.scale) if stretch else 1
         return tuple( translate + np.matmul(self.orientate_matrix.T, scale * np.array(coord)) )
 
-    def _transform_vector_out(self, coord, offset=False, stretch=True):
+    def _transform_vector_out(self, coord, offset=False, stretch=True, tool=False):
         """
         Order of transformations (translate, rotate, scale).
 
@@ -75,6 +76,7 @@ class RobotArm(Mover):
             tuple: converted workspace vector
         """
         translate = self.translate_vector if offset else np.zeros(3)
+        translate = translate + self.implement_offset if tool else translate
         scale = self.scale if stretch else 1
         return tuple( scale * np.matmul(self.orientate_matrix, translate + np.array(coord)) )
 
@@ -114,25 +116,8 @@ class RobotArm(Mover):
         print(f'Offset angle: {rot_angle/math.pi*180} degree')
         print(f'Offset vector: {(external_pt1 - internal_pt1)}')
         return
-
-    def getPosition(self):
-        """Read the current position and orientation of arm."""
-        return self.coordinates, self.orientation
     
-    def getWorkspacePosition(self, offset=True):
-        """
-        Retrieve physcial coordinates.
-
-        Args:
-            offset (bool, optional): whether to consider offset of implement. Defaults to True.
-
-        Returns:
-            tuple: position vector
-        """
-        coordinates, orientation = self.getPosition()
-        return self._transform_vector_out(coordinates, offset=offset), orientation
-    
-    def getSettings(self, params):
+    def getConfigSettings(self, params):
         """Read the arm configuration settings."""
         arm = str(type(self)).split("'")[1].split('.')[1]
         details = {k: v for k,v in self.__dict__.items() if k in params}
@@ -143,6 +128,39 @@ class RobotArm(Mover):
                 details[k] = {"array": v.tolist()}
         settings = {"arm": arm, "details": details}
         return settings
+
+    def getPosition(self):
+        """Read the current position and orientation of arm."""
+        return self.coordinates, self.orientation
+    
+    def getToolPosition(self):
+        """
+        Retrieve coordinates of tool tip/end of implement.
+
+        Returns:
+            tuple: position vector
+        """
+        coordinates, orientation = self.getPosition()
+        return self._transform_vector_out(coordinates, offset=True, tool=True), orientation
+    
+    def getUserPosition(self):
+        """
+        Retrieve user-defined workspace coordinates.
+
+        Returns:
+            tuple: position vector
+        """
+        coordinates, orientation = self.getPosition()
+        return self._transform_vector_out(coordinates, offset=True), orientation
+    
+    def getWorkspacePosition(self):
+        """
+        Alias for getUserPosition
+
+        Returns:
+            tuple: position vector
+        """
+        return self.getUserPosition
 
     def setImplementOffset(self, implement_offset):
         """
