@@ -330,8 +330,8 @@ class MoverPanel(Panel):
         return layout
     
     def listenEvents(self, event, values):
-        position = list(self.mover.coordinates) + list(self.mover.orientation)
-        cache_position = list(self.mover.coordinates) + list(self.mover.orientation)
+        position = list(sum(self.mover.getWorkspacePosition(), ()))
+        cache_position = position.copy()
         if event in [self._mangle(f'-{e}-') for e in ('safe', 'home', 'Go', 'Clear', 'Reset')]:
             self.flags['update_position'] = True
             
@@ -356,21 +356,21 @@ class MoverPanel(Panel):
             axis, displacement = self.buttons[event]
             self.mover.move(axis, displacement)
             self.flags['update_position'] = True
-            position = list(self.mover.coordinates) + list(self.mover.orientation)
+            position = list(sum(self.mover.getWorkspacePosition(), ()))
             
         # 4. abg sliders
         if event in [self._mangle(f'-{axis}-SLIDER-') for axis in ['a','b','g']]:
             orientation = [float(values[self._mangle(f'-{axis}-SLIDER-')]) for axis in ['a','b','g']]
             self.mover.rotateTo(orientation)
             self.flags['update_position'] = True
-            position = list(self.mover.coordinates) + list(self.mover.orientation)
+            position = list(sum(self.mover.getWorkspacePosition(), ()))
             
         # 5. Go to position
         if event == self._mangle(f'-Go-'):
             coord = [float(values[self._mangle(f'-{axis}-VALUE-')]) for axis in ['X','Y','Z']]
             orientation = [float(values[self._mangle(f'-{axis}-VALUE-')]) for axis in ['a','b','g']]
             self.mover.moveTo(coord, orientation)
-            position = list(self.mover.coordinates) + list(self.mover.orientation)
+            position = list(sum(self.mover.getWorkspacePosition(), ()))
         
         # 6. Reset mover
         if event == self._mangle(f'-Reset-'):
