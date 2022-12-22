@@ -158,8 +158,8 @@ if __name__ == "__main__":
 from controllable.builds.Paraspin import program
 from controllable.Control.Schedule import ScanningScheduler
 if __name__ == "__main__":
-    REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\reagents.csv' 
-    RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\recipe.csv'
+    REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
+    RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
     spinbot = program.Program(config_option=0)
     spinbot.loadRecipe(REAGENTS, RECIPE)
     spinbot.prepareSetup()
@@ -171,8 +171,8 @@ if __name__ == "__main__":
 from controllable.builds.Paraspin import program
 from controllable.Control.Schedule import ScanningScheduler
 if __name__ == "__main__":
-    REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\reagents.csv' 
-    RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\recipe.csv'
+    REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
+    RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
     spinbot = program.Program(config_option=1)
     # spinbot.loadRecipe(REAGENTS, RECIPE)
     # spinbot.prepareSetup()
