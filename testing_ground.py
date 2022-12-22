@@ -154,15 +154,27 @@ if __name__ == "__main__":
     spinners = SpinnerAssembly(ports=ports, channels=channels,positions=positions)
     pass
 
-# %% Paraspin examples
+# %% Paraspin examples (L6)
 from controllable.builds.Paraspin import program
-from controllable.Control.Schedule import Scheduler, ScanningScheduler
+from controllable.Control.Schedule import ScanningScheduler
+if __name__ == "__main__":
+    REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\reagents.csv' 
+    RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\recipe.csv'
+    spinbot = program.Program(config_option=0)
+    spinbot.loadRecipe(REAGENTS, RECIPE)
+    spinbot.prepareSetup()
+    spinbot.loadScheduler(ScanningScheduler(), rest=False)
+    spinbot.runExperiment()
+    pass
+
+# %% Paraspin examples (B1)
+from controllable.builds.Paraspin import program
+from controllable.Control.Schedule import ScanningScheduler
 if __name__ == "__main__":
     REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\reagents.csv' 
     RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\recipe.csv'
     spinbot = program.Program(config_option=1)
     # spinbot.loadRecipe(REAGENTS, RECIPE)
-    # spinbot.labelPosition('fill', (-100,0,0))
     # spinbot.prepareSetup()
     # spinbot.loadScheduler(ScanningScheduler(), rest=False)
     # spinbot.runExperiment()
@@ -174,7 +186,6 @@ if __name__ == "__main__":
     pipet = SartoriusDevice('COM17')
     pass
 
-# %%
 # %% Jointed M1 Pro examples
 from controllable.Move.Jointed import M1Pro
 if __name__ == "__main__":
