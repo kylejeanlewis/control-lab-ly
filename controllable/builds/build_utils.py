@@ -69,6 +69,8 @@ class BaseProgram(object):
         configs = yaml.safe_load(yml)
         config = configs[config_option]
         for obj in config.keys():
+            if obj == 'labelled_positions':
+                continue
             settings = config[obj]['settings']
             config[obj]['settings'] = self._decodeDetails(settings)
         return config
