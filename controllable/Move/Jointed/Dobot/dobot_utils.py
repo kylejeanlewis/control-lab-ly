@@ -213,7 +213,7 @@ class Dobot(RobotArm):
         """
         if len(orientation) == 1 and orientation[0] == 0:
             orientation = self.orientation
-        coord = self._transform_vector_in(coord, offset=True)
+        coord = self._transform_vector_in(coord, offset=True, tool=tool_offset)
         if self._flags['tuck'] and tuck:
             self.tuckArm(coord)
         return self.moveCoordTo(coord, orientation, tool_offset)
@@ -281,7 +281,7 @@ class Dobot(RobotArm):
         """
         if len(orientation) == 1 and orientation[0] == 0:
             orientation = self.orientation
-        absolute_arm_coord = tuple(np.array(coord) + np.array(self.implement_offset)) if tool_offset else coord
+        absolute_arm_coord = coord # tuple(np.array(coord) - np.array(self.implement_offset)) if tool_offset else coord
         if not self.isFeasible(absolute_arm_coord):
             print(f"Infeasible coordinates! {absolute_arm_coord}")
             return
