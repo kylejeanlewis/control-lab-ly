@@ -2,13 +2,13 @@
   mover: 
     class: Cartesian.Primitiv
     settings:
-      port: COM8
+      port: COM4 #8
       xyz_bounds: [[-470,0,0], [0,0,0]]
       Z_safe: 0
   liquid: 
     class: Liquid.SyringeAssembly
     settings:
-      port: COM7
+      port: COM18 #7
       capacities: [3000,3000,3000,3000,3000]
       channels: [3,4,5,6,7]
       offsets:
@@ -36,7 +36,8 @@
       - [-175,0,0]
       - [-100,0,0]
   labelled_positions:
-    fill: [-100,0,0]
+    fill: [-370,0,0]
+    rest: [-370,0,0]
 
 1:
   mover: 
@@ -46,9 +47,9 @@
       home_position: {'tuple': [300,0,100]}
       home_orientation: {'tuple': [0,0,0]}
       orientate_matrix: {'array': [[0,1,0],[-1,0,0],[0,0,1]]}
-      translate_vector: {'array': [0,0,0]}
+      translate_vector: {'array': [0,0,50]}
       scale: 1
-      # implement_offset: {'tuple': [0,0,250]}
+      implement_offset: {'tuple': [0,0,-250]}
   liquid: 
     class: Liquid.Sartorius
     settings:
