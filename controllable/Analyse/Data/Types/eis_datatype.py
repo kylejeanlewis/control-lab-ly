@@ -30,19 +30,22 @@ import plotly.graph_objects as go # pip install plotly
 from plotly.subplots import make_subplots
 
 # Local application imports
-from .circuit_datatype import circuit_diagram
+from .circuit_datatype import CircuitDiagram
 print(f"Import: OK <{__name__}>")
+
+circuit_diagram = CircuitDiagram()
 
 class ImpedanceSpectrum(object):
     """
-    ImpedanceSpectrum object holds the frequency and complex impedance data, 
-    as well as provides methods to fit the plot and identify equivalent components
-    - data: pd.Dataframe with 3 columns for Frequency, Real, and Imaginary impedance
-    - filename_data: filename of data
-    - circuit: filename of circuit model
-    - name: sample name
+    ImpedanceSpectrum object holds the frequency and complex impedance data, as well as provides methods to fit the plot and identify equivalent components
+
+    Args:
+        data (pd.DataFrame): dataframe with 3 columns for Frequency, Real impedance, and Imaginary impedance
+        circuit (str, optional): string representation of circuit. Defaults to ''.
+        name (str, optional): sample name. Defaults to ''.
+        instrument (str, optional): instrument from which the data is measured/obtained. Defaults to ''.
     """
-    def __init__(self, data, circuit='', name='', instrument=''):
+    def __init__(self, data:pd.DataFrame, circuit='', name='', instrument=''):
         self.name = name
         self.f, self.Z, self.P = np.array([]), np.array([]), np.array([])
         self.Z_fitted, self.P_fitted = np.array([]), np.array([])
@@ -62,51 +65,122 @@ class ImpedanceSpectrum(object):
         self.nyquist_plot = None
         return
     
+    @staticmethod
+    def intersection(L1:tuple, L2:tuple):
+        """
+        Get the intersection between two lines
+
+        Args:
+            L1 (tuple): line 1
+            L2 (tuple): line 2
+
+        Returns:
+            tuple: x,y values of intersection. (False,False) if intersection not found.
+        """
+        D  = L1[0] * L2[1] - L1[1] * L2[0]
+        Dx = L1[2] * L2[1] - L1[1] * L2[2]
+        Dy = L1[0] * L2[2] - L1[2] * L2[0]
+        if D != 0:
+            x_i = Dx / D
+            y_i = Dy / D
+            return x_i,y_i
+        else:
+            return False,False
+        
+    @staticmethod
+    def nudge_points(x_values:np.ndarray, y_values:np.ndarray):
+        """
+        Nudge points to avoid curve from looping on itself
+
+        Args:
+            x_values (np.ndarray): x values
+            y_values (np.ndarray): y values
+
+        Returns:
+            np.ndarray, np.ndarray: nudged x values; nudged y values
+        """
+        for i in range(1, len(x_values)-2):
+            if x_values[i] > x_values[i+1]:
+                x_diff = x_values[i] - x_values[i+1]
+                x_values[i+1:] += x_diff
+
+                # y_x_1 = (y_values[i] - y_values[i-1]) / (x_values[i] - x_values[i-1])
+                # y_x_2 = (y_values[i+2] - y_values[i+1]) / (x_values[i+2] - x_values[i+1])
+                # avg_y_x = (y_x_1 + y_x_2) / 2
+                # y_diff = y_values[i+1] - y_values[i]
+                # x_corr = y_diff/avg_y_x
+                # x_values[i+1:] += x_corr
+        return x_values, y_values
+    
+    @staticmethod
+    def perpendicular_bisector(pt1:tuple, pt2:tuple):
+        """
+        Get the formula of perpendicular bisector between two points
+
+        Args:
+            pt1 (tuple): x,y of point 1
+            pt2 (tuple): x,y of point 2
+
+        Returns:
+            float, float, float: rise; run; _value_
+        """
+        mid = ((pt1[0]+pt2[0])/2, (pt1[1]+pt2[1])/2)
+        slope = (pt1[1] - pt2[1]) / (pt1[0] - pt2[0])
+        b = -1/slope
+        a = mid[1] - b*mid[0]
+        # print(f'slope, intercept: {b}, {a}')
+        p1 = (0, a)
+        p2 = mid
+        
+        A = (p1[1] - p2[1])
+        B = (p2[0] - p1[0])
+        C = (p1[0]*p2[1] - p2[0]*p1[1])
+        return A, B, -C
+    
+    @staticmethod
+    def trim(f:np.ndarray, Z:np.ndarray, x:int, p=0.15):
+        """
+        Trim the 45-degree Warburg slope to avoid overfit
+
+        Args:
+            f (np.ndarray): array of frequencies
+            Z (np.ndarray): array of complex impedances
+            x (int): index of last minimum point (i.e. start / bottom of Warburg slope)
+            p (float, optional): proportion of data points to trim out. Defaults to 0.15.
+
+        Returns:
+            np.ndarray, np.ndarray: array of frequencies; array of complex impedances
+        """
+        f_trim = [f[0]]
+        Z_trim = [Z[0]]
+        end_idx = len(f) - 1 - x # flip index
+        num_to_trim = int(p*len(f))
+        step = (end_idx) % num_to_trim
+        for i in range(len(f)):
+            if i % step or i >= end_idx:
+                f_trim.append(f[i])
+                Z_trim.append(Z[i])
+        f = np.array(f_trim)
+        Z = np.array(Z_trim)
+        return f, Z
+    
     def _analyse(self, order=4):
+        """
+        Analyse the Nyquist plot to get several features of the curve
+
+        Args:
+            order (int, optional): how many surrounding points to consider to determine local extrema. Defaults to 4.
+
+        Returns:
+            tuple: collection of curve features (frequency, nudged x values, nudeged y values, index of min points, index of max points, estimated r0, Warburg slope gradient, Warburg slope intercept)
+        """
         data = self.data_df[self.data_df['Imaginary']<0].copy()
         data.sort_values(by='Frequency', ascending=False, inplace=True)
-        y = data['Imaginary'].to_numpy() * (-1)
-        x = data['Real'].to_numpy()
         f = data['Frequency'].to_numpy()
-
-        def perp_bisector(pt1, pt2):
-            mid = ((pt1[0]+pt2[0])/2, (pt1[1]+pt2[1])/2)
-            slope = (pt1[1] - pt2[1]) / (pt1[0] - pt2[0])
-            b = -1/slope
-            a = mid[1] - b*mid[0]
-            # print(f'slope, intercept: {b}, {a}')
-            p1 = (0, a)
-            p2 = mid
-            
-            A = (p1[1] - p2[1])
-            B = (p2[0] - p1[0])
-            C = (p1[0]*p2[1] - p2[0]*p1[1])
-            return A, B, -C
-
-        def intersection(L1, L2):
-            D  = L1[0] * L2[1] - L1[1] * L2[0]
-            Dx = L1[2] * L2[1] - L1[1] * L2[2]
-            Dy = L1[0] * L2[2] - L1[2] * L2[0]
-            if D != 0:
-                x_i = Dx / D
-                y_i = Dy / D
-                return x_i,y_i
-            else:
-                return False
-
-        def nudge_points(x_values, y_values):
-            for i in range(1, len(x_values)-2):
-                if x_values[i] > x_values[i+1]:
-                    x_diff = x_values[i] - x_values[i+1]
-                    x_values[i+1:] += x_diff
-
-                    # y_x_1 = (y_values[i] - y_values[i-1]) / (x_values[i] - x_values[i-1])
-                    # y_x_2 = (y_values[i+2] - y_values[i+1]) / (x_values[i+2] - x_values[i+1])
-                    # avg_y_x = (y_x_1 + y_x_2) / 2
-                    # y_diff = y_values[i+1] - y_values[i]
-                    # x_corr = y_diff/avg_y_x
-                    # x_values[i+1:] += x_corr
-            return x_values
+        x = data['Real'].to_numpy()
+        y = data['Imaginary'].to_numpy() * (-1)
+        # Nudge running points to avoid curve from looping on itself
+        x,y = self.nudge_points(x,y)
 
         # dydx = np.gradient(y)/np.gradient(x)
         # d2ydx2 = np.gradient(dydx)/np.gradient(x)
@@ -121,8 +195,7 @@ class ImpedanceSpectrum(object):
         # min_idx = np.concatenate( (np.array( [np.argmin(x)] ), stat_pt[mask_r]) )
         # max_idx = stat_pt[mask_c]
 
-        x = nudge_points(x,y)
-
+        # Get index of minima
         all_min_idx = argrelextrema(y, np.less, order=order)
         all_min_idx = np.concatenate( (np.array( [np.argmax(f)] ), all_min_idx[0]) )
         if y[-1] < np.mean(y[-1-order:-1]):
@@ -146,6 +219,7 @@ class ImpedanceSpectrum(object):
             pass
         min_idx = np.array(min_idx)
 
+        # Get index of maxima
         all_max_idx = argrelextrema(y, np.greater, order=order)[0]
         all_max_idx = all_max_idx[all_max_idx<max(min_idx)]
         max_idx = []
@@ -158,14 +232,14 @@ class ImpedanceSpectrum(object):
             max_idx = np.array([np.argmin(x)])
         
         try:
+            # Find centre of semicircle
             top_idx = max_idx[0]
             bot_idx = min_idx[1]
             mid_idx = int((top_idx+bot_idx)/2)
-            line1 = perp_bisector((x[top_idx], y[top_idx]), (x[mid_idx], y[mid_idx]))
-            line2 = perp_bisector((x[bot_idx], y[bot_idx]), (x[mid_idx], y[mid_idx]))
-            center = intersection(line1, line2)
+            line1 = self.perpendicular_bisector((x[top_idx], y[top_idx]), (x[mid_idx], y[mid_idx]))
+            line2 = self.perpendicular_bisector((x[bot_idx], y[bot_idx]), (x[mid_idx], y[mid_idx]))
+            center = self.intersection(line1, line2)
             print(f'Center: {center}')
-
 
             r0_est = x[min_idx[1]] - 2*(x[min_idx[1]] - x[max_idx[0]])
             # if top_idx:
@@ -185,6 +259,7 @@ class ImpedanceSpectrum(object):
             # r0_est += int(abs(r0_est) + window)
             pass
 
+        # Fitting the ~45 degree slope tail
         b,a = np.polyfit(x[bot_idx:], y[bot_idx:], deg=1)
         print(f'Warburg slope: {round(b,3)}')
 
@@ -208,11 +283,24 @@ class ImpedanceSpectrum(object):
 
         return f, x, y, min_idx, max_idx, r0_est, a ,b
 
-    def _generate_guess(self, circuit_string, f, x, y, min_idx, max_idx, r0, a, b, constants={}):
+    def _generate_guess(self, circuit_string:str, f:np.ndarray, x:np.ndarray, y:np.ndarray, min_idx:list, max_idx:list, r0:float, a:float, b:float, constants={}):
         """
         Generate initial guesses from circuit string
-        - circuit_string: string representation of circuit model
-        Return: initial guess
+
+        Args:
+            circuit_string (str): string representation of circuit model
+            f (np.ndarray): array of frequency values
+            x (np.ndarray): array of x values
+            y (np.ndarray): array of y values
+            min_idx (list): list of indices of minimum points
+            max_idx (list): list of indices of maximum points
+            r0 (float): estimated value of r0
+            a (float): intercept of Warburg slope
+            b (float): gradient of Warburg slope
+            constants (dict, optional): components to have fixed values. Defaults to {}.
+
+        Returns:
+            list, dict: list of initial guesses; dictionary of constants to be set
         """
         init_guess = []
         new_constants = {}
@@ -259,7 +347,13 @@ class ImpedanceSpectrum(object):
                 new_constants[k] = constants[k]
         return init_guess, new_constants
 
-    def _read_circuit(self, circuit):
+    def _read_circuit(self, circuit:str):
+        """
+        Load and read string representation of circuit
+
+        Args:
+            circuit (str): string representation of circuit
+        """
         if len(circuit):
             self.circuit = CustomCircuit()
             self.circuit.load(circuit)
@@ -268,8 +362,13 @@ class ImpedanceSpectrum(object):
     def _read_data(self, data, instrument=''):
         """
         Read data and circuit model from file
-        - data: name of file with data or pd.DataFrame
-        - instrument: measurement instrument
+
+        Args:
+            data (str, or pd.DataFrame): name of data file or pd.DataFrame
+            instrument (str, optional): name of measurement instrument. Defaults to ''.
+
+        Returns:
+            pd.DataFrame: cleaned/processed dataframe
         """
         if type(data) == str:
             try:
@@ -311,10 +410,12 @@ class ImpedanceSpectrum(object):
 
     def fit(self, loadCircuit='', tryCircuits={}, constants={}):
         """
-        Fits the data to an equivalent circuit
-        - loadCircuit: json filename of loaded circuit
-        - tryCircuits: dict of name, circuit string pairs to try fitting
-        - constants: components for which to be given fixed values;
+        Fit the data to an equivalent circuit
+
+        Args:
+            loadCircuit (str, optional): json filename of loaded circuit. Defaults to ''.
+            tryCircuits (dict, optional): dictionary of (name, circuit string) to be fitted. Defaults to {}.
+            constants (dict, optional): dictionary of (component, value) for components with fixed values. Defaults to {}.
         """
         frequencies, complex_Z = preprocessing.ignoreBelowX(self.f, self.Z)
         circuits = []
@@ -323,29 +424,6 @@ class ImpedanceSpectrum(object):
         print(self.name)
         stationary = self._analyse()
         complex_Z = complex_Z + self.x_offset
-
-        def trim(f, Z, x, p=0.15):
-            """
-            Trim the 45-degree straight line to avoid overfit
-            - f: frequencies
-            - Z: complex impedances
-            - x: final minimum point from ImpedanceSpectrum._analyse
-            - p: proportion of data points to trim out
-
-            Return: trimmed frequencies, trimmed complex impedances
-            """
-            f_trim = [f[0]]
-            Z_trim = [Z[0]]
-            end_idx = len(f) - 1 - x # flip index
-            num_to_trim = int(p*len(f))
-            step = (end_idx) % num_to_trim
-            for i in range(len(f)):
-                if i % step or i >= end_idx:
-                    f_trim.append(f[i])
-                    Z_trim.append(Z[i])
-            f = np.array(f_trim)
-            Z = np.array(Z_trim)
-            return f, Z
 
         if type(self.circuit) != type(None):
             circuits = [self.circuit]
@@ -372,7 +450,7 @@ class ImpedanceSpectrum(object):
         if x_intercept_idx < (0.4*len(self.data_df)):
             jac = '3-point'
         elif x_intercept_idx < (0.45*len(self.data_df)):
-            frequencies_trim, complex_Z_trim = trim(frequencies, complex_Z, x_intercept_idx)
+            frequencies_trim, complex_Z_trim = self.trim(frequencies, complex_Z, x_intercept_idx)
             weight_by_modulus = True
 
         for circuit in circuits:
@@ -399,6 +477,15 @@ class ImpedanceSpectrum(object):
         return
 
     def getCircuitDiagram(self, verbose=True):
+        """
+        Get circuit diagram
+
+        Args:
+            verbose (bool, optional): whether to print diagram and circuit. Defaults to True.
+
+        Returns:
+            str: string drawing of circuit diagram
+        """
         simplifiedCircuit = circuit_diagram.simplifyCircuit(self.circuit.circuit, verbose=verbose)
         self.diagram = circuit_diagram.drawCircuit(*simplifiedCircuit)
         if verbose and self.isFitted:
@@ -410,9 +497,14 @@ class ImpedanceSpectrum(object):
 
     def plot(self, plot_type='nyquist', show_plot=True):
         """
-        Plots data (and fitted line, if any) in Nyquist plot
-        - plot_type: choice of either Nyquist or Bode plots
-        Return: fig
+        Create plots of the impedance data
+
+        Args:
+            plot_type (str, optional): plot type ('nyquist' / 'bode'). Defaults to 'nyquist'.
+            show_plot (bool, optional): whether to show the plot. Defaults to True.
+
+        Returns:
+            None, or plotly.graph_objects.Figure: plotly figure object of drawn plot
         """
         if plot_type.lower() == 'nyquist' or len(plot_type) == 0:
             return self.plotNyquist(show_plot)
@@ -424,8 +516,13 @@ class ImpedanceSpectrum(object):
 
     def plotBode(self, show_plot=True):
         """
-        Plots data (and fitted line, if any) in Bode plots
-        Return: fig
+        Plots impedance data and fitted line (if any) in Bode plots
+
+        Args:
+            show_plot (bool, optional): whether to show the plot. Defaults to True.
+
+        Returns:
+            plotly.graph_objects.Figure: plotly figure object of drawn plot
         """
         big_fig = make_subplots(
             rows=2, cols=1,
@@ -471,8 +568,13 @@ class ImpedanceSpectrum(object):
 
     def plotNyquist(self, show_plot=True):
         """
-        Plots data (and fitted line, if any) in Nyquist plot
-        Return: fig
+        Plots impedance data and fitted line (if any) in Nyquist plots
+
+        Args:
+            show_plot (bool, optional): whether to show the plot. Defaults to True.
+
+        Returns:
+            plotly.graph_objects.Figure: plotly figure object of drawn plot
         """
         fig = px.scatter(
             self.data_df, 'Real', 'Imaginary', color='Frequency_log10', title=f'{self.name} - Nyquist plot',
@@ -502,6 +604,13 @@ class ImpedanceSpectrum(object):
         return fig
 
     def save(self, filename='', folder=''):
+        """
+        Save data
+
+        Args:
+            filename (str, optional): filename to be used. Defaults to ''.
+            folder (str, optional): folder to save to. Defaults to ''.
+        """
         if len(filename) == 0:
             filename = time.strftime('%Y%m%d_%H%M ') + self.name
         if len(folder) == 0:
@@ -516,7 +625,10 @@ class ImpedanceSpectrum(object):
     def saveCircuit(self, filename='', folder=''):
         """
         Save circuit model to file
-        - filename: save name of file(s)
+
+        Args:
+            filename (str, optional): filename to be used. Defaults to ''.
+            folder (str, optional): folder to save to. Defaults to ''.
         """
         try:
             json_filename = f'{folder}/{filename}.json'
@@ -539,8 +651,11 @@ class ImpedanceSpectrum(object):
 
     def saveData(self, filename='', folder=''):
         """
-        Save data, circuit model, and plots to file
-        - filename: save name of file(s)
+        Save data to file
+
+        Args:
+            filename (str, optional): filename to be used. Defaults to ''.
+            folder (str, optional): folder to save to. Defaults to ''.
         """
         try:
             freq, _ = preprocessing.ignoreBelowX(self.f, self.Z)
@@ -553,7 +668,10 @@ class ImpedanceSpectrum(object):
     def savePlots(self, filename='', folder=''):
         """
         Save plots to file
-        - filename: save name of file(s)
+
+        Args:
+            filename (str, optional): filename to be used. Defaults to ''.
+            folder (str, optional): folder to save to. Defaults to ''.
         """
         try:
             self.bode_plot.write_html(f'{folder}/{filename}_Bode.html')

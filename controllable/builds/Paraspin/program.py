@@ -16,16 +16,16 @@ import yaml
 
 # Local application imports
 from ...Control.Schedule import Scheduler
-from ..build_utils import BaseProgram
-from .routines import Setup
+from ..build_utils import Controller
+from .routines import SpinbotSetup
 print(f"Import: OK <{__name__}>")
 
 CONFIG_FILE = 'Paraspin/config.yaml'
 
-class Program(BaseProgram):
+class SpinbotController(Controller):
     def __init__(self, config_file=CONFIG_FILE, ignore_connections=False, config_option=0, recover_state_from_file=''):
         self._config = self._readPlans(config_file, config_option)
-        self.setup = Setup(self._config, ignore_connections)
+        self.setup = SpinbotSetup(self._config, ignore_connections)
         self.window = None
         self.scheduler = None
         

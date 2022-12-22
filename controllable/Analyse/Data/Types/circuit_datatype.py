@@ -14,13 +14,18 @@ class CircuitDiagram(object):
     def __init__(self):
         return
 
-    def drawCircuit(self, string, parallel_parts, canvas_size=(0,0), pad=5):
+    def drawCircuit(self, string:str, parallel_parts:dict, canvas_size=(0,0), pad=5):
         """
         Draw circuit diagram from string representation of circuit
-        - string: simplified circuit string
-        - parallel_parts: dictionary of parallel components
-        - canvas_size: size of the circuit (i.e. number of components across and number of components wide)
-        - pad: fixed length for component labels
+
+        Args:
+            string (str): simplified circuit string
+            parallel_parts (dict): dictionary of parallel components
+            canvas_size (tuple, optional): size of the circuit (i.e. number of components across and number of components wide). Defaults to (0,0).
+            pad (int, optional): fixed length for component labels. Defaults to 5.
+
+        Returns:
+            str: string drawing of circuit diagram
         """
         drawing = ''
 
@@ -63,36 +68,45 @@ class CircuitDiagram(object):
         drawing = trim(drawing)
         return drawing
 
-    def mergeCircuit(self, this, that, orientation):
+    def mergeCircuit(self, this:str, that:str, orientation:str):
         """
-        Concatenate circuit component diagrams.
-        - this: string representation of first circuit diagram
-        - that: string representation of first circuit diagram
-        - orientation: whether to merge diagrams horizontally or vertically
-        Return: string representation of merged circuit diagram
+        Concatenate circuit component diagrams
+
+        Args:
+            this (str): string representation of left circuit diagram
+            that (str): string representation of right circuit diagram
+            orientation (str): orientation to merge diagrams ("h,H,horizontal" / "v,V,vertical")
+
+        Returns:
+            str: merged string drawing of circuit diagram
         """
         merged = ''
         this_lines = list(this.split('\n'))
         that_lines = list(that.split('\n'))
         this_size = (max([len(line) for line in this_lines]), len(this_lines))
         that_size = (max([len(line) for line in that_lines]), len(that_lines))
-        if orientation == 'h':
+        if orientation in ['h','H','horizontal']:
             for l in range(max(this_size[1], that_size[1])):
                 this_line = this_lines[l] if l<len(this_lines) else this_size[0]*" "
                 that_line = that_lines[l] if l<len(that_lines) else that_size[0]*" "
                 merged = merged + this_line + that_line + "\n"
-        elif orientation == 'v':
+        elif orientation in ['v','V','vertical']:
             max_width = max(this_size[0], that_size[0])
             this_lines = [line.ljust(max_width, '-') for line in this_lines]
             that_lines = [line.ljust(max_width, '-') for line in that_lines]
             merged = "\n".join(this_lines) + "\n" + "\n".join(that_lines)
         return merged
 
-    def simplifyCircuit(self, string, verbose=True):
+    def simplifyCircuit(self, string:str, verbose=True):
         """
-        Generate parenthesized contents in string as pairs (level, contents).
-        - string: string representation of circuit
-        Return: simplified circuit string, dictionary of parallel components
+        Generate parenthesised contents in string as pairs (level, contents)
+
+        Args:
+            string (str): string representation of circuit
+            verbose (bool, optional): whether to display outcome. Defaults to True.
+
+        Returns:
+            str, dict: string representation of circuit; dictionary of parallel components
         """
         def find_all(a_str, sub):
             start = 0
@@ -116,12 +130,16 @@ class CircuitDiagram(object):
             print(parallel_parts)
         return string, parallel_parts
 
-    def sizeCircuit(self, string, parallel_parts):
+    def sizeCircuit(self, string:str, parallel_parts:dict):
         """
-        Find the size of the circuit (i.e. number of components across and number of components wide).
-        - string: simplified circuit string
-        - parallel_parts: dictionary of parallel components
-        Return: tuple of size
+        Find the size of the circuit (i.e. number of components across and number of components wide)
+
+        Args:
+            string (str): simplified circuit string
+            parallel_parts (dict): dictionary of parallel components
+
+        Returns:
+            tuple: size of circuit
         """
         size = (0,0)
         components = string.split('-')
@@ -145,5 +163,3 @@ class CircuitDiagram(object):
             max_height = max(max_height, s[1])
             size = (size[0]+s[0], max_height)
         return size
-
-circuit_diagram = CircuitDiagram()

@@ -8,24 +8,20 @@ Notes / actionables:
 """
 # Standard library imports
 import os
-import pandas as pd
-import pkgutil
-import time
-import yaml
 
 # Third party imports
 
 # Local application imports
-from ..build_utils import BaseProgram
-from .routines import Setup
+from ..build_utils import Controller
+from .routines import PrimitivSetup
 print(f"Import: OK <{__name__}>")
 
 CONFIG_FILE = 'config.yaml'
 
-class Program(BaseProgram):
+class PrimitivController(Controller):
     def __init__(self, config_file=CONFIG_FILE, ignore_connections=False, config_option=0):
         self._config = self._readPlans(config_file, config_option)
-        self.setup = Setup(self._config, ignore_connections)
+        self.setup = PrimitivSetup(self._config, ignore_connections)
         self.window = None
         self.flags = {
             'force_stop': False

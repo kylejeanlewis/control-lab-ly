@@ -16,12 +16,12 @@ import time
 # Local application imports
 from ... import Make
 from ... import Move
-from ..build_utils import BaseSetup
+from ..build_utils import Setup
 print(f"Import: OK <{__name__}>")
 
 CNC_SPEED = 250
 
-class Setup(BaseSetup):
+class SpinbotSetup(Setup):
     def __init__(self, config, ignore_connections=False, **kwargs):
         # super().__init__(**kwargs)
         self.mover = None

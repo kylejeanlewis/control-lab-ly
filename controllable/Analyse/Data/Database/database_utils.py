@@ -14,6 +14,13 @@ import sqlalchemy # pip install SQLAlchemy
 print(f"Import: OK <{__name__}>")
 
 class SQLiteDB(object):
+    """
+    SQLite object.
+
+    Args:
+        db_filename (str, optional): filename of database. Defaults to ''.
+        connect (bool, optional): whether to connect to database. Defaults to False.
+    """
     def __init__(self, db_filename='', connect=False):
         self.conn = None
         self.cursor = None
@@ -41,12 +48,15 @@ class SQLiteDB(object):
         return
     
     def connect(self, db_filename=''):
-        '''
-        Create a database connection to database
-        - db_file: file path of database
+        """
+        Make connection to database.
 
-        Returns: database connection object
-        '''
+        Args:
+            db_filename (str, optional): filepath of database. Defaults to ''.
+
+        Returns:
+            Connection: connection object
+        """
         if len(db_filename) == 0:
             db_filename = self.filename
         try:
@@ -57,26 +67,29 @@ class SQLiteDB(object):
         return self.conn
     
     def disconnect(self, full=False):
-        '''
-        Close connections to database and cursor
-        - cursor: cursor object to be closed
+        """
+        Disconnect from cursor.
 
-        Returns: None
-        '''
+        Args:
+            full (bool, optional): whether to disconnect from database as well. Defaults to False.
+        """
         if self.cursor:
             self.cursor.close()
         if self.conn and full:
             self.conn.close()
         return
 
-    def executeSQL(self, sql, close=False):
-        '''
-        Execute the SQL string
-        - sql: SQL command to be executed
-        - close: whether to close connections
+    def executeSQL(self, sql:str, close=False):
+        """
+        Execute SQL command.
 
-        Returns: cursor object
-        '''
+        Args:
+            sql (str): SQL command to be executed
+            close (bool, optional): whether to close cursor after execution. Defaults to False.
+
+        Raises:
+            Exception: Connection not found
+        """
         if self.conn == None:
             raise Exception('Connection not found!')
         self.cursor = self.conn.cursor()
@@ -85,7 +98,16 @@ class SQLiteDB(object):
             self.disconnect()
         return
     
-    def fetchQuery(self, sql, close=False):
+    def fetchQuery(self, sql:str):
+        """
+        Fetch results from SQL query
+
+        Args:
+            sql (str): SQL query to be fetched
+
+        Returns:
+            pd.DataFrame: dataframe of retrieved SQL query
+        """
         df = pd.DataFrame()
         df = pd.read_sql(sql, self.conn)
-        return
+        return df

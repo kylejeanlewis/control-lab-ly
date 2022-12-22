@@ -8,7 +8,6 @@ Notes / actionables:
 """
 # Standard library imports
 import numpy as np
-import threading
 import time
 
 # Third party imports
@@ -16,12 +15,12 @@ import time
 # Local application imports
 from ... import Measure
 from ... import Move
-from ..build_utils import BaseSetup
+from ..build_utils import Setup
 print(f"Import: OK <{__name__}>")
 
 CNC_SPEED = 200
 
-class Setup(BaseSetup):
+class PrimitivSetup(Setup):
     def __init__(self, config, ignore_connections=False, **kwargs):
         super().__init__(**kwargs)
         self.mover = None

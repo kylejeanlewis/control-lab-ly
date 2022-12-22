@@ -8,11 +8,10 @@ Notes / actionables:
 """
 class SCPI(object):
     """
-    SCPI input class for Keithley.
-    
+    SCPI input class for Keithley
+
     Args:
-        string (str): text string of SCPI commands or filename of txt file where SCPI commands are saved
-        scpi_list (list): list of SCPI prompts for settings, inputs, and outputs
+        data (str, or dict): dictionary of SCPI commands, or filename of txt file containing SCPI commands
     """
     def __init__(self, data):
         self.string = ''
@@ -20,6 +19,15 @@ class SCPI(object):
         return
     
     def _read_data(self, data):
+        """
+        Read data
+
+        Args:
+            data (str, or dict): dictionary of SCPI commands, or filename of txt file containing SCPI commands
+
+        Raises:
+            Exception: Input type has to be str or dict
+        """
         string = ''
         if type(data) == dict:
             for k,v in data.items():
@@ -31,16 +39,16 @@ class SCPI(object):
                     data = file.read()
             string = data
         else:
-            raise Exception('Please input either filename or SCPI instruction string/list!')
+            raise Exception('Please input either filename or SCPI instruction dict!')
         self.string = string
         return
     
     def getPrompts(self):
         """
-        Parse SCPI command into blocks corresponding to settings prompt, input prompt, and output prompt.
-        
+        Get SCPI prompts
+
         Returns:
-            dict: SCPI prompts for settings, inputs, and outputs
+            dict: dictionary of SCPI prompts (settings, inputs, outputs)
         """
         sections = ['settings', 'inputs', 'outputs']
         scpi_dict = {}
@@ -51,12 +59,13 @@ class SCPI(object):
     
     def replace(self, inplace=False, **kwargs):
         """
-        Replace placeholder text in SCPI commands with desired values.
-        
+        Replace placeholder text in SCPI commands with desired values
+
         Args:
-            inplace (bool): whether to replace text in place
-        
-        Retruns:
+            inplace (bool, optional): whether to replace text in place. Defaults to False.
+            **kwargs: additional keyword arguments to be replaced in SCPI prompt
+
+        Returns:
             str: SCPI commands with desired values
         """
         string = self.string

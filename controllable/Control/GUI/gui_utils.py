@@ -23,6 +23,16 @@ FONT_SIZES = [14,12,10,8,6]
 
 class Panel(object):
     def __init__(self, name='', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group=None):
+        """
+        Panel class
+
+        Args:
+            name (str, optional): name of panel. Defaults to ''.
+            theme (str, optional): name of theme. Defaults to THEME.
+            typeface (str, optional): name of typeface. Defaults to TYPEFACE.
+            font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
+            group (str, optional): name of group. Defaults to None.
+        """
         self.theme = theme
         self.typeface = typeface
         self.font_sizes = font_sizes
@@ -36,7 +46,19 @@ class Panel(object):
         return
     
     @staticmethod
-    def getButtons(labels, size, key_prefix, font, **kwargs):
+    def getButtons(labels:list, size, key_prefix, font:tuple, **kwargs):
+        """
+        Get list of panel buttons
+
+        Args:
+            labels (list): list of button labels
+            size (int, or tuple): button width (,height)
+            key_prefix (any): prefix of button key
+            font (tuple): (typeface, font size)
+
+        Returns:
+            list: list of PySimpleGUI.Button objects
+        """
         buttons = []
         specials = kwargs.pop('specials', {})
         for label in labels:
@@ -49,10 +71,25 @@ class Panel(object):
             buttons.append(sg.Button(label, size=size, key=key, font=font, **kw))
         return buttons
     
-    def _mangle(self, string):
+    def _mangle(self, string:str):
+        """
+        Mangle string with name of panel
+
+        Args:
+            string (str): string to be mangled
+
+        Returns:
+            str: mangled string
+        """
         return f'-{self.name}{string}'
     
     def _pad(self):
+        """
+        Spacer / padding
+
+        Returns:
+            PySimpleGUI.Push: padding
+        """
         ele = sg.Text('', size=(1,1))
         try:
             ele = sg.Push()
@@ -60,7 +97,21 @@ class Panel(object):
             print(e)
         return ele
     
-    def arrangeElements(self, elements:list, shape:tuple = (0,0), form:str = ''):
+    def arrangeElements(self, elements:list, shape=(0,0), form=''):
+        """
+        Arrange elements in a horizontal / vertical / cross-shape pattern
+
+        Args:
+            elements (list): list of GUI elements
+            shape (tuple, optional): shape of grid. Defaults to (0,0).
+            form (str, optional): shape of pattern. Defaults to ''.
+
+        Raises:
+            Exception: Grid size must be large enough to accommodate all elements
+
+        Returns:
+            list: list of arranged GUI elements
+        """
         arranged_elements = []
         if form in ['X', 'x', 'cross', '+']:
             h = elements[0]
@@ -106,9 +157,15 @@ class Panel(object):
         return arranged_elements
     
     def close(self):
+        """
+        Close window
+        """
         return
     
     def configure(self, **kwargs):
+        """
+        Configure defaults
+        """
         theme = self.theme if 'theme' not in kwargs.keys() else kwargs.pop('theme')
         font = (self.typeface, self.font_sizes[int(len(FONT_SIZES)/2)]) if 'font' not in kwargs.keys() else kwargs.pop('font')
         element_padding = (0,0) if 'element_padding' not in kwargs.keys() else kwargs.pop('element_padding')
@@ -118,6 +175,16 @@ class Panel(object):
         return
     
     def getLayout(self, title='Panel', title_font_level=0, **kwargs):
+        """
+        Get layout object
+
+        Args:
+            title (str, optional): title of layout. Defaults to 'Panel'.
+            title_font_level (int, optional): index of font size from levels in font_sizes. Defaults to 0.
+
+        Returns:
+            PySimpleGUI.Column: Column object
+        """
         font = (self.typeface, self.font_sizes[title_font_level]) if 'font' not in kwargs.keys() else kwargs.pop('font')
         layout = [[
             sg.Text(title, 
@@ -129,17 +196,39 @@ class Panel(object):
         return layout
     
     def getWindow(self, title='Application', **kwargs):
+        """
+        Get window object
+
+        Args:
+            title (str, optional): title of window. Defaults to 'Application'.
+
+        Returns:
+            PySimpleGUI.Window: Window object
+        """
         layout = [[self.getLayout()]]
         window = sg.Window(title, layout, enable_close_attempted_event=True, resizable=False, finalize=True, icon='icon.ico', **kwargs)
         self.window = window
         return window
     
     def listenEvents(self, event, values):
+        """
+        Listen to events and act on values
+
+        Args:
+            event (str): event triggered
+            values (dict): dictionary of values from window
+
+        Returns:
+            dict: dictionary of updates
+        """
         updates = {}
         # Listen to events here
         return updates
     
     def loopGUI(self):
+        """
+        Loop GUI process
+        """
         if type(self.window) == type(None):
             return
         while True:
@@ -153,6 +242,13 @@ class Panel(object):
         return
     
     def runGUI(self, title='Application', maximize=False):
+        """
+        Run the GUI loop
+
+        Args:
+            title (str, optional): title of window. Defaults to 'Application'.
+            maximize (bool, optional): whether to maximise window. Defaults to False.
+        """
         self.getWindow(title)
         self.window.Finalize()
         if maximize:
@@ -165,19 +261,40 @@ class Panel(object):
 
 
 class CompoundPanel(Panel):
-    def __init__(self, ensemble={}, theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group=None, priority=None):
+    """
+    Compound Panel class
+
+    Args:
+        ensemble (dict, optional): dictionary of individual sub-panels. Defaults to {}.
+        theme (str, optional): name of theme. Defaults to THEME.
+        typeface (str, optional): name of typeface. Defaults to TYPEFACE.
+        font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
+        group (str, optional): name of group. Defaults to None.
+    """
+    def __init__(self, ensemble={}, theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group=None):
         super().__init__(theme=theme, typeface=typeface, font_sizes=font_sizes, group=group)
         self.panels = {key: value[0](name= key, **value[1]) for key,value in ensemble.items()}
-        # self.priority_panel = self.panels[priority] if priority else None
-        # self.flags['priority'] = priority
         return
     
     def close(self):
+        """
+        Close window
+        """
         for panel in self.panels.values():
             panel.close()
         return
     
     def getLayout(self, title='Control Panel', title_font_level=0, **kwargs):
+        """
+        Get layout object
+
+        Args:
+            title (str, optional): title of layout. Defaults to 'Panel'.
+            title_font_level (int, optional): index of font size from levels in font_sizes. Defaults to 0.
+
+        Returns:
+            PySimpleGUI.Column: Column object
+        """
         font = (self.typeface, self.font_sizes[title_font_level], 'bold')
         layout = super().getLayout(title, justification='center', font=font)
         
@@ -220,6 +337,16 @@ class CompoundPanel(Panel):
         return layout
     
     def listenEvents(self, event, values):
+        """
+        Listen to events and act on values
+
+        Args:
+            event (str): event triggered
+            values (dict): dictionary of values from window
+
+        Returns:
+            dict: dictionary of updates
+        """
         updates = {}
         for panel in self.panels.values():
             update = panel.listenEvents(event, values)
@@ -228,21 +355,68 @@ class CompoundPanel(Panel):
 
 
 class MeasurerPanel(Panel):
-    def __init__(self, name='', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group=None):
-        super().__init__(name, theme, typeface, font_sizes, group)
+    """
+    Measurer Panel class
+
+    Args:
+        measurer (obj): Measurer object
+        name (str, optional): name of panel. Defaults to 'MEASURE'.
+        theme (str, optional): name of theme. Defaults to THEME.
+        typeface (str, optional): name of typeface. Defaults to TYPEFACE.
+        font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
+        group (str, optional): name of group. Defaults to 'measurer'.
+    """
+    def __init__(self, measurer, name='MEASURE', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group='measurer'):
+        super().__init__(name=name, theme=theme, typeface=typeface, font_sizes=font_sizes, group=group)
+        self.measurer = measurer
         return
     
     def close(self):
+        """
+        Close window
+        """
         return super().close()
     
     def getLayout(self, title='Panel', title_font_level=0, **kwargs):
+        """
+        Get layout object
+
+        Args:
+            title (str, optional): title of layout. Defaults to 'Panel'.
+            title_font_level (int, optional): index of font size from levels in font_sizes. Defaults to 0.
+
+        Returns:
+            PySimpleGUI.Column: Column object
+        """
         return super().getLayout(title, title_font_level, **kwargs)
     
     def listenEvents(self, event, values):
+        """
+        Listen to events and act on values
+
+        Args:
+            event (str): event triggered
+            values (dict): dictionary of values from window
+
+        Returns:
+            dict: dictionary of updates
+        """
         return super().listenEvents(event, values)
 
 
 class MoverPanel(Panel):
+    """
+    Mover Panel class
+
+    Args:
+        mover (obj): Mover object
+        name (str, optional): name of panel. Defaults to 'MOVE'.
+        theme (str, optional): name of theme. Defaults to THEME.
+        typeface (str, optional): name of typeface. Defaults to TYPEFACE.
+        font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
+        group (str, optional): name of group. Defaults to 'mover'.
+        axes (list, optional): list of degrees of freedom/axes. Defaults to ['X','Y','Z','a','b','g'].
+    """
     def __init__(self, mover, name='MOVE', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group='mover', axes=['X','Y','Z','a','b','g']):
         super().__init__(name=name, theme=theme, typeface=typeface, font_sizes=font_sizes, group=group)
         self.axes = axes
@@ -252,6 +426,15 @@ class MoverPanel(Panel):
         return
         
     def getLayout(self, title_font_level=1, **kwargs):
+        """
+        Get layout object
+
+        Args:
+            title_font_level (int, optional): index of font size from levels in font_sizes. Defaults to 1.
+
+        Returns:
+            PySimpleGUI.Column: Column object
+        """
         font = (self.typeface, self.font_sizes[title_font_level])
         layout = super().getLayout(f'{self.name} Control', justification='center', font=font)
         
@@ -330,6 +513,16 @@ class MoverPanel(Panel):
         return layout
     
     def listenEvents(self, event, values):
+        """
+        Listen to events and act on values
+
+        Args:
+            event (str): event triggered
+            values (dict): dictionary of values from window
+
+        Returns:
+            dict: dictionary of updates
+        """
         position = list(sum(self.mover.getWorkspacePosition(), ()))
         cache_position = position.copy()
         if event in [self._mangle(f'-{e}-') for e in ('safe', 'home', 'Go', 'Clear', 'Reset')]:
@@ -389,6 +582,17 @@ class MoverPanel(Panel):
 
 
 class ViewerPanel(Panel):
+    """
+    Viewer Panel class
+
+    Args:
+        viewer (obj): Viewer object
+        name (str, optional): name of panel. Defaults to 'VIEW'.
+        theme (str, optional): name of theme. Defaults to THEME.
+        typeface (str, optional): name of typeface. Defaults to TYPEFACE.
+        font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
+        group (str, optional): name of group. Defaults to 'viewer'.
+    """
     def __init__(self, viewer, name='VIEW', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group='viewer'):
         super().__init__(name=name, theme=theme, typeface=typeface, font_sizes=font_sizes, group=group)
         self.viewer = viewer
@@ -399,10 +603,22 @@ class ViewerPanel(Panel):
         return
     
     def close(self):
+        """
+        Close window
+        """
         self.viewer.close()
         return
         
     def getLayout(self, title_font_level=1, **kwargs):
+        """
+        Get layout object
+
+        Args:
+            title_font_level (int, optional): index of font size from levels in font_sizes. Defaults to 1.
+
+        Returns:
+            PySimpleGUI.Column: Column object
+        """
         font = (self.typeface, self.font_sizes[title_font_level])
         layout = super().getLayout(f'{self.name} Control', justification='center', font=font)
         layout = [
@@ -413,6 +629,16 @@ class ViewerPanel(Panel):
         return layout
     
     def listenEvents(self, event, values):
+        """
+        Listen to events and act on values
+
+        Args:
+            event (str): event triggered
+            values (dict): dictionary of values from window
+
+        Returns:
+            dict: dictionary of updates
+        """
         updates = {}
         if self.flags['update_display']:
             frame_interval = time.time() - self._last_read_time
@@ -424,6 +650,16 @@ class ViewerPanel(Panel):
         return updates
 
 class LoaderPanel(Panel):
+    """
+    Loader Panel class
+
+    Args:
+        name (str, optional): name of panel. Defaults to ''.
+        theme (str, optional): name of theme. Defaults to THEME.
+        typeface (str, optional): name of typeface. Defaults to TYPEFACE.
+        font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
+        group (str, optional): name of group. Defaults to None.
+    """
     def __init__(self, name='', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group=None):
         super().__init__(name, theme, typeface, font_sizes, group)
         return

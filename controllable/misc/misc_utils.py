@@ -17,14 +17,20 @@ import serial.tools.list_ports # pip install pyserial
 print(f"Import: OK <{__name__}>")
 
 class Helper(object):
-    def __init__(self) -> None:
+    """
+    Helper class with miscellaneous methods
+    """
+    def __init__(self):
         self.all_logs = []
         self.logs = {}
         pass
     
     def display_ports(self):
         """
-        Displays available ports.
+        Displays available ports
+
+        Returns:
+            list: list of connected serial ports
         """
         com_ports = []
         ports = serial.tools.list_ports.comports()
@@ -36,14 +42,17 @@ class Helper(object):
             return ['']
         return com_ports
     
-    def log_now(self, message, group=None):
-        '''
+    def log_now(self, message:str, group=None):
+        """
         Add log with timestamp
-        - string: log message
-        - force_print: whether to force display message in console
 
-        Returns: log message with timestamp
-        '''
+        Args:
+            message (str): message to be logged
+            group (str, optional): message group. Defaults to None.
+
+        Returns:
+            str: log message with timestamp
+        """
         log = time.strftime("%H:%M:%S", time.localtime()) + ' >> ' + message
         self.all_logs.append(log)
         if group:
@@ -52,30 +61,36 @@ class Helper(object):
             self.logs[group].append(message)
         return log
     
-    def pretty_print_duration(self, total_time):
+    def pretty_print_duration(self, total_time:float):
         """
-        Display time duration (s) as H:M:S text
-        - total_time: duration in seconds
+        Display time duration (s) as HH:MM:SS text
 
-        Return: str
+        Args:
+            total_time (float): duration in seconds
+
+        Returns:
+            str: formatted time string
         """
         m, s = divmod(total_time, 60)
         h, m = divmod(m, 60)
-        return f'{int(h):02}hr {int(m):02}min {int(s):02}sec'
+        return f'{int(h)}hr {int(m)}min {int(s):02}sec'
 
     def reset_logs(self):
+        """
+        Reset all logs
+        """
         self.all_logs = []
         self.logs = {}
         return
 
     def save_logs(self, groups=[], folder=''):
-        '''
+        """
         Write logs into txt files
-        - out: list of log messages
-        - connects: dataframe of connection information
 
-        Returns: dictionary of log messages with tool names as keys
-        '''
+        Args:
+            groups (list, optional): list of log messages. Defaults to [].
+            folder (str, optional): folder to save to. Defaults to ''.
+        """
         dst_folder = '/'.join([folder, 'logs'])
         if not os.path.exists(dst_folder):
             os.makedirs(dst_folder)
