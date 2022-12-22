@@ -206,17 +206,15 @@ class Setup(BaseSetup):
     def pullbackAll(self, channels=[]):
         return self.liquid.pullbackAll(channels)
     
-    def rest(self, home=True):
+    def rest(self):
         # log_now(f'CNC align: move to rest position...')
         if self._flags['at_rest']:
             return
-        if home:
+        try:
+            self.mover.moveTo(self.positions['rest'])
+        except KeyError:
             self.mover.home()
-        else:
-            try:
-                self.mover.moveTo(self.positions['rest'])
-            except KeyError:
-                raise Exception('Rest position not yet labelled.')
+            raise Exception('Rest position not yet labelled.')
         self._flags['at_rest'] = True
         return
     
