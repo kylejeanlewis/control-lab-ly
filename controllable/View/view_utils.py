@@ -8,30 +8,38 @@ Notes / actionables:
 """
 # Standard library imports
 import numpy as np
-import os
 import pandas as pd
 import pkgutil
-import time
 
 # Third party imports
 import cv2 # pip install opencv-python
 
 # Local application imports
-from .image_utils import Image
+from . import Image
+from .Classifiers import Classifier
 from .Thermal.Flir.ax8.ax8 import Ax8ThermalCamera
 print(f"Import: OK <{__name__}>")
 
 class Camera(object):
-    def __init__(self, calib_unit=1, cam_size=(640,480)):
-        self.calib_unit = calib_unit
+    """
+    Camera object
+
+    Args:
+        calibration_unit (int, optional): calibration of pixels to mm. Defaults to 1.
+        cam_size (tuple, optional): width and height of image. Defaults to (640,480).
+        rotation (int, optional): rotation of camera feed. Defaults to 0.
+    """
+    def __init__(self, calibration_unit=1, cam_size=(640,480), rotation=0):
+        self.calibration_unit = calibration_unit
         self.cam_size = cam_size
         
         self.classifier = None
         self.device = None
         self.feed = None
         self.placeholder_image = None
+        self.rotation = rotation
         
-        self.flags = {
+        self._flags = {
             'isConnected': False
         }
         pass
@@ -41,9 +49,21 @@ class Camera(object):
         return
     
     def _connect(self):
+        """
+        Connect to the imaging device
+        """
         return
     
     def _data_to_df(self, data):
+        """
+        Convert data dictionary to dataframe
+
+        Args:
+            data (dict): dictionary of data
+
+        Returns:
+            pd.DataFrame: dataframe of data
+        """
         df = pd.DataFrame(data)
         df.rename(columns={0: 'x', 1: 'y', 2: 'w', 3: 'h'}, inplace=True)
         df.sort_values(by='y', ascending=True, inplace=True)
@@ -62,13 +82,32 @@ class Camera(object):
         return df
     
     def _read(self):
+        """
+        Read camera feed
+
+        Returns:
+            bool, array: True if frame is obtained; array of frame
+        """
         return self.feed.read()
     
     def _release(self):
+        """
+        Release the camera feed
+        """
         self.feed.release()
         return
     
     def _set_placeholder(self, filename='', img_bytes=None):
+        """
+        Gets placeholder image for camera, if not connected
+
+        Args:
+            filename (str, optional): name of placeholder image file. Defaults to ''.
+            img_bytes (bytes, optional): byte representation of placeholder image. Defaults to None.
+
+        Returns:
+            Image: image of placeholder
+        """
         image = None
         if len(filename):
             image = self.loadImage(filename)
@@ -80,17 +119,43 @@ class Camera(object):
         return image
     
     def close(self):
+        """
+        Close the camera
+        """
         self._release()
         cv2.destroyAllWindows()
-        self.flags['isConnected'] = False
+        self._flags['isConnected'] = False
         return
     
     # Image handling
     def decodeImage(self, array):
+        """
+        Decode byte array of image
+
+        Args:
+            array (bytes): byte array of image
+
+        Returns:
+            Image: image of decoded byte array
+        """
         frame = cv2.imdecode(array, cv2.IMREAD_COLOR)
         return Image(frame)
     
     def encodeImage(self, image:Image=None, frame=None, ext='.png'):
+        """
+        Encode image into byte array
+
+        Args:
+            image (Image, optional): image object to be encoded. Defaults to None.
+            frame (array, optional): frame array to be encoded. Defaults to None.
+            ext (str, optional): image format to encode to. Defaults to '.png'.
+
+        Raises:
+            Exception: Input needs to be an Image or frame array
+
+        Returns:
+            bytes: byte representation of image/frame
+        """
         if type(frame) == type(None):
             if type(image) != type(None):
                 return image.encode(ext)
@@ -98,7 +163,16 @@ class Camera(object):
                 raise Exception('Please input either image or frame.')
         return cv2.imencode(ext, frame)[1].tobytes()
     
-    def getImage(self, crosshair=False):
+    def getImage(self, crosshair=True):
+        """
+        Get image from camera feed
+
+        Args:
+            crosshair (bool, optional): whether to overlay crosshair on image. Defaults to True.
+
+        Returns:
+            bool, Image: True if image is obtained; image object
+        """
         ret = False
         frame = None
         try:
@@ -106,6 +180,7 @@ class Camera(object):
             if ret:
                 image = Image(frame)
                 image.resize(self.cam_size, inplace=True)
+                image.rotate(self.rotation, inplace=True)
             else:
                 image = self.placeholder_image
         except AttributeError:
@@ -114,11 +189,43 @@ class Camera(object):
             image.crosshair(inplace=True)
         return ret, image
     
-    def loadImage(self, filename):
+    def isConnected(self):
+        """
+        Check whether the camera is connected
+
+        Returns:
+            bool: whether the camera is connected
+        """
+        return self._flags['isConnected']
+    
+    def loadImage(self, filename:str):
+        """
+        Load image from file
+
+        Args:
+            filename (str): filename of image
+
+        Returns:
+            Image: file image
+        """
         frame = cv2.imread(filename)
         return Image(frame)
     
     def saveImage(self, image:Image=None, frame=None, filename='image.png'):
+        """
+        Save image to file
+
+        Args:
+            image (Image, optional): image object to be encoded. Defaults to None.
+            frame (array, optional): frame array to be encoded. Defaults to None.
+            filename (str, optional): filename to save to. Defaults to 'image.png'.
+
+        Raises:
+            Exception: Input needs to be an Image or frame array
+
+        Returns:
+            bool: True if successfully saved
+        """
         if type(frame) == type(None):
             if type(image) != type(None):
                 return image.save(filename)
@@ -127,67 +234,74 @@ class Camera(object):
         return cv2.imwrite(filename, frame)
     
     # Image manipulation
-    def annotate(self, index, dimensions, frame, opening_iter=0, closing_iter=0):
+    def annotateAll(self, df:pd.DataFrame, frame):
         """
-        Annotate the image to label identified targets
-        - df: dataframe of identified targets
-        - frame: image
-        - opening_iter: BG noise removal iterations
-        - closing_iter: FG noise removal iterations
+        Annotate all targets
 
-        Return: image
+        Args:
+            df (pd.DataFrame): dataframe of details of detected targets
+            frame (array): frame array
+
+        Returns:
+            dict, Image: dictionary of (target index, center positions); image
         """
-        x,y,w,h = dimensions
-        center = [int(x+(w/2)), int(y+(h/2))]
-        cv2.rectangle(frame, (x,y), (x+w, y+h), (0,255,0), 2)
-        cv2.circle(frame, (int(x+(w/2)), int(y+(h/2))), 3, (0,0,255), -1)
-        cv2.putText(frame, '{}'.format(index+1), (x-8, y-4), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255), 1)
-
-        # Morphological Transformations - Noise Removal
-        roi_color = frame[y:y+h, x:x+w]
-        roi_gray = cv2.cvtColor(roi_color, cv2.COLOR_BGR2GRAY)
-        kernel = np.ones((3,3),np.uint8)
-        roi_gray = cv2.morphologyEx(roi_gray,cv2.MORPH_OPEN,kernel,iterations=opening_iter)
-        roi_gray = cv2.morphologyEx(roi_gray,cv2.MORPH_CLOSE,kernel,iterations=closing_iter)
-
-        # Image Thresholding: Inverse Binary Thresholding + the OTSU method
-        ret, thresh = cv2.threshold(roi_gray, 127, 255, cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
-        
-        # Contour Detection
-        # contours, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-        # contours = contours[1:]
-        # cv2.drawContours(roi_color, contours, -1, (255,0,0), 2)
-        return center, frame
-    
-    def annotateAll(self, df, frame, opening_iter=0, closing_iter=0):
         data = {}
+        image = Image(frame)
         for index in range(len(df)):
-            dimensions = df.loc[index, ['x','y','w','h']].to_list()
-            area = dimensions[2]*dimensions[3]
+            dimensions = tuple(df.loc[index, ['x','y','w','h']].to_list())
+            x,y,w,h = dimensions
+            area = w*h
+            center = [int(x+(w/2)), int(y+(h/2))]
             if area >= 36*36:
-                center, frame = self.annotate(index, dimensions, frame, opening_iter, closing_iter)
+                image.annotate(index, dimensions, inplace=True)
                 data[f'C{index+1}'] = center
-        return data, frame
+        return data, image
 
-    def detect(self, image:Image, scale, neighbors):
+    def detect(self, image:Image, scale:int, neighbors:int):
+        """
+        Detect targets
+
+        Args:
+            image (Image): image to detect from
+            scale (int): scale at which to detect targets
+            neighbors (int): minimum number of neighbors for targets
+
+        Raises:
+            Exception: Classifier not loaded
+
+        Returns:
+            pd.DataFrame: dataframe of detected targets
+        """
         if type(self.classifier) == type(None):
             raise Exception('Please load a classifier first.')
         image.grayscale(inplace=True)
-        detected_data = self.classifier.detectMultiScale(image=image.frame, scaleFactor=scale, minNeighbors=neighbors)
+        detected_data = self.classifier.detect(image=image, scale=scale, neighbors=neighbors)
         df = self._data_to_df(detected_data)
         return df
     
-    def loadClassifier(self, xml_path):
-        clf = None
+    def loadClassifier(self, classifier:Classifier):
+        """
+        Load target classifier
+
+        Args:
+            classifier (Classifier): desired classifier
+        """
         try:
-            clf = cv2.CascadeClassifier(xml_path)
-            self.classifier = clf
+            self.classifier = classifier
         except SystemError:
-            print('Please select a trained xml file.')
-        return clf
+            print('Please select a classifier.')
+        return
 
 
 class Optical(Camera):
+    """
+    Optical camera object
+
+    Args:
+        calibration_unit (int, optional): calibration of pixels to mm. Defaults to 1.
+        cam_size (tuple, optional): width and height of image. Defaults to (640,480).
+        rotation (int, optional): rotation of camera feed. Defaults to 0.
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._connect()
@@ -197,20 +311,28 @@ class Optical(Camera):
         return
     
     def _connect(self):
+        """
+        Connect to the imaging device
+        """
         self.feed = cv2.VideoCapture(0)
-        self.flags['isConnected'] = True
+        self._flags['isConnected'] = True
         return
-    
-    def getImage(self):
-        # if not self.flags['isConnected']:
-        #     self._connect()
-        return super().getImage(crosshair=True)
 
 
 class Thermal(Camera):
-    def __init__(self, ip_address, *args, **kwargs):
+    """
+    Thermal camera object
+
+    Args:
+        ip_address (str): IP address of thermal camera
+        calibration_unit (int, optional): calibration of pixels to mm. Defaults to 1.
+        cam_size (tuple, optional): width and height of image. Defaults to (640,480).
+        rotation (int, optional): rotation of camera feed. Defaults to 0.
+    """
+    def __init__(self, ip_address:str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.ip_address = ip_address
+        self.rotation = 180
         self._connect()
         
         img_bytes = pkgutil.get_data(__name__, 'placeholders/infrared_camera.png')
@@ -218,26 +340,30 @@ class Thermal(Camera):
         return
     
     def _connect(self):
+        """
+        Connect to the imaging device
+        """
         self.device = Ax8ThermalCamera(self.ip_address, verbose=False)
         if self.device.modbus.is_open:
             self.feed = self.device.video.stream
-            self.flags['isConnected'] = True
+            self._flags['isConnected'] = True
         return
     
     def _read(self):
+        """
+        Read camera feed
+
+        Returns:
+            bool, array: True if frame is obtained; array of frame
+        """
         return self.device.modbus.is_open, self.feed.read()
     
     def _release(self):
+        """
+        Release the camera feed
+        """
         if self.device.modbus.is_open:
             self.feed.stop()
             self.feed.stream.release()
         return
-    
-    def getImage(self):
-        # if not self.flags['isConnected']:
-        #     self._connect()
-        ret, image = super().getImage(crosshair=True)
-        if ret:
-            image.rotate(180, inplace=True)
-        return ret, image
     

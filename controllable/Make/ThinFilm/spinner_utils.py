@@ -15,25 +15,28 @@ import time
 import serial # pip install pyserial
 
 # Local application imports
-from .. import Maker
 print(f"Import: OK <{__name__}>")
 
-class Spinner(Maker):
+class Spinner(object):
     """
-    'Spinner' class contains methods to control the spin coater unit.
+    Spinner class contains methods to control the spin coater unit
+
+    Args:
+        port (str): com port address
+        order (int, optional): channel order. Defaults to 0.
+        position (tuple, optional): x,y,z position of spinner. Defaults to (0,0,0).
+        verbose (bool, optional): whether to print outputs. Defaults to False.
     """
-    def __init__(self, port, order=0, position=(0,0,0), verbose=False, **kwargs):
+    def __init__(self, port:str, order=0, position=(0,0,0), verbose=False, **kwargs):
         self.mcu = None
         self.order = order
         self.position = tuple(position)
         self.speed = 0
-        self._flags = {
-            'busy': False,
-            'complete': False
-        }
-        
-        self.etc = time.time()
         self.verbose = verbose
+        
+        self._flags = {
+            'busy': False
+        }
         self._port = None
         self._baudrate = None
         self._timeout = None
@@ -41,7 +44,13 @@ class Spinner(Maker):
         self._connect(port)
         return
     
-    def _connect(self, port):
+    def _connect(self, port:str):
+        """
+        Connect to serial port
+
+        Args:
+            port (str): com port address
+        """
         self._port = port
         self._baudrate = 9600
         self._timeout = 1
@@ -58,24 +67,27 @@ class Spinner(Maker):
         self.mcu = mcu
         return
     
-    def _run_speed(self, speed):
+    def _run_speed(self, speed:int):
         """
-        Relay instructions to spincoater.
-        - mcu: serial connection to spincoater
-        - speed: spin speed
+        Relay spin speed to spinner
+
+        Args:
+            speed (int): spin speed
         """
         try:
             self.mcu.write(bytes("{}\n".format(speed), 'utf-8'))
         except AttributeError:
             pass
         print("Spin speed: {}".format(speed))
+        return
     
-    def _run_spin_step(self, speed, run_time):
+    def _run_spin_step(self, speed:int, run_time:int):
         """
         Perform timed spin step
-        - mcu: serial connection to spincoater
-        - speed: spin speed
-        - run_time: spin time
+
+        Args:
+            speed (int): spin speed
+            run_time (int): spin time
         """
         starttime = time.time()
         
@@ -93,14 +105,14 @@ class Spinner(Maker):
                 break
 
     def execute(self, soak_time=0, spin_speed=2000, spin_time=1):
-        '''
+        """
         Executes the soak and spin steps
-        - soak_time: soak time
-        - spin_speed: spin speed
-        - spin_time: spin time
 
-        Returns: None
-        '''
+        Args:
+            soak_time (int, optional): soak time. Defaults to 0.
+            spin_speed (int, optional): spin speed. Defaults to 2000.
+            spin_time (int, optional): spin time. Defaults to 1.
+        """
         self._flags['busy'] = True
         self.soak(soak_time)
         self.spin(spin_speed, spin_time)
@@ -109,18 +121,24 @@ class Spinner(Maker):
         return
     
     def isConnected(self):
+        """
+        Checks whether the spinner is connected
+
+        Returns:
+            bool: whether the spinner is connected
+        """
         if self.mcu == None:
             print(f"{self.__class__} ({self._port}) not connected.")
             return False
         return True
 
-    def soak(self, seconds):
-        '''
+    def soak(self, seconds:int):
+        """
         Executes the soak step
-        - seconds: soak time
 
-        Returns: None
-        '''
+        Args:
+            seconds (int): soak time
+        """
         self.speed = 0
         if seconds:
             # log_now(f'Spinner {self.order}: start soak')
@@ -128,14 +146,14 @@ class Spinner(Maker):
             # log_now(f'Spinner {self.order}: end soak')
         return
 
-    def spin(self, speed, seconds):
-        '''
+    def spin(self, speed:int, seconds:int):
+        """
         Executes the spin step
-        - speed: spin speed
-        - seconds: spin time
 
-        Returns: None
-        '''
+        Args:
+            speed (int): spin speed
+            seconds (int): spin time
+        """
         self.speed = speed
         # log_now(f'Spinner {self.order}: start spin ({speed}rpm)')
         self._run_spin_step(speed, seconds)
@@ -144,7 +162,15 @@ class Spinner(Maker):
         return
 
 
-class SpinnerAssembly(Maker):
+class SpinnerAssembly(object):
+    """
+    Spinner assembly with multiple spinners
+
+    Args:
+        ports (list, optional): list of com port strings. Defaults to [].
+        channels (list, optional): list of int channel indices. Defaults to [].
+        positions (list, optional): list of tuples of x,y,z spinner positions. Defaults to [].
+    """
     def __init__(self, ports=[], channels=[], positions=[]):
         self._checkInputs(ports=ports, channels=channels, positions=positions)
         properties = list(zip(ports, channels, positions))
@@ -152,25 +178,64 @@ class SpinnerAssembly(Maker):
         return
     
     def _checkInputs(self, **kwargs):
+        """
+        Checks whether the input lists are the same length
+
+        Raises:
+            Exception: Inputs need to be the same length
+        """
         keys = list(kwargs.keys())
         if any(len(kwargs[key]) != len(kwargs[keys[0]]) for key in keys):
             raise Exception(f"Ensure the lengths of these inputs are the same: {', '.join(keys)}")
         return
         
-    def execute(self, channel, soak_time, spin_speed, spin_time):
+    def execute(self, channel:int, soak_time:int, spin_speed:int, spin_time:int):
+        """
+        Executes the soak and spin steps
+
+        Args:
+            channel (int): channel index
+            soak_time (int, optional): soak time. Defaults to 0.
+            spin_speed (int, optional): spin speed. Defaults to 2000.
+            spin_time (int, optional): spin time. Defaults to 1.
+        """
         return self.channels[channel].execute(soak_time, spin_speed, spin_time)
     
     def isBusy(self):
+        """
+        Check whether any of the spinners are still busy
+
+        Returns:
+            bool: whether any of the spinners are busy
+        """
         return any([spinner._flags['busy'] for spinner in self.channels.values()])
     
-    def isComplete(self):
-        return all([spinner._flags['complete'] for spinner in self.channels.values()])
-    
     def isConnected(self):
+        """
+        Check whether all spinners are connected
+
+        Returns:
+            bool: whether all spinners are connected
+        """
         return all([spinner.isConnected() for spinner in self.channels.values()])
     
-    def soak(self, channel, seconds):
+    def soak(self, channel:int, seconds:int):
+        """
+        Executes the soak step
+
+        Args:
+            channel (int): channel index
+            seconds (int): soak time
+        """
         return self.channels[channel].soak(seconds)
     
-    def spin(self, channel, speed, seconds):
+    def spin(self, channel:int, speed:int, seconds:int):
+        """
+        Executes the spin step
+
+        Args:
+            channel (int): channel index
+            speed (int): spin speed
+            seconds (int): spin time
+        """
         return self.channels[channel].spin(speed, seconds)
