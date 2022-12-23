@@ -79,6 +79,3 @@ class ElectricalMeasurer(object):
         """EMPTY METHOD"""
         print(f"'{self.__class__.__name__}' class has no method 'setParameters'")
         return
-
-from . import Biologic
-from . import Keithley
