@@ -30,7 +30,7 @@ import plotly.graph_objects as go # pip install plotly
 from plotly.subplots import make_subplots
 
 # Local application imports
-from .circuit_datatype import CircuitDiagram
+from . import CircuitDiagram
 print(f"Import: OK <{__name__}>")
 
 circuit_diagram = CircuitDiagram()
