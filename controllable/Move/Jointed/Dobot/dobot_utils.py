@@ -12,8 +12,8 @@ import numpy as np
 import time
 
 # Local application imports
-from .. import RobotArm
-from .dobot_api import dobot_api_dashboard, dobot_api_feedback, MyType
+from ..jointed_utils import RobotArm
+from .dobot_api import dobot_api_dashboard, dobot_api_feedback
 from . import dobot_attachments as attachments
 print(f"Import: OK <{__name__}>")
 
@@ -23,17 +23,21 @@ MOVE_TIME = 0.5
 class Dobot(RobotArm):
     """
     Dobot class.
-
+    
     Args:
-        ip_address (str, optional): IP address of arm. Defaults to '192.168.2.8'.
+        ip_address (str): IP address of arm
         home_position (tuple, optional): position to home in arm coordinates. Defaults to (0,300,0).
         home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
+
+    Kwargs:
         orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
         translate_vector (numpy.array, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
+        implement_offset (tuple, optional): implement offset vector pointing from end of effector to tool tip. Defaults to (0,0,0).
+        verbose (bool, optional): whether to print outputs. Defaults to False.
     """
-    def __init__(self, ip_address='192.168.2.8', home_position=(0,300,0), home_orientation=(0,0,0), **kwargs):
-        super().__init__(home_position, home_orientation, **kwargs)
+    def __init__(self, ip_address:str, home_position=(0,300,0), home_orientation=(0,0,0), **kwargs):
+        super().__init__(home_position=home_position, home_orientation=home_orientation, **kwargs)
         self.ip_address = ip_address
         self._dashboard = None
         self._feedback = None
@@ -373,15 +377,21 @@ class MG400(Dobot):
 
     Args:
         ip_address (str, optional): IP address of arm. Defaults to '192.168.2.8'.
+        tuck (bool, optional): whether to tuck arm before each movement. Defaults to True.
+        
+    Kwargs:
         home_position (tuple, optional): position to home in arm coordinates. Defaults to (0,300,0).
         home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
         orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
         translate_vector (numpy.array, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
+        implement_offset (tuple, optional): implement offset vector pointing from end of effector to tool tip. Defaults to (0,0,0).
+        verbose (bool, optional): whether to print outputs. Defaults to False.
     """
     
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, ip_address='192.168.2.8', tuck=True, **kwargs):
+        super().__init__(ip_address=ip_address, **kwargs)
+        self._flags['tuck'] = tuck
         return
     
     def isFeasible(self, coord, transform=False):
@@ -433,21 +443,25 @@ class MG400(Dobot):
 class M1Pro(Dobot):
     """
     M1 Pro class.
-
+    
     Args:
-        ip_address (str, optional): IP address of arm. Defaults to '192.168.2.8'.
+        ip_address (str, optional): IP address of arm. Defaults to '192.168.2.21'.
+        handedness (str, optional): handedness of robot (i.e. left or right). Defaults to 'left'.
+
+    Kwargs:
         home_position (tuple, optional): position to home in arm coordinates. Defaults to (0,300,0).
         home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
         orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
         translate_vector (numpy.array, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
+        implement_offset (tuple, optional): implement offset vector pointing from end of effector to tool tip. Defaults to (0,0,0).
+        verbose (bool, optional): whether to print outputs. Defaults to False.
     """
     
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._handedness = ''
-        
-        self.setHandedness('left')
+    def __init__(self, ip_address='192.168.2.21', handedness='left', **kwargs):
+        super().__init__(ip_address=ip_address, **kwargs)
+        self.handedness = ''
+        self.setHandedness(handedness)
         return
     
     def home(self, tool_offset=False):
@@ -499,23 +513,23 @@ class M1Pro(Dobot):
 
     def setHandedness(self, hand, stretch=False):
         set_hand = False
-        if hand not in ['left','right']:
+        if hand not in ['left','l','L','right','r','R']:
             raise Exception("Please select between 'left' or 'right'")
-        if hand == 'left' and self._handedness != 'left': #0
+        if hand in ['left','l','L'] and self.handedness != 'left': #0
             try:
                 self._dashboard.SetArmOrientation(0,1,1,1)
             except (AttributeError, OSError):
                 print("Not connected to arm!")
             finally:
-                self._handedness = 'left'
+                self.handedness = 'left'
                 set_hand = True
-        elif hand == 'right' and self._handedness != 'right': #1
+        elif hand in ['right','r','R'] and self.handedness != 'right': #1
             try:
                 self._dashboard.SetArmOrientation(1,1,1,1)
             except (AttributeError, OSError):
                 print("Not connected to arm!")
             finally:
-                self._handedness = 'right'
+                self.handedness = 'right'
                 set_hand = True
         if set_hand and stretch:
             self.stretchArm()

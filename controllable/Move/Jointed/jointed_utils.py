@@ -24,8 +24,10 @@ class RobotArm(Mover):
         orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
         translate_vector (numpy.array, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
+        implement_offset (tuple, optional): implement offset vector pointing from end of effector to tool tip. Defaults to (0,0,0).
+        verbose (bool, optional): whether to print outputs. Defaults to False.
     """
-    def __init__(self, home_position=(0,0,0), home_orientation=(0,0,0), orientate_matrix=np.identity(3), translate_vector=np.zeros(3), scale=1, implement_offset=(0,0,0), verbose=False, tuck=True, **kwargs):
+    def __init__(self, home_position=(0,0,0), home_orientation=(0,0,0), orientate_matrix=np.identity(3), translate_vector=np.zeros(3), scale=1, implement_offset=(0,0,0), verbose=False, **kwargs):
         self.home_position = home_position
         self.home_orientation = home_orientation
         self.orientate_matrix = orientate_matrix
@@ -37,9 +39,7 @@ class RobotArm(Mover):
         self.orientation = (0,0,0)
         
         self.verbose = verbose
-        self._flags = {
-            'tuck': tuck
-        }
+        self._flags = {}
         pass
     
     def __delete__(self):
@@ -54,6 +54,7 @@ class RobotArm(Mover):
             coord (tuple): vector
             offset (bool, optional): whether to translate. Defaults to False.
             stretch (bool, optional): whether to scale. Defaults to True.
+            tool (bool, optional): whether to consider tooltip offset. Defaults to False.
 
         Returns:
             tuple: converted arm vector
@@ -71,6 +72,7 @@ class RobotArm(Mover):
             coord (tuple): vector
             offset (bool, optional): whether to translate. Defaults to False.
             stretch (bool, optional): whether to scale. Defaults to True.
+            tool (bool, optional): whether to consider tooltip offset. Defaults to False.
 
         Returns:
             tuple: converted workspace vector
@@ -109,7 +111,6 @@ class RobotArm(Mover):
         self.translate_vector = (external_pt1 - internal_pt1)
         self.scale = (space_mag / robot_mag)
         
-        print(f'Address: {self.address}')
         print(f'Orientate matrix:\n{self.orientate_matrix}')
         print(f'Translate vector: {self.translate_vector}')
         print(f'Scale factor: {self.scale}')
@@ -117,8 +118,16 @@ class RobotArm(Mover):
         print(f'Offset vector: {(external_pt1 - internal_pt1)}')
         return
     
-    def getConfigSettings(self, params):
-        """Read the arm configuration settings."""
+    def getConfigSettings(self, params:list):
+        """
+        Read the arm configuration settings.
+        
+        Args:
+            params (list): list of attributes to retrieve values from
+        
+        Returns:
+            dict: dictionary of arm class and details/attributes
+        """
         arm = str(type(self)).split("'")[1].split('.')[1]
         details = {k: v for k,v in self.__dict__.items() if k in params}
         for k,v in details.items():
@@ -130,7 +139,12 @@ class RobotArm(Mover):
         return settings
 
     def getPosition(self):
-        """Read the current position and orientation of arm."""
+        """
+        Read the current position and orientation of arm.
+        
+        Returns:
+            tuple, tuple: x,y,z coordinates; a,b,g angles
+        """
         return self.coordinates, self.orientation
     
     def getToolPosition(self):
@@ -138,7 +152,7 @@ class RobotArm(Mover):
         Retrieve coordinates of tool tip/end of implement.
 
         Returns:
-            tuple: position vector
+            tuple, tuple: x,y,z coordinates; a,b,g angles
         """
         coordinates, orientation = self.getPosition()
         return self._transform_vector_out(coordinates, offset=True, tool=True), orientation
@@ -148,7 +162,7 @@ class RobotArm(Mover):
         Retrieve user-defined workspace coordinates.
 
         Returns:
-            tuple: position vector
+            tuple, tuple: x,y,z coordinates; a,b,g angles
         """
         coordinates, orientation = self.getPosition()
         return self._transform_vector_out(coordinates, offset=True), orientation
@@ -158,18 +172,18 @@ class RobotArm(Mover):
         Alias for getUserPosition
 
         Returns:
-            tuple: position vector
+            tuple, tuple: x,y,z coordinates; a,b,g angles
         """
-        return self.getUserPosition
+        return self.getUserPosition()
 
     def setImplementOffset(self, implement_offset):
         """
         Set offset of implement.
 
         Args:
-            implement_offset (tuple): x,y,z offset of implement
+            implement_offset (tuple): x,y,z offset of implement (i.e. vector pointing from end of effector to tooltip)
         """
-        self.implement_offset = implement_offset
+        self.implement_offset = tuple(implement_offset)
         self.home()
         return
 
@@ -184,7 +198,15 @@ class RobotArm(Mover):
         return
 
     def updatePosition(self, coord=(0,), orientation=(0,), vector=(0,0,0), angles=(0,0,0)):
-        """Update to current position"""
+        """
+        Update to current position
+
+        Args:
+            coord (tuple, optional): x,y,z coordinates. Defaults to (0,).
+            orientation (tuple, optional): a,b,g angles. Defaults to (0,).
+            vector (tuple, optional): x,y,z vector. Defaults to (0,0,0).
+            angles (tuple, optional): a,b,g,angles. Defaults to (0,0,0).
+        """
         if len(coord) == 1:
             new_coord = np.array(self.coordinates) + np.array(vector)
             self.coordinates = tuple(new_coord)

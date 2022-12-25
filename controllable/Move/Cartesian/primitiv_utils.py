@@ -10,10 +10,10 @@ Notes / actionables:
 import time
 
 # Local application imports
-from . import CNC
+from .cartesian_utils import Cartesian
 print(f"Import: OK <{__name__}>")
 
-class Primitiv(CNC):
+class Primitiv(Cartesian):
     """
     XYZ controls for Primitiv platform.
     - port: serial port of cnc Arduino

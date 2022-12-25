@@ -7,10 +7,10 @@ Notes / actionables:
 -
 """
 # Local application imports
-from . import CNC
+from .cartesian_utils import Cartesian
 print(f"Import: OK <{__name__}>")
 
-class Ender(CNC):
+class Ender(Cartesian):
     """
     XYZ controls for Ender platform.
     - port: serial port of cnc Arduino
