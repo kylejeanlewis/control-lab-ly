@@ -23,7 +23,14 @@ BUFFER_SIZE = 100
 NUM_READINGS = 3
 
 class KeithleyDevice(object):
-    def __init__(self, ip_address, name='def'):
+    """
+    Keithley device object
+    
+    Args:
+        ip_address (str): IP address of Keithley
+        name (str, optional): nickname for Keithley. Defaults to 'def'.
+    """
+    def __init__(self, ip_address:str, name='def'):
         self.ip_address = ip_address
         self.inst = None
         self.name = name
@@ -36,12 +43,12 @@ class KeithleyDevice(object):
         )
         return
         
-    def _connect(self, ip_address=None):
+    def _connect(self, ip_address:str):
         """
         Establish connection with Keithley.
         
         Args:
-            ip_address (str/int): IP address of Keithley
+            ip_address (str): IP address of Keithley
         """
         print("Setting up Keithley comms...")
         if ip_address == None:
@@ -62,27 +69,30 @@ class KeithleyDevice(object):
             print(e) 
         return
     
-    def _read(self, prompt, field_titles, average=False, fill_attributes=False):
+    def _read(self, prompt:str, field_titles:list, average=False, fill_attributes=False):
         """
         Read data output from Keithley.
         
         Args:
             prompt (str): SCPI prompt for retrieving output
             field_titles (list): list of parameters to read
-            average (bool): whether to calculate the average and standard deviation of multiple readings
+            average (bool, optional): whether to calculate the average and standard deviation of multiple readings. Defaults to False.
+            fill_attributes (bool, optional): whether to fill in attribute values (i.e. buffer name, buffer size, count). Defaults to False.
+            
+        Returns:
+            pd.DataFrame: dataframe of output from Keithley 
         """
-        outp = ''
+        output = None
         try:
             self._write(prompt, fill_attributes)
-            outp = None
-            while outp is None:
-                outp = self.inst.read()
+            while output is None:
+                output = self.inst.read()
         except AttributeError as e:
             print(e)
-        if type(outp) == type(None):
+        if type(output) == type(None):
             print('No output.')
             return pd.DataFrame()
-        data = np.reshape(np.array(outp.split(','), dtype=np.float64), (-1,len(field_titles)))
+        data = np.reshape(np.array(output.split(','), dtype=np.float64), (-1,len(field_titles)))
         if average:
             avg = np.mean(data, axis=0)
             std = np.std(data, axis=0)
@@ -92,12 +102,13 @@ class KeithleyDevice(object):
         df = pd.DataFrame(data, columns=field_titles, dtype=np.float64)
         return df
     
-    def _write(self, lines=[], fill_attributes=False):
+    def _write(self, lines:list, fill_attributes=False):
         """
         Relay parameters to Keithley.
         
         Args:
-            params (list): list of parameters to write to Keithley
+            lines (list): list of parameters to write to Keithley
+            fill_attributes (bool, optional): whether to fill in attribute values (i.e. buffer name, buffer size, count). Defaults to False.
         """
         try:
             for line in lines:
@@ -118,8 +129,8 @@ class Keithley(ElectricalMeasurer):
     Keithley class.
     
     Args:
-        ip_address (str/int): IP address of Keithley
-        name (str): nickname for Keithley
+        ip_address (str, optional): IP address of Keithley. Defaults to '192.168.1.125'.
+        name (str, optional): nickname for Keithley. Defaults to 'def'.
     """
     def __init__(self, ip_address='192.168.1.125', name='def'):
         self.ip_address = ip_address
@@ -127,35 +138,30 @@ class Keithley(ElectricalMeasurer):
         self.buffer_df = pd.DataFrame()
         self.data = None
         self.program = None
-        self.flags = {
+        self._flags = {
             'measured': False,
             'parameters_set': False,
             'read': False,
             'stop_measure': False
         }
+        self._parameters = {}
         
         self._attr = dict(
             buff_name=f'{name}data',
             buff_size=BUFFER_SIZE,
             count=NUM_READINGS
         )
-        self._parameters = {}
         self._program_template = None
         return
 
     def _read_data(self):
         """
-        Read data output from Keithley.
-        
-        Args:
-            prompt (str): SCPI prompt for retrieving output
-            field_titles (list): list of parameters to read
-            average (bool): whether to calculate the average and standard deviation of multiple readings
+        Read data output from Keithley, through the program object
         """
         try:
             self.buffer_df = self.program.data_df
             if len(self.program.data_df):
-                self.flags['read'] = True
+                self._flags['read'] = True
             else:
                 print("No data found.")
         except AttributeError:
@@ -163,31 +169,43 @@ class Keithley(ElectricalMeasurer):
         return
         
     def connect(self, ip_address=None):
+        """
+        Establish connection to Keithley.
+
+        Args:
+            ip_address (str, optional): IP address of Keithley. Defaults to None.
+        """
         if ip_address == None:
             ip_address = self.ip_address
         self.ip_address = ip_address
         return self.inst._connect(ip_address)
     
     def getData(self, datatype=None):
-        if not self.flags['read']:
+        """
+        Read data and load custom datatype for data
+
+        Args:
+            datatype (any, optional): custom datatype for data. Defaults to None.
+
+        Returns:
+            pd.DataFrame: raw dataframe of measurement
+        """
+        if not self._flags['read']:
             self._read_data()
-        if self.flags['read']:
+        if self._flags['read']:
             try:
                 self.data = datatype(data=self.buffer_df, instrument='keithley_')
             except Exception as e:
                 print(e)
         return self.buffer_df
 
-    def loadProgram(self, program, params={}):
+    def loadProgram(self, program:str, params={}):
         """
         Retrieves the SCPI commands from either a file or text string, and replaces placeholder variables. 
         
         Args:
-            filename (str): filename of txt file where SCPI commands are saved
-            string (str): text string of SCPI commands
-            
-        Returns:
-            list: SCPI prompts for settings, inputs, and outputs
+            program (str): name of program to load
+            params (dict, optional): dictionary of (param, value)
         """
         if program in base_programs.PROGRAM_LIST:
             program_class = getattr(base_programs, program)
@@ -202,25 +220,31 @@ class Keithley(ElectricalMeasurer):
         Perform the desired measurement.
         
         Args:
+            datatype (any, optional): custom datatype for data. Defaults to None.
+            
+        Kwargs:
             field_titles (list): list of parameters to read
             values (list): list of values to iterate through
             average (bool): whether to calculate the average and standard deviation of multiple readings
             wait (int/float): duration to wait before sending output prompt [s]
-            
-        Returns:
-            pandas.DataFrame: dataframe of measurements
         """
         self.reset(keep_program=True)
         print("Measuring...")
         self.program.run(**kwargs)
         self.getData(datatype)
         if len(self.buffer_df):
-            self.flags['measured'] = True
+            self._flags['measured'] = True
         self.plot()
         return
 
     def plot(self, plot_type=''):
-        if self.flags['measured'] and self.flags['read']:
+        """
+        Plot the measurement data
+
+        Args:
+            plot_type (str, optional): perform the requested plot of the data. Defaults to ''.
+        """
+        if self._flags['measured'] and self._flags['read']:
             try:
                 self.data.plot(plot_type)
             except AttributeError:
@@ -229,42 +253,74 @@ class Keithley(ElectricalMeasurer):
         return
 
     def recallParameters(self):
-        if not self.flags['parameters_set']:
+        """
+        Recall the last used parameters.
+
+        Raises:
+            Exception: Program not loaded
+
+        Returns:
+            dict: dictionary of parameters used
+        """
+        if not self._flags['parameters_set']:
             raise Exception("Please load a program first.")
         return self.program.parameters
 
     def reset(self, keep_program=False):
-        """Reset the Keithley."""
+        """
+        Reset the Keithley
+
+        Args:
+            keep_program (bool, optional): whether to keep the loaded program. Defaults to False.
+        """
         self.sendMessage(['*RST'])
         self.buffer_df = pd.DataFrame()
         self.data = None
         if not keep_program:
             self.program = None
-        for key in self.flags.keys():
-            self.flags[key] = False
+        for key in self._flags.keys():
+            self._flags[key] = False
         return
 
-    def saveData(self, filename):
-        if not self.flags['read']:
+    def saveData(self, filename:str):
+        """
+        Save dataframe to csv file.
+
+        Args:
+            filename (str): filename to which data will be saved
+        """
+        if not self._flags['read']:
             self._read_data()
-        if self.flags['read']:
+        if self._flags['read']:
             self.buffer_df.to_csv(filename)
         return
 
-    def sendMessage(self, lines=[]):
+    def sendMessage(self, lines:list):
         """
         Relay parameters to Keithley.
         
         Args:
-            params (list): list of parameters to write to Keithley
+            lines (list): list of parameters to write to Keithley
         """
         return self.inst._write(lines)
     
-    def setAddress(self, ip_address):
+    def setAddress(self, ip_address:str):
+        """
+        Set IP address of Keithley
+
+        Args:
+            ip_address (str): IP address of Keithley
+        """
         self.ip_address = ip_address
         return
     
-    def setParameters(self, params={}):
+    def setParameters(self, params:dict):
+        """
+        Set program parameters
+
+        Args:
+            params (dict, optional): dictionary of (param, value)
+        """
         for k,v in self._attr.items():
             if k in self.program.scpi.string and k not in params.keys():
                 params[k] = v
@@ -280,7 +336,7 @@ class KeithleyTwo(object):
         self.buffer_df = pd.DataFrame()
         self.data = None
         self.program = None
-        self.flags = {
+        self._flags = {
             'measured': False,
             'parameters_set': False,
             'read': False,
@@ -307,11 +363,11 @@ class KeithleyTwo(object):
         return
     
     def measure(self):
-        self.flags['stop_measure'] = False
+        self._flags['stop_measure'] = False
         self.program.run()
         self._read_data()
         if len(self.buffer_df):
-            self.flags['measured'] = True
+            self._flags['measured'] = True
         self.plot()
         return
     
