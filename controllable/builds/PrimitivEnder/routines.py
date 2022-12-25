@@ -26,7 +26,7 @@ class PrimitivSetup(Setup):
         self.mover = None
         self.measurer = None
         self.viewer = None
-        self.flags = {}
+        self._flags = {}
         self.positions = {}
         self.tool_offset = (0,0,0)
         

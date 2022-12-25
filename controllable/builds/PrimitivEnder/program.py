@@ -23,7 +23,7 @@ class PrimitivController(Controller):
         self._config = self._readPlans(config_file, config_option)
         self.setup = PrimitivSetup(self._config, ignore_connections)
         self.window = None
-        self.flags = {
+        self._flags = {
             'force_stop': False
         }
         
