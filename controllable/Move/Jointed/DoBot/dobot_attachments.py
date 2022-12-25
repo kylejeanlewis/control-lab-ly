@@ -10,8 +10,6 @@ Notes / actionables:
 import time
 
 # Local application imports
-from .. import RobotArm
-from .dobot_api import dobot_api_dashboard, dobot_api_feedback, MyType
 print(f"Import: OK <{__name__}>")
 
 ATTACHMENT_LIST = ['JawGripper', 'VacuumGrip']
