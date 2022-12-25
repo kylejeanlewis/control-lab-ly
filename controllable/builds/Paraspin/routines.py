@@ -73,13 +73,13 @@ class SpinbotSetup(Setup):
             print("Check hardware / connection!")
             return
         
-        # Test self.maker
+        # Test maker
         for c,m in self.maker.channels.items():
             thread = Thread(target=m.execute, name=f'maker_diag_{c}')
             thread.start()
             time.sleep(1)
 
-        # Test self.mover
+        # Test mover
         self.home()
         self._check_positions()
         self.rest()
@@ -95,7 +95,6 @@ class SpinbotSetup(Setup):
             raise Exception("Selected position is not feasible.")
         self.mover.moveTo(coord)
         self._flags['at_rest'] = False
-        # self.at_home = False
         
         # Time the wait
         distance = np.linalg.norm(coord - np.array(self.mover.coordinates))
