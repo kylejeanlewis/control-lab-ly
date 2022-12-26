@@ -7,217 +7,194 @@ Notes / actionables:
 -
 """
 # Standard library imports
-import math
 import numpy as np
 
 # Local application imports
-from .. import Mover
+from ..mover_utils import Mover
 print(f"Import: OK <{__name__}>")
 
 class RobotArm(Mover):
     """
-    RobotArm class.
-
+    Robot arm controls
+    
     Args:
-        home_position (tuple, optional): position to home in arm coordinates. Defaults to (0,0,0).
+        safe_height (float, optional): safe height. Defaults to None.
+
+    Kwargs:
+        home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,0,0).
         home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
         orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
-        translate_vector (numpy.array, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
-        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
+        translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to (0,0,0).
         implement_offset (tuple, optional): implement offset vector pointing from end of effector to tool tip. Defaults to (0,0,0).
+        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
         verbose (bool, optional): whether to print outputs. Defaults to False.
     """
-    def __init__(self, home_position=(0,0,0), home_orientation=(0,0,0), orientate_matrix=np.identity(3), translate_vector=np.zeros(3), scale=1, implement_offset=(0,0,0), verbose=False, **kwargs):
-        self.home_position = home_position
-        self.home_orientation = home_orientation
-        self.orientate_matrix = orientate_matrix
-        self.translate_vector = translate_vector
-        self.scale = scale
+    def __init__(self, safe_height=None, **kwargs):
+        super().__init__(**kwargs)
+        self.device = None
         
-        self.implement_offset = implement_offset
-        self.coordinates = (0,0,0)
-        self.orientation = (0,0,0)
-        
-        self.verbose = verbose
-        self._flags = {}
-        pass
-    
-    def __delete__(self):
-        self._shutdown()
-        return
-      
-    def _transform_vector_in(self, coord, offset=False, stretch=True, tool=False):
-        """
-        Order of transformations (scale, rotate, translate).
-
-        Args:
-            coord (tuple): vector
-            offset (bool, optional): whether to translate. Defaults to False.
-            stretch (bool, optional): whether to scale. Defaults to True.
-            tool (bool, optional): whether to consider tooltip offset. Defaults to False.
-
-        Returns:
-            tuple: converted arm vector
-        """
-        translate = (-1*self.translate_vector) if offset else np.zeros(3)
-        translate = translate - self.implement_offset if tool else translate
-        scale = (1/self.scale) if stretch else 1
-        return tuple( translate + np.matmul(self.orientate_matrix.T, scale * np.array(coord)) )
-
-    def _transform_vector_out(self, coord, offset=False, stretch=True, tool=False):
-        """
-        Order of transformations (translate, rotate, scale).
-
-        Args:
-            coord (tuple): vector
-            offset (bool, optional): whether to translate. Defaults to False.
-            stretch (bool, optional): whether to scale. Defaults to True.
-            tool (bool, optional): whether to consider tooltip offset. Defaults to False.
-
-        Returns:
-            tuple: converted workspace vector
-        """
-        translate = self.translate_vector if offset else np.zeros(3)
-        translate = translate + self.implement_offset if tool else translate
-        scale = self.scale if stretch else 1
-        return tuple( scale * np.matmul(self.orientate_matrix, translate + np.array(coord)) )
-
-    def calibrate(self, external_pt1, internal_pt1, external_pt2, internal_pt2):
-        """
-        Calibrate internal and external coordinate systems.
-
-        Args:
-            external_pt1 (tuple): x,y,z coordinates of physical point 1
-            internal_pt1 (tuple): x,y,z coordinates of robot point 1
-            external_pt2 (tuple): x,y,z coordinates of physical point 2
-            internal_pt2 (tuple): x,y,z coordinates of robot point 2
-        """
-        space_vector = external_pt2 - external_pt1
-        robot_vector = internal_pt2 - internal_pt1
-        space_mag = np.linalg.norm(space_vector)
-        robot_mag = np.linalg.norm(robot_vector)
-
-        space_unit_vector = space_vector / space_mag
-        robot_unit_vector = robot_vector / robot_mag
-        dot_product = np.dot(robot_unit_vector, space_unit_vector)
-        cross_product = np.cross(robot_unit_vector, space_unit_vector)
-
-        cos_theta = dot_product
-        sin_theta = math.copysign(np.linalg.norm(cross_product), cross_product[2])
-        rot_angle = math.acos(cos_theta) if sin_theta>0 else 2*math.pi - math.acos(cos_theta)
-        rot_matrix = np.array([[cos_theta,-sin_theta,0],[sin_theta,cos_theta,0],[0,0,1]])
-        
-        self.orientate_matrix = rot_matrix
-        self.translate_vector = (external_pt1 - internal_pt1)
-        self.scale = (space_mag / robot_mag)
-        
-        print(f'Orientate matrix:\n{self.orientate_matrix}')
-        print(f'Translate vector: {self.translate_vector}')
-        print(f'Scale factor: {self.scale}')
-        print(f'Offset angle: {rot_angle/math.pi*180} degree')
-        print(f'Offset vector: {(external_pt1 - internal_pt1)}')
+        if safe_height != None:
+            self.setHeight('safe', safe_height)
         return
     
-    def getConfigSettings(self, params:list):
+    def home(self, tool_offset=True):
         """
-        Read the arm configuration settings.
-        
-        Args:
-            params (list): list of attributes to retrieve values from
-        
-        Returns:
-            dict: dictionary of arm class and details/attributes
-        """
-        arm = str(type(self)).split("'")[1].split('.')[1]
-        details = {k: v for k,v in self.__dict__.items() if k in params}
-        for k,v in details.items():
-            if type(v) == tuple:
-                details[k] = {"tuple": list(v)}
-            elif type(v) == np.ndarray:
-                details[k] = {"array": v.tolist()}
-        settings = {"arm": arm, "details": details}
-        return settings
-
-    def getPosition(self):
-        """
-        Read the current position and orientation of arm.
-        
-        Returns:
-            tuple, tuple: x,y,z coordinates; a,b,g angles
-        """
-        return self.coordinates, self.orientation
-    
-    def getToolPosition(self):
-        """
-        Retrieve coordinates of tool tip/end of implement.
-
-        Returns:
-            tuple, tuple: x,y,z coordinates; a,b,g angles
-        """
-        coordinates, orientation = self.getPosition()
-        return self._transform_vector_out(coordinates, offset=True, tool=True), orientation
-    
-    def getUserPosition(self):
-        """
-        Retrieve user-defined workspace coordinates.
-
-        Returns:
-            tuple, tuple: x,y,z coordinates; a,b,g angles
-        """
-        coordinates, orientation = self.getPosition()
-        return self._transform_vector_out(coordinates, offset=True), orientation
-    
-    def getWorkspacePosition(self):
-        """
-        Alias for getUserPosition
-
-        Returns:
-            tuple, tuple: x,y,z coordinates; a,b,g angles
-        """
-        return self.getUserPosition()
-
-    def setImplementOffset(self, implement_offset):
-        """
-        Set offset of implement.
+        Return the robot to home
 
         Args:
-            implement_offset (tuple): x,y,z offset of implement (i.e. vector pointing from end of effector to tooltip)
+            tool_offset (bool, optional): whether to consider the offset of the tooltip. Defaults to True.
         """
-        self.implement_offset = tuple(implement_offset)
-        self.home()
+        # Tuck arm in to avoid collision
+        if self._flags['retract']:
+            self.retractArm(self.home_coordinates)
+        
+        # Go to home position
+        self.moveCoordTo(self.home_coordinates, self.home_orientation, tool_offset=tool_offset)
+        print("Homed")
         return
-
-    def setPosition(self, coord):
+    
+    def moveBy(self, vector=None, angles=None, **kwargs):
         """
-        Set robot coordinates.
+        Move robot by specified vector and angles
 
         Args:
-            coord (tuple): x,y,z workspace coordinates
-        """
-        self.coordinates = self._transform_vector_in(coord, offset=True, stretch=True)
-        return
+            vector (tuple, optional): vector to move in. Defaults to None.
+            angles (tuple, optional): angles to move in. Defaults to None.
 
-    def updatePosition(self, coord=(0,), orientation=(0,), vector=(0,0,0), angles=(0,0,0)):
+        Returns:
+            bool: whether movement is successful
+        """
+        if vector == None:
+            vector = (0,0,0)
+        if angles == None:
+            angles = (0,0,0)
+        vector = self._transform_vector_in(vector, offset=False)
+        vector = np.array(vector)
+        angles = np.array(angles)
+        
+        if len(angles) != 3:
+            if len(angles) == 6:
+                return self.moveJointBy(relative_angle=angles)
+            return False
+        return self.moveCoordBy(vector, angles)
+
+    def moveTo(self, coordinates=None, orientation=None, retract=False, tool_offset=True, **kwargs):
+        """
+        Absolute Cartesian movement, using workspace coordinates.
+
+        Args:
+            coordinates (tuple, optional): coordinates to move to. Defaults to None.
+            orientation (tuple, optional): orientation to move to. Defaults to None.
+            retract (bool, optional): whether to tuck in arm before moving. Defaults to False.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
+        
+        Returns:
+            bool: whether movement is successful
+        """
+        if coordinates == None:
+            coordinates = self.getToolPosition() if tool_offset else self.getUserPosition()
+        if orientation == None:
+            orientation = self.orientation
+        coordinates = self._transform_vector_in(coordinates=coordinates, offset=True, tool=tool_offset)
+        coordinates = np.array(coordinates)
+        orientation = np.array(orientation)
+        
+        if self._flags['retract'] and retract:
+            self.retractArm(coordinates)
+        
+        if len(orientation) != 3:
+            if len(orientation) == 6:
+                return self.moveJointTo(absolute_angle=orientation)
+            return False
+        return self.moveCoordTo(coordinates, orientation, tool_offset)
+    
+    def moveCoordBy(self, vector=(0,0,0), angles=(0,0,0)):
+        """
+        Relative Cartesian movement and tool orientation, using robot coordinates.
+
+        Args:
+            vector (tuple, optional): displacement vector. Defaults to (0,0,0).
+            angles (tuple, optional): rotation angles in degrees. Defaults to (0,0,0).
+        """
+        return True
+
+    def moveCoordTo(self, coordinates, orientation=(0,), tool_offset=True):
+        """
+        Absolute Cartesian movement and tool orientation, using robot coordinates.
+
+        Args:
+            coordinates (tuple): position vector
+            orientation (tuple, optional): orientation angles in degrees. Defaults to (0,).
+            tool_offset (bool, optional): whether to consider implement offset. Defaults to True.
+        """
+        return True
+
+    def moveJointBy(self, relative_angle=(0,0,0,0,0,0)):
+        """
+        Relative joint movement.
+
+        Args:
+            relative_angle (tuple, optional): rotation angles in degrees. Defaults to (0,0,0,0,0,0).
+        """
+        return True
+
+    def moveJointTo(self, absolute_angle=(0,0,0,0,0,0)):
+        """
+        Absolute joint movement.
+
+        Args:
+            absolute_angle (tuple, optional): orientation angles in degrees. Defaults to (0,0,0,0,0,0).
+        """
+        return True
+    
+    def retractArm(self, target=None):
+        """
+        Tuck in arm, rotate about base, then extend again.
+
+        Args:
+            target (tuple, optional): x,y,z coordinates of destination. Defaults to None.
+        """
+        return
+    
+    def rotateBy(self, angles):
+        """
+        Relative effector rotation.
+
+        Args:
+            angles (tuple): rotation angles in degrees
+        """
+        angles = tuple(angles)
+        angles = angles + (0,) * (3-len(angles))
+        return self.moveJointBy((0,0,0,*angles))
+
+    def rotateTo(self, orientation):
+        """
+        Absolute effector rotation.
+
+        Args:
+            orientation (tuple): orientation angles in degrees
+        """
+        return self.moveCoordTo(self.coordinates, orientation)
+    
+    def updatePosition(self, coordinates=None, orientation=None, vector=(0,0,0), angles=(0,0,0)):
         """
         Update to current position
 
         Args:
-            coord (tuple, optional): x,y,z coordinates. Defaults to (0,).
-            orientation (tuple, optional): a,b,g angles. Defaults to (0,).
+            coordinates (tuple, optional): x,y,z coordinates. Defaults to None.
+            orientation (tuple, optional): a,b,g angles. Defaults to None.
             vector (tuple, optional): x,y,z vector. Defaults to (0,0,0).
             angles (tuple, optional): a,b,g,angles. Defaults to (0,0,0).
         """
-        if len(coord) == 1:
-            new_coord = np.array(self.coordinates) + np.array(vector)
-            self.coordinates = tuple(new_coord)
+        if coordinates != None:
+            self.coordinates = coordinates
         else:
-            self.coordinates = tuple(coord)
-        
-        if len(orientation) == 1:
-            new_orientation = np.array(self.orientation) + np.array(angles)
-            self.orientation = tuple(new_orientation)
+            self.coordinates = np.array(self.coordinates) + np.array(vector)
+            
+        if orientation != None:
+            self.orientation = orientation
         else:
-            self.orientation = tuple(orientation)
+            self.orientation = np.array(self.orientation) + np.array(angles)
         
         print(f'{self.coordinates}, {self.orientation}')
         return
