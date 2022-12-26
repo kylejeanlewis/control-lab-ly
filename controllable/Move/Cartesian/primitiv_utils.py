@@ -10,57 +10,67 @@ Notes / actionables:
 import time
 
 # Local application imports
-from .cartesian_utils import Cartesian
+from .cartesian_utils import Gantry
 print(f"Import: OK <{__name__}>")
 
-class Primitiv(Cartesian):
+class Primitiv(Gantry):
     """
-    XYZ controls for Primitiv platform.
-    - port: serial port of cnc Arduino
-    - xyz_bounds: range of motion of tool
+    Primitiv platform controls
+
+    Args:
+        port (str): com port address
+        limits (list, optional): lower and upper bounds of movement. Defaults to [(0,0,0), (0,0,0)].
+        safe_height (float, optional): safe height. Defaults to None.
+        move_speed (float, optional): movement speed. Defaults to 0.
+    
+    Kwargs:
+        home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,0,0).
+        home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
+        orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
+        translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
+        implement_offset (tuple, optional): implement offset vector pointing from end of effector to tool tip. Defaults to (0,0,0).
+        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
+        verbose (bool, optional): whether to print outputs. Defaults to False.
     """
-    def __init__(self, port, xyz_bounds=[(-410,-290,-120), (0,0,0)], Z_safe=-80, **kwargs):
-        super().__init__(xyz_bounds, Z_safe, **kwargs)
+    def __init__(self, port:str, limits=[(-410,-290,-120), (0,0,0)], safe_height=-80, **kwargs):
+        super().__init__(port=port, limits=limits, safe_height=safe_height, **kwargs)
         self.selected_position = ''
-        
-        self._connect(port)
-        self.home()
         return
     
-    def _connect(self, port):
+    def _connect(self, port:str):
         """
-        Establish serial connection to cnc controller.
-        - port: serial port of cnc Arduino
+        Connect to machine control unit
 
-        Return: serial.Serial object
+        Args:
+            port (str): com port address
+            
+        Returns:
+            serial.Serial: serial connection to machine control unit if connection is successful, else None
         """
-        super()._connect(port, 115200, timeout=1)
-        mcu = self.mcu
+        device = super()._connect(port, 115200, timeout=1)
         try:
-            mcu.close()
-            mcu.open()
+            device.close()
+            device.open()
 
             # Start grbl 
-            mcu.write(bytes("\r\n\r\n", 'utf-8'))
+            device.write(bytes("\r\n\r\n", 'utf-8'))
             time.sleep(2)
-            mcu.flushInput()
+            device.flushInput()
         except Exception as e:
             if self.verbose:
                 print(e)
-        return
+        return device
     
     def home(self):
         """
         Homing cycle for Primitiv platform
         """
         try:
-            self.mcu.write(bytes("$H\n", 'utf-8'))
-            print(self.mcu.readline())
+            self.device.write(bytes("$H\n", 'utf-8'))
+            print(self.device.readline())
         except Exception as e:
             if self.verbose:
                 print(e)
         
-        self.updatePosition((0,0,0))
+        self.coordinates = (0,0,0)
         return
-
-# %%
