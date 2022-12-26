@@ -32,7 +32,7 @@ class Gantry(Mover):
         home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,0,0).
         home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
         orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
-        translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to np.zeros(3).
+        translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to (0,0,0).
         implement_offset (tuple, optional): implement offset vector pointing from end of effector to tool tip. Defaults to (0,0,0).
         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
         verbose (bool, optional): whether to print outputs. Defaults to False.
@@ -164,7 +164,7 @@ class Gantry(Mover):
         """
         return super().moveBy(vector=vector, to_safe_height=to_safe_height)
     
-    def moveTo(self, coordinates, to_safe_height=True, jump_height=None, **kwargs):
+    def moveTo(self, coordinates, to_safe_height=True, jump_height=None, tool_offset=True, **kwargs):
         """
         Move robot to specified coordinates and orientation
 
@@ -172,11 +172,12 @@ class Gantry(Mover):
             coordinates (tuple): coordinates to move to. Defaults to None.
             to_safe_height (bool, optional): whether to return to safe height first. Defaults to True.
             jump_height (int, or float): height value to jump to. Defaults to None.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
             
         Returns:
             bool: whether movement is successful
         """
-        coordinates = self._transform_vector_in(coordinates=coordinates, offset=True, tool=kwargs.get('tool_offset'))
+        coordinates = self._transform_vector_in(coordinates=coordinates, offset=True, tool=tool_offset)
         coordinates = np.array(coordinates)
         if not self.isFeasible(coordinates):
             return
