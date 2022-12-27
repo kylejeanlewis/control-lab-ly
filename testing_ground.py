@@ -19,10 +19,9 @@ import pandas as pd
 print(f"Import: OK <{__name__}>")
 
 # %% Helper examples
-from controllable.misc import Helper
+from controllable.misc import HELPER
 if __name__ == "__main__":
-    helper = Helper()
-    helper.display_ports()
+    HELPER.display_ports()
     pass
 
 # %% Cartesian examples
@@ -33,25 +32,25 @@ if __name__ == "__main__":
     pass
 
 # %% Jointed examples
-from controllable.Move.Jointed import MG400
+from controllable.Move.Jointed.Dobot import MG400
 if __name__ == "__main__":
     mover = MG400(ip_address='192.168.1.7')
     pass
 
 # %% Keithley examples
-from controllable.Measure.Electrical import Keithley
+from controllable.Measure.Electrical.Keithley import Keithley
 if __name__ == "__main__":
-    measurer = Keithley.Keithley('192.168.1.104')
+    measurer = Keithley('192.168.1.104')
     measurer.loadProgram('LSV')
     measurer.measure(volt_range=(-0.7, 0.7, 0.01))
     pass
 
 # %% BioLogic examples
-from controllable.Measure.Electrical import Biologic
+from controllable.Measure.Electrical.Biologic import Biologic
 from controllable.Measure.Electrical.Biologic.programs import base_programs
 from controllable.Analyse.Data.Types.eis_datatype import ImpedanceSpectrum
 if __name__ == "__main__":
-    measurer = Biologic.BioLogic('192.109.209.128')
+    measurer = Biologic('192.109.209.128')
     measurer.reset()
     params = {
         'voltage': 0,
@@ -130,7 +129,7 @@ if __name__ == "__main__":
 
 # %% GUI examples
 from controllable.Move.Cartesian import Ender, Primitiv
-from controllable.Move.Jointed import Dobot
+from controllable.Move.Jointed.Dobot import M1Pro
 from controllable.View import Optical, Thermal
 from controllable.Control.GUI.gui_utils import MoverPanel, CompoundPanel, ViewerPanel
 if __name__ == "__main__":
@@ -139,7 +138,7 @@ if __name__ == "__main__":
         'Thermal': (ViewerPanel, dict(viewer=Thermal('192.168.1.111'))),
         'Primitiv': (MoverPanel, dict(mover=Primitiv('COM5'), axes=['X','Y','Z'])),
         # 'Ender': (MoverPanel, dict(mover=Ender('COM4'), axes=['X','Y','Z'])),
-        # 'Dobot': (MoverPanel, dict(mover=Dobot('COM5'), axes=['X','Y','Z','a','b','g'])),
+        # 'M1Pro': (MoverPanel, dict(mover=M1Pro(), axes=['X','Y','Z','a','b','g'])),
     }
     gui = CompoundPanel(ensemble)
     gui.runGUI('Primitiv')
@@ -155,12 +154,12 @@ if __name__ == "__main__":
     pass
 
 # %% Paraspin examples (L6)
-from controllable.builds.Paraspin import program
+from controllable.builds.Paraspin import SpinbotController
 from controllable.Control.Schedule import ScanningScheduler
 if __name__ == "__main__":
     REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
     RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
-    spinbot = program.Program(config_option=0)
+    spinbot = SpinbotController(config_option=0)
     spinbot.loadRecipe(REAGENTS, RECIPE)
     spinbot.prepareSetup()
     spinbot.loadScheduler(ScanningScheduler(), rest=False)
@@ -168,12 +167,12 @@ if __name__ == "__main__":
     pass
 
 # %% Paraspin examples (B1)
-from controllable.builds.Paraspin import program
+from controllable.builds.Paraspin import SpinbotController
 from controllable.Control.Schedule import ScanningScheduler
 if __name__ == "__main__":
     REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
     RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
-    spinbot = program.Program(config_option=1)
+    spinbot = SpinbotController(config_option=1)
     # spinbot.loadRecipe(REAGENTS, RECIPE)
     # spinbot.prepareSetup()
     # spinbot.loadScheduler(ScanningScheduler(), rest=False)
@@ -181,7 +180,7 @@ if __name__ == "__main__":
     pass
 
 # %% Sartorius examples
-from controllable.Move.Liquid.Sartorius import SartoriusDevice
+from controllable.Transfer.Liquid.Sartorius import SartoriusDevice
 if __name__ == "__main__":
     pipet = SartoriusDevice('COM17')
     pass
