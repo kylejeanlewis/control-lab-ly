@@ -4,7 +4,7 @@ Created: Tue 2022/11/01 17:13:35
 @author: Chang Jie
 
 Notes / actionables:
--
+- 
 """
 # Standard library imports
 import math
@@ -127,19 +127,25 @@ class Dobot(RobotArm):
         self.disconnect()
         return
 
-    def attachmentOn(self, attach_type): ###
-        if attach_type not in attachments.ATTACHMENT_LIST:
-            raise Exception(f"Please select valid attachment from: {', '.join(attachments.ATTACHMENT_LIST)}")
-        attach_class = getattr(attachments, attach_type)
-        self.attachment = attach_class(self.dashboard)
-        self.implement_offset = self.attachment.implement_offset
-        self.home()
-        return
-    
-    def attachmentOff(self): ###
-        self.attachment = None
-        self.implement_offset = (0,0,0)
-        self.home()
+    def addAttachment(self, on:bool, attachment_class_name=''):
+        """
+        Add an attachment that interfaces with the Dobot's Digital Output (DO)
+
+        Args:
+            on (bool): whether to add attachment, False if removing attachment
+            attachment_class (str, optional): class name of attachment. Defaults to ''.
+        """
+        if on: # Add attachment
+            if attachment_class_name not in attachments.ATTACHMENT_LIST:
+                raise Exception(f"Please select valid attachment from: {', '.join(attachments.ATTACHMENT_LIST)}")
+            input("Please secure tool attachment")
+            attach_class = getattr(attachments, attachment_class_name)
+            self.attachment = attach_class(self.dashboard)
+            self.setImplementOffset(self.attachment.implement_offset)
+        else: # Remove attachment
+            input("Please remove tool attachment")
+            self.attachment = None
+            self.setImplementOffset((0,0,0))
         return
 
     def calibrate(self, external_pt1:np.ndarray, internal_pt1:np.ndarray, external_pt2:np.ndarray, internal_pt2:np.ndarray):
@@ -162,22 +168,22 @@ class Dobot(RobotArm):
         self.home()
         return
 
-    def calibrationMode(self, on, tip_length=21): ###
+    def calibrationMode(self, on:bool, tip_length=21):
         """
         Enter into calibration mode, with a sharp point implement for alignment.
 
         Args:
-            on (bool): whether to activate calibration mode
+            on (bool): whether to set to calibration mode
             tip_length (int, optional): length of sharp point alignment implement. Defaults to 21.
         """
-        if on:
+        if on: # Enter calibration mode
             tip_length = int(input(f"Please swap to calibration tip and enter tip length in mm (Default: {tip_length}mm)") or str(tip_length))
-            self.tool_offset = self.implement_offset
+            self._temporary_tool_offset = self.implement_offset
             self.setImplementOffset((0,0,-tip_length))
-        else:
+        else: # Exit calibration mode
             input("Please swap back to original tool")
-            self.setImplementOffset(self.tool_offset)
-            del self.tool_offset
+            self.setImplementOffset(self._temporary_tool_offset)
+            del self._temporary_tool_offset
         return
     
     def connect(self):
@@ -235,83 +241,103 @@ class Dobot(RobotArm):
             return False
         return True
 
-    def moveCoordBy(self, vector=(0,0,0), angles=(0,0,0)): ###
+    def moveCoordBy(self, vector=None, angles=None):
         """
         Relative Cartesian movement and tool orientation, using robot coordinates.
 
         Args:
-            vector (tuple, optional): displacement vector. Defaults to (0,0,0).
-            angles (tuple, optional): rotation angles in degrees. Defaults to (0,0,0).
+            vector (tuple, optional): x,y,z displacement vector. Defaults to None.
+            angles (tuple, optional): a,b,c rotation angles in degrees. Defaults to None.
         """
+        if vector == None:
+            vector = (0,0,0)
+        if angles == None:
+            angles = (0,0,0)
+        vector = tuple(vector)
+        angles = tuple(angles)
         try:
             self.feedback.RelMovL(*vector)
+            self.rotateBy(angles)
             time.sleep(MOVE_TIME_S)
         except (AttributeError, OSError):
             print("Not connected to arm!")
-        
-        # Rotate to orientation
-        if any(angles):
-            self.moveJointBy((0,0,0,*angles))
-
-        # Update values
+            return False
         self.updatePosition(vector=vector, angles=angles)
-        return
+        return True
 
-    def moveCoordTo(self, coordinates, orientation=(0,), tool_offset=True): ###
+    def moveCoordTo(self, coordinates=None, orientation=None):
         """
         Absolute Cartesian movement and tool orientation, using robot coordinates.
 
         Args:
-            coordinates (tuple): position vector
-            orientation (tuple, optional): orientation angles in degrees. Defaults to (0,).
+            coordinates (tuple): x,y,z position vector. Defaults to None.
+            orientation (tuple, optional): a,b,c orientation angles in degrees. Defaults to None.
             tool_offset (bool, optional): whether to consider implement offset. Defaults to True.
         """
+        if coordinates == None:
+            coordinates = self.coordinates
+        if orientation == None:
+            orientation = self.orientation
+        coordinates = tuple(coordinates)
+        orientation = tuple(orientation)
         if len(orientation) == 1 and orientation[0] == 0:
             orientation = self.orientation
-        absolute_arm_coord = coordinates # tuple(np.array(coordinates) - np.array(self.implement_offset)) if tool_offset else coordinates
-        if not self.isFeasible(absolute_arm_coord):
-            print(f"Infeasible coordinates! {absolute_arm_coord}")
+        if not self.isFeasible(coordinates):
+            print(f"Infeasible coordinates! {coordinates}")
             return
         
         try:
-            self.feedback.MovJ(*absolute_arm_coord, *orientation)
+            self.feedback.MovJ(*coordinates, *orientation)
             time.sleep(MOVE_TIME_S)
         except (AttributeError, OSError):
             print("Not connected to arm!")
-        
-        # Update values
+            return False
         self.updatePosition(coordinates=coordinates, orientation=orientation)
-        return
+        return True
 
-    def moveJointBy(self, relative_angles=(0,0,0,0,0,0)):
+    def moveJointBy(self, relative_angles):
         """
         Relative joint movement
 
         Args:
-            relative_angles (tuple, optional): rotation angles in degrees. Defaults to (0,0,0,0,0,0).
+            relative_angles (tuple): j1~j6 rotation angles in degrees
+            
+        Raises:
+            Exception: Input has to be length 6
         """
-        relative_angles = relative_angles + (0,) * (6-len(relative_angles))
+        if len(relative_angles) != 6:
+            raise Exception('Length of input needs to be 6')
+        relative_angles = tuple(relative_angles)
         try:
             self.feedback.RelMovJ(*relative_angles)
             time.sleep(MOVE_TIME_S)
         except (AttributeError, OSError):
             print("Not connected to arm!")
-        return
+            return False
+        self.updatePosition(angles=relative_angles[3:])
+        return True
 
-    def moveJointTo(self, absolute_angles=(0,0,0,0,0,0)):
+    def moveJointTo(self, absolute_angles):
         """
         Absolute joint movement
 
         Args:
-            absolute_angles (tuple, optional): orientation angles in degrees. Defaults to (0,0,0,0,0,0).
+            absolute_angles (tuple): j1~j6 orientation angles in degrees
+        
+        Raises:
+            Exception: Input has to be length 6
         """
-        absolute_angles = absolute_angles + (0,) * (6-len(absolute_angles))
+        if len(absolute_angles) != 6:
+            raise Exception('Length of input needs to be 6')
+        absolute_angles = tuple(absolute_angles)
         try:
             self.feedback.JointMovJ(*absolute_angles)
             time.sleep(MOVE_TIME_S)
         except (AttributeError, OSError):
             print("Not connected to arm!")
-        return
+            return False
+        self.updatePosition(orientation=absolute_angles[3:])
+        return True
 
     def reset(self):
         """
@@ -322,16 +348,6 @@ class Dobot(RobotArm):
             self.dashboard.EnableRobot()
         except (AttributeError, OSError):
             print("Not connected to arm!")
-        return
-
-    def setPosition(self, coordinates): ### deprecate?
-        """
-        Set robot coordinates.
-
-        Args:
-            coordinates (tuple): x,y,z workspace coordinates
-        """
-        self.coordinates = self._transform_vector_in(coordinates, offset=True, stretch=SCALE)
         return
 
     def setSpeed(self, speed):
@@ -369,22 +385,23 @@ class MG400(Dobot):
     def __init__(self, ip_address='192.168.2.8', retract=True, home_coordinates=(0,300,0), **kwargs):
         super().__init__(ip_address=ip_address, home_coordinates=home_coordinates, **kwargs)
         self.setFlag('retract', retract)
+        self.setHeight('safe', 75)
         return
     
-    def isFeasible(self, coordinates, transform=False, tool=False):
+    def isFeasible(self, coordinates, transform=False, tool_offset=False):
         """
         Checks if specified coordinates is a feasible position for robot to access.
 
         Args:
             coordinates (tuple): x,y,z coordinates
             transform (bool, optional): whether to transform the coordinates. Defaults to False.
-            tool (bool, optional): whether to consider tooltip offset. Defaults to False.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
 
         Returns:
             bool: whether coordinates is a feasible position
         """
         if transform:
-            coordinates = self._transform_vector_in(coordinates, offset=True, tool=tool)
+            coordinates = self._transform_in(coordinates=coordinates, offset=True, tool_offset=tool_offset)
         x,y,z = coordinates
         j1 = round(math.degrees(math.atan(x/(y + 1E-6))), 3)
         if y < 0:
@@ -401,23 +418,28 @@ class MG400(Dobot):
 
         Args:
             target (tuple, optional): x,y,z coordinates of destination. Defaults to None.
+        
+        Returns:
+            bool: whether movement is successful
         """
+        return_values= []
         safe_radius = 225
-        safe_height = 75
-        coordinates,_ = self.getPosition()
-        x,y,_ = coordinates
+        safe_height = self.heights.get('safe', 75)
+        x,y,_ = self.coordinates
         if any((x,y)):
             w = ( (safe_radius**2)/(x**2 + y**2) )**0.5
             x,y = (x*w,y*w)
         else:
             x,y = (0,safe_radius)
-        self.moveCoordTo((x,y,safe_height), self.orientation, tool_offset=False)
+        ret = self.moveCoordTo((x,y,safe_height), self.orientation)
+        return_values.append(ret)
 
         if target != None and len(target) == 3:
             x1,y1,_ = target
             w1 = ( (safe_radius**2)/(x1**2 + y1**2) )**0.5
-            self.moveCoordTo((x1*w1,y1*w1,75), self.orientation, tool_offset=False)
-        return
+            ret = self.moveCoordTo((x1*w1,y1*w1,75), self.orientation)
+            return_values.append(ret)
+        return all(return_values)
 
 
 class M1Pro(Dobot):
@@ -439,11 +461,9 @@ class M1Pro(Dobot):
         verbose (bool, optional): whether to print outputs. Defaults to False.
         safe_height (float, optional): safe height. Defaults to None.
     """
-    def __init__(self, ip_address='192.168.2.21', retract=False, handedness='left', home_coordinates=(0,300,100), **kwargs):
+    def __init__(self, ip_address='192.168.2.21', handedness='right', home_coordinates=(0,300,100), **kwargs):
         super().__init__(ip_address=ip_address, home_coordinates=home_coordinates, **kwargs)
-        self.handedness = ''
-        
-        self.setFlag('retract', retract)
+        self.setFlag('right_handed', None)
         self.setHandedness(handedness)
         return
     
@@ -453,23 +473,26 @@ class M1Pro(Dobot):
 
         Args:
             tool_offset (bool, optional): whether to consider the offset of the tooltip. Defaults to False.
+        
+        Returns:
+            bool: whether movement is successful
         """
         return super().home(tool_offset)
     
-    def isFeasible(self, coordinates, transform=False, tool=False):
+    def isFeasible(self, coordinates, transform=False, tool_offset=False):
         """
         Checks if specified coordinates is a feasible position for robot to access.
 
         Args:
             coordinates (tuple): x,y,z coordinates
             transform (bool, optional): whether to transform the coordinates. Defaults to False.
-            tool (bool, optional): whether to consider tooltip offset. Defaults to False.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
 
         Returns:
             bool: whether coordinates is a feasible position
         """
         if transform:
-            coordinates = self._transform_vector_in(coordinates, offset=True, tool=tool)
+            coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
         x,y,z = coordinates
         
         if not (5 < z < 245):
@@ -496,11 +519,22 @@ class M1Pro(Dobot):
             self.setHandedness(hand, stretch=True)
         return True
     
-    def moveCoordBy(self, vector, angles=(0, 0, 0)):
-        coordinates, orientation = self.getPosition()
-        new_coord = np.array(coordinates) + np.array(vector)
+    def moveCoordBy(self, vector=None, angles=None):
+        """
+        Relative Cartesian movement and tool orientation, using robot coordinates.
+
+        Args:
+            vector (tuple, optional): x,y,z displacement vector. Defaults to None.
+            angles (tuple, optional): a,b,c rotation angles in degrees. Defaults to None.
+        """
+        if vector == None:
+            vector = (0,0,0)
+        if angles == None:
+            angles = (0,0,0)
+        coordinates, orientation = self.position
+        new_coordinates = np.array(coordinates) + np.array(vector)
         new_orientation = np.array(orientation) + np.array(angles)
-        return self.moveCoordTo(tuple(new_coord), tuple(new_orientation))
+        return self.moveCoordTo(new_coordinates, new_orientation)
 
     def setHandedness(self, hand, stretch=False):
         """
@@ -514,23 +548,26 @@ class M1Pro(Dobot):
             Exception: The parameter 'hand' has to be either 'left' or 'right'
         """
         set_hand = False
+        handedness = None
+        if self._flags['right_handed'] != None:
+            handedness = 'right' if self._flags['right_handed'] else 'left'
         if hand not in ['left','l','L','right','r','R']:
             raise Exception("Please select between 'left' or 'right'")
-        if hand in ['left','l','L'] and self.handedness != 'left': #0
+        if hand in ['left','l','L'] and handedness != 'left': #0
             try:
                 self.dashboard.SetArmOrientation(0,1,1,1)
             except (AttributeError, OSError):
                 print("Not connected to arm!")
             finally:
-                self.handedness = 'left'
+                self.setFlag('right_handed', False)
                 set_hand = True
-        elif hand in ['right','r','R'] and self.handedness != 'right': #1
+        elif hand in ['right','r','R'] and handedness != 'right': #1
             try:
                 self.dashboard.SetArmOrientation(1,1,1,1)
             except (AttributeError, OSError):
                 print("Not connected to arm!")
             finally:
-                self.handedness = 'right'
+                self.setFlag('right_handed', True)
                 set_hand = True
         if set_hand and stretch:
             self.stretchArm()
@@ -539,10 +576,11 @@ class M1Pro(Dobot):
     def stretchArm(self):
         """
         Stretch arm to switch handedness
+        
+        Returns:
+            bool: whether movement is successful
         """
-        coordinates, _ = self.getPosition()
-        x,y,z = coordinates
+        _,y,z = self.coordinates
         y = 240 * math.copysign(1, y)
-        self.moveCoordTo((320,y,z))
-        return
+        return self.moveCoordTo(coordinates=(320,y,z))
     
