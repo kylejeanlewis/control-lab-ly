@@ -4,7 +4,7 @@ Created: Tue 2022/12/26 17:13:35
 @author: Chang Jie
 
 Notes / actionables:
--
+- 
 """
 # Standard library imports
 import math
@@ -63,7 +63,7 @@ class Mover(object):
     @orientation.setter
     def orientation(self, value):
         if len(value) != 3:
-            raise Exception('Please input a,b,g angles')
+            raise Exception('Please input a,b,c angles')
         self._orientation = tuple(value)
         return
        
@@ -83,7 +83,7 @@ class Mover(object):
     @home_orientation.setter
     def home_orientation(self, value):
         if len(value) != 3:
-            raise Exception('Please input a,b,g angles')
+            raise Exception('Please input a,b,c angles')
         self._home_orientation = tuple(value)
         return
     
@@ -137,39 +137,55 @@ class Mover(object):
         """
         return
     
-    def _transform_vector_in(self, coordinates, offset=False, stretch=True, tool=False):
+    def _transform_in(self, coordinates=None, vector=None, stretch=True, tool_offset=False):
         """
         Order of transformations (scale, rotate, translate).
 
         Args:
-            coordinates (tuple): vector
-            offset (bool, optional): whether to translate. Defaults to False.
+            coordinates (tuple, optional): position coordinates. Defaults to None.
+            vector (tuple, optional): vector. Defaults to None.
             stretch (bool, optional): whether to scale. Defaults to True.
-            tool (bool, optional): whether to consider tooltip offset. Defaults to False.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
 
+        Raises:
+            Exception: Only one of 'coordinates' or 'vector' can be passed
+            
         Returns:
             tuple: converted robot vector
         """
-        translate = (-1*self.translate_vector) if offset else np.zeros(3)
-        translate = translate - self.implement_offset if tool else translate
+        if coordinates == None and vector != None:
+            translate = np.zeros(3)
+        elif coordinates != None and vector == None:
+            translate = (-1*self.translate_vector)
+            translate = translate - self.implement_offset if tool_offset else translate
+        else:
+            raise Exception("Input only either 'coordinates' or 'vector'.")
         scale = (1/self.scale) if stretch else 1
         return tuple( translate + np.matmul(self.orientate_matrix.T, scale * np.array(coordinates)) )
 
-    def _transform_vector_out(self, coordinates, offset=False, stretch=True, tool=False):
+    def _transform_out(self, coordinates=None, vector=None, stretch=True, tool_offset=False):
         """
         Order of transformations (translate, rotate, scale).
 
         Args:
-            coordinates (tuple): vector
-            offset (bool, optional): whether to translate. Defaults to False.
+            coordinates (tuple, optional): position coordinates. Defaults to None.
+            vector (tuple, optional): vector. Defaults to None.
             stretch (bool, optional): whether to scale. Defaults to True.
-            tool (bool, optional): whether to consider tooltip offset. Defaults to False.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
 
+        Raises:
+            Exception: Only one of 'coordinates' or 'vector' can be passed
+            
         Returns:
             tuple: converted workspace vector
         """
-        translate = self.translate_vector if offset else np.zeros(3)
-        translate = translate + self.implement_offset if tool else translate
+        if coordinates == None and vector != None:
+            translate = np.zeros(3)
+        elif coordinates != None and vector == None:
+            translate = self.translate_vector
+            translate = translate + self.implement_offset if tool_offset else translate
+        else:
+            raise Exception("Input only either 'coordinates' or 'vector'.")
         scale = self.scale if stretch else 1
         return tuple( scale * np.matmul(self.orientate_matrix, translate + np.array(coordinates)) )
 
@@ -234,7 +250,7 @@ class Mover(object):
         Get robot coordinates and orientation.
         
         Returns:
-            tuple, tuple: x,y,z coordinates; a,b,g angles
+            tuple, tuple: x,y,z coordinates; a,b,c angles
         """
         return self.position
     
@@ -243,27 +259,27 @@ class Mover(object):
         Retrieve coordinates of tool tip/end of implement.
 
         Returns:
-            tuple, tuple: x,y,z coordinates; a,b,g angles
+            tuple, tuple: x,y,z coordinates; a,b,c angles
         """
         coordinates, orientation = self.getPosition()
-        return self._transform_vector_out(coordinates, offset=True, tool=True), orientation
+        return self._transform_out(coordinates=coordinates, tool_offset=True), orientation
     
     def getUserPosition(self):
         """
         Retrieve user-defined workspace coordinates.
 
         Returns:
-            tuple, tuple: x,y,z coordinates; a,b,g angles
+            tuple, tuple: x,y,z coordinates; a,b,c angles
         """
         coordinates, orientation = self.getPosition()
-        return self._transform_vector_out(coordinates, offset=True, tool=False), orientation
+        return self._transform_out(coordinates=coordinates, tool_offset=False), orientation
     
     def getWorkspacePosition(self):
         """
         Alias for getUserPosition
 
         Returns:
-            tuple, tuple: x,y,z coordinates; a,b,g angles
+            tuple, tuple: x,y,z coordinates; a,b,c angles
         """
         return self.getUserPosition()
    
@@ -273,12 +289,14 @@ class Mover(object):
         """
         return
     
-    def isFeasible(self, coordinates, **kwargs):
+    def isFeasible(self, coordinates, transform=False, tool_offset=False, **kwargs):
         """
         Checks if specified coordinates is a feasible position for robot to access
 
         Args:
             coordinates (tuple): x,y,z coordinates
+            transform (bool, optional): whether to transform the coordinates. Defaults to False.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
 
         Returns:
             bool: whether coordinates is a feasible position
@@ -290,7 +308,7 @@ class Mover(object):
         Move robot along axis by specified value
 
         Args:
-            axis (str): axis to move in (x,y,z,a,b,g,j1,j2,j3,j4,j5,j6)
+            axis (str): axis to move in (x,y,z,a,b,c,j1,j2,j3,j4,j5,j6)
             value (int, or float): value to move by, in mm (translation) or degree (rotation)
 
         Returns:
@@ -299,7 +317,7 @@ class Mover(object):
         axis = axis.lower()
         movement_L = {
             'x':0, 'y':0, 'z':0,
-            'a':0, 'b':0, 'g':0,
+            'a':0, 'b':0, 'c':0,
         }
         movement_J = {
             'j1':0, 'j2':0, 'j3':0,
@@ -308,7 +326,7 @@ class Mover(object):
         if axis in movement_L.keys():
             movement_L[axis] = value
             vector = (movement_L['x'], movement_L['y'], movement_L['z'])
-            angles = (movement_L['a'], movement_L['b'], movement_L['g'])
+            angles = (movement_L['a'], movement_L['b'], movement_L['c'])
             return self.moveBy(vector=vector, angles=angles, **kwargs)
         elif axis in movement_J.keys():
             movement_J[axis] = value
@@ -323,8 +341,8 @@ class Mover(object):
         Move robot by specified vector and angles
 
         Args:
-            vector (tuple, optional): vector to move in. Defaults to None.
-            angles (tuple, optional): angles to move in. Defaults to None.
+            vector (tuple, optional): x,y,z vector to move in. Defaults to None.
+            angles (tuple, optional): a,b,c angles to move in. Defaults to None.
 
         Returns:
             bool: whether movement is successful
@@ -345,8 +363,8 @@ class Mover(object):
         Move robot to specified coordinates and orientation
 
         Args:
-            coordinates (tuple, optional): coordinates to move to. Defaults to None.
-            orientation (tuple, optional): orientation to move to. Defaults to None.
+            coordinates (tuple, optional): x,y,z coordinates to move to. Defaults to None.
+            orientation (tuple, optional): a,b,c orientation to move to. Defaults to None.
             tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
 
         Returns:
@@ -356,7 +374,7 @@ class Mover(object):
             coordinates = self.getToolPosition() if tool_offset else self.getUserPosition()
         if orientation == None:
             orientation = self.orientation
-        coordinates = self._transform_vector_in(coordinates=coordinates, offset=True, tool=tool_offset)
+        coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
         coordinates = np.array(coordinates)
         orientation = np.array(orientation)
         
@@ -402,7 +420,7 @@ class Mover(object):
     
     def setImplementOffset(self, implement_offset, home=True):
         """
-        Set offset of implement.
+        Set offset of implement, then home
 
         Args:
             implement_offset (tuple): x,y,z offset of implement (i.e. vector pointing from end of effector to tooltip)
