@@ -15,7 +15,6 @@ import pandas as pd
 import pyvisa as visa # pip install -U pyvisa
 
 # Local application imports
-from .. import ElectricalMeasurer
 from .programs import base_programs
 print(f"Import: OK <{__name__}>")
 
@@ -124,7 +123,7 @@ class KeithleyDevice(object):
         return
 
 
-class Keithley(ElectricalMeasurer):
+class Keithley(object):
     """
     Keithley class.
     
