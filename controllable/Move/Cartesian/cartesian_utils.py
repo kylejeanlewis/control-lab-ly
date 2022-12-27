@@ -65,7 +65,7 @@ class Gantry(Mover):
         self._limits = ( tuple(value[0]), tuple(value[1]) )
         return
     
-    def _connect(self, port, baudrate, timeout=None):
+    def _connect(self, port:str, baudrate:int, timeout=None):
         """
         Connect to machine control unit
 
@@ -86,6 +86,7 @@ class Gantry(Mover):
             print(f"Connection opened to {port}")
         except Exception as e:
             if self.verbose:
+                print(f"Could not connect to {port}")
                 print(e)
         self.device = device
         return self.device
