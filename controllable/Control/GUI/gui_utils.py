@@ -415,9 +415,9 @@ class MoverPanel(Panel):
         typeface (str, optional): name of typeface. Defaults to TYPEFACE.
         font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
         group (str, optional): name of group. Defaults to 'mover'.
-        axes (list, optional): list of degrees of freedom/axes. Defaults to ['X','Y','Z','a','b','g'].
+        axes (list, optional): list of degrees of freedom/axes. Defaults to ['X','Y','Z','a','b','c'].
     """
-    def __init__(self, mover, name='MOVE', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group='mover', axes=['X','Y','Z','a','b','g']):
+    def __init__(self, mover, name='MOVE', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group='mover', axes=['X','Y','Z','a','b','c']):
         super().__init__(name=name, theme=theme, typeface=typeface, font_sizes=font_sizes, group=group)
         self.axes = axes
         self.buttons = {}
@@ -439,20 +439,20 @@ class MoverPanel(Panel):
         layout = super().getLayout(f'{self.name} Control', justification='center', font=font)
         
         # yaw (alpha, about z-axis), pitch (beta, about x-axis), roll (gamma, about y-axis)
-        axes = ['X','Y','Z','a','b','g']
+        axes = ['X','Y','Z','a','b','c']
         increments = ['-10','-1','-0.1',0,'+0.1','+1','+10']
         center_buttons = ['home']*2 + ['safe'] + ['zero']*3
         font = (self.typeface, self.font_sizes[title_font_level+1])
         color_codes = {
             'X':None, 'Y':None, 'Z':None,
             # 'X':'#bbbbff', 'Y':'#bbffbb', 'Z':'#ffbbbb',
-            'a':'#ffffbb', 'b':'#ffbbff', 'g':'#bbffff'
+            'a':'#ffffbb', 'b':'#ffbbff', 'c':'#bbffff'
         }
         tooltips = {
             'X':None, 'Y':None, 'Z':None,
             'a':'Rotation (in degrees) about Z-axis', 
             'b':'Rotation (in degrees) about Y-axis', 
-            'g':'Rotation (in degrees) about X-axis'
+            'c':'Rotation (in degrees) about X-axis'
         }
         labels = {axis: [] for axis in axes}
         elements = {}
@@ -468,9 +468,9 @@ class MoverPanel(Panel):
                                justification='center', pad=10, visible=(axis in self.axes))
             input_fields.append(column)
             
-            if axis in ['a','b','g']:
-                orientation = 'v' if axis=='g' else 'h'
-                size = (15,20) if axis=='g' else (36,20)
+            if axis in ['a','b','c']:
+                orientation = 'v' if axis=='c' else 'h'
+                size = (15,20) if axis=='c' else (36,20)
                 slider = sg.Slider((-180,180), 0, orientation=orientation, size=size, key=self._mangle(f'-{axis}-SLIDER-'), 
                                    resolution=1, enable_events=True, disable_number_display=True, 
                                    font=font, trough_color=bg_color, visible=(axis in self.axes),
@@ -501,7 +501,7 @@ class MoverPanel(Panel):
                             sg.Column(self.arrangeElements([elements['X'], elements['Y']], form='X'))],
                            [self._pad()],
                            [sg.Column(elements['a'], justification='right')]]), 
-                sg.Column(elements['g'])
+                sg.Column(elements['c'])
             ],
             [self._pad()],
             input_fields,
@@ -552,8 +552,8 @@ class MoverPanel(Panel):
             position = list(sum(self.mover.getWorkspacePosition(), ()))
             
         # 4. abg sliders
-        if event in [self._mangle(f'-{axis}-SLIDER-') for axis in ['a','b','g']]:
-            orientation = [float(values[self._mangle(f'-{axis}-SLIDER-')]) for axis in ['a','b','g']]
+        if event in [self._mangle(f'-{axis}-SLIDER-') for axis in ['a','b','c']]:
+            orientation = [float(values[self._mangle(f'-{axis}-SLIDER-')]) for axis in ['a','b','c']]
             self.mover.rotateTo(orientation)
             self.flags['update_position'] = True
             position = list(sum(self.mover.getWorkspacePosition(), ()))
@@ -561,7 +561,7 @@ class MoverPanel(Panel):
         # 5. Go to position
         if event == self._mangle(f'-Go-'):
             coord = [float(values[self._mangle(f'-{axis}-VALUE-')]) for axis in ['X','Y','Z']]
-            orientation = [float(values[self._mangle(f'-{axis}-VALUE-')]) for axis in ['a','b','g']]
+            orientation = [float(values[self._mangle(f'-{axis}-VALUE-')]) for axis in ['a','b','c']]
             self.mover.moveTo(coord, orientation)
             position = list(sum(self.mover.getWorkspacePosition(), ()))
         
@@ -573,9 +573,9 @@ class MoverPanel(Panel):
         # 7. Update position
         updates = {}
         if self.flags['update_position']:
-            for i,axis in enumerate(['X','Y','Z','a','b','g']):
+            for i,axis in enumerate(['X','Y','Z','a','b','c']):
                 updates[self._mangle(f'-{axis}-VALUE-')] = dict(value=position[i])
-                if axis in ['a','b','g']:
+                if axis in ['a','b','c']:
                     updates[self._mangle(f'-{axis}-SLIDER-')] = dict(value=position[i])
         self.flags['update_position'] = False
         return updates
