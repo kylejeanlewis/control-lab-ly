@@ -134,18 +134,23 @@ class Gantry(Mover):
             return False
         return True
     
-    def isFeasible(self, coordinates, **kwargs):
+    def isFeasible(self, coordinates, transform=False, tool_offset=False, **kwargs):
         """
         Checks if specified coordinates is a feasible position for robot to access
 
         Args:
             coordinates (tuple): x,y,z coordinates
+            transform (bool, optional): whether to transform the coordinates. Defaults to False.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
 
         Returns:
             bool: whether coordinates is a feasible position
         """
-        l_bound, u_bound = self.limits
+        if transform:
+            coordinates = self._transform_in(coordinates=coordinates, offset=True, tool_offset=tool_offset)
         coordinates = np.array(coordinates)
+        l_bound, u_bound = self.limits
+        
         if all(np.greater_equal(coordinates, l_bound)) and all(np.less_equal(coordinates, u_bound)):
             return True
         print(f"Range limits reached! {self.limits}")
@@ -156,7 +161,7 @@ class Gantry(Mover):
         Move robot by specified vector
 
         Args:
-            vector (tuple): vector to move in
+            vector (tuple): x,y,z vector to move in
             to_safe_height (bool, optional): whether to return to safe height first. Defaults to False.
 
         Returns:
@@ -169,7 +174,7 @@ class Gantry(Mover):
         Move robot to specified coordinates and orientation
 
         Args:
-            coordinates (tuple): coordinates to move to. Defaults to None.
+            coordinates (tuple): x,y,z coordinates to move to. Defaults to None.
             to_safe_height (bool, optional): whether to return to safe height first. Defaults to True.
             jump_height (int, or float): height value to jump to. Defaults to None.
             tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
@@ -177,7 +182,7 @@ class Gantry(Mover):
         Returns:
             bool: whether movement is successful
         """
-        coordinates = self._transform_vector_in(coordinates=coordinates, offset=True, tool=tool_offset)
+        coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
         coordinates = np.array(coordinates)
         if not self.isFeasible(coordinates):
             return
