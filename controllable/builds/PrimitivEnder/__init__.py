@@ -1,2 +1,2 @@
-from .routines import Setup
-from .program import Program
+from .routines import PrimitivSetup
+from .program import PrimitivController

@@ -1,1 +1,1 @@
-from .sartorius_utils import Sartorius, SartoriusDevice
+from .sartorius_utils import Sartorius
