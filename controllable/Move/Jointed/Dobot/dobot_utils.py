@@ -127,27 +127,6 @@ class Dobot(RobotArm):
         self.disconnect()
         return
 
-    def addAttachment(self, on:bool, attachment_class_name=''):
-        """
-        Add an attachment that interfaces with the Dobot's Digital Output (DO)
-
-        Args:
-            on (bool): whether to add attachment, False if removing attachment
-            attachment_class (str, optional): class name of attachment. Defaults to ''.
-        """
-        if on: # Add attachment
-            if attachment_class_name not in attachments.ATTACHMENT_LIST:
-                raise Exception(f"Please select valid attachment from: {', '.join(attachments.ATTACHMENT_LIST)}")
-            input("Please secure tool attachment")
-            attach_class = getattr(attachments, attachment_class_name)
-            self.attachment = attach_class(self.dashboard)
-            self.setImplementOffset(self.attachment.implement_offset)
-        else: # Remove attachment
-            input("Please remove tool attachment")
-            self.attachment = None
-            self.setImplementOffset((0,0,0))
-        return
-
     def calibrate(self, external_pt1:np.ndarray, internal_pt1:np.ndarray, external_pt2:np.ndarray, internal_pt2:np.ndarray):
         """
         Calibrate internal and external coordinate systems, then verify points.
@@ -166,24 +145,6 @@ class Dobot(RobotArm):
             self.moveTo( pt + np.array([0,0,10]) )
             input("Press Enter to verify reference point")
         self.home()
-        return
-
-    def calibrationMode(self, on:bool, tip_length=21):
-        """
-        Enter into calibration mode, with a sharp point implement for alignment.
-
-        Args:
-            on (bool): whether to set to calibration mode
-            tip_length (int, optional): length of sharp point alignment implement. Defaults to 21.
-        """
-        if on: # Enter calibration mode
-            tip_length = int(input(f"Please swap to calibration tip and enter tip length in mm (Default: {tip_length}mm)") or str(tip_length))
-            self._temporary_tool_offset = self.implement_offset
-            self.setImplementOffset((0,0,-tip_length))
-        else: # Exit calibration mode
-            input("Please swap back to original tool")
-            self.setImplementOffset(self._temporary_tool_offset)
-            del self._temporary_tool_offset
         return
     
     def connect(self):
@@ -361,6 +322,45 @@ class Dobot(RobotArm):
             self.dashboard.SpeedFactor(speed)
         except (AttributeError, OSError):
             print("Not connected to arm!")
+        return
+    
+    def toggleAttachment(self, on:bool, attachment_class_name=''):
+        """
+        Add an attachment that interfaces with the Dobot's Digital Output (DO)
+
+        Args:
+            on (bool): whether to add attachment, False if removing attachment
+            attachment_class (str, optional): class name of attachment. Defaults to ''.
+        """
+        if on: # Add attachment
+            if attachment_class_name not in attachments.ATTACHMENT_LIST:
+                raise Exception(f"Please select valid attachment from: {', '.join(attachments.ATTACHMENT_LIST)}")
+            input("Please secure tool attachment")
+            attach_class = getattr(attachments, attachment_class_name)
+            self.attachment = attach_class(self.dashboard)
+            self.setImplementOffset(self.attachment.implement_offset)
+        else: # Remove attachment
+            input("Please remove tool attachment")
+            self.attachment = None
+            self.setImplementOffset((0,0,0))
+        return
+    
+    def toggleCalibration(self, on:bool, tip_length=21):
+        """
+        Enter into calibration mode, with a sharp point implement for alignment.
+
+        Args:
+            on (bool): whether to set to calibration mode
+            tip_length (int, optional): length of sharp point alignment implement. Defaults to 21.
+        """
+        if on: # Enter calibration mode
+            tip_length = int(input(f"Please swap to calibration tip and enter tip length in mm (Default: {tip_length}mm)") or str(tip_length))
+            self._temporary_tool_offset = self.implement_offset
+            self.setImplementOffset((0,0,-tip_length))
+        else: # Exit calibration mode
+            input("Please swap back to original tool")
+            self.setImplementOffset(self._temporary_tool_offset)
+            del self._temporary_tool_offset
         return
 
 
