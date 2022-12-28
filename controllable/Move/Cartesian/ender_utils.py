@@ -33,17 +33,22 @@ class Ender(Gantry):
         super().__init__(port=port, limits=limits, safe_height=safe_height, **kwargs)
         return
     
-    def _connect(self, port:str):
+    def _connect(self, port:str, baudrate=115200, timeout=None):
         """
         Connect to machine control unit
 
         Args:
             port (str): com port address
+            baudrate (int): baudrate. Defaults to 115200.
+            timeout (int, optional): timeout in seconds. Defaults to None.
             
         Returns:
             serial.Serial: serial connection to machine control unit if connection is successful, else None
         """
-        return super()._connect(port, 115200)
+        self.port = port
+        self._baudrate = baudrate
+        self._timeout = timeout
+        return super()._connect(self.port, self._baudrate, self._timeout)
 
     def heat(self, bed_temperature):
         """
