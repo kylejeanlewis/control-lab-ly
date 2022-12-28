@@ -205,7 +205,7 @@ class Image(object):
             return
         return Image(frame)
     
-    def rotate(self, angle, inplace=False):
+    def rotate(self, angle:int, inplace=False):
         """
         Rotate a 2D array of multiples of 90 degrees, clockwise
 
@@ -222,7 +222,8 @@ class Image(object):
             270: cv2.ROTATE_90_COUNTERCLOCKWISE
         }
         frame = self.frame
-        frame = cv2.rotate(frame, rotateCodes.get(angle))
+        if angle != 0:
+            frame = cv2.rotate(frame, rotateCodes.get(angle))
         if inplace:
             self.frame = frame
             return
