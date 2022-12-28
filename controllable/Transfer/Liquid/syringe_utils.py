@@ -15,7 +15,8 @@ import time
 import serial # pip install pyserial
 
 # Local application imports
-from . import LiquidHandler
+from ...misc import HELPER
+from .liquid_utils import LiquidHandler
 print(f"Import: OK <{__name__}>")
 
 CALIB_ASPIRATE = 27
@@ -25,131 +26,284 @@ PULLBACK_TIME = 2
 WETTING_CYCLES = 1
 
 class Pump(object):
-    def __init__(self, port, verbose=False):
-        self.mcu = None
+    """
+    Pump object
+
+    Args:
+        port (str): com port address
+        verbose (bool, optional): whether to print output. Defaults to False.
+    """
+    def __init__(self, port:str, verbose=False):
+        self.device = None
         self._flags = {
             'busy': False
         }
         
         self.verbose = verbose
-        self._port = None
+        self.port = ''
         self._baudrate = None
         self._timeout = None
-        
         self._connect(port)
-        pass
+        return
     
-    def _connect(self, port):
-        self._port = port
+    def _connect(self, port:str):
+        """
+        Connect to machine control unit
+
+        Args:
+            port (str): com port address
+            
+        Returns:
+            serial.Serial: serial connection to machine control unit if connection is successful, else None
+        """
+        self.port = port
         self._baudrate = 9600
         self._timeout = 1
-        mcu = None
+        device = None
         try:
-            mcu = serial.Serial(port, 9600, timeout=1)
+            device = serial.Serial(port, self._baudrate, timeout=self._timeout)
             time.sleep(2)   # Wait for grbl to initialize
-            mcu.flushInput()
+            device.flushInput()
             print(f"Connection opened to {port}")
         except Exception as e:
             if self.verbose:
                 print(f"Could not connect to {port}")
                 print(e)
-        self.mcu = mcu
-        return
+        self.device = device
+        return self.device
     
-    def _run_pump(self, speed):
+    def _run_pump(self, speed:int):
         """
-        Relay instructions to pump.
-        - mcu: serial connection to pump
-        - speed: speed of pump of rotation
+        Relay instructions to pump
+        
+        Args:
+            speed (int): speed of pump of rotation
         """
         try:
-            self.mcu.write(bytes("{}\n".format(speed), 'utf-8'))
+            self.device.write(bytes("{}\n".format(speed), 'utf-8'))
         except AttributeError:
             pass
+        return
         
-    def _run_solenoid(self, state):
+    def _run_solenoid(self, state:int):
         """
         Relay instructions to valve.
-        - mcu: serial connection to pump
-        - state: valve channel
-            - -1 to -8   : open specific valve
-            - 1 to 8     : close specific valve
-            - 9          : close all valves
+        
+        Args:
+            state (int): open or close valve channel (-1~-8 open valve; 1~8 close valve; 9 close all valves)
         """
         try:
-            self.mcu.write(bytes("{}\n".format(state), 'utf-8'))
+            self.device.write(bytes("{}\n".format(state), 'utf-8'))
         except AttributeError:
             pass
+        return
+    
+    def isBusy(self):
+        """
+        Checks whether the pump is busy
         
-    def dispense(self, pump_speed, pullback_time, drop_time, channel):
+        Returns:
+            bool: whether the pump is busy
         """
-        Dispense (aspirate) liquid from (into) syringe.
-        - mcu: serial connection to pump
-        - pump_speed: speed of pump of rotation
-            - <0    : aspirate
-            - >0    : dispense
-        - pullback_time: time to pullback the peristaltic pump
-        - drop_time: time to achieve desired volume
-        - channel: valve channel
+        return self._flags['busy']
+    
+    def isConnected(self):
         """
-        run_time = pullback_time + drop_time
+        Check whether machine control unit is connected
+
+        Returns:
+            bool: whether machine control unit is connected
+        """
+        if self.device == None:
+            print(f"{self.__class__} ({self.port}) not connected.")
+            return False
+        return True
+
+    def push(self, speed:int, push_time, pullback_time, channel:int):
+        """
+        Dispense (aspirate) liquid from (into) syringe
+        
+        Args:
+            speed (int): speed of pump of rotation (<0 aspirate; >0 dispense)
+            push_time (int, or float): time to achieve desired volume
+            pullback_time (int, or float): time to pullback the peristaltic pump
+            channel (int): valve channel
+        """
+        run_time = pullback_time + push_time
         interval = 0.1
         
-        starttime = time.time()
+        start_time = time.time()
         self._run_solenoid(-channel) # open channel
-        self._run_pump(pump_speed)
+        self._run_pump(speed)
         
         while(True):
             time.sleep(0.001)
-            if (interval <= time.time() - starttime):
-                # self.printer(run_time - interval)
+            if (interval <= time.time() - start_time):
                 interval += 0.1
-            if (run_time <= time.time() - starttime):
-                # self.printer(time.time() - starttime)
+            if (run_time <= time.time() - start_time):
                 break
         
-        starttime = time.time()
-        interval = 0.1
-        self._run_solenoid(-channel)
-        self._run_pump(-abs(pump_speed))
+        start_time = time.time()
+        self._run_solenoid(-channel) # open channel
+        self._run_pump(-abs(speed))
 
         while(True):
             time.sleep(0.001)
-            if (interval <= time.time() - starttime):
-                # self.printer(pullback_time - interval)
+            if (interval <= time.time() - start_time):
                 interval += 0.1
-            if (pullback_time <= time.time() - starttime):
-                # self.printer(time.time() - starttime)
+            if (pullback_time <= time.time() - start_time):
                 self._run_pump(10)
                 self._run_solenoid(channel) # close channel
                 break
         return
     
-    def isBusy(self):
-        return self._flags['busy']
-    
-    def isConnected(self):
-        if self.mcu == None:
-            print(f"{self.__class__} ({self._port}) not connected.")
-            return False
-        return True
-        
+    def setFlag(self, name:str, value:bool):
+        """
+        Set a flag truth value
 
-class Syringe(object):
-    def __init__(self, capacity, channel, offset=(0,0,0), pullback_time=PULLBACK_TIME):
+        Args:
+            name (str): label
+            value (bool): flag value
+        """
+        self._flags[name] = value
+        return
+
+
+class Syringe(LiquidHandler):
+    """
+    Syringe class
+
+    Args:
+        capacity (int, or float): capacity of syringe
+        channel (int): channel index
+        offset (tuple, optional): coordinates offset. Defaults to None.
+        pullback_time (int, optional): duration of pullback. Defaults to PULLBACK_TIME.
+    """
+    def __init__(self, capacity, channel, offset=None, pullback_time=PULLBACK_TIME, **kwargs):
+        super().__init__(**kwargs)
         self.capacity = capacity
         self.channel = channel
+        if offset is None:
+            offset = (0,0,0)
         self.offset = tuple(offset)
         
-        self.prev_action = ''
-        self.reagent = ''
-        self.volume = 0
-        
+        self._previous_action = 'first'
         self._pullback_time = pullback_time
+        self._speed_in = DEFAULT_SPEED
+        self._speed_out = DEFAULT_SPEED
         pass
     
-    def update(self, field, value):
-        attrs = ['prev_action', 'reagent', 'volume']
+    def aspirate(self, volume, speed=None, wait=0, reagent='', pause=False, pump:Pump=None):
+        """
+        Aspirate desired volume of reagent into channel
+
+        Args:
+            volume (int, or float): volume to be aspirated
+            speed (int, optional): speed to aspirate. Defaults to None.
+            wait (int, optional): wait time between steps in seconds. Defaults to 0.
+            reagent (str, optional): name of reagent. Defaults to ''.
+            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
+            pump (Pump, optional): pump object. Defaults to None.
+        """
+        if pump is None:
+            return
+        if speed is None:
+            speed = self.speed['in']
+        pump.setFlag('busy', True)
+        volume = min(volume, self.capacity - self.volume)
+
+        if volume != 0:
+            speed = -abs(speed)
+            t_aspirate = (volume / speed) * CALIB_ASPIRATE
+            if self._previous_action == 'first':
+                t_aspirate *= 1.3
+            elif self._previous_action == 'aspirate':
+                t_aspirate *= 1
+            elif self._previous_action == 'dispense':
+                t_aspirate *= 1.6
+            print(t_aspirate)
+            t_pullback = (50 / speed) * CALIB_ASPIRATE
+            pump.push(speed=speed, push_time=t_aspirate, pullback_time=t_pullback, channel=self.channel)
+            
+            # Update values
+            self._previous_action = 'aspirate'
+            self.reagent = reagent
+            self.volume += volume
+        
+        time.sleep(wait)
+        pump.setFlag('busy', False)
+        if pause:
+            input("Press 'Enter to proceed.")
+        return
+    
+    def dispense(self, volume, speed=None, wait=0, force_dispense=False, pause=False, pump:Pump=None):
+        """
+        Aspirate desired volume of reagent into channel
+
+        Args:
+            volume (int, or float): volume to be dispensed
+            speed (int, optional): speed to dispense. Defaults to None.
+            wait (int, optional): wait time between steps in seconds. Defaults to 0.
+            force_dispense (bool, optional): whether to continue dispensing even if insufficient volume in channel. Defaults to False.
+            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
+            pump (Pump, optional): pump object. Defaults to None.
+        """
+        if pump is None:
+            return
+        if speed is None:
+            speed = self.speed['out']
+        pump.setFlag('busy', True)
+        if force_dispense:
+            volume = min(volume, self.volume)
+        elif volume > self.volume:
+            pass
+        
+        if force_dispense or volume <= self.volume:
+            speed = abs(speed)
+            t_dispense = (volume / speed) * CALIB_DISPENSE
+            if self._previous_action == 'first':
+                t_dispense *= 1
+            elif self._previous_action == 'aspirate':
+                t_dispense *= 1.55
+            elif self._previous_action == 'dispense':
+                t_dispense *= 1
+            print(t_dispense)
+            t_pullback = (50 / speed) * CALIB_DISPENSE
+            pump.push(speed=speed, push_time=t_dispense, pullback_time=t_pullback, channel=self.channel)
+            
+            # Update values
+            self._previous_action = 'dispense'
+            self.volume = max(self.volume - volume, 0)
+        
+        time.sleep(wait)
+        pump.setFlag('busy', False)
+        if pause:
+            input("Press 'Enter to proceed.")
+        return
+    
+    def pullback(self, pump:Pump=None):
+        """
+        Pullback liquid from tip
+
+        Args:
+            pump (Pump, optional): pump object. Defaults to None.
+        """
+        if pump is None:
+            return
+        pump.setFlag('busy', True)
+        pump.push(speed=-300, push_time=0, pullback_time=self._pullback_time, channel=self.channel)
+        pump.setFlag('busy', False)
+        return
+    
+    def update(self, field:str, value):
+        """
+        Update the desired attribute
+
+        Args:
+            field (str): name of attribute
+            value (any): new value of attribute
+        """
+        attrs = ['reagent', 'volume', '_previous_action']
         if field not in attrs:
             print(f"Select a field from: {', '.join(attrs)}")
         else:
@@ -159,195 +313,184 @@ class Syringe(object):
 
 class SyringeAssembly(LiquidHandler):
     """
-    'SyringeAssembly' class contain methods to control the pump and the valve unit.
+    SyringeAssembly consisting of a pump and syringe(s)
+
+    Args:
+        port (str): com port address
+        capacities (list, optional): list of syringe capacities. Defaults to [].
+        channels (list, optional): list of syringe channels. Defaults to [].
+        offsets (list, optional): list of syringe offsets. Defaults to [].
     """
-    def __init__(self, port, capacities=[], channels=[], offsets=[], **kwargs):
+    def __init__(self, port:str, capacities=[], channels=[], offsets=[], **kwargs):
         super().__init__(**kwargs)
-        self._checkInputs(capacities=capacities, channels=channels, offsets=offsets)
         self.pump = Pump(port)
-        properties = list(zip(capacities, channels, offsets))
-        self.channels = {chn: Syringe(cap, chn, off) for cap,chn,off in properties}
+        properties = HELPER.zip_inputs('channel', capacity=capacities, channel=channels, offset=offsets)
+        self.channels = {key: Syringe(**value) for key,value in properties}
         return
     
-    def _checkInputs(self, **kwargs):
-        keys = list(kwargs.keys())
-        if any(len(kwargs[key]) != len(kwargs[keys[0]]) for key in keys):
-            raise Exception(f"Ensure the lengths of these inputs are the same: {', '.join(keys)}")
-        return
-    
-    def aspirate(self, channel, reagent, vol, speed=0, wait=1, pause=False):
-        '''
-        Adjust the valve and aspirate reagent
-        - vol: volume
-        - speed: speed of pump rotation
+    def aspirate(self, volume, speed=None, wait=0, reagent='', pause=False, channel=None):
+        """
+        Aspirate desired volume of reagent into channel
 
-        Returns: None
-        '''
-        self.pump._flags['busy'] = True
-        syringe = self.channels[channel]
-        vol = min(vol, syringe.capacity - syringe.volume)
-        speed = speed if speed else DEFAULT_SPEED
-
-        if vol != 0:
-            t_aspirate = vol / speed * CALIB_ASPIRATE
-            if syringe.prev_action == '':
-                t_aspirate *= 1.3
-            elif syringe.prev_action == 'aspirate':
-                t_aspirate *= 1
-            elif syringe.prev_action == 'dispense':
-                t_aspirate *= 1.6
-            print(t_aspirate)
-            
-            t_pullback = 50 / speed * CALIB_ASPIRATE
-            pump_speed = -abs(speed)
-            # log_now(f'Syringe {self.order}: aspirate {vol}uL {self.reagent}...', save=log)
-            self.pump.dispense(pump_speed, t_pullback, t_aspirate, channel)
-            
-            syringe.prev_action = 'aspirate'
-            syringe.reagent = reagent
-            syringe.volume += vol
+        Args:
+            volume (int, or float): volume to be aspirated
+            speed (int, optional): speed to aspirate. Defaults to None.
+            wait (int, optional): wait time between steps in seconds. Defaults to 0.
+            reagent (str, optional): name of reagent. Defaults to ''.
+            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
+            channel (int, optional): channel to aspirate. Defaults to None.
         
-        time.sleep(wait)
-        # log_now(f'Syringe {self.order}: done', save=log)
-        if pause:
-            input("Press 'Enter to proceed.")
-        self.pump._flags['busy'] = False
-        return
+        Raises:
+            Exception: Select a valid key
+        """
+        if channel not in self.channels.keys():
+            raise Exception(f"Select a valid key from: {', '.join(self.channels.keys())}")
+        return self.channels[channel].aspirate(volume=volume, speed=speed, wait=wait, reagent=reagent, pause=pause, pump=self.pump)
 
-    def calibrate(self, *args, **kwargs):
-        return super().calibrate(*args, **kwargs)
+    def dispense(self, volume, speed=None, wait=0, force_dispense=False, pause=False, channel=None):
+        """
+        Aspirate desired volume of reagent into channel
 
-    def cycle(self, channel, reagent, vol, speed=0, wait=1):
-        speed = speed if speed else DEFAULT_SPEED
-        return super().cycle(channel, reagent, vol, speed, wait)
-
-    def dispense(self, channel, vol, speed=0, wait=1, pause=False, force_dispense=False):
-        '''
-        Adjust the valve and dispense reagent
-        - vol: volume
-        - speed: speed of pump rotation
-        - force_dispense: continue with dispense even if insufficient volume in syringe
-
-        Returns: None
-        '''
-        self.pump._flags['busy'] = True
-        syringe = self.channels[channel]
-        if force_dispense:
-            vol = min(vol, syringe.volume)
-        elif vol > syringe.volume:
-            # log_now(f'Syringe {self.order}: Current volume too low for required dispense', save=log)
-            pass
-        speed = speed if speed else DEFAULT_SPEED
+        Args:
+            volume (int, or float): volume to be dispensed
+            speed (int, optional): speed to dispense. Defaults to None.
+            wait (int, optional): wait time between steps in seconds. Defaults to 0.
+            force_dispense (bool, optional): whether to continue dispensing even if insufficient volume in channel. Defaults to False.
+            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
+            channel (int, optional): channel to dispense. Defaults to None.
         
-        if force_dispense or vol < syringe.volume:
-            t_dispense = vol / speed * CALIB_DISPENSE
-            if syringe.prev_action == '':
-                t_dispense *= 1
-            elif syringe.prev_action == 'aspirate':
-                t_dispense *= 1.55
-            elif syringe.prev_action == 'dispense':
-                t_dispense *= 1
-            print(t_dispense)
-            
-            t_pullback = 50 / speed * CALIB_DISPENSE
-            pump_speed = abs(speed)
-            # log_now(f'Syringe {self.order}: dispense {vol}uL {self.reagent}...', save=log)
-            self.pump.dispense(pump_speed, t_pullback, t_dispense, channel)
-            
-            syringe.prev_action = 'dispense'
-            syringe.volume -= vol
-            if syringe.volume <= 0:
-                syringe.reagent = ''
-                syringe.volume = 0
+        Raises:
+            Exception: Select a valid key
+        """
+        if channel not in self.channels.keys():
+            raise Exception(f"Select a valid key from: {', '.join(self.channels.keys())}")
+        return self.channels[channel].dispense(volume=volume, speed=speed, wait=wait, force_dispense=force_dispense, pause=pause, pump=self.pump)
+ 
+    def emptyMany(self, speed=None, wait=0, pause=False, channels:list=[]):
+        """
+        Empty multiple channels
+
+        Args:
+            speed (int, optional): speed to empty. Defaults to None.
+            wait (int, optional): wait time between steps in seconds. Defaults to 0.
+            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
+            channel (list, optional): channel to empty. Defaults to None.
         
-        time.sleep(wait)
-        # log_now(f'Syringe {self.order}: done', save=log)
-        if pause:
-            input("Press 'Enter to proceed.")
-        self.pump._flags['busy'] = False
-        return
-
-    def empty(self, channel, wait=1, pause=False):
-        '''
-        Adjust the valve and empty syringe
-
-        Returns: None
-        '''
-        syringe = self.channels[channel]
-        self.dispense(channel, syringe.capacity, wait=wait, pause=pause, force_dispense=True)
-        return
-    
-    def emptyAll(self, channels=[], wait=1, pause=False):
-        if len(channels) == 0:
+        Returns:
+            dict: dictionary of (channel, return value)
+        """
+        if len(channels) == 0: # all channels instead
             channels = list(self.channels.keys())
-        for channel in channels:
-            self.empty(channel, wait, pause)
-        return
+        
+        return_values = {}
+        kwargs = HELPER.zip_inputs('channel', speed=speed, wait=wait, pause=pause, channel=channels)
+        for key,kwarg in kwargs.items():
+            value = super().empty(**kwarg)
+            return_values[key] = value
+        return return_values
 
-    def fill(self, channel, reagent, prewet=True, wait=1, pause=False):
-        '''
-        Adjust the valve and fill syringe with reagent
-        - reagent: reagent to be filled in syringe
-        - vol: volume
+    def fillMany(self, speed=None, wait=0, reagents=[''], pause=False, pre_wet=True, channels=[]):
+        """
+        Fill multiple channels
 
-        Returns: None
-        '''
-        syringe = self.channels[channel]
-        vol = syringe.capacity - syringe.volume
-
-        if prewet:
-            # log_now(f'Syringe {self.order}: pre-wet syringe...')
-            for c in range(WETTING_CYCLES):
-                if c == 0:
-                    self.cycle(channel, reagent, vol=vol*1.1, wait=2)
-                else:
-                    self.cycle(channel, reagent,  vol=200)
-            # log_now(f'Syringe {self.order}: done')
-
-        self.aspirate(channel, reagent, vol, wait=wait, pause=pause)
-        return
-    
-    def fillAll(self, channels=[], reagents=[], prewet=True, wait=1, pause=False):
-        if len(channels) == 0:
+        Args:
+            speed (int, optional): speed to fill. Defaults to None.
+            wait (int, optional): wait time between steps in seconds. Defaults to 0.
+            reagents (list, optional): name of reagent. Defaults to [''].
+            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
+            pre_wet (bool, optional): whether to pre-wet the channel. Defaults to True.
+            channels (list, optional): channel to fill. Defaults to [].
+        
+        Returns:
+            dict: dictionary of (channel, return value)
+        """
+        if len(channels) == 0: # all channels instead
             channels = list(self.channels.keys())
-        self._checkInputs(channels=channels, reagents=reagents)
-        for channel,reagent in zip(channels, reagents):
-            self.fill(channel, reagent, prewet, wait, pause)
-        return
-    
+        
+        return_values = {}
+        kwargs = HELPER.zip_inputs('channel', speed=speed, wait=wait, reagent=reagents, pause=pause, pre_wet=pre_wet, channel=channels)
+        for key,kwarg in kwargs.items():
+            value = super().fill(**kwarg)
+            return_values[key] = value
+        return return_values
+
     def isBusy(self):
+        """
+        Checks whether the pump is busy
+        
+        Returns:
+            bool: whether the pump is busy
+        """
         return self.pump.isBusy()
     
     def isConnected(self):
+        """
+        Check whether machine control unit is connected
+
+        Returns:
+            bool: whether machine control unit is connected
+        """
         return self.pump.isConnected()
 
-    def pullback(self, channel):
-        syringe = self.channels[channel]
-        self.pump._flags['busy'] = True
-        self.pump.dispense(-300, syringe._pullback_time, 0, channel)
-        self.pump._flags['busy'] = False
-        return
+    def pullback(self, channel=None):
+        """
+        Pullback liquid from tip
+
+        Args:
+            channel (int, optional): channel to pullback. Defaults to None.
+        
+        Raises:
+            Exception: Select a valid key
+        """
+        if channel not in self.channels.keys():
+            raise Exception(f"Select a valid key from: {', '.join(self.channels.keys())}")
+        return self.channels[channel].pullback(pump=self.pump)
     
-    def pullbackAll(self, channels=[]):
-        if len(channels) == 0:
+    def pullbackMany(self, channels:list=[]):
+        """
+        Pullback liquid from tip for multiple channels
+
+        Args:
+            channel (int, optional): channel to pullback
+        """
+        if len(channels) == 0: # all channels instead
             channels = list(self.channels.keys())
         for channel in channels:
             self.pullback(channel)
         return
     
-    def rinse(self, channel, reagent, rinse_cycles=3):
-        # log_now(f'Syringe {self.order}: rinsing syringe...')
-        for _ in range(rinse_cycles):
-            self.cycle(channel, reagent, vol=2000)
-        # log_now(f'Syringe {self.order}: done')
-        return
-    
-    def rinseAll(self, channels=[], reagents=[], rinse_cycles=3):
-        if len(channels) == 0:
+    def rinseMany(self, volume, speed=None, wait=0, reagent='', cycles=3, channels:list=[]):
+        """
+        Rinse multiple channels
+
+        Args:
+            volume (int, or float): volume to be rinsed
+            speed (int, optional): speed to cycle. Defaults to None.
+            wait (int, optional): wait time between steps in seconds. Defaults to 0.
+            reagent (str, optional): name of reagent. Defaults to ''.
+            cycles (int, optional): number of cycles to perform. Defaults to 3.
+            channels (list, optional): channel to cycle. Defaults to [].
+
+        Returns:
+            dict: dictionary of (channel, return value)
+        """
+        if len(channels) == 0: # all channels instead
             channels = list(self.channels.keys())
-        for channel,reagent in zip(channels, reagents):
-            self.rinse(channel, reagent, rinse_cycles)
-        return
+        
+        return_values = {}
+        kwargs = HELPER.zip_inputs('channel', volume=volume, speed=speed, wait=wait, reagent=reagent, cycles=cycles, channel=channels)
+        for key,kwarg in kwargs.items():
+            value = super().rinse(**kwarg)
+            return_values[key] = value
+        return return_values
     
-    def update(self, channel, field, value):
+    def update(self, field, value, channel):
+        """
+        Update the desired channel attribute
+
+        Args:
+            field (str): name of attribute
+            value (any): new value of attribute
+            channel (int): channel to update
+        """
         return self.channels[channel].update(field, value)
