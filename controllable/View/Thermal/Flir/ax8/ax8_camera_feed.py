@@ -6,12 +6,9 @@ Created on Tue Aug 17 11:11:50 2021
 
 @author: Sharath
 """
-import cv2
+import cv2 # pip install opencv-python
+from imutils.video import VideoStream # pip install imutils
 import threading
-try:
-    from imutils.video import VideoStream
-except:
-    pass
 
 class Ax8CameraFeed:
     def __init__(self, ip_address:str, encoding:str = 'avc', overlay:bool = False):
