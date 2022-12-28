@@ -19,11 +19,12 @@ from ...misc import HELPER
 from .liquid_utils import LiquidHandler
 print(f"Import: OK <{__name__}>")
 
-CALIB_ASPIRATE = 27
-CALIB_DISPENSE = 23.5
+CALIBRATION = {
+    'aspirate': 27,
+    'dispense': 23.5
+}
 DEFAULT_SPEED = 3000
 PULLBACK_TIME = 2
-WETTING_CYCLES = 1
 
 class Pump(object):
     """
@@ -228,7 +229,7 @@ class Syringe(LiquidHandler):
 
         if volume != 0:
             speed = -abs(speed)
-            t_aspirate = (volume / speed) * CALIB_ASPIRATE
+            t_aspirate = (volume / speed) * CALIBRATION['aspirate']
             if self._previous_action == 'first':
                 t_aspirate *= 1.3
             elif self._previous_action == 'aspirate':
@@ -236,13 +237,15 @@ class Syringe(LiquidHandler):
             elif self._previous_action == 'dispense':
                 t_aspirate *= 1.6
             print(t_aspirate)
-            t_pullback = (50 / speed) * CALIB_ASPIRATE
+            t_pullback = (50 / speed) * CALIBRATION['aspirate']
+            print(f'Aspirate {volume} uL')
             pump.push(speed=speed, push_time=t_aspirate, pullback_time=t_pullback, channel=self.channel)
             
             # Update values
             self._previous_action = 'aspirate'
-            self.reagent = reagent
             self.volume += volume
+            if len(reagent) and len(self.reagent) == 0:
+                self.reagent = reagent
         
         time.sleep(wait)
         pump.setFlag('busy', False)
@@ -261,6 +264,9 @@ class Syringe(LiquidHandler):
             force_dispense (bool, optional): whether to continue dispensing even if insufficient volume in channel. Defaults to False.
             pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
             pump (Pump, optional): pump object. Defaults to None.
+            
+        Raises:
+            Exception: Required dispense volume is greater than volume in tip
         """
         if pump is None:
             return
@@ -270,11 +276,11 @@ class Syringe(LiquidHandler):
         if force_dispense:
             volume = min(volume, self.volume)
         elif volume > self.volume:
-            pass
+            raise Exception('Required dispense volume is greater than volume in tip')
         
         if force_dispense or volume <= self.volume:
             speed = abs(speed)
-            t_dispense = (volume / speed) * CALIB_DISPENSE
+            t_dispense = (volume / speed) * CALIBRATION['dispense']
             if self._previous_action == 'first':
                 t_dispense *= 1
             elif self._previous_action == 'aspirate':
@@ -282,7 +288,7 @@ class Syringe(LiquidHandler):
             elif self._previous_action == 'dispense':
                 t_dispense *= 1
             print(t_dispense)
-            t_pullback = (50 / speed) * CALIB_DISPENSE
+            t_pullback = (50 / speed) * CALIBRATION['dispense']
             pump.push(speed=speed, push_time=t_dispense, pullback_time=t_pullback, channel=self.channel)
             
             # Update values
@@ -451,10 +457,10 @@ class SyringeAssembly(LiquidHandler):
     
     def isConnected(self):
         """
-        Check whether machine control unit is connected
+        Check whether pump is connected
 
         Returns:
-            bool: whether machine control unit is connected
+            bool: whether pump is connected
         """
         return self.pump.isConnected()
 
