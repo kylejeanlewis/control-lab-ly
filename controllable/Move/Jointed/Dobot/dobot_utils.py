@@ -91,13 +91,13 @@ class Dobot(RobotArm):
             start_time = time.time()
             dashboard = dobot_api_dashboard(ip_address, 29999)
             if time.time() - start_time > timeout:
-                self.device == None
+                self.device is None
                 raise Exception(f"Unable to connect to arm at {ip_address}")
             
             start_time = time.time()
             feedback = dobot_api_feedback(ip_address, 30003)
             if time.time() - start_time > timeout:
-                self.device == None
+                self.device is None
                 raise Exception(f"Unable to connect to arm at {ip_address}")
 
             self.device['dashboard'] = dashboard
@@ -197,7 +197,7 @@ class Dobot(RobotArm):
         Returns:
             bool: whether machine control unit is connected
         """
-        if self.device == None:
+        if self.device is None:
             print(f"{self.__class__} ({self.ip_address}) not connected.")
             return False
         return True
@@ -210,9 +210,9 @@ class Dobot(RobotArm):
             vector (tuple, optional): x,y,z displacement vector. Defaults to None.
             angles (tuple, optional): a,b,c rotation angles in degrees. Defaults to None.
         """
-        if vector == None:
+        if vector is None:
             vector = (0,0,0)
-        if angles == None:
+        if angles is None:
             angles = (0,0,0)
         vector = tuple(vector)
         angles = tuple(angles)
@@ -222,6 +222,7 @@ class Dobot(RobotArm):
             time.sleep(MOVE_TIME_S)
         except (AttributeError, OSError):
             print("Not connected to arm!")
+            self.updatePosition(vector=vector, angles=angles)
             return False
         self.updatePosition(vector=vector, angles=angles)
         return True
@@ -235,9 +236,9 @@ class Dobot(RobotArm):
             orientation (tuple, optional): a,b,c orientation angles in degrees. Defaults to None.
             tool_offset (bool, optional): whether to consider implement offset. Defaults to True.
         """
-        if coordinates == None:
+        if coordinates is None:
             coordinates = self.coordinates
-        if orientation == None:
+        if orientation is None:
             orientation = self.orientation
         coordinates = tuple(coordinates)
         orientation = tuple(orientation)
@@ -252,6 +253,7 @@ class Dobot(RobotArm):
             time.sleep(MOVE_TIME_S)
         except (AttributeError, OSError):
             print("Not connected to arm!")
+            self.updatePosition(coordinates=coordinates, orientation=orientation)
             return False
         self.updatePosition(coordinates=coordinates, orientation=orientation)
         return True
@@ -274,6 +276,7 @@ class Dobot(RobotArm):
             time.sleep(MOVE_TIME_S)
         except (AttributeError, OSError):
             print("Not connected to arm!")
+            self.updatePosition(angles=relative_angles[3:])
             return False
         self.updatePosition(angles=relative_angles[3:])
         return True
@@ -296,6 +299,7 @@ class Dobot(RobotArm):
             time.sleep(MOVE_TIME_S)
         except (AttributeError, OSError):
             print("Not connected to arm!")
+            self.updatePosition(orientation=absolute_angles[3:])
             return False
         self.updatePosition(orientation=absolute_angles[3:])
         return True
@@ -371,9 +375,9 @@ class MG400(Dobot):
     Args:
         ip_address (str, optional): IP address of arm. Defaults to '192.168.2.8'.
         retract (bool, optional): whether to tuck arm before each movement. Defaults to True.
+        home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,300,0).
         
     Kwargs:
-        home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,300,0).
         home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
         orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
         translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to (0,0,0).
@@ -434,10 +438,14 @@ class MG400(Dobot):
         ret = self.moveCoordTo((x,y,safe_height), self.orientation)
         return_values.append(ret)
 
-        if target != None and len(target) == 3:
+        if target is not None and len(target) == 3:
             x1,y1,_ = target
-            w1 = ( (safe_radius**2)/(x1**2 + y1**2) )**0.5
-            ret = self.moveCoordTo((x1*w1,y1*w1,75), self.orientation)
+            if any((x1,y1)):
+                w1 = ( (safe_radius**2)/(x1**2 + y1**2) )**0.5
+                x1,y1 = (x1*w1,y1*w1)
+            else:
+                x1,y1 = (0,safe_radius)
+            ret = self.moveCoordTo((x1,y1,75), self.orientation)
             return_values.append(ret)
         return all(return_values)
 
@@ -450,9 +458,9 @@ class M1Pro(Dobot):
         ip_address (str, optional): IP address of arm. Defaults to '192.168.2.21'.
         retract (bool, optional): whether to tuck arm before each movement. Defaults to False.
         handedness (str, optional): handedness of robot (i.e. left or right). Defaults to 'left'.
-
-    Kwargs:
         home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,300,100).
+        
+    Kwargs:
         home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
         orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
         translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to (0,0,0).
@@ -527,9 +535,9 @@ class M1Pro(Dobot):
             vector (tuple, optional): x,y,z displacement vector. Defaults to None.
             angles (tuple, optional): a,b,c rotation angles in degrees. Defaults to None.
         """
-        if vector == None:
+        if vector is None:
             vector = (0,0,0)
-        if angles == None:
+        if angles is None:
             angles = (0,0,0)
         coordinates, orientation = self.position
         new_coordinates = np.array(coordinates) + np.array(vector)
@@ -549,7 +557,7 @@ class M1Pro(Dobot):
         """
         set_hand = False
         handedness = None
-        if self._flags['right_handed'] != None:
+        if self._flags.get('right_handed', None) is not None:
             handedness = 'right' if self._flags['right_handed'] else 'left'
         if hand not in ['left','l','L','right','r','R']:
             raise Exception("Please select between 'left' or 'right'")
