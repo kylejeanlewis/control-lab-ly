@@ -15,6 +15,9 @@ from enum import Enum
 print(f"Import: OK <{__name__}>")
 
 ERRS = ['er1','er2','er3','er4']
+STATUS_QUERIES = ['DS','DE','DP','DN']
+STATIC_QUERIES = ['Dv','DM','DX','DI','DO','DR']
+QUERIES = STATUS_QUERIES + STATIC_QUERIES
 
 class ModelInfo(Enum):
     BRL0        = dict(
