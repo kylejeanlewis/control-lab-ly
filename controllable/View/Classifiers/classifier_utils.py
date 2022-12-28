@@ -7,13 +7,11 @@ Notes / actionables:
 - validation on copper 
 - rewrite the operation modes as programs, instead of subclasses
 """
-# Standard library imports
-
 # Third party imports
 import cv2 # pip install opencv-python
 
 # Local application imports
-from .. import Image
+from ..image_utils import Image
 print(f"Import: OK <{__name__}>")
 
 class Classifier(object):
