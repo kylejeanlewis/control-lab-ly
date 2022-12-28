@@ -167,10 +167,12 @@ if __name__ == "__main__":
 # %% Spinner examples
 from controllable.Make.ThinFilm import SpinnerAssembly
 if __name__ == "__main__":
-    ports = ['COM6','COM5','COM4','COM3']
-    channels = [0,1,2,3]
-    positions = [[-325,0,0],[-250,0,0],[-175,0,0],[-100,0,0]]
-    spinners = SpinnerAssembly(ports=ports, channels=channels,positions=positions)
+    kwargs = dict(
+        ports = ['COM6','COM5','COM4','COM3'],
+        channels = [0,1,2,3],
+        positions = [[-325,0,0],[-250,0,0],[-175,0,0],[-100,0,0]]
+    )
+    spinners = SpinnerAssembly(**kwargs)
     pass
 
 # %% Paraspin examples (L6)
@@ -199,5 +201,4 @@ if __name__ == "__main__":
     # spinbot.runExperiment()
     pass
 
-
-# %%
+# %% Primitiv examples
