@@ -46,19 +46,21 @@ class Pump(object):
         self._connect(port)
         return
     
-    def _connect(self, port:str):
+    def _connect(self, port:str, baudrate=9600, timeout=1):
         """
         Connect to machine control unit
 
         Args:
             port (str): com port address
+            baudrate (int): baudrate. Defaults to 9600.
+            timeout (int, optional): timeout in seconds. Defaults to None.
             
         Returns:
             serial.Serial: serial connection to machine control unit if connection is successful, else None
         """
         self.port = port
-        self._baudrate = 9600
-        self._timeout = 1
+        self._baudrate = baudrate
+        self._timeout = timeout
         device = None
         try:
             device = serial.Serial(port, self._baudrate, timeout=self._timeout)
@@ -97,6 +99,15 @@ class Pump(object):
         except AttributeError:
             pass
         return
+    
+    def connect(self):
+        """
+        Reconnect to device using existing port and baudrate
+        
+        Returns:
+            serial.Serial: serial connection to machine control unit if connection is successful, else None
+        """
+        return self._connect(self.port, self._baudrate, self._timeout)
     
     def isBusy(self):
         """
@@ -178,6 +189,9 @@ class Syringe(LiquidHandler):
         channel (int): channel index
         offset (tuple, optional): coordinates offset. Defaults to None.
         pullback_time (int, optional): duration of pullback. Defaults to PULLBACK_TIME.
+        
+    Kwargs:
+        verbose (bool, optional): whether to print output. Defaults to False.
     """
     def __init__(self, capacity, channel, offset=None, pullback_time=PULLBACK_TIME, **kwargs):
         super().__init__(**kwargs)
@@ -320,6 +334,9 @@ class SyringeAssembly(LiquidHandler):
         capacities (list, optional): list of syringe capacities. Defaults to [].
         channels (list, optional): list of syringe channels. Defaults to [].
         offsets (list, optional): list of syringe offsets. Defaults to [].
+    
+    Kwargs:
+        verbose (bool, optional): whether to print output. Defaults to False.
     """
     def __init__(self, port:str, capacities=[], channels=[], offsets=[], **kwargs):
         super().__init__(**kwargs)
@@ -347,6 +364,15 @@ class SyringeAssembly(LiquidHandler):
             raise Exception(f"Select a valid key from: {', '.join(self.channels.keys())}")
         return self.channels[channel].aspirate(volume=volume, speed=speed, wait=wait, reagent=reagent, pause=pause, pump=self.pump)
 
+    def connect(self):
+        """
+        Reconnect to device using existing port and baudrate
+        
+        Returns:
+            serial.Serial: serial connection to machine control unit if connection is successful, else None
+        """
+        return self.pump.connect()
+    
     def dispense(self, volume, speed=None, wait=0, force_dispense=False, pause=False, channel=None):
         """
         Aspirate desired volume of reagent into channel
