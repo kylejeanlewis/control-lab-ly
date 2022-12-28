@@ -153,15 +153,18 @@ class Mover(object):
         Returns:
             tuple: converted robot vector
         """
-        if coordinates == None and vector != None:
+        to_be_transformed = None
+        if coordinates is None and vector is not None:
             translate = np.zeros(3)
-        elif coordinates != None and vector == None:
+            to_be_transformed = vector
+        elif coordinates is not None and vector is None:
             translate = (-1*self.translate_vector)
             translate = translate - self.implement_offset if tool_offset else translate
+            to_be_transformed = coordinates
         else:
             raise Exception("Input only either 'coordinates' or 'vector'.")
         scale = (1/self.scale) if stretch else 1
-        return tuple( translate + np.matmul(self.orientate_matrix.T, scale * np.array(coordinates)) )
+        return tuple( translate + np.matmul(self.orientate_matrix.T, scale * np.array(to_be_transformed)) )
 
     def _transform_out(self, coordinates=None, vector=None, stretch=True, tool_offset=False):
         """
@@ -179,15 +182,18 @@ class Mover(object):
         Returns:
             tuple: converted workspace vector
         """
-        if coordinates == None and vector != None:
+        to_be_transformed = None
+        if coordinates is None and vector is not None:
             translate = np.zeros(3)
-        elif coordinates != None and vector == None:
+            to_be_transformed = vector
+        elif coordinates is not None and vector is None:
             translate = self.translate_vector
             translate = translate + self.implement_offset if tool_offset else translate
+            to_be_transformed = coordinates
         else:
             raise Exception("Input only either 'coordinates' or 'vector'.")
         scale = self.scale if stretch else 1
-        return tuple( scale * np.matmul(self.orientate_matrix, translate + np.array(coordinates)) )
+        return tuple( scale * np.matmul(self.orientate_matrix, translate + np.array(to_be_transformed)) )
 
     def calibrate(self, external_pt1:np.ndarray, internal_pt1:np.ndarray, external_pt2:np.ndarray, internal_pt2:np.ndarray):
         """
@@ -347,9 +353,9 @@ class Mover(object):
         Returns:
             bool: whether movement is successful
         """
-        if vector == None:
+        if vector is None:
             vector = (0,0,0)
-        if angles == None:
+        if angles is None:
             angles = (0,0,0)
         vector = np.array(vector)
         angles = np.array(angles)
@@ -370,9 +376,9 @@ class Mover(object):
         Returns:
             bool: whether movement is successful
         """
-        if coordinates == None:
+        if coordinates is None:
             coordinates = self.getToolPosition() if tool_offset else self.getUserPosition()
-        if orientation == None:
+        if orientation is None:
             orientation = self.orientation
         coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
         coordinates = np.array(coordinates)
@@ -380,7 +386,14 @@ class Mover(object):
         
         if not self.isFeasible(coordinates):
             return False
+        self.coordinates = coordinates
         return True
+    
+    def reset(self):
+        """
+        Clear any errors and enable robot
+        """
+        return
     
     def setConfigSettings(self, config:dict):
         """
@@ -390,8 +403,8 @@ class Mover(object):
             config (dict): dictionary of attribute names and values
         """
         for k,v in config.items():
-            if k in self.__dict__.keys():
-                self.__dict__.__setattr__(k,v)
+            if k in dir(self):
+                self.__setattr__(k,v)
             else:
                 print(f"'{k}' is not an attribute of {self.__class__}")
         return
@@ -439,4 +452,27 @@ class Mover(object):
             name (str): label
         """
         self._flags[name] = not self._flags[name]
+        return
+    
+    def updatePosition(self, coordinates=None, orientation=None, vector=(0,0,0), angles=(0,0,0)):
+        """
+        Update to current position
+
+        Args:
+            coordinates (tuple, optional): x,y,z coordinates. Defaults to None.
+            orientation (tuple, optional): a,b,c angles. Defaults to None.
+            vector (tuple, optional): x,y,z vector. Defaults to (0,0,0).
+            angles (tuple, optional): a,b,c angles. Defaults to (0,0,0).
+        """
+        if coordinates is not None:
+            self.coordinates = coordinates
+        else:
+            self.coordinates = np.array(self.coordinates) + np.array(vector)
+            
+        if orientation is not None:
+            self.orientation = orientation
+        else:
+            self.orientation = np.array(self.orientation) + np.array(angles)
+        
+        print(f'{self.coordinates}, {self.orientation}')
         return
