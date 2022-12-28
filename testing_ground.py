@@ -11,11 +11,10 @@ Notes / actionables:
 # Standard library imports
 import numpy as np
 import pandas as pd
+
 # Third party imports
 
 # Local application imports
-# from controllable.builds.Paraspin import Setup, Program
-# from controllable.builds.PrimitivEnder import Setup, Program
 print(f"Import: OK <{__name__}>")
 
 # %% Helper examples
@@ -31,10 +30,16 @@ if __name__ == "__main__":
     # mover = Primitiv('COM5')
     pass
 
-# %% Jointed examples
+# %% Jointed MG400 examples
 from controllable.Move.Jointed.Dobot import MG400
 if __name__ == "__main__":
     mover = MG400(ip_address='192.168.1.7')
+    pass
+
+# %% Jointed M1 Pro examples
+from controllable.Move.Jointed import M1Pro
+if __name__ == "__main__":
+    mover = M1Pro(ip_address='192.168.2.21', home_position=(300,0,100))
     pass
 
 # %% Keithley examples
@@ -114,34 +119,49 @@ if __name__ == "__main__":
     pass
 
 # %% Webcam examples
-from controllable.View import Optical
+from controllable.View.Optical import Optical
 if __name__ == "__main__":
     viewer = Optical()
     viewer.getImage()
     pass
 
 # %% Thermal cam examples
-from controllable.View import Thermal
+from controllable.View.Thermal import Thermal
 if __name__ == "__main__":
     viewer = Thermal('192.168.1.111')
     viewer.getImage()
     pass
 
+# %% Sartorius examples
+from controllable.Transfer.Liquid.Sartorius import Sartorius
+if __name__ == "__main__":
+    pipet = Sartorius('COM17')
+    pass
+
 # %% GUI examples
 from controllable.Move.Cartesian import Ender, Primitiv
 from controllable.Move.Jointed.Dobot import M1Pro
-from controllable.View import Optical, Thermal
-from controllable.Control.GUI.gui_utils import MoverPanel, CompoundPanel, ViewerPanel
+from controllable.View.Optical import Optical
+from controllable.View.Thermal import Thermal
+from controllable.Control.GUI import CompoundPanel, MoverPanel, ViewerPanel
 if __name__ == "__main__":
     ensemble = {
         'Camera': (ViewerPanel, dict(viewer=Optical())),
         'Thermal': (ViewerPanel, dict(viewer=Thermal('192.168.1.111'))),
         'Primitiv': (MoverPanel, dict(mover=Primitiv('COM5'), axes=['X','Y','Z'])),
-        # 'Ender': (MoverPanel, dict(mover=Ender('COM4'), axes=['X','Y','Z'])),
-        # 'M1Pro': (MoverPanel, dict(mover=M1Pro(), axes=['X','Y','Z','a','b','g'])),
+        'Ender': (MoverPanel, dict(mover=Ender('COM4'), axes=['X','Y','Z'])),
+        'M1Pro': (MoverPanel, dict(mover=M1Pro(), axes=['X','Y','Z','a','b','c']))
     }
     gui = CompoundPanel(ensemble)
     gui.runGUI('Primitiv')
+    pass
+
+# %% GUI examples
+from controllable.Move.Cartesian import Ender
+from controllable.Control.GUI import MoverPanel
+if __name__ == "__main__":
+    gui = MoverPanel(**dict(mover=Ender('COM4'), axes=['X','Y','Z']))
+    gui.runGUI('Ender')
     pass
 
 # %% Spinner examples
@@ -179,15 +199,5 @@ if __name__ == "__main__":
     # spinbot.runExperiment()
     pass
 
-# %% Sartorius examples
-from controllable.Transfer.Liquid.Sartorius import SartoriusDevice
-if __name__ == "__main__":
-    pipet = SartoriusDevice('COM17')
-    pass
 
-# %% Jointed M1 Pro examples
-from controllable.Move.Jointed import M1Pro
-if __name__ == "__main__":
-    mover = M1Pro(ip_address='192.168.2.21', home_position=(300,0,100))
-    pass
 # %%
