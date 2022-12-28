@@ -83,7 +83,7 @@ class Pump(object):
             speed (int): speed of pump of rotation
         """
         try:
-            self.device.write(bytes("{}\n".format(speed), 'utf-8'))
+            self.device.write(bytes(f"{speed}\n", 'utf-8'))
         except AttributeError:
             pass
         return
@@ -96,7 +96,7 @@ class Pump(object):
             state (int): open or close valve channel (-1~-8 open valve; 1~8 close valve; 9 close all valves)
         """
         try:
-            self.device.write(bytes("{}\n".format(state), 'utf-8'))
+            self.device.write(bytes(f"{state}\n", 'utf-8'))
         except AttributeError:
             pass
         return
