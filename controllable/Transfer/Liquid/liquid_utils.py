@@ -21,6 +21,8 @@ class LiquidHandler(object):
         
         self._speed_in = 0
         self._speed_out = 0
+        self.verbose = kwargs.get('verbose', False)
+        self._flags = {}
         return
     
     @property
@@ -136,6 +138,17 @@ class LiquidHandler(object):
             channel (int, optional): channel to cycle. Defaults to None.
         """
         return self.cycle(volume=volume, speed=speed, wait=wait, reagent=reagent, cycles=cycles, channel=channel)
+    
+    def setFlag(self, name:str, value:bool):
+        """
+        Set a flag truth value
+
+        Args:
+            name (str): label
+            value (bool): flag value
+        """
+        self._flags[name] = value
+        return
     
     # FIXME: Deprecate
     def _get_values(self, attribute:str, channels=[]):
