@@ -49,7 +49,7 @@ class Gantry(Mover):
         self._timeout = None
         # self._movement_speed = move_speed
         
-        if safe_height != None:
+        if safe_height is not None:
             self.setHeight('safe', safe_height)
         self._connect(port)
         self.home()
@@ -130,7 +130,7 @@ class Gantry(Mover):
         Returns:
             bool: whether machine control unit is connected
         """
-        if self.device == None:
+        if self.device is None:
             print(f"{self.__class__} ({self.port}) not connected.")
             return False
         return True
@@ -189,7 +189,7 @@ class Gantry(Mover):
             return
         
         # Retreat to safe height first
-        if jump_height == None:
+        if jump_height is None:
             jump_height = self.heights['safe']
         if to_safe_height and self.coordinates[2] < jump_height:
             try:
@@ -220,6 +220,6 @@ class Gantry(Mover):
             if self.verbose:
                 print(e)
 
-        self.coordinates = coordinates
+        self.updatePosition(coordinates=coordinates)
         return
     
