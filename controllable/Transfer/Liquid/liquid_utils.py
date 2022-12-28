@@ -75,7 +75,7 @@ class LiquidHandler(object):
 
     def dispense(self, volume, speed=None, wait=0, force_dispense=False, pause=False, channel=None):
         """
-        Aspirate desired volume of reagent into channel
+        Dispense desired volume of reagent from channel
 
         Args:
             volume (int, or float): volume to be dispensed
