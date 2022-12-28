@@ -34,7 +34,7 @@ class RobotArm(Mover):
         self.device = None
         self.setFlag('retract', False)
         
-        if safe_height != None:
+        if safe_height is not None:
             self.setHeight('safe', safe_height)
         return
     
@@ -72,9 +72,9 @@ class RobotArm(Mover):
         Returns:
             bool: whether movement is successful
         """
-        if vector == None:
+        if vector is None:
             vector = (0,0,0)
-        if angles == None:
+        if angles is None:
             angles = (0,0,0)
         vector = self._transform_in(vector=vector)
         vector = np.array(vector)
@@ -99,11 +99,11 @@ class RobotArm(Mover):
         Returns:
             bool: whether movement is successful
         """
-        if coordinates == None:
+        if coordinates is None:
             coordinates,_ = self.getToolPosition() if tool_offset else self.getUserPosition()
-        if orientation == None:
+        if orientation is None:
             orientation = self.orientation
-        coordinates = self._transform_vector_in(coordinates=coordinates, tool_offset=tool_offset)
+        coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
         coordinates = np.array(coordinates)
         orientation = np.array(orientation)
         
@@ -226,26 +226,3 @@ class RobotArm(Mover):
             raise Exception('Length of input needs to be 3')
         angles = np.array(orientation) - np.array(self.orientation)
         return self.rotateBy(angles)
-    
-    def updatePosition(self, coordinates=None, orientation=None, vector=(0,0,0), angles=(0,0,0)):
-        """
-        Update to current position
-
-        Args:
-            coordinates (tuple, optional): x,y,z coordinates. Defaults to None.
-            orientation (tuple, optional): a,b,c angles. Defaults to None.
-            vector (tuple, optional): x,y,z vector. Defaults to (0,0,0).
-            angles (tuple, optional): a,b,c angles. Defaults to (0,0,0).
-        """
-        if coordinates != None:
-            self.coordinates = coordinates
-        else:
-            self.coordinates = np.array(self.coordinates) + np.array(vector)
-            
-        if orientation != None:
-            self.orientation = orientation
-        else:
-            self.orientation = np.array(self.orientation) + np.array(angles)
-        
-        print(f'{self.coordinates}, {self.orientation}')
-        return
