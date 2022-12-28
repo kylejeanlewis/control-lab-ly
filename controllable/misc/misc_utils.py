@@ -8,6 +8,7 @@ Notes / actionables:
 """
 # Standard library imports
 import os
+import pandas as pd
 import time
 
 # Third party imports
@@ -25,7 +26,8 @@ class Helper(object):
         self.logs = {}
         pass
     
-    def display_ports(self):
+    @staticmethod
+    def display_ports():
         """
         Displays available ports
 
@@ -41,6 +43,51 @@ class Helper(object):
             print("No ports detected!")
             return ['']
         return com_ports
+    
+    @staticmethod
+    def pretty_print_duration(total_time:float):
+        """
+        Display time duration (s) as HH:MM:SS text
+
+        Args:
+            total_time (float): duration in seconds
+
+        Returns:
+            str: formatted time string
+        """
+        m, s = divmod(total_time, 60)
+        h, m = divmod(m, 60)
+        return f'{int(h)}hr {int(m)}min {int(s):02}sec'
+    
+    @staticmethod
+    def zip_inputs(primary_keyword:str, mapping:dict={}, **kwargs):
+        """
+        Checks and zips multiple keyword arguments of lists into dictionary
+
+        Args:
+            primary_keyword (str): primary keyword to be used as key
+            mapping (dict): mapping from old
+
+        Raises:
+            Exception: Inputs have to be of the same length
+
+        Returns:
+            dict: dictionary of (primary keyword, kwargs)
+        """
+        input_length = len(kwargs[primary_keyword])
+        keys = list(kwargs.keys())
+        for key, value in kwargs.items():
+            if type(value) != list:
+                if type(value) in [tuple, set]:
+                    kwargs[key] = list(value)
+                else:
+                    value = [value]
+                    kwargs[key] = value * input_length
+        if not all(len(kwargs[key]) == input_length for key in keys):
+            raise Exception(f"Ensure the lengths of these inputs are the same: {', '.join(keys)}")
+        kwargs_df = pd.DataFrame(kwargs)
+        kwargs_df.set_index(primary_keyword, drop=False, inplace=True)
+        return kwargs_df.to_dict('index')
     
     def log_now(self, message:str, group=None):
         """
@@ -60,20 +107,6 @@ class Helper(object):
                 self.logs[group] = []
             self.logs[group].append(message)
         return log
-    
-    def pretty_print_duration(self, total_time:float):
-        """
-        Display time duration (s) as HH:MM:SS text
-
-        Args:
-            total_time (float): duration in seconds
-
-        Returns:
-            str: formatted time string
-        """
-        m, s = divmod(total_time, 60)
-        h, m = divmod(m, 60)
-        return f'{int(h)}hr {int(m)}min {int(s):02}sec'
 
     def reset_logs(self):
         """
@@ -107,3 +140,5 @@ class Helper(object):
                 for line in self.logs[group]:
                     f.write(line + '\n')
         return
+
+HELPER = Helper()
