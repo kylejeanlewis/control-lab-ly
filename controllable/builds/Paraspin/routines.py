@@ -14,8 +14,10 @@ import time
 # Third party imports
 
 # Local application imports
+from ...misc import HELPER
 from ... import Make
 from ... import Move
+from ... import Transfer
 from ..build_utils import Setup
 print(f"Import: OK <{__name__}>")
 
@@ -23,11 +25,10 @@ CNC_SPEED = 250
 
 class SpinbotSetup(Setup):
     def __init__(self, config, ignore_connections=False, **kwargs):
-        # super().__init__(**kwargs)
+        super().__init__(**kwargs)
         self.mover = None
         self.liquid = None
         self.maker = None
-        self.positions = {}
         
         self._config = config
         self._flags = {
@@ -47,9 +48,9 @@ class SpinbotSetup(Setup):
         return
     
     def _connect(self, diagnostic=True, ignore_connections=False):
-        mover_class = self._getClass(Move, self._config['mover']['class'])
-        liquid_class = self._getClass(Move, self._config['liquid']['class'])
-        maker_class = self._getClass(Make, self._config['maker']['class'])
+        mover_class = self._get_class(Move, self._config['mover']['class'])
+        liquid_class = self._get_class(Transfer, self._config['liquid']['class'])
+        maker_class = self._get_class(Make, self._config['maker']['class'])
         
         self.mover = mover_class(**self._config['mover']['settings'])
         self.liquid = liquid_class(**self._config['liquid']['settings'])
@@ -125,7 +126,7 @@ class SpinbotSetup(Setup):
                 time.sleep(0.5)
                 # return
             self.maker.channels[maker_chn]._flags['busy'] = True
-            self.liquid.dispense(liquid_chn, vol)
+            self.liquid.dispense(volume=vol, channel=liquid_chn)
 
         # Start new thread from here
         self.maker.channels[maker_chn].etc = time.time() + 1 + sum([v for k,v in maker_kwargs.items() if 'time' in k])
@@ -134,7 +135,7 @@ class SpinbotSetup(Setup):
             thread.start()
             if rest:
                 self.rest()
-                self.liquid.pullbackAll()
+                self.liquid.pullbackMany()
             return thread
         else:
             if rest:
@@ -163,13 +164,13 @@ class SpinbotSetup(Setup):
             if not pause:
                 # log_now(f'CNC align: syringe {syringe.order} with spill station...')
                 self.align(self.liquid.channels[channel].offset, self.positions['spill'])
-            self.liquid.empty(channel, wait, pause)
+            self.liquid.empty(channel=channel, wait=wait, pause=pause)
         return
     
     def fillLiquids(self, channels=[], reagents=[], vols=[], wait=0, pause=False):
         if len(channels) == 0:
             channels = list(self.liquid.channels.keys())
-        self._checkInputs(channels=channels, reagents=reagents, vols=vols)
+        HELPER.zip_inputs('channels', channels=channels, reagents=reagents, vols=vols)
         
         self.align(0, self.positions['fill'])
         for channel,reagent,vol in zip(channels, reagents, vols):
@@ -177,9 +178,8 @@ class SpinbotSetup(Setup):
             if vol == 0 or self.liquid.channels[channel].volume == self.liquid.channels[channel].capacity:
                 continue
             if not pause:
-                # log_now(f'CNC align: syringe {syringe.order} with fill station...')
                 self.align(self.liquid.channels[channel].offset, self.positions['fill'])
-            self.liquid.aspirate(channel, reagent, vol, wait=wait, pause=pause)
+            self.liquid.aspirate(channel=channel, reagent=reagent, volume=vol, wait=wait, pause=pause)
             self.liquid.pullback(channel)
         return
     
@@ -197,13 +197,13 @@ class SpinbotSetup(Setup):
         return
     
     def labelPositions(self, names, coords, overwrite=False):
-        self._checkInputs(names=names, coords=coords)
+        HELPER.zip_inputs('names', names=names, coords=coords)
         for name,coord in zip(names, coords):
             self.labelPosition(name, coord, overwrite)
         return
     
     def pullbackAll(self, channels=[]):
-        return self.liquid.pullbackAll(channels)
+        return self.liquid.pullbackMany(channels)
     
     def rest(self):
         # log_now(f'CNC align: move to rest position...')
@@ -219,7 +219,7 @@ class SpinbotSetup(Setup):
     
     def rinseAll(self, channels=[], reagents=[], rinse_cycles=3):
         self.emptyLiquids(channels)
-        self.liquid.rinseAll(channels, reagents, rinse_cycles)
+        self.liquid.rinseMany(channels=channels, reagents=reagents, cycles=rinse_cycles)
         return
 
     def reset(self, home=True, wait=0, pause=False):
