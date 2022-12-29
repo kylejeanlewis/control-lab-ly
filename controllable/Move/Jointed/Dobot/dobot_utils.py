@@ -405,7 +405,7 @@ class MG400(Dobot):
             bool: whether coordinates is a feasible position
         """
         if transform:
-            coordinates = self._transform_in(coordinates=coordinates, offset=True, tool_offset=tool_offset)
+            coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
         x,y,z = coordinates
         j1 = round(math.degrees(math.atan(x/(y + 1E-6))), 3)
         if y < 0:

@@ -148,7 +148,7 @@ class Gantry(Mover):
             bool: whether coordinates is a feasible position
         """
         if transform:
-            coordinates = self._transform_in(coordinates=coordinates, offset=True, tool_offset=tool_offset)
+            coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
         coordinates = np.array(coordinates)
         l_bound, u_bound = self.limits
         
