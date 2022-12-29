@@ -1,6 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Adapted/extended from Easy BioLogic package, documentation can be found at:
+Patched from Easy BioLogic package, documentation can be found at:
 https://github.com/bicarlsen/easy-biologic
 
 Created on Fri 2022/11/14 17:00:00
@@ -75,7 +75,7 @@ class CALimit( BiologicProgram ):
             current_interval: Maximum current change between points.
                 [Default: 0.001]
             current_range: Current range. Use ec_lib.IRange.
-                [Default: IRange.m10 ]
+                [Default: IRange.m10]
         :param **kwargs: Parameters passed to BiologicProgram.
         """
         defaults = {
