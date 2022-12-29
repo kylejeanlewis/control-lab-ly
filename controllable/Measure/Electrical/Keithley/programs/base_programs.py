@@ -12,6 +12,7 @@ import pkgutil
 import time
 
 # Local application imports
+from ..keithley_device import KeithleyDevice
 from .scpi_datatype import SCPI
 print(f"Import: OK <{__name__}>")
 
@@ -19,6 +20,68 @@ MAX_BUFFER_SIZE = 10000
 PROGRAM_LIST = ['IV_Scan', 'Logging', 'LSV', 'OCV', 'SweepV']
 
 class Program(object):
+    def __init__(self, device:KeithleyDevice, params={}, **kwargs):
+        self.device = device
+        self.parameters = params
+        
+        self.data_df = pd.DataFrame
+        self._flags = {}
+        return
+    
+    def run(self):
+        """
+        Run the measurement program
+        """
+        return
+
+
+class IV_Scan(Program):
+    def __init__(self, device:KeithleyDevice, params={}, **kwargs):
+        super().__init__(device, params, **kwargs)
+        return
+    
+    def run(self):
+        device = self.device
+        device.reset
+        device.configure(['ROUTe:TERMinals FRONT'])
+        device.configureSource('current', measure_limit=200)
+        device.configureSense('voltage', 200, True, count=self.parameters.get('count', None))
+        device.makeBuffer()
+        device.beep()
+        
+        for current in self.parameters.get('current', []):
+            device.setSource(value=current)
+            device.toggleOutput(on=True)
+            time.sleep(0.1)
+        self.data_df = device.readAll()
+        device.beep()
+        return
+
+
+class OCV(Program):
+    def __init__(self, device:KeithleyDevice, params={}, **kwargs):
+        super().__init__(device, params, **kwargs)
+        return
+    
+    def run(self):
+        device = self.device
+        device.reset
+        device.configure(['ROUTe:TERMinals FRONT', 'OUTPut:SMODe HIMPedance'])
+        device.configureSource('current', limit=1, measure_limit=20)
+        device.configureSense('voltage', 20,count=self.parameters.get('count', None))
+        device.makeBuffer()
+        device.beep()
+        
+        device.setSource(value=0)
+        device.toggleOutput(on=True)
+        time.sleep(0.1)
+        self.data_df = device.readAll()
+        device.beep()
+        return
+
+
+"""======================================================================================"""
+class Programme(object):
     def __init__(self, device, params={}):
         self.data_df = pd.DataFrame()
         self.device = device
@@ -93,7 +156,7 @@ class Program(object):
 
 
 ### Single programs
-class IV_Scan(Program):
+class IV_Scan(Programme):
     def __init__(self, device, params={}):
         super().__init__(device, params)
         super().loadSCPI('SCPI_iv.txt')
@@ -106,7 +169,7 @@ class IV_Scan(Program):
         return super().run(field_titles=['I', 'V'], values=values, average=True)
 
 
-class Logging(Program):
+class Logging(Programme):
     def __init__(self, device, params={}):
         super().__init__(device, params)
         self.field_title = ''
@@ -124,7 +187,7 @@ class Logging(Program):
         return self.data_df
 
 
-class OCV(Program):
+class OCV(Programme):
     def __init__(self, device, params={}):
         super().__init__(device, params)
         super().loadSCPI('SCPI_bias.txt')
@@ -134,7 +197,7 @@ class OCV(Program):
         return super().run(field_titles=['V'], average=True, fill_attributes=True)
 
 
-class SweepV(Program):
+class SweepV(Programme):
     def __init__(self, device, params={}):
         super().__init__(device, params)
         super().loadSCPI('SCPI_sweep_volt.txt')
@@ -149,7 +212,7 @@ class SweepV(Program):
 
 
 ### Compound programs
-class LSV(Program):
+class LSV(Programme):
     def __init__(self, device, params={}):
         super().__init__(device, params)
         self.sub_program['OCV'] = OCV(device)
