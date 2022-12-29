@@ -13,8 +13,10 @@ import pandas as pd
 
 # Third party imports
 import pyvisa as visa # pip install -U pyvisa
+# pip install pyvisa-py
 
 # Local application imports
+from ..electrical_utils import Electrical
 from .programs import base_programs
 print(f"Import: OK <{__name__}>")
 
@@ -30,45 +32,76 @@ class KeithleyDevice(object):
         name (str, optional): nickname for Keithley. Defaults to 'def'.
     """
     def __init__(self, ip_address:str, name='def'):
-        self.ip_address = ip_address
-        self.inst = None
-        self.name = name
-        self._connect(ip_address)
+        self._ip_address = ip_address
+        self._name = name
+        self.instrument = None
         
-        self._attr = dict(
-            buff_name=f'{name}data',
-            buff_size=BUFFER_SIZE,
-            count=NUM_READINGS
-        )
+        self.verbose = False
+        # self._attr = dict(
+        #     buff_name=f'{name}data',
+        #     buff_size=BUFFER_SIZE,
+        #     count=NUM_READINGS
+        # )
+        self.connect(ip_address)
         return
-        
-    def _connect(self, ip_address:str):
+    
+    @property
+    def ip_address(self):
+        return self._ip_address
+    
+    @property
+    def name(self):
+        return self._name
+    
+    def configure(self, name:str, value):
+        return
+    
+    def connect(self, ip_address=None):
         """
         Establish connection with Keithley.
         
         Args:
-            ip_address (str): IP address of Keithley
+            ip_address (str, optional): IP address of Keithley. Defaults to None
         """
-        print("Setting up Keithley comms...")
-        if ip_address == None:
+        print("Setting up Keithley communications...")
+        if ip_address is None:
             ip_address = self.ip_address
-        inst = None
+        instrument = None
         try:
             rm = visa.ResourceManager('@py')
-            inst = rm.open_resource(f"TCPIP0::{ip_address}::5025::SOCKET")
-            self.inst = inst
+            instrument = rm.open_resource(f"TCPIP0::{ip_address}::5025::SOCKET")
+            self.instrument = instrument
 
-            inst.write_termination = '\n'
-            inst.read_termination = '\n'
-            inst.write('SYST:BEEP 500, 1')
-            inst.query('*IDN?')
+            instrument.write_termination = '\n'
+            instrument.read_termination = '\n'
+            instrument.write('SYST:BEEP 500, 1')
+            instrument.query('*IDN?')
             print(f"{self.name.title()} Keithley ready")
         except Exception as e:
             print("Unable to connect to Keithley!")
-            print(e) 
+            if self.verbose:
+                print(e) 
+        return instrument
+    
+    def _query(self, line:str):
         return
     
     def _read(self, prompt:str, field_titles:list, average=False, fill_attributes=False):
+        """
+        Alias for _read_data_stream
+        
+        Args:
+            prompt (str): SCPI prompt for retrieving output
+            field_titles (list): list of parameters to read
+            average (bool, optional): whether to calculate the average and standard deviation of multiple readings. Defaults to False.
+            fill_attributes (bool, optional): whether to fill in attribute values (i.e. buffer name, buffer size, count). Defaults to False.
+            
+        Returns:
+            pd.DataFrame: dataframe of output from Keithley 
+        """
+        return self._read_data_stream(prompt=prompt, field_titles=field_titles, average=average, fill_attributes=fill_attributes)
+    
+    def _read_data_stream(self, prompt:str, field_titles:list, average=False, fill_attributes=False):
         """
         Read data output from Keithley.
         
@@ -85,7 +118,7 @@ class KeithleyDevice(object):
         try:
             self._write(prompt, fill_attributes)
             while output is None:
-                output = self.inst.read()
+                output = self.instrument.read()
         except AttributeError as e:
             print(e)
         if type(output) == type(None):
@@ -103,6 +136,16 @@ class KeithleyDevice(object):
     
     def _write(self, lines:list, fill_attributes=False):
         """
+        Alias for _write_bulk
+        
+        Args:
+            lines (list): list of parameters to write to Keithley
+            fill_attributes (bool, optional): whether to fill in attribute values (i.e. buffer name, buffer size, count). Defaults to False.
+        """
+        return self._write_bulk(lines=lines, fill_attributes=fill_attributes)
+    
+    def _write_bulk(self, lines:list, fill_attributes=False):
+        """
         Relay parameters to Keithley.
         
         Args:
@@ -116,14 +159,17 @@ class KeithleyDevice(object):
                             line = line.replace('{'+f'{k}'+'}', str(v)) if k in line else line
                 if '{' in line or '}' in line:
                     continue
-                self.inst.write(line)
+                self.instrument.write(line)
                 # print(line)
         except AttributeError as e:
             print(e)
         return
 
+    def reset(self):
+        return self._write(['*RST'])
 
-class Keithley(object):
+
+class Keithley(Electrical):
     """
     Keithley class.
     
@@ -131,283 +177,76 @@ class Keithley(object):
         ip_address (str, optional): IP address of Keithley. Defaults to '192.168.1.125'.
         name (str, optional): nickname for Keithley. Defaults to 'def'.
     """
+    model = 'keithley_'
     def __init__(self, ip_address='192.168.1.125', name='def'):
-        self.ip_address = ip_address
-        self.inst = KeithleyDevice(ip_address, name)
-        self.buffer_df = pd.DataFrame()
-        self.data = None
-        self.program = None
-        self._flags = {
-            'measured': False,
-            'parameters_set': False,
-            'read': False,
-            'stop_measure': False
-        }
-        self._parameters = {}
-        
-        self._attr = dict(
-            buff_name=f'{name}data',
-            buff_size=BUFFER_SIZE,
-            count=NUM_READINGS
-        )
-        self._program_template = None
+        self._ip_address = ''
+        super().__init__(ip_address=ip_address, name=name)
         return
 
-    def _read_data(self):
+    @property
+    def ip_address(self):
+        return self._ip_address
+
+    def _connect(self, ip_address:str, name:str):
         """
-        Read data output from Keithley, through the program object
+        Connect to device
+
+        Args:
+            ip_address (str): IP address of the Biologic device
+            name (str): nickname for Keithley.
+            
+        Returns:
+            KeithleyDevice: object representation
         """
-        try:
-            self.buffer_df = self.program.data_df
-            if len(self.program.data_df):
-                self._flags['read'] = True
-            else:
-                print("No data found.")
-        except AttributeError:
-            print("Please load a program first.")
-        return
+        self._ip_address = ip_address
+        self.device = KeithleyDevice(ip_address=ip_address, name=name)
+        return self.device
+
+    def _extract_data(self):
+        """
+        Extract data output from device, through the program object
         
-    def connect(self, ip_address=None):
+        Returns:
+            bool: whether the data extraction from program is successful
+        """
+        if self._program is None:
+            print("Please load a program first.")
+            return False
+        self.buffer_df = self._program.data_df
+        if len(self.buffer_df) == 0:
+            print("No data found.")
+            return False
+        self.setFlag('read', True)
+        return True
+    
+    def connect(self):
         """
         Establish connection to Keithley.
 
-        Args:
-            ip_address (str, optional): IP address of Keithley. Defaults to None.
-        """
-        if ip_address == None:
-            ip_address = self.ip_address
-        self.ip_address = ip_address
-        return self.inst._connect(ip_address)
-    
-    def getData(self, datatype=None):
-        """
-        Read data and load custom datatype for data
-
-        Args:
-            datatype (any, optional): custom datatype for data. Defaults to None.
-
         Returns:
-            pd.DataFrame: raw dataframe of measurement
+            KeithleyDevice: object representation
         """
-        if not self._flags['read']:
-            self._read_data()
-        if self._flags['read']:
-            try:
-                self.data = datatype(data=self.buffer_df, instrument='keithley_')
-            except Exception as e:
-                print(e)
-        return self.buffer_df
-
-    def loadProgram(self, program:str, params={}):
+        return self._connect(self.ip_address, self.name)
+    
+    def loadProgram(self, name=None, program_type=None, program_module=base_programs):
         """
-        Retrieves the SCPI commands from either a file or text string, and replaces placeholder variables. 
-        
-        Args:
-            program (str): name of program to load
-            params (dict, optional): dictionary of (param, value)
-        """
-        if program in base_programs.PROGRAM_LIST:
-            program_class = getattr(base_programs, program)
-        else:
-            print(f"Select program from list: {', '.join(base_programs.PROGRAM_LIST)}")
-            return
-        self.program = program_class(self.inst, params)
-        return
-
-    def measure(self, datatype=None, **kwargs):
-        """
-        Perform the desired measurement.
-        
-        Args:
-            datatype (any, optional): custom datatype for data. Defaults to None.
-            
-        Kwargs:
-            field_titles (list): list of parameters to read
-            values (list): list of values to iterate through
-            average (bool): whether to calculate the average and standard deviation of multiple readings
-            wait (int/float): duration to wait before sending output prompt [s]
-        """
-        self.reset(keep_program=True)
-        print("Measuring...")
-        self.program.run(**kwargs)
-        self.getData(datatype)
-        if len(self.buffer_df):
-            self._flags['measured'] = True
-        self.plot()
-        return
-
-    def plot(self, plot_type=''):
-        """
-        Plot the measurement data
+        Load a program for device to run and its parameters
 
         Args:
-            plot_type (str, optional): perform the requested plot of the data. Defaults to ''.
-        """
-        if self._flags['measured'] and self._flags['read']:
-            try:
-                self.data.plot(plot_type)
-            except AttributeError:
-                print('\nUnable to plot...')
-                self.program.plot()
-        return
-
-    def recallParameters(self):
-        """
-        Recall the last used parameters.
+            name (str, optional): name of program type in program_module. Defaults to None.
+            program_type (any, optional): program to load. Defaults to None.
+            program_module (module, optional): module containing relevant programs. Defaults to Keithley.programs.base_programs.
 
         Raises:
-            Exception: Program not loaded
+            Exception: Provide a module containing relevant programs
+            Exception: Select a valid program name
+            Exception: Input only one of 'name' or 'program_type'
+        """
+        return super().loadProgram(name=name, program_type=program_type, program_module=program_module)
 
-        Returns:
-            dict: dictionary of parameters used
+    def reset(self):
         """
-        if not self._flags['parameters_set']:
-            raise Exception("Please load a program first.")
-        return self.program.parameters
-
-    def reset(self, keep_program=False):
+        Reset the Keithley and clear the program, data, and flags
         """
-        Reset the Keithley
-
-        Args:
-            keep_program (bool, optional): whether to keep the loaded program. Defaults to False.
-        """
-        self.sendMessage(['*RST'])
-        self.buffer_df = pd.DataFrame()
-        self.data = None
-        if not keep_program:
-            self.program = None
-        for key in self._flags.keys():
-            self._flags[key] = False
-        return
-
-    def saveData(self, filename:str):
-        """
-        Save dataframe to csv file.
-
-        Args:
-            filename (str): filename to which data will be saved
-        """
-        if not self._flags['read']:
-            self._read_data()
-        if self._flags['read']:
-            self.buffer_df.to_csv(filename)
-        return
-
-    def sendMessage(self, lines:list):
-        """
-        Relay parameters to Keithley.
-        
-        Args:
-            lines (list): list of parameters to write to Keithley
-        """
-        return self.inst._write(lines)
-    
-    def setAddress(self, ip_address:str):
-        """
-        Set IP address of Keithley
-
-        Args:
-            ip_address (str): IP address of Keithley
-        """
-        self.ip_address = ip_address
-        return
-    
-    def setParameters(self, params:dict):
-        """
-        Set program parameters
-
-        Args:
-            params (dict, optional): dictionary of (param, value)
-        """
-        for k,v in self._attr.items():
-            if k in self.program.scpi.string and k not in params.keys():
-                params[k] = v
-        return self.program.setParameters(params)
-
-
-class KeithleyTwo(object):
-    def __init__(self, ip_addresses=[], names=[]):
-        self._args = list(zip(ip_addresses, names))
-        self.ip_addresses = ip_addresses
-        self.names = names
-        self.keithleys = {name: Keithley(ip_address,name) for ip_address,name in self._args}
-        self.buffer_df = pd.DataFrame()
-        self.data = None
-        self.program = None
-        self._flags = {
-            'measured': False,
-            'parameters_set': False,
-            'read': False,
-            'stop_measure': False
-        }
-
-        self._program_templates = []
-        pass
-    
-    def _read_data(self):
-        return
-    
-    def connect(self, name, ip_address=None):
-        if ip_address == None:
-            index = self.names.index(name)
-            ip_address = self.ip_addresses[index]
-        self.ip_addresses[index] = ip_address
-        return self.keithleys[name].connect(ip_address)
-    
-    def getData(self):
-        return
-    
-    def loadProgram(self):
-        return
-    
-    def measure(self):
-        self._flags['stop_measure'] = False
-        self.program.run()
-        self._read_data()
-        if len(self.buffer_df):
-            self._flags['measured'] = True
-        self.plot()
-        return
-    
-    def plot(self):
-        return
-    
-    def recallParameters(self, names=[]):
-        if len(names) == 0:
-            names = self.names
-        params = {}
-        for name in self.names:
-            params[name] = self.keithleys[name].recallParameters()
-        return params
-    
-    def reset(self, names=[], full=False):
-        if len(names) == 0:
-            names = self.names
-        for name in self.names:
-            self.keithleys[name].reset(full)
-        return
-    
-    def saveData(self, names=[], filenames=[]):
-        if len(names) == 0:
-            names = self.names
-        if len(names) != len(filenames):
-            raise Exception('Ensure input lists are the same lengths.')
-        for i,name in enumerate(self.names):
-            self.keithleys[name].saveData(filenames[i])
-        return
-    
-    def sendMessage(self, name, lines=[]):
-        """
-        Relay parameters to Keithley.
-        
-        Args:
-            params (list): list of parameters to write to Keithley
-        """
-        return self.keithleys[name].sendMessage(lines)
-    
-    def setAddress(self, name, ip_address):
-        return self.keithleys[name].setAddress(ip_address)
-    
-    def setParameters(self, name, params={}):
-        return self.keithleys[name].setParameters(params)
+        self.device.reset()
+        return super().reset()
