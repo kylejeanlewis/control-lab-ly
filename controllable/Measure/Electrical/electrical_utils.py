@@ -4,7 +4,7 @@ Created: Tue 2022/11/02 17:13:35
 @author: Chang Jie
 
 Notes / actionables:
--
+- add multi channel support
 """
 # Standard library imports
 import pandas as pd
@@ -19,6 +19,7 @@ class Electrical(object):
     """
     model = ''
     def __init__(self, **kwargs):
+        self.name = kwargs.pop('name', 'def')
         self.device = None
         
         self.buffer_df = pd.DataFrame()
@@ -26,14 +27,15 @@ class Electrical(object):
         self.program_type = None
         self._data = None
         self._program = None
+        self._last_used_parameters = {}
         
         self.verbose = False
         self._flags = {
             'busy': False,
             'measured': False,
-            'read': False
+            'read': False,
+            'stop_measure': False
         }
-        self._last_used_parameters = {}
         self._connect(**kwargs)
         return
     
@@ -60,9 +62,9 @@ class Electrical(object):
         if self._program is None:
             print("Please load a program first.")
             return False
-        self.buffer_df = pd.DataFrame(self._program.data[0], columns=self._program.field_titles)
-        self._fix_column_names()
-        if len(self._program.data[0]) == 0:
+        # Retrieve data from program here
+        self.buffer_df = pd.DataFrame()
+        if len(self.buffer_df) == 0:
             print("No data found.")
             return False
         self.setFlag('read', True)
@@ -83,13 +85,14 @@ class Electrical(object):
         self._program = None
         self.setFlag('measured', False)
         self.setFlag('read', False)
+        self.setFlag('stop_measure', False)
         return
     
     def connect(self):
         """
         Make connection to device.
         """
-        return self.device.connect()
+        return self._connect()
     
     def getData(self):
         """
@@ -109,19 +112,19 @@ class Electrical(object):
     
     def isBusy(self):
         """
-        Checks whether the Biologic is busy
+        Checks whether the device is busy
         
         Returns:
-            bool: whether the Biologic is busy
+            bool: whether the device is busy
         """
         return self._flags['busy']
     
     def isConnected(self):
         """
-        Check whether Biologic is connected
+        Check whether device is connected
 
         Returns:
-            bool: whether Biologic is connected
+            bool: whether device is connected
         """
         if self.device is None:
             return False
@@ -151,24 +154,28 @@ class Electrical(object):
         print(f"Loaded datatype: {datatype.__class__}")
         return
     
-    def loadProgram(self, name=None, program_type=None):
+    def loadProgram(self, name=None, program_type=None, program_module=None):
         """
         Load a program for device to run and its parameters
 
         Args:
-            name (str, optional): name of program type in Biologic.programs.base_programs submodule. Defaults to None.
+            name (str, optional): name of program type in program_module. Defaults to None.
             program_type (any, optional): program to load. Defaults to None.
+            program_module (module, optional): module containing relevant programs. Defaults to None.
 
         Raises:
+            Exception: Provide a module containing relevant programs
             Exception: Select a valid program name
             Exception: Input only one of 'name' or 'program_type'
         """
         if name is None and program_type is not None:
             self.program_type = program_type
         elif name is not None and program_type is None:
+            if program_module is None:
+                raise Exception(f"Please provide a module containing relevant programs")
             if name not in Types.TYPES_LIST:
-                raise Exception(f"Please select a program name from: {', '.join(['',''])}")
-            # program_type = getattr(base_programs, name)
+                raise Exception(f"Please select a program name from: {', '.join(program_module.PROGRAM_LIST)}")
+            program_type = getattr(program_module, name)
             self.program_type = program_type
         else:
             raise Exception("Please input only one of 'name' or 'program_type'")
@@ -232,7 +239,8 @@ class Electrical(object):
         self._flags = {
             'busy': False,
             'measured': False,
-            'read': False
+            'read': False,
+            'stop_measure': False
         }
         return
     
