@@ -18,14 +18,13 @@ import easy_biologic as biologic_api # pip install easy-biologic
 # import easy_biologic.base_programs as base_programs
 
 # Local application imports
-from .. import ElectricalMeasurer
 from .programs import base_programs
 print(f"Import: OK <{__name__}>")
 
 # INITIALIZING
 nest_asyncio.apply()
 
-class Biologic(ElectricalMeasurer):
+class Biologic(object):
     """
     BioLogic class.
     

@@ -7,171 +7,65 @@ Notes / actionables:
 -
 """
 # Standard library imports
-import math
 import numpy as np
 
 # Third party imports
 import serial # pip install pyserial
 
 # Local application imports
-from .. import Mover
+from ..mover_utils import Mover
 print(f"Import: OK <{__name__}>")
 
 CNC_SPEED = 250
-
-class Cartesian(Mover):
+    
+class Gantry(Mover):
     """
-    Cartesian controls
+    Gantry robot controls
 
     Args:
-        xyz_bounds (list, optional): lower and upper bounds of movement. Defaults to [(0,0,0), (0,0,0)].
-        Z_safe (float, optional): safe height. Defaults to np.nan.
+        port (str): com port address
+        limits (list, optional): lower and upper bounds of movement. Defaults to [(0,0,0), (0,0,0)].
+        safe_height (float, optional): safe height. Defaults to None.
         move_speed (float, optional): movement speed. Defaults to 0.
+    
+    Kwargs:
+        home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,0,0).
+        home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
+        orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
+        translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to (0,0,0).
+        implement_offset (tuple, optional): implement offset vector pointing from end of effector to tool tip. Defaults to (0,0,0).
+        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
         verbose (bool, optional): whether to print outputs. Defaults to False.
     """
-    def __init__(self, xyz_bounds=[(0,0,0), (0,0,0)], Z_safe=None, move_speed=0, implement_offset=(0,0,0), verbose=False, **kwargs):
-        self.xyz_bounds = [tuple(xyz_bounds[0]), tuple(xyz_bounds[1])]
-        self.mcu = None
-        self.heights = {
-            'safe': Z_safe
-        }
+    def __init__(self, port:str, limits=[(0, 0, 0), (0, 0, 0)], safe_height=None, move_speed=-1, **kwargs):
+        super().__init__(**kwargs)
+        self._limits = [(0, 0, 0), (0, 0, 0)]
         
-        self.implement_offset = implement_offset
-        self.coordinates = (0,0,0)
-        self.orientation = (0,0,0)
+        self.device = None
+        self.limits = limits
         
-        self.verbose = verbose
-        self._flags = {}
-        
-        self._port = ''
+        self.port = ''
         self._baudrate = None
         self._timeout = None
         # self._movement_speed = move_speed
-        return
-
-    def __delete__(self):
-        self._shutdown()
-        return
-
-    def calibrate(self, external_pt1, internal_pt1, external_pt2, internal_pt2):
-        """
-        Calibrate internal and external coordinate systems.
-
-        Args:
-            external_pt1 (tuple): x,y,z coordinates of physical point 1
-            internal_pt1 (tuple): x,y,z coordinates of robot point 1
-            external_pt2 (tuple): x,y,z coordinates of physical point 2
-            internal_pt2 (tuple): x,y,z coordinates of robot point 2
-        """
-        space_vector = external_pt2 - external_pt1
-        robot_vector = internal_pt2 - internal_pt1
-        space_mag = np.linalg.norm(space_vector)
-        robot_mag = np.linalg.norm(robot_vector)
-
-        space_unit_vector = space_vector / space_mag
-        robot_unit_vector = robot_vector / robot_mag
-        dot_product = np.dot(robot_unit_vector, space_unit_vector)
-        cross_product = np.cross(robot_unit_vector, space_unit_vector)
-
-        cos_theta = dot_product
-        sin_theta = math.copysign(np.linalg.norm(cross_product), cross_product[2])
-        rot_angle = math.acos(cos_theta) if sin_theta>0 else 2*math.pi - math.acos(cos_theta)
-        rot_matrix = np.array([[cos_theta,-sin_theta,0],[sin_theta,cos_theta,0],[0,0,1]])
         
-        self.orientate_matrix = rot_matrix
-        self.translate_vector = (external_pt1 - internal_pt1)
-        self.scale = (space_mag / robot_mag)
-        
-        print(f'Orientate matrix:\n{self.orientate_matrix}')
-        print(f'Translate vector: {self.translate_vector}')
-        print(f'Scale factor: {self.scale}')
-        print(f'Offset angle: {rot_angle/math.pi*180} degree')
-        print(f'Offset vector: {(external_pt1 - internal_pt1)}')
-        return
-    
-    def getConfigSettings(self, params:list):
-        """
-        Read the arm configuration settings.
-        
-        Args:
-            params (list): list of attributes to retrieve values from
-        
-        Returns:
-            dict: dictionary of arm class and details/attributes
-        """
-        arm = str(type(self)).split("'")[1].split('.')[1]
-        details = {k: v for k,v in self.__dict__.items() if k in params}
-        for k,v in details.items():
-            if type(v) == tuple:
-                details[k] = {"tuple": list(v)}
-            elif type(v) == np.ndarray:
-                details[k] = {"array": v.tolist()}
-        settings = {"arm": arm, "details": details}
-        return settings
-
-    def getPosition(self):
-        """Get coordinates."""
-        return self.coordinates, (0,0,0)
-    
-    def getToolPosition(self):
-        """
-        Retrieve coordinates of tool tip/end of implement.
-
-        Returns:
-            tuple, tuple: x,y,z coordinates; a,b,g angles
-        """
-        return self.getPosition()
-    
-    def getUserPosition(self):
-        """
-        Retrieve user-defined workspace coordinates.
-
-        Returns:
-            tuple, tuple: x,y,z coordinates; a,b,g angles
-        """
-        return self.getPosition()
-    
-    def getWorkspacePosition(self):
-        return self.getUserPosition()
-    
-    def setImplementOffset(self, implement_offset):
-        """
-        Set offset of implement.
-
-        Args:
-            implement_offset (tuple): x,y,z offset of implement (i.e. vector pointing from end of effector to tooltip)
-        """
-        self.implement_offset = tuple(implement_offset)
+        if safe_height is not None:
+            self.setHeight('safe', safe_height)
+        self._connect(port)
         self.home()
         return
     
-    def setPosition(self, coord):
-        """
-        Set robot coordinates.
-
-        Args:
-            coord (tuple): x,y,z workspace coordinates
-        """
-        self.coordinates = self._transform_vector_in(coord, offset=True, stretch=True)
-        return
-
-    def updatePosition(self, coord=(0,), vector=(0,0,0)):
-        """Update to current position"""
-        if len(coord) == 1:
-            new_coord = np.round( np.array(self.coordinates) + np.array(vector) , 2)
-            self.coordinates = tuple(new_coord)
-        else:
-            self.coordinates = tuple(coord)
-        print(f'{self.coordinates}')
-        return
-
-
-class CNC(Cartesian):
-    def __init__(self, xyz_bounds=[(0, 0, 0), (0, 0, 0)], Z_safe=None, move_speed=0, implement_offset=(0, 0, 0), verbose=False, **kwargs):
-        super().__init__(xyz_bounds, Z_safe, move_speed, implement_offset, verbose, **kwargs)
+    @property
+    def limits(self):
+        return np.array(self._limits)
+    @limits.setter
+    def limits(self, value:list):
+        if len(value) != 2 or any([len(row)!=3 for row in value]):
+            raise Exception('Please input a list of [lower_xyz_limit, upper_xyz_limit]')
+        self._limits = ( tuple(value[0]), tuple(value[1]) )
         return
     
-    def _connect(self, port, baudrate, timeout=None):
+    def _connect(self, port:str, baudrate:int, timeout=None):
         """
         Connect to machine control unit
 
@@ -179,38 +73,55 @@ class CNC(Cartesian):
             port (str): com port address
             baudrate (int): baudrate
             timeout (int, optional): timeout in seconds. Defaults to None.
+            
+        Returns:
+            serial.Serial: serial connection to machine control unit if connection is successful, else None
         """
-        self._port = port
+        self.port = port
         self._baudrate = baudrate
         self._timeout = timeout
-        mcu = None
+        device = None
         try:
-            mcu = serial.Serial(port, baudrate, timeout=timeout)
+            device = serial.Serial(port, baudrate, timeout=timeout)
             print(f"Connection opened to {port}")
         except Exception as e:
             if self.verbose:
+                print(f"Could not connect to {port}")
                 print(e)
-        self.mcu = mcu
-        return
+        self.device = device
+        return self.device
     
     def _shutdown(self):
         """
-        Close serial connection
+        Close serial connection and shutdown
         """
         self.home()
-        try:
-            self.mcu.close()
-        except Exception as e:
-            if self.verbose:
-                print(e)
-        self.mcu = None
+        self.disconnect()
         return
 
     def connect(self):
         """
-        Re-stablish serial connection to cnc controller using existing port and baudrate.
+        Reconnect to robot using existing port and baudrate
+        
+        Returns:
+            serial.Serial: serial connection to machine control unit if connection is successful, else None
         """
-        return self._connect(self._port, self._baudrate, self._timeout)
+        return self._connect(self.port, self._baudrate, self._timeout)
+    
+    def disconnect(self):
+        """
+        Disconnect serial connection to robot
+        
+        Returns:
+            None: None is successfully disconnected, else serial.Serial
+        """
+        try:
+            self.device.close()
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        self.device = None
+        return self.device
 
     def isConnected(self):
         """
@@ -219,91 +130,96 @@ class CNC(Cartesian):
         Returns:
             bool: whether machine control unit is connected
         """
-        if self.mcu == None:
-            print(f"{self.__class__} ({self._port}) not connected.")
+        if self.device is None:
+            print(f"{self.__class__} ({self.port}) not connected.")
             return False
         return True
     
-    def isFeasible(self, coord, transform=False):
+    def isFeasible(self, coordinates, transform=False, tool_offset=False, **kwargs):
         """
-        Checks if specified coordinates is a feasible position for robot to access.
+        Checks if specified coordinates is a feasible position for robot to access
 
         Args:
-            coord (tuple): x,y,z coordinates
+            coordinates (tuple): x,y,z coordinates
+            transform (bool, optional): whether to transform the coordinates. Defaults to False.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
 
         Returns:
             bool: whether coordinates is a feasible position
         """
-        l_bound, u_bound = np.array(self.xyz_bounds)
-        coord = np.array(coord)
-        if all(np.greater_equal(coord, l_bound)) and all(np.less_equal(coord, u_bound)):
+        if transform:
+            coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
+        coordinates = np.array(coordinates)
+        l_bound, u_bound = self.limits
+        
+        if all(np.greater_equal(coordinates, l_bound)) and all(np.less_equal(coordinates, u_bound)):
             return True
-        print(f"Range limits reached! {self.xyz_bounds}")
+        print(f"Range limits reached! {self.limits}")
         return False
 
-    def move(self, axis, displacement):
+    def moveBy(self, vector, to_safe_height=False, **kwargs):
         """
-        Move cnc in one axis and displacement
-        - axis: X, Y, or Z
-        - displacement: displacement in mm
-        """
-        axis = axis.upper()
-        vector = (0,0,0)    
-        if axis == 'X':
-            vector = (displacement,0,0) 
-        elif axis == 'Y':
-            vector = (0,displacement,0) 
-        elif axis =='Z':
-            vector = (0,0,displacement) 
-        return self.moveBy(vector, z_to_safe=True)
+        Move robot by specified vector
 
-    def moveBy(self, vector, z_to_safe=True, **kwargs):
+        Args:
+            vector (tuple): x,y,z vector to move in
+            to_safe_height (bool, optional): whether to return to safe height first. Defaults to False.
+
+        Returns:
+            bool: whether movement is successful
         """
-        Move cnc in all axes and displacement
-        - vector: vector in mm
-        """
-        new_coord = np.round( np.array(self.coordinates) + np.array(vector) , 2)
-        return self.moveTo(new_coord, z_to_safe)
+        return super().moveBy(vector=vector, to_safe_height=to_safe_height)
     
-    def moveTo(self, coord, z_to_safe=True, jump_z_height=None, **kwargs):
+    def moveTo(self, coordinates, to_safe_height=True, jump_height=None, tool_offset=True, **kwargs):
         """
-        Move cnc to absolute position in 3D
-        - coord: (X, Y, Z) coordinates of target
+        Move robot to specified coordinates and orientation
+
+        Args:
+            coordinates (tuple): x,y,z coordinates to move to. Defaults to None.
+            to_safe_height (bool, optional): whether to return to safe height first. Defaults to True.
+            jump_height (int, or float): height value to jump to. Defaults to None.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
+            
+        Returns:
+            bool: whether movement is successful
         """
-        coord = np.array(coord)
-        if not self.isFeasible(coord):
+        coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
+        coordinates = np.array(coordinates)
+        if not self.isFeasible(coordinates):
             return
-        if jump_z_height == None:
-            jump_z_height = self.heights['safe']
-        if z_to_safe and self.coordinates[2] < jump_z_height:
+        
+        # Retreat to safe height first
+        if jump_height is None:
+            jump_height = self.heights['safe']
+        if to_safe_height and self.coordinates[2] < jump_height:
             try:
-                self.mcu.write(bytes("G90\n", 'utf-8'))
-                print(self.mcu.readline())
-                self.mcu.write(bytes(f"G0 Z{jump_z_height}\n", 'utf-8'))
-                print(self.mcu.readline())
-                self.mcu.write(bytes("G90\n", 'utf-8'))
-                print(self.mcu.readline())
+                self.device.write(bytes("G90\n", 'utf-8'))
+                print(self.device.readline())
+                self.device.write(bytes(f"G0 Z{jump_height}\n", 'utf-8'))
+                print(self.device.readline())
+                self.device.write(bytes("G90\n", 'utf-8'))
+                print(self.device.readline())
             except Exception as e:
                 if self.verbose:
                     print(e)
-            self.updatePosition((*self.coordinates[0:2], jump_z_height))
+            self.coordinates = (*self.coordinates[0:2], jump_height)
         
-        z_first = True if self.coordinates[2]<coord[2] else False
-        positionXY = f'X{coord[0]}Y{coord[1]}'
-        position_Z = f'Z{coord[2]}'
+        z_first = True if self.coordinates[2]<coordinates[2] else False
+        positionXY = f'X{coordinates[0]}Y{coordinates[1]}'
+        position_Z = f'Z{coordinates[2]}'
         moves = [position_Z, positionXY] if z_first else [positionXY, position_Z]
         try:
-            self.mcu.write(bytes("G90\n", 'utf-8'))
-            print(self.mcu.readline())
+            self.device.write(bytes("G90\n", 'utf-8'))
+            print(self.device.readline())
             for move in moves:
-                self.mcu.write(bytes(f"G0 {move}\n", 'utf-8'))
-                print(self.mcu.readline())
-            self.mcu.write(bytes("G90\n", 'utf-8'))
-            print(self.mcu.readline())
+                self.device.write(bytes(f"G0 {move}\n", 'utf-8'))
+                print(self.device.readline())
+            self.device.write(bytes("G90\n", 'utf-8'))
+            print(self.device.readline())
         except Exception as e:
             if self.verbose:
                 print(e)
 
-        self.updatePosition(coord)
+        self.updatePosition(coordinates=coordinates)
         return
     

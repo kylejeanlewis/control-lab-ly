@@ -7,79 +7,98 @@ Notes / actionables:
 -
 """
 # Local application imports
-from .cartesian_utils import Cartesian
+from .cartesian_utils import Gantry
 print(f"Import: OK <{__name__}>")
 
-class Ender(Cartesian):
+class Ender(Gantry):
     """
-    XYZ controls for Ender platform.
-    - port: serial port of cnc Arduino
-    - xyz_bounds: range of motion of tool
+    Ender platform controls
+
+    Args:
+        port (str): com port address
+        limits (list, optional): lower and upper bounds of movement. Defaults to [(0,0,0), (0,0,0)].
+        safe_height (float, optional): safe height. Defaults to None.
+        move_speed (float, optional): movement speed. Defaults to 0.
+    
+    Kwargs:
+        home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,0,0).
+        home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
+        orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
+        translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to (0,0,0).
+        implement_offset (tuple, optional): implement offset vector pointing from end of effector to tool tip. Defaults to (0,0,0).
+        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
+        verbose (bool, optional): whether to print outputs. Defaults to False.
     """
-    def __init__(self, port, xyz_bounds=[(0,0,0), (240,235,210)], Z_safe=30, **kwargs):
-        super().__init__(xyz_bounds, Z_safe, **kwargs)
-        
-        self._connect(port)
-        self.home()
+    def __init__(self, port:str, limits=[(0,0,0), (240,235,210)], safe_height=30, **kwargs):
+        super().__init__(port=port, limits=limits, safe_height=safe_height, **kwargs)
         return
     
-    def _connect(self, port):
+    def _connect(self, port:str, baudrate=115200, timeout=None):
         """
-        Establish serial connection to cnc controller.
-        - port: serial port of cnc Arduino
-        
-        Return: serial.Serial object
-        """
-        return super()._connect(port, 115200)
+        Connect to machine control unit
 
-    def heat(self, bed_temp):
+        Args:
+            port (str): com port address
+            baudrate (int): baudrate. Defaults to 115200.
+            timeout (int, optional): timeout in seconds. Defaults to None.
+            
+        Returns:
+            serial.Serial: serial connection to machine control unit if connection is successful, else None
+        """
+        self.port = port
+        self._baudrate = baudrate
+        self._timeout = timeout
+        return super()._connect(self.port, self._baudrate, self._timeout)
+
+    def heat(self, bed_temperature):
         """
         Heat bed to temperature
-        - bed_temp: bed temperature
 
-        Return: bed_temp
+        Args:
+            bed_temperature (int, or float): temperature of platform
+
+        Returns:
+            bool: whether setting bed temperature was successful
         """
-        bed_temp = round( min(max(bed_temp,0), 110) )
+        bed_temperature = round( min(max(bed_temperature,0), 110) )
         try:
-            self.mcu.write(bytes('M140 S{}\n'.format(bed_temp), 'utf-8'))
+            self.device.write(bytes(f'M140 S{bed_temperature}\n', 'utf-8'))
         except Exception as e:
             print('Unable to heat stage!')
             if self.verbose:
                 print(e)
-            bed_temp = 0
-        return bed_temp
+            return False
+        return True
 
     def home(self):
         """
         Homing cycle for Ender platform
         """
         try:
-            self.mcu.write(bytes("G90\n", 'utf-8'))
-            print(self.mcu.readline())
-            self.mcu.write(bytes("G0 " + f"Z{self.heights['safe']}" + "\n", 'utf-8'))
-            print(self.mcu.readline())
-            self.mcu.write(bytes("G90\n", 'utf-8'))
-            print(self.mcu.readline())
+            self.device.write(bytes("G90\n", 'utf-8'))
+            print(self.device.readline())
+            self.device.write(bytes(f"G0 Z{self.heights['safe']}\n", 'utf-8'))
+            print(self.device.readline())
+            self.device.write(bytes("G90\n", 'utf-8'))
+            print(self.device.readline())
 
-            self.mcu.write(bytes("G28\n", 'utf-8'))
+            self.device.write(bytes("G28\n", 'utf-8'))
 
-            self.mcu.write(bytes("G90\n", 'utf-8'))
-            print(self.mcu.readline())
-            self.mcu.write(bytes("G0 " + f"Z{self.heights['safe']}" + "\n", 'utf-8'))
-            print(self.mcu.readline())
-            self.mcu.write(bytes("G90\n", 'utf-8'))
-            print(self.mcu.readline())
+            self.device.write(bytes("G90\n", 'utf-8'))
+            print(self.device.readline())
+            self.device.write(bytes(f"G0 Z{self.heights['safe']}\n", 'utf-8'))
+            print(self.device.readline())
+            self.device.write(bytes("G90\n", 'utf-8'))
+            print(self.device.readline())
         except Exception as e:
             if self.verbose:
                 print(e)
         
-        self.updatePosition((0,0,self.heights['safe']))
+        self.coordinates = (0,0,self.heights['safe'])
         try:
-            self.mcu.write(bytes("G1 F10000\n", 'utf-8'))
-            print(self.mcu.readline())
+            self.device.write(bytes("G1 F10000\n", 'utf-8'))
+            print(self.device.readline())
         except Exception as e:
             if self.verbose:
                 print(e)
         return
-
-# %%

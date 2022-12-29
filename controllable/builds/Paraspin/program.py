@@ -20,7 +20,8 @@ from ..build_utils import Controller
 from .routines import SpinbotSetup
 print(f"Import: OK <{__name__}>")
 
-CONFIG_FILE = 'Paraspin/config.yaml'
+PACKAGE = __package__.split('.')[-1]
+CONFIG_FILE = f"{PACKAGE}/config.yaml"
 
 class SpinbotController(Controller):
     def __init__(self, config_file=CONFIG_FILE, ignore_connections=False, config_option=0, recover_state_from_file=''):

@@ -13,6 +13,7 @@ import time
 # Third party imports
 
 # Local application imports
+from ...misc import HELPER
 from ... import Measure
 from ... import Move
 from ..build_utils import Setup
@@ -26,17 +27,15 @@ class PrimitivSetup(Setup):
         self.mover = None
         self.measurer = None
         self.viewer = None
-        self._flags = {}
-        self.positions = {}
-        self.tool_offset = (0,0,0)
         
+        self.tool_offset = (0,0,0)
         self._config = config
         self._connect(ignore_connections=ignore_connections)
         pass
     
     def _connect(self, ignore_connections=False):
-        mover_class = self._getClass(Move, self._config['mover']['class'])
-        measurer_class = self._getClass(Measure, self._config['measurer']['class'])
+        mover_class = self._get_class(Move, self._config['mover']['class'])
+        measurer_class = self._get_class(Measure, self._config['measurer']['class'])
         
         self.mover = mover_class(**self._config['mover']['settings'])
         self.measurer = measurer_class(**self._config['measurer']['settings'])
@@ -73,33 +72,7 @@ class PrimitivSetup(Setup):
     
     def home(self):
         return self.mover.home()
-     
-    def labelHeight(self, name, z_height, overwrite=False):
-        if name not in self.positions.keys() or overwrite:
-            self.mover.heights[name] = z_height
-        else:
-            raise Exception(f"The height '{name}' has already been defined at: {self.mover.heights[name]}")
-        return
     
-    def labelHeights(self, names, z_heights, overwrite=False):
-        self._checkInputs(names=names, z_heights=z_heights)
-        for name,z_height in zip(names, z_heights):
-            self.labelHeight(name, z_height, overwrite)
-        return
-    
-    def labelPosition(self, name, coord, overwrite=False):
-        if name not in self.positions.keys() or overwrite:
-            self.positions[name] = coord
-        else:
-            raise Exception(f"The position '{name}' has already been defined at: {self.positions[name]}")
-        return
-    
-    def labelPositions(self, names, coords, overwrite=False):
-        self._checkInputs(names=names, coords=coords)
-        for name,coord in zip(names, coords):
-            self.labelPosition(name, coord, overwrite)
-        return
-
     def loadProgram(self, program, params={}):
         return self.measurer.loadProgram(program, params)
 
@@ -116,3 +89,31 @@ class PrimitivSetup(Setup):
     def saveData(self, filename):
         return self.measurer.saveData(filename)
     
+    
+    # TODO: Deprecate
+    def labelHeight(self, name, z_height, overwrite=False):
+        if name not in self.positions.keys() or overwrite:
+            self.mover.heights[name] = z_height
+        else:
+            raise Exception(f"The height '{name}' has already been defined at: {self.mover.heights[name]}")
+        return
+    
+    def labelHeights(self, names, z_heights, overwrite=False):
+        properties = HELPER.zip_inputs('names', names=names, z_heights=z_heights)
+        for name,z_height in properties.values():
+            self.labelHeight(name, z_height, overwrite)
+        return
+    
+    def labelPosition(self, name, coord, overwrite=False):
+        if name not in self.positions.keys() or overwrite:
+            self.positions[name] = coord
+        else:
+            raise Exception(f"The position '{name}' has already been defined at: {self.positions[name]}")
+        return
+    
+    def labelPositions(self, names, coords, overwrite=False):
+        properties = HELPER.zip_inputs('names', names=names, coords=coords)
+        for name,coord in properties.values():
+            self.labelPosition(name, coord, overwrite)
+        return
+

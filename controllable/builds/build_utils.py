@@ -10,9 +10,9 @@ Notes / actionables:
 import numpy as np
 import pkgutil
 import time
-import yaml
 
 # Third party imports
+import yaml # pip install pyyaml
 
 # Local application imports
 print(f"Import: OK <{__name__}>")
@@ -22,22 +22,10 @@ class Setup(object):
     Base Setup class
     """
     def __init__(self, *args, **kwargs):
-        self.flags = {}
         self.positions = {}
         self._config = {}
+        self._flags = {}
         pass
-    
-    def _checkInputs(self, **kwargs):
-        """
-        Check whether the inputs are of the same length
-
-        Raises:
-            Exception: Inputs have to be the same length
-        """
-        keys = list(kwargs.keys())
-        if any(len(kwargs[key]) != len(kwargs[keys[0]]) for key in keys):
-            raise Exception(f"Ensure the lengths of these inputs are the same: {', '.join(keys)}")
-        return
     
     def _connect(self, *args, **kwargs):
         """
@@ -45,7 +33,7 @@ class Setup(object):
         """
         return
     
-    def _getClass(self, module, dot_notation:str):
+    def _get_class(self, module, dot_notation:str):
         """
         Retrieve the relevant class from the module
 

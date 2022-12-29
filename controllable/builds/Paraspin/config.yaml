@@ -3,8 +3,8 @@
     class: Cartesian.Primitiv
     settings:
       port: COM4 #8
-      xyz_bounds: [[-470,0,0], [0,0,0]]
-      Z_safe: 0
+      limits: [[-470,0,0], [0,0,0]]
+      safe_height: 0
   liquid: 
     class: Liquid.SyringeAssembly
     settings:
@@ -41,22 +41,21 @@
 
 1:
   mover: 
-    class: Jointed.M1Pro
+    class: Jointed.Dobot.M1Pro
     settings:
       ip_address: '192.168.2.21'
-      home_position: {'tuple': [300,0,100]}
+      home_coordinates: {'tuple': [300,0,100]}
       home_orientation: {'tuple': [0,0,0]}
       orientate_matrix: {'array': [[0,1,0],[-1,0,0],[0,0,1]]}
       translate_vector: {'array': [0,0,50]}
       scale: 1
       implement_offset: {'tuple': [0,0,-250]}
   liquid: 
-    class: Liquid.Sartorius
+    class: Liquid.Sartorius.Sartorius
     settings:
-      ports: [COM17]
-      channels: [1]
-      offsets:
-        - [0,0,0]
+      port: COM17
+      channel: 1
+      offset: [0,0,0]
   maker: 
     class: ThinFilm.SpinnerAssembly
     settings:

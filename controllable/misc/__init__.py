@@ -1,1 +1,1 @@
-from .misc_utils import Helper
+from .misc_utils import Helper, HELPER

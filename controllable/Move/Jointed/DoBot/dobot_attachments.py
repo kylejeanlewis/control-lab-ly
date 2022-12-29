@@ -12,102 +12,138 @@ import time
 # Local application imports
 print(f"Import: OK <{__name__}>")
 
-ATTACHMENT_LIST = ['JawGripper', 'VacuumGrip']
+ATTACHMENT_LIST = ['TwoJawGrip', 'VacuumGrip']
 
 # First-party implement attachments
-class JawGripper(object):
+class Attachment(object):
+    def __init__(self, dashboard):
+        self.dashboard = dashboard
+        self.implement_offset = (0,0,0)
+        return
+    
+    
+class TwoJawGrip(Attachment):
     """
-    JawGripper class.
+    TwoJawGrip class
     
     Args:
-        dashboard (str, optional): 
+        dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
     """
     def __init__(self, dashboard):
-        self._dashboard = dashboard
+        super().__init__(dashboard)
         self.implement_offset = (0,0,-95)
-        self.home()
         return
 
     def drop(self):
-        """Open gripper"""
+        """
+        Open gripper, let go of object
+        
+        Returns:
+            bool: whether action is successful
+        """
         try:
-            self._dashboard.DOExecute(1,1)
+            self.dashboard.DOExecute(1,1)
         except (AttributeError, OSError):
             print("Not connected to arm!")
-        return
+            return False
+        return True
     
     def grab(self):
-        """Close gripper"""
+        """
+        Close gripper, pick object up
+        
+        Returns:
+            bool: whether action is successful
+        """
         try:
-            self._dashboard.DOExecute(1,0)
+            self.dashboard.DOExecute(1,0)
         except (AttributeError, OSError):
             print("Not connected to arm!")
-        return
+            return False
+        return True
 
 
-class VacuumGrip(object):
+class VacuumGrip(Attachment):
     """
-    VacuumGrip class.
+    VacuumGrip class
 
     Args:
-        dashboard (str, optional): 
+        dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
     """
     def __init__(self, dashboard):
-        self._dashboard = dashboard
+        super().__init__(dashboard)
         self.implement_offset = (0,0,-60)
-        self.home()
         return
 
     def blow(self, duration=0):
         """
-        Expel air.
+        Expel air
 
         Args:
             duration (int, optional): number of seconds to expel air. Defaults to 0.
+            
+        Returns:
+            bool: whether action is successful
         """
         try:
-            self._dashboard.DOExecute(2,1)
+            self.dashboard.DOExecute(2,1)
             if duration > 0:
                 time.sleep(duration)
-                self._dashboard.DOExecute(2,0)
+                self.dashboard.DOExecute(2,0)
                 time.sleep(1)
         except (AttributeError, OSError):
             print("Not connected to arm!")
-        return
+            return False
+        return True
 
     def drop(self):
-        """Let go of object."""
-        self.blow(0.5)
-        return
+        """
+        Let go of object
+        
+        Returns:
+            bool: whether action is successful
+        """
+        return self.blow(0.5)
     
     def grab(self):
-        """Pick up object."""
-        self.suck(3)
-        return
+        """
+        Pick up object
+        
+        Returns:
+            bool: whether action is successful
+        """
+        return self.suck(3)
     
     def stop(self):
-        """Stop airflows."""
+        """
+        Stop airflow
+        
+        Returns:
+            bool: whether action is successful
+        """
         try:
-            self._dashboard.DOExecute(2,0)
-            self._dashboard.DOExecute(1,0)
+            self.dashboard.DOExecute(2,0)
+            self.dashboard.DOExecute(1,0)
             time.sleep(1)
         except (AttributeError, OSError):
             print("Not connected to arm!")
-        return
+            return False
+        return True
     
     def suck(self, duration=0):
         """
-        Inhale air.
+        Inhale air
 
         Args:
             duration (int, optional): number of seconds to inhale air. Defaults to 0.
         """
         try:
-            self._dashboard.DOExecute(1,1)
+            self.dashboard.DOExecute(1,1)
             if duration > 0:
                 time.sleep(duration)
-                self._dashboard.DOExecute(1,0)
+                self.dashboard.DOExecute(1,0)
                 time.sleep(1)
         except (AttributeError, OSError):
             print("Not connected to arm!")
-        return
+            return False
+        return True

@@ -12,7 +12,7 @@ import pkgutil
 import time
 
 # Local application imports
-from .....Analyse.Data.Types.scpi_datatype import SCPI
+from .scpi_datatype import SCPI
 print(f"Import: OK <{__name__}>")
 
 MAX_BUFFER_SIZE = 10000

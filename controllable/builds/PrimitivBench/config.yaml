@@ -3,8 +3,8 @@
     class: Cartesian.Primitiv
     settings:
       port: COM8
-      xyz_bounds: [[-410,-290,-120], [0,0,0]]
-      Z_safe: -80
+      limits: [[-410,-290,-120], [0,0,0]]
+      safe_height: -80
   measurer: &Keithley
     class: Electrical.Keithley.Keithley
     settings:
@@ -20,7 +20,7 @@
     class: Cartesian.Ender
     settings:
       port: COM8
-      xyz_bounds: [[0,0,0], [240,235,210]]
-      Z_safe: 30
+      limits: [[0,0,0], [240,235,210]]
+      safe_height: 30
   measurer: *Keithley
   height: *height

@@ -1,2 +1,2 @@
-from .Biologic import Biologic
-from .Keithley import Keithley
+from . import Biologic
+from . import Keithley
