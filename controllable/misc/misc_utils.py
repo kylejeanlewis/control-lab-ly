@@ -60,13 +60,12 @@ class Helper(object):
         return f'{int(h)}hr {int(m)}min {int(s):02}sec'
     
     @staticmethod
-    def zip_inputs(primary_keyword:str, mapping:dict={}, **kwargs):
+    def zip_inputs(primary_keyword:str, **kwargs):
         """
         Checks and zips multiple keyword arguments of lists into dictionary
 
         Args:
             primary_keyword (str): primary keyword to be used as key
-            mapping (dict): mapping from old
 
         Raises:
             Exception: Inputs have to be of the same length
