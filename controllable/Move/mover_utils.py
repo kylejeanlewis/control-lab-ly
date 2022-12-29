@@ -420,15 +420,22 @@ class Mover(object):
         self._flags[name] = value
         return
     
-    def setHeight(self, name:str, value):
+    def setHeight(self, name:str, value, overwrite=False):
         """
         Set predefined height
 
         Args:
             name (str): label
             value (int, or float): height value
+            overwrite (bool, optional): whether to overwrite existing height. Defaults to False.
+        
+        Raises:
+            Exception: Height with the same name has already been defined
         """
-        self.heights[name] = value
+        if name not in self.heights.keys() or overwrite:
+            self.heights[name] = value
+        else:
+            raise Exception(f"The height '{name}' has already been defined at: {self.heights[name]}")
         return
     
     def setImplementOffset(self, implement_offset, home=True):
