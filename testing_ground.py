@@ -4,9 +4,14 @@ Created: Tue 2022/11/01 17:13:35
 @author: Chang Jie
 
 Notes / actionables:
+TODO
+- test View.Classifier
+- test builds
+- test Measure
+
+LATER TODO
 - test database_utils
 - add 'Visualisation' modules
-- add 'GUI' modules
 """
 # Standard library imports
 import numpy as np
@@ -18,9 +23,9 @@ import pandas as pd
 print(f"Import: OK <{__name__}>")
 
 # %% Helper examples
-from controllable.misc import HELPER
+from controllable.misc import Helper
 if __name__ == "__main__":
-    HELPER.display_ports()
+    Helper.display_ports()
     pass
 
 # %% Cartesian examples
@@ -181,6 +186,8 @@ from controllable.Control.Schedule import ScanningScheduler
 if __name__ == "__main__":
     REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
     RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
+    REAGENTS = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
+    RECIPE = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
     spinbot = SpinbotController(config_option=0)
     spinbot.loadRecipe(REAGENTS, RECIPE)
     spinbot.prepareSetup()
@@ -194,6 +201,8 @@ from controllable.Control.Schedule import ScanningScheduler
 if __name__ == "__main__":
     REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
     RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
+    REAGENTS = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
+    RECIPE = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
     spinbot = SpinbotController(config_option=1)
     # spinbot.loadRecipe(REAGENTS, RECIPE)
     # spinbot.prepareSetup()
@@ -202,3 +211,9 @@ if __name__ == "__main__":
     pass
 
 # %% Primitiv examples
+from controllable.builds.PrimitivBench import PrimitivController
+if __name__ == "__main__":
+    primitiv = PrimitivController()
+    pass
+
+# %%
