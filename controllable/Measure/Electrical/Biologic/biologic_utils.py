@@ -19,13 +19,14 @@ import easy_biologic as biologic_api # pip install easy-biologic
 
 # Local application imports
 from ....Analyse.Data import Types
+from ..electrical_utils import Electrical
 from .programs import base_programs
 print(f"Import: OK <{__name__}>")
 
 # INITIALIZING
 nest_asyncio.apply()
 
-class Biologic(object):
+class Biologic(Electrical):
     """
     BioLogic class.
     
@@ -33,34 +34,15 @@ class Biologic(object):
         ip_address (str, optional): IP address of Bioogic device. Defaults to '192.109.209.128'.
     """
     model = 'biologic_'
-    def __init__(self, ip_address='192.109.209.128'):
+    def __init__(self, ip_address='192.109.209.128', name='def'):
         self._ip_address = ''
-        self.device = None
-        
-        self.buffer_df = pd.DataFrame()
-        self.datatype = None
-        self.program_type = None
-        self._data = None
-        self._program = None
-        
-        self.verbose = False
-        self._flags = {
-            'busy': False,
-            'measured': False,
-            'read': False
-        }
-        self._last_used_parameters = {}
-        self._connect(ip_address)
+        super().__init__(ip_address=ip_address, name=name)
         return
     
     @property
     def ip_address(self):
         return self._ip_address
-    
-    def __delete__(self):
-        self._shutdown()
-        return
-    
+        
     def _connect(self, ip_address:str):
         """
         Connect to device
@@ -73,20 +55,7 @@ class Biologic(object):
         """
         self._ip_address = ip_address
         self.device = biologic_api.BiologicDevice(ip_address, populate_info=True)
-        if self.device is not None:
-            self.setFlag('connected', True)
         return self.device
-    
-    def _fix_column_names(self):
-        """
-        Map column names of raw output, and fix mistakes in spelling
-        """
-        name_map = {
-            "Impendance phase": "Impedance phase [rad]",
-            "Impendance_ce phase": "Impedance_ce phase [rad]"
-        }
-        self.buffer_df.rename(columns=name_map, inplace=True)
-        return
     
     def _extract_data(self):
         """
@@ -100,11 +69,22 @@ class Biologic(object):
             return False
         self.buffer_df = pd.DataFrame(self._program.data[0], columns=self._program.field_titles)
         self._fix_column_names()
-        if len(self._program.data[0]) == 0:
+        if len(self.buffer_df) == 0:
             print("No data found.")
             return False
         self.setFlag('read', True)
         return True
+    
+    def _fix_column_names(self):
+        """
+        Map column names of raw output, and fix mistakes in spelling
+        """
+        name_map = {
+            "Impendance phase": "Impedance phase [rad]",
+            "Impendance_ce phase": "Impedance_ce phase [rad]"
+        }
+        self.buffer_df.rename(columns=name_map, inplace=True)
+        return
         
     def _shutdown(self):
         """
@@ -113,190 +93,25 @@ class Biologic(object):
         self.device.disconnect()
         return
     
-    def clearCache(self):
-        """
-        Reset data and flags
-        """
-        self.buffer_df = pd.DataFrame()
-        self._data = None
-        self._program = None
-        self.setFlag('measured', False)
-        self.setFlag('read', False)
-        return
-    
     def connect(self):
         """
         Make connection to device.
         """
         return self.device.connect()
-    
-    def getData(self):
-        """
-        Read the data and cast into custom data type for extended functions.
-            
-        Returns:
-            pd.DataFrame: raw dataframe of measurement
-        """
-        if not self._flags['read']:
-            self._extract_data()
-        if not self._flags['read']:
-            print("Unable to read data.")
-            return self.buffer_df
-        if self.datatype is not None:
-            self._data = self.datatype(data=self.buffer_df, instrument=self.model)
-        return self.buffer_df
-    
-    def isBusy(self):
-        """
-        Checks whether the Biologic is busy
-        
-        Returns:
-            bool: whether the Biologic is busy
-        """
-        return self._flags['busy']
-    
-    def isConnected(self):
-        """
-        Check whether Biologic is connected
 
-        Returns:
-            bool: whether Biologic is connected
-        """
-        if self.device is None:
-            return False
-        return True
-    
-    def loadDataType(self, name=None, datatype=None):
-        """
-        Load a custom datatype to analyse and plot data
-
-        Args:
-            name (str, optional): name of custom datatype in Analyse.Data.Types submodule. Defaults to None.
-            datatype (any, optional): custom datatype to load. Defaults to None.
-
-        Raises:
-            Exception: Select a valid custom datatype name
-            Exception: Input only one of 'name' or 'datatype'
-        """
-        if name is None and datatype is not None:
-            self.datatype = datatype
-        elif name is not None and datatype is None:
-            if name not in Types.TYPES_LIST:
-                raise Exception(f"Please select a valid custom datatype from: {', '.join(Types.TYPES_LIST)}")
-            datatype = getattr(Types, name)
-            self.datatype = datatype
-        else:
-            raise Exception("Please input only one of 'name' or 'datatype'")
-        print(f"Loaded datatype: {datatype.__class__}")
-        return
-    
-    def loadProgram(self, name=None, program_type=None):
+    def loadProgram(self, name=None, program_type=None, program_module=base_programs):
         """
         Load a program for device to run and its parameters
 
         Args:
-            name (str, optional): name of program type in Biologic.programs.base_programs submodule. Defaults to None.
+            name (str, optional): name of program type in program_module. Defaults to None.
             program_type (any, optional): program to load. Defaults to None.
+            program_module (module, optional): module containing relevant programs. Defaults to Biologic.programs.base_programs.
 
         Raises:
+            Exception: Provide a module containing relevant programs
             Exception: Select a valid program name
             Exception: Input only one of 'name' or 'program_type'
         """
-        if name is None and program_type is not None:
-            self.program_type = program_type
-        elif name is not None and program_type is None:
-            if name not in Types.TYPES_LIST:
-                raise Exception(f"Please select a program name from: {', '.join(base_programs.PROGRAM_LIST)}")
-            program_type = getattr(base_programs, name)
-            self.program_type = program_type
-        else:
-            raise Exception("Please input only one of 'name' or 'program_type'")
-        print(f"Loaded program: {program_type.__class__}")
-        return
+        return super().loadProgram(name=name, program_type=program_type, program_module=program_module)
     
-    def measure(self, params={}, channels=[0], **kwargs):
-        """
-        Performs measurement and tries to plot the data
-
-        Args:
-            params (dict, optional): dictionary of parameters. Use help() to find out about program parameters. Defaults to {}.
-            channels (list, optional): list of channels to assign the program to. Defaults to [0].
-        """
-        self.setFlag('busy', True)
-        print("Measuring...")
-        self.clearCache()
-        self._program = self.program_type(self.device, params, channels=channels, **kwargs)
-        self._last_used_parameters = params
-        self._program.run()
-        self.setFlag('measured', True)
-        self.getData()
-        self.plot()
-        self.setFlag('busy', False)
-        return
-    
-    def plot(self, plot_type=None):
-        """
-        Plot the measurement data
-        
-        Args:
-            plot_type (str, optional): perform the requested plot of the data. Defaults to None.
-        """
-        if self._flags['measured'] and self._flags['read']:
-            if self._data is not None:
-                self._data.plot(plot_type)
-                return True
-            print(self.buffer_df.head())
-        return False
-    
-    def recallParameters(self):
-        """
-        Recall the last used parameters.
-        
-        Returns:
-            dict: keyword parameters 
-        """
-        return self._last_used_parameters
-    
-    def reset(self):
-        """
-        Reset the program, data, and flags
-        """
-        self.buffer_df = pd.DataFrame()
-        self.datatype = None
-        self.program_type = None
-        self._data = None
-        self._program = None
-        
-        self.verbose = False
-        self._flags = {
-            'busy': False,
-            'measured': False,
-            'read': False
-        }
-        return
-    
-    def saveData(self, filepath:str):
-        """
-        Save dataframe to csv file.
-        
-        Args:
-            filepath (str): filepath to which data will be saved
-        """
-        if not self._flags['read']:
-            self.getData()
-        if len(self.buffer_df):
-            self.buffer_df.to_csv(filepath)
-        else:
-            print('No data available to be saved.')
-        return
-    
-    def setFlag(self, name:str, value:bool):
-        """
-        Set a flag truth value
-
-        Args:
-            name (str): label
-            value (bool): flag value
-        """
-        self._flags[name] = value
-        return
