@@ -72,7 +72,6 @@ class Electrical(object):
         """
         Close connection and shutdown
         """
-        self.device.disconnect()
         return
     
     def clearCache(self):
@@ -91,12 +90,6 @@ class Electrical(object):
         Make connection to device.
         """
         return self.device.connect()
-    
-    def disconnect(self):
-        """
-        Disconnect from device.
-        """
-        return self.device.disconnect()
     
     def getData(self):
         """
@@ -174,8 +167,8 @@ class Electrical(object):
             self.program_type = program_type
         elif name is not None and program_type is None:
             if name not in Types.TYPES_LIST:
-                raise Exception(f"Please select a program name from: {', '.join(base_programs.PROGRAM_LIST)}")
-            program_type = getattr(base_programs, name)
+                raise Exception(f"Please select a program name from: {', '.join(['',''])}")
+            # program_type = getattr(base_programs, name)
             self.program_type = program_type
         else:
             raise Exception("Please input only one of 'name' or 'program_type'")
@@ -241,8 +234,6 @@ class Electrical(object):
             'measured': False,
             'read': False
         }
-        self.disconnect()
-        self.connect()
         return
     
     def saveData(self, filepath:str):
