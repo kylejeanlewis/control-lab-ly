@@ -184,7 +184,7 @@ class SpinnerAssembly(object):
     """
     def __init__(self, ports=[], channels=[], positions=[]):
         properties = HELPER.zip_inputs('channel', port=ports, channel=channels, position=positions)
-        self.channels = {chn: Spinner(port, chn, pos) for port,chn,pos in properties}
+        self.channels = {key: Spinner(**value) for key,value in properties.items()}
         return
         
     def execute(self, soak_time:int, spin_speed:int, spin_time:int, channel:int):

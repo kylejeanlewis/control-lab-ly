@@ -348,7 +348,7 @@ class SyringeAssembly(LiquidHandler):
         super().__init__(**kwargs)
         self.pump = Pump(port)
         properties = HELPER.zip_inputs('channel', capacity=capacities, channel=channels, offset=offsets)
-        self.channels = {key: Syringe(**value) for key,value in properties}
+        self.channels = {key: Syringe(**value) for key,value in properties.items()}
         return
     
     def aspirate(self, volume, speed=None, wait=0, reagent='', pause=False, channel=None):
@@ -491,7 +491,7 @@ class SyringeAssembly(LiquidHandler):
             self.pullback(channel)
         return
     
-    def rinseMany(self, volume, speed=None, wait=0, reagent='', cycles=3, channels:list=[]):
+    def rinseMany(self, volume, speed=None, wait=0, reagents=[''], cycles=3, channels:list=[]):
         """
         Rinse multiple channels
 
@@ -499,7 +499,7 @@ class SyringeAssembly(LiquidHandler):
             volume (int, or float): volume to be rinsed
             speed (int, optional): speed to cycle. Defaults to None.
             wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            reagent (str, optional): name of reagent. Defaults to ''.
+            reagent (list, optional): name of reagent. Defaults to [''].
             cycles (int, optional): number of cycles to perform. Defaults to 3.
             channels (list, optional): channel to cycle. Defaults to [].
 
@@ -510,7 +510,7 @@ class SyringeAssembly(LiquidHandler):
             channels = list(self.channels.keys())
         
         return_values = {}
-        kwargs = HELPER.zip_inputs('channel', volume=volume, speed=speed, wait=wait, reagent=reagent, cycles=cycles, channel=channels)
+        kwargs = HELPER.zip_inputs('channel', volume=volume, speed=speed, wait=wait, reagent=reagents, cycles=cycles, channel=channels)
         for key,kwarg in kwargs.items():
             value = super().rinse(**kwarg)
             return_values[key] = value
