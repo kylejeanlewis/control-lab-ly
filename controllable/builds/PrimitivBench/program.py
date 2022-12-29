@@ -16,7 +16,8 @@ from ..build_utils import Controller
 from .routines import PrimitivSetup
 print(f"Import: OK <{__name__}>")
 
-CONFIG_FILE = 'config.yaml'
+PACKAGE = __package__.split('.')[-1]
+CONFIG_FILE = f"{PACKAGE}/config.yaml"
 
 class PrimitivController(Controller):
     def __init__(self, config_file=CONFIG_FILE, ignore_connections=False, config_option=0):
