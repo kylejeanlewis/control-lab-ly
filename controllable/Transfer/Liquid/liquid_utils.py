@@ -12,6 +12,12 @@ print(f"Import: OK <{__name__}>")
 PRE_WET_CYCLES = 1
 
 class LiquidHandler(object):
+    """
+    Liquid handler class
+
+    Args:
+        **kwargs: catch-all for stray inputs
+    """
     def __init__(self, **kwargs):
         self.capacity = 0
         self.channel = 0
