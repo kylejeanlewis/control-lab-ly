@@ -140,4 +140,5 @@ class Helper(object):
                     f.write(line + '\n')
         return
 
-HELPER = Helper()
+HELPER = Helper() 
+"""NOTE: importing HELPER gives the same instance of the object wherever you import it"""
