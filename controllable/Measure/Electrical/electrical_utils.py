@@ -19,14 +19,14 @@ class Electrical(object):
     """
     model = ''
     def __init__(self, **kwargs):
-        self.name = kwargs.pop('name', 'def')
+        self.name = kwargs.get('name', 'def')
         self.device = None
         
         self.buffer_df = pd.DataFrame()
+        self.data = None
         self.datatype = None
+        self.program = None
         self.program_type = None
-        self._data = None
-        self._program = None
         self._last_used_parameters = {}
         
         self.verbose = False
@@ -59,7 +59,7 @@ class Electrical(object):
         Returns:
             bool: whether the data extraction from program is successful
         """
-        if self._program is None:
+        if self.program is None:
             print("Please load a program first.")
             return False
         # Retrieve data from program here
@@ -81,8 +81,8 @@ class Electrical(object):
         Reset data and flags
         """
         self.buffer_df = pd.DataFrame()
-        self._data = None
-        self._program = None
+        self.data = None
+        self.program = None
         self.setFlag('measured', False)
         self.setFlag('read', False)
         self.setFlag('stop_measure', False)
@@ -107,7 +107,7 @@ class Electrical(object):
             print("Unable to read data.")
             return self.buffer_df
         if self.datatype is not None:
-            self._data = self.datatype(data=self.buffer_df, instrument=self.model)
+            self.data = self.datatype(data=self.buffer_df, instrument=self.model)
         return self.buffer_df
     
     def isBusy(self):
@@ -173,7 +173,7 @@ class Electrical(object):
         elif name is not None and program_type is None:
             if program_module is None:
                 raise Exception(f"Please provide a module containing relevant programs")
-            if name not in Types.TYPES_LIST:
+            if name not in program_module.PROGRAM_LIST:
                 raise Exception(f"Please select a program name from: {', '.join(program_module.PROGRAM_LIST)}")
             program_type = getattr(program_module, name)
             self.program_type = program_type
@@ -193,9 +193,9 @@ class Electrical(object):
         self.setFlag('busy', True)
         print("Measuring...")
         self.clearCache()
-        self._program = self.program_type(self.device, params, channels=channels, **kwargs)
+        self.program = self.program_type(self.device, params, channels=channels, **kwargs)
         self._last_used_parameters = params
-        self._program.run()
+        self.program.run()
         self.setFlag('measured', True)
         self.getData()
         self.plot()
@@ -210,8 +210,8 @@ class Electrical(object):
             plot_type (str, optional): perform the requested plot of the data. Defaults to None.
         """
         if self._flags['measured'] and self._flags['read']:
-            if self._data is not None:
-                self._data.plot(plot_type)
+            if self.data is not None:
+                self.data.plot(plot_type)
                 return True
             print(self.buffer_df.head())
         return False
@@ -232,8 +232,8 @@ class Electrical(object):
         self.buffer_df = pd.DataFrame()
         self.datatype = None
         self.program_type = None
-        self._data = None
-        self._program = None
+        self.data = None
+        self.program = None
         
         self.verbose = False
         self._flags = {
