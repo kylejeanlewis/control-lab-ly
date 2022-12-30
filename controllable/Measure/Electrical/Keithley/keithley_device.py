@@ -421,7 +421,7 @@ class KeithleyDevice(object):
             data = [0] * (num_rows * len(fields))
         data = np.reshape(np.array(data), (-1,len(fields)))
         df = pd.DataFrame(data, columns=fields)
-        if average:
+        if average and count > 1:
             avg = df.groupby(np.arange(len(df))//count).mean()
             std = df.groupby(np.arange(len(df))//count).std()
             df = avg.join(std, rsuffix='_std')
@@ -451,7 +451,7 @@ class KeithleyDevice(object):
             data = [0] * (count * len(fields))
         data = np.reshape(np.array(data), (-1,len(fields)))
         df = pd.DataFrame(data, columns=fields)
-        if average:
+        if average and count > 1:
             avg = df.groupby(np.arange(len(df))//count).mean()
             std = df.groupby(np.arange(len(df))//count).std()
             df = avg.join(std, rsuffix='_std')
