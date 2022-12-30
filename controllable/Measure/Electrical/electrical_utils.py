@@ -242,6 +242,7 @@ class Electrical(object):
                 self.data.plot(plot_type)
                 return True
             print(self.buffer_df.head())
+            print(f'{len(self.buffer_df)} row(s) of data')
         return False
     
     def recallParameters(self):
