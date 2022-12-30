@@ -35,6 +35,7 @@ class Biologic(Electrical):
     """
     model = 'biologic_'
     available_programs = base_programs.PROGRAM_LIST
+    possible_inputs = base_programs.INPUTS_LIST
     def __init__(self, ip_address='192.109.209.128', name='def'):
         self._ip_address = ''
         super().__init__(ip_address=ip_address, name=name)
