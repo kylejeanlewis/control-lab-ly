@@ -20,9 +20,20 @@ MAX_BUFFER_SIZE = 10000
 PROGRAM_LIST = ['IV_Scan', 'Logging', 'LSV', 'OCV', 'SweepV']
 
 class Program(object):
-    def __init__(self, device:KeithleyDevice, params={}, **kwargs):
+    """
+    Base Program template
+
+    Args:
+        device (KeithleyDevice): Keithley Device object
+        parameters (dict, optional): dictionary of measurement parameters. Defaults to {}.
+    
+    ==========
+    Parameters:
+        None
+    """
+    def __init__(self, device:KeithleyDevice, parameters={}, **kwargs):
         self.device = device
-        self.parameters = params
+        self.parameters = parameters
         
         self.data_df = pd.DataFrame
         self._flags = {}
@@ -37,14 +48,25 @@ class Program(object):
 
 class IV_Scan(Program):
     """
-    params:
-        currents: list of current values
+    I-V Scan program
+
+    Args:
+        device (KeithleyDevice): Keithley Device object
+        parameters (dict, optional): dictionary of measurement parameters. Defaults to {}.
+    
+    ==========
+    Parameters:
+        count (int, optional): number of readings to take and average over. Defaults to 1.
+        currents (iterable): current values to measure
     """
-    def __init__(self, device:KeithleyDevice, params={}, **kwargs):
-        super().__init__(device, params, **kwargs)
+    def __init__(self, device:KeithleyDevice, parameters={}, **kwargs):
+        super().__init__(device, parameters, **kwargs)
         return
     
     def run(self):
+        """
+        Run the measurement program
+        """
         device = self.device
         device.reset
         device.configure(['ROUTe:TERMinals FRONT'])
@@ -63,11 +85,25 @@ class IV_Scan(Program):
 
 
 class OCV(Program):
-    def __init__(self, device:KeithleyDevice, params={}, **kwargs):
-        super().__init__(device, params, **kwargs)
+    """
+    OCV program
+
+    Args:
+        device (KeithleyDevice): Keithley Device object
+        parameters (dict, optional): dictionary of measurement parameters. Defaults to {}.
+    
+    ==========
+    Parameters:
+        count (int, optional): number of readings to take and average over. Defaults to 1.
+    """
+    def __init__(self, device:KeithleyDevice, parameters={}, **kwargs):
+        super().__init__(device, parameters, **kwargs)
         return
     
     def run(self):
+        """
+        Run the measurement program
+        """
         device = self.device
         device.reset
         device.configure(['ROUTe:TERMinals FRONT', 'OUTPut:SMODe HIMPedance'])
