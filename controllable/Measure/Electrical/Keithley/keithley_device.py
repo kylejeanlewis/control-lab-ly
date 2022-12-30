@@ -273,7 +273,8 @@ class KeithleyDevice(object):
             elif self.sense == 'VOLTage':
                 unit = 'VOLT'
         count_upper_limit = min(300000, 300000)
-        if not 1<=count<=count_upper_limit:
+        count = max(1,count)
+        if count>count_upper_limit:
             raise Exception(f"Please select a count from 1 to {count_upper_limit}")
         kwargs = {
             'RANGe': self._get_limit(limit=limit, current=is_current),
@@ -417,8 +418,8 @@ class KeithleyDevice(object):
         
         data = self._send(f'TRACe:DATA? {start}, {end}, "{name}", {", ".join(fields)}')
         if not all([start,end]): # dummy data
-            num_rows = count * max(10, self._source_details.get('invoked', 10))
-            data = [0] * (num_rows * len(fields))
+            num_rows = count * max(1, self._source_details.get('invoked', 1))
+            data = [0] * int(num_rows * len(fields))
         data = np.reshape(np.array(data), (-1,len(fields)))
         df = pd.DataFrame(data, columns=fields)
         if average and count > 1:
@@ -448,7 +449,7 @@ class KeithleyDevice(object):
         
         data = self._send(f'TRACe:DATA? {start}, {end}, "{name}", {", ".join(fields)}')
         if not all([start,end]): # dummy data
-            data = [0] * (count * len(fields))
+            data = [0] * int(count * len(fields))
         data = np.reshape(np.array(data), (-1,len(fields)))
         df = pd.DataFrame(data, columns=fields)
         if average and count > 1:
