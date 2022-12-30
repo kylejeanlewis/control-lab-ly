@@ -14,6 +14,7 @@ import time
 import PySimpleGUI as sg # pip install PySimpleGUI
 
 # Local application imports
+from...Measure.Electrical import Electrical
 from .gui_utils import Panel
 print(f"Import: OK <{__name__}>")
 
@@ -34,8 +35,9 @@ class MeasurerPanel(Panel):
         font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
         group (str, optional): name of group. Defaults to 'measurer'.
     """
-    def __init__(self, measurer, name='MEASURE', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group='measurer'):
+    def __init__(self, measurer:Electrical, name='MEASURE', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group='measurer'):
         super().__init__(name=name, theme=theme, typeface=typeface, font_sizes=font_sizes, group=group)
+        self.current_program = ''
         self.measurer = measurer
         return
     
@@ -56,7 +58,38 @@ class MeasurerPanel(Panel):
         Returns:
             PySimpleGUI.Column: Column object
         """
-        return super().getLayout(title, title_font_level, **kwargs)
+        font = (self.typeface, self.font_sizes[title_font_level])
+        layout = super().getLayout(f'{self.name} Control', justification='center', font=font)
+        
+        font = (self.typeface, self.font_sizes[title_font_level+1])
+        # add dropdown for program list
+        dropdown = sg.Listbox(values=self.measurer.available_programs, size=(20, 5), key=self._mangle('-PROGRAMS-'), enable_events=True)
+        
+        # add template for procedurally adding input fields
+        labels = []
+        inputs = []
+        for input_field in self.measurer.possible_inputs:
+            _label = sg.Column([[sg.Text(input_field.title(), key=self._mangle(f'-{input_field}-LABEL-'), visible=False)]])
+            _input = sg.Column([[sg.Input(0, size=(5,2), key=self._mangle(f'-{input_field}-VALUE-'), visible=False, tooltip='')]])
+            labels.append([_label])
+            inputs.append([_input])
+        labels_column = sg.Column(labels, justification='right', pad=10, visible=True)
+        inputs_column = sg.Column(inputs, justification='left', pad=10, visible=True)
+        labels_inputs = [labels_column, inputs_column]
+        
+        # add run, clear, reset buttons
+        layout = [
+            [layout],
+            [self._pad()],
+            [sg.Column([[dropdown]], justification='center')],
+            [self._pad()],
+            labels_inputs,
+            [self._pad()],
+            [sg.Column([self.getButtons(['Run','Clear','Reset'], (5,2), self.name, font)], justification='center')],
+            [self._pad()]
+        ]
+        layout = sg.Column(layout, vertical_alignment='top')
+        return layout
     
     def listenEvents(self, event, values):
         """
@@ -69,7 +102,53 @@ class MeasurerPanel(Panel):
         Returns:
             dict: dictionary of updates
         """
-        return super().listenEvents(event, values)
+        updates = {}
+        # 1. Select program
+        if event == self._mangle('-PROGRAMS-'):
+            selected_program = values[self._mangle('-PROGRAMS-')][0]
+            if selected_program != self.current_program:
+                self.measurer.loadProgram(selected_program)
+                update = self.showInputs(self.measurer.program_type.input_parameters)
+                updates.update(update)
+            self.current_program = selected_program
+        
+        # 2. Start measure
+        if event == self._mangle('-Run-'):
+            if self.measurer.program_type is not None:
+                print('Start measure')
+                parameters = {}
+                for input_field in self.measurer.program_type.input_parameters:
+                    key = self._mangle(f'-{input_field}-VALUE-')
+                    if key in values.keys():
+                        value = self.parseInput(values[key])
+                        parameters[input_field] = value
+                print(parameters)
+                self.measurer.measure(parameters=parameters)
+            else:
+                print('Please select a program first.')
+        
+        # 3. Reset measurer
+        if event == self._mangle('-Reset-'):
+            print('Reset')
+        
+        # 4. Clear input fields
+        if event == self._mangle('-Clear-'):
+            update = self.showInputs(self.measurer.program_type.input_parameters)
+            updates.update(update)
+        return updates
+    
+    def showInputs(self, active_inputs:list):
+        updates = {}
+        for input_field in self.measurer.possible_inputs:
+            key_label = self._mangle(f'-{input_field}-LABEL-')
+            key_input = self._mangle(f'-{input_field}-VALUE-')
+            updates[key_label] = dict(visible=False)
+            updates[key_input] = dict(visible=False)
+            if input_field in active_inputs.keys():
+                updates[key_label] = dict(visible=True)
+                updates[key_input] = dict(visible=True , value=active_inputs[input_field], 
+                                          tooltip=self.measurer.program_type.__short_doc__)
+        return updates
 
 
 class MoverPanel(Panel):
@@ -191,6 +270,7 @@ class MoverPanel(Panel):
         Returns:
             dict: dictionary of updates
         """
+        updates = {}
         position = list(np.concatenate(self.mover.getWorkspacePosition()))
         cache_position = position.copy()
         if event in [self._mangle(f'-{e}-') for e in ('safe', 'home', 'Go', 'Clear', 'Reset')]:
@@ -239,7 +319,6 @@ class MoverPanel(Panel):
             position = cache_position
         
         # 7. Update position
-        updates = {}
         if self.flags['update_position']:
             for i,axis in enumerate(['X','Y','Z','a','b','c']):
                 updates[self._mangle(f'-{axis}-VALUE-')] = dict(value=position[i])
