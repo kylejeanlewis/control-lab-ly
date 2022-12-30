@@ -18,16 +18,18 @@ class Electrical(object):
     Electrical measurer class.
     """
     model = ''
+    available_programs = []
     def __init__(self, **kwargs):
         self.name = kwargs.get('name', 'def')
         self.device = None
         
         self.buffer_df = pd.DataFrame()
         self.data = None
-        self.datatype = None
         self.program = None
+        self.datatype = None
         self.program_type = None
         self._last_used_parameters = {}
+        self._measure_method_docstring = self.measure.__doc__
         
         self.verbose = False
         self._flags = {
@@ -75,6 +77,30 @@ class Electrical(object):
         Close connection and shutdown
         """
         return
+    
+    def _get_new_docstring(self, program_doc:str):
+        """
+        Gets new docstring for 'measure' method when program is loaded.
+
+        Args:
+            program_doc (str): program class docstring
+
+        Returns:
+            str: combined docstring
+        """
+        lines = program_doc.split('\n')
+        start, end = 0,0
+        for i,line in enumerate(lines):
+            line = line.strip()
+            if line.startswith('Args:'):
+                start = i
+            if len(line) == 0 and start:
+                end = i
+                break
+        short_lines = lines[:start-1] + lines[end+1:]
+        short_program_doc = '\n'.join(short_lines)
+        print(short_program_doc)
+        return self._measure_method_docstring + short_program_doc
     
     def clearCache(self):
         """
@@ -151,7 +177,7 @@ class Electrical(object):
             self.datatype = datatype
         else:
             raise Exception("Please input only one of 'name' or 'datatype'")
-        print(f"Loaded datatype: {datatype.__class__}")
+        print(f"Loaded datatype: {datatype.__module__}")
         return
     
     def loadProgram(self, name=None, program_type=None, program_module=None):
@@ -179,7 +205,8 @@ class Electrical(object):
             self.program_type = program_type
         else:
             raise Exception("Please input only one of 'name' or 'program_type'")
-        print(f"Loaded program: {program_type.__class__}")
+        print(f"Loaded program: {program_type.__name__}")
+        self.measure.__func__.__doc__ = self._get_new_docstring(program_type.__doc__)
         return
     
     def measure(self, params={}, channels=[0], **kwargs):
@@ -230,10 +257,11 @@ class Electrical(object):
         Reset the program, data, and flags
         """
         self.buffer_df = pd.DataFrame()
-        self.datatype = None
-        self.program_type = None
         self.data = None
         self.program = None
+        self.datatype = None
+        self.program_type = None
+        self.measure.__func__.__doc__ = self._measure_method_docstring
         
         self.verbose = False
         self._flags = {
