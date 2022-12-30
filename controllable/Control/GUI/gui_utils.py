@@ -6,6 +6,9 @@ Created: Tue 2022/11/30 10:30:00
 Notes / actionables:
 - 
 """
+# Standard library imports
+from collections import OrderedDict
+
 # Third party imports
 import PySimpleGUI as sg # pip install PySimpleGUI
 from PySimpleGUI import WIN_CLOSED, WINDOW_CLOSE_ATTEMPTED_EVENT
@@ -67,6 +70,28 @@ class Panel(object):
                     kw[k] = v
             buttons.append(sg.Button(label, size=size, key=key, font=font, **kw))
         return buttons
+    
+    @staticmethod
+    def parseInput(string):
+        if ',' in string:
+            strings = string.split(',')
+        elif ';' in string:
+            strings = string.split(';')
+        else:
+            try:
+                string = float(string)
+                return string
+            finally:
+                # return string
+                pass
+        output = []
+        for string in strings:
+            try:
+                output.append(float(string))
+            except ValueError:
+                # output.append(string)
+                pass
+        return output
     
     def _mangle(self, string:str):
         """
@@ -235,6 +260,9 @@ class Panel(object):
                 break
             updates = self.listenEvents(event, values)
             for ele_key, kwargs in updates.items():
+                tooltip = kwargs.pop('tooltip', None)
+                if tooltip is not None:
+                    self.window[ele_key].set_tooltip(str(tooltip))
                 self.window[ele_key].update(**kwargs)
         return
     
@@ -270,7 +298,7 @@ class CompoundPanel(Panel):
     """
     def __init__(self, ensemble={}, theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group=None):
         super().__init__(theme=theme, typeface=typeface, font_sizes=font_sizes, group=group)
-        self.panels = {key: value[0](name= key, **value[1]) for key,value in ensemble.items()}
+        self.panels = {key: value[0](name=key, **value[1]) for key,value in ensemble.items()}
         return
     
     def close(self):
@@ -304,6 +332,13 @@ class CompoundPanel(Panel):
             if group not in tab_groups.keys():
                 tab_groups[group] = []
             tab_groups[group].append((key, _layout))
+            
+        tab_group_order = ['main', 'viewer', 'mover', 'measurer'] 
+        tab_group_order = tab_group_order + [grp for grp in list(tab_groups.keys()) if grp not in tab_group_order]
+        ordered_tab_groups = OrderedDict()
+        for key in tab_group_order:
+            ordered_tab_groups[key] = tab_groups[key]
+        tab_groups = ordered_tab_groups
         
         panels = []
         excluded = ['main']
@@ -319,7 +354,8 @@ class CompoundPanel(Panel):
                 tab_group = sg.TabGroup([tabs], tab_location='bottomright', key=f'-{group}-TABS-', 
                                         expand_x=True, expand_y=True)
                 tab_groups[group] = tab_group
-        panels = panels + [element for group,element in tab_groups.items() if group not in excluded]
+                panels.append(tab_group)
+        # panels = panels + [element for group,element in tab_groups.items() if group not in excluded]
         panel_list = [panels[0]]
         for p in range(1, len(panels)):
             panel_list.append(sg.VerticalSeparator(color="#ffffff", pad=5))
