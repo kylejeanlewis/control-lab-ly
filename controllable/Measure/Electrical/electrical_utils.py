@@ -19,6 +19,7 @@ class Electrical(object):
     """
     model = ''
     available_programs = []
+    possible_inputs = []
     def __init__(self, **kwargs):
         self.name = kwargs.get('name', 'def')
         self.device = None
@@ -94,10 +95,10 @@ class Electrical(object):
             line = line.strip()
             if line.startswith('Args:'):
                 start = i
-            if len(line) == 0 and start:
+            if line.startswith('==========') and start:
                 end = i
                 break
-        short_lines = lines[:start-1] + lines[end+1:]
+        short_lines = lines[:start-1] + lines[end:]
         short_program_doc = '\n'.join(short_lines)
         print(short_program_doc)
         return self._measure_method_docstring + short_program_doc
@@ -209,19 +210,19 @@ class Electrical(object):
         self.measure.__func__.__doc__ = self._get_new_docstring(program_type.__doc__)
         return
     
-    def measure(self, params={}, channels=[0], **kwargs):
+    def measure(self, parameters={}, channels=[0], **kwargs):
         """
         Performs measurement and tries to plot the data
 
         Args:
-            params (dict, optional): dictionary of parameters. Use help() to find out about program parameters. Defaults to {}.
+            parameters (dict, optional): dictionary of parameters. Use help() to find out about program parameters. Defaults to {}.
             channels (list, optional): list of channels to assign the program to. Defaults to [0].
         """
         self.setFlag('busy', True)
         print("Measuring...")
         self.clearCache()
-        self.program = self.program_type(self.device, params, channels=channels, **kwargs)
-        self._last_used_parameters = params
+        self.program = self.program_type(self.device, parameters, channels=channels, **kwargs)
+        self._last_used_parameters = parameters
         self.program.run()
         self.setFlag('measured', True)
         self.getData()
