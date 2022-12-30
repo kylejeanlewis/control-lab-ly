@@ -146,18 +146,20 @@ if __name__ == "__main__":
     pass
 
 # %% GUI examples
+from controllable.Measure.Electrical.Keithley import Keithley
 from controllable.Move.Cartesian import Ender, Primitiv
 from controllable.Move.Jointed.Dobot import M1Pro
 from controllable.View.Optical import Optical
 from controllable.View.Thermal import Thermal
-from controllable.Control.GUI import CompoundPanel, MoverPanel, ViewerPanel
+from controllable.Control.GUI import CompoundPanel, MeasurerPanel, MoverPanel, ViewerPanel
 if __name__ == "__main__":
     ensemble = {
         'Camera': (ViewerPanel, dict(viewer=Optical())),
         'Thermal': (ViewerPanel, dict(viewer=Thermal('192.168.1.111'))),
         'Primitiv': (MoverPanel, dict(mover=Primitiv('COM5'), axes=['X','Y','Z'])),
         'Ender': (MoverPanel, dict(mover=Ender('COM4'), axes=['X','Y','Z'])),
-        'M1Pro': (MoverPanel, dict(mover=M1Pro(), axes=['X','Y','Z','a','b','c']))
+        'M1Pro': (MoverPanel, dict(mover=M1Pro(), axes=['X','Y','Z','a','b','c'])),
+        'Keithley': (MeasurerPanel, dict(measurer=Keithley('192.168.1.104'))),
     }
     gui = CompoundPanel(ensemble)
     gui.runGUI('Primitiv')
@@ -169,6 +171,15 @@ from controllable.Control.GUI import MoverPanel
 if __name__ == "__main__":
     gui = MoverPanel(**dict(mover=Ender('COM4'), axes=['X','Y','Z']))
     gui.runGUI('Ender')
+    pass
+
+# %% GUI examples
+from controllable.Measure.Electrical.Keithley import Keithley, base_programs
+from controllable.Control.GUI import MeasurerPanel
+if __name__ == "__main__":
+    # me = base_programs.OCV
+    gui = MeasurerPanel(**dict(measurer=Keithley('192.168.1.104'), name='Keithley'))
+    gui.runGUI('Keithley')
     pass
 
 # %% Spinner examples
