@@ -34,6 +34,7 @@ class Biologic(Electrical):
         ip_address (str, optional): IP address of Bioogic device. Defaults to '192.109.209.128'.
     """
     model = 'biologic_'
+    available_programs = base_programs.PROGRAM_LIST
     def __init__(self, ip_address='192.109.209.128', name='def'):
         self._ip_address = ''
         super().__init__(ip_address=ip_address, name=name)

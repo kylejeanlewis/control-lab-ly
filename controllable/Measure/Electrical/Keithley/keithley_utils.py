@@ -24,6 +24,7 @@ class Keithley(Electrical):
         name (str, optional): nickname for Keithley. Defaults to 'def'.
     """
     model = 'keithley_'
+    available_programs = base_programs.PROGRAM_LIST
     def __init__(self, ip_address='192.168.1.125', name='def'):
         self._ip_address = ''
         super().__init__(ip_address=ip_address, name=name)
