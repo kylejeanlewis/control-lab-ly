@@ -162,7 +162,7 @@ if __name__ == "__main__":
         'Keithley': (MeasurerPanel, dict(measurer=Keithley('192.168.1.104'))),
     }
     gui = CompoundPanel(ensemble)
-    gui.runGUI('Primitiv')
+    gui.runGUI('Demo')
     pass
 
 # %% GUI examples
