@@ -23,9 +23,9 @@ import pandas as pd
 print(f"Import: OK <{__name__}>")
 
 # %% Helper examples
-from controllable.misc import Helper
+from controllable.misc import HELPER
 if __name__ == "__main__":
-    Helper.display_ports()
+    HELPER.display_ports()
     pass
 
 # %% Cartesian examples
@@ -42,17 +42,18 @@ if __name__ == "__main__":
     pass
 
 # %% Jointed M1 Pro examples
-from controllable.Move.Jointed import M1Pro
+from controllable.Move.Jointed.Dobot import M1Pro
 if __name__ == "__main__":
     mover = M1Pro(ip_address='192.168.2.21', home_position=(300,0,100))
     pass
 
 # %% Keithley examples
-from controllable.Measure.Electrical.Keithley import Keithley
+from controllable.Measure.Electrical.Keithley import Keithley, base_programs
 if __name__ == "__main__":
+    me = base_programs.IV_Scan
     measurer = Keithley('192.168.1.104')
-    measurer.loadProgram('LSV')
-    measurer.measure(volt_range=(-0.7, 0.7, 0.01))
+    measurer.loadProgram('IV_Scan')
+    # measurer.measure()
     pass
 
 # %% BioLogic examples
@@ -73,8 +74,9 @@ if __name__ == "__main__":
         'wait': 0.10
     }
 
-    measurer.loadProgram(base_programs.PEIS, params, channels=[0])
-    measurer.measure(ImpedanceSpectrum)
+    measurer.loadProgram(base_programs.PEIS)
+    measurer.loadDataType(ImpedanceSpectrum)
+    measurer.measure(params, channels=[0])
     pass
 
 # %% BioLogic examples
