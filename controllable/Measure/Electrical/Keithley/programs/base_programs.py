@@ -17,7 +17,21 @@ from .scpi_datatype import SCPI
 print(f"Import: OK <{__name__}>")
 
 MAX_BUFFER_SIZE = 10000
-PROGRAM_LIST = ['IV_Scan', 'Logging', 'LSV', 'OCV', 'SweepV']
+# PROGRAM_LIST = ['IV_Scan', 'Logging', 'LSV', 'OCV', 'SweepV']
+PROGRAM_LIST = ['IV_Scan','OCV']
+INPUTS_LIST = ['count', 'currents']
+
+def get_inputs_defaults(doc):
+    input_parameters = {}
+    parameter_list = [_s.strip() for _s in doc.split('Parameters:')[-1].split('\n')]
+    for parameter in parameter_list:
+        if len(parameter) == 0:
+            continue
+        _input = parameter.split(' ')[0]
+        _default = parameter.split(' ')[-1][:-1] if 'Defaults' in parameter else 0
+        input_parameters[_input]= _default
+    return input_parameters
+
 
 class Program(object):
     """
@@ -31,6 +45,8 @@ class Program(object):
     Parameters:
         None
     """
+    __short_doc__ = __doc__.split('==========\n')[-1]
+    input_parameters = get_inputs_defaults(__doc__)
     def __init__(self, device:KeithleyDevice, parameters={}, **kwargs):
         self.device = device
         self.parameters = parameters
@@ -57,8 +73,10 @@ class IV_Scan(Program):
     ==========
     Parameters:
         count (int, optional): number of readings to take and average over. Defaults to 1.
-        currents (iterable): current values to measure
+        currents (iterable): current values to measure. Defaults to 0,.
     """
+    __short_doc__ = __doc__.split('==========\n')[-1]
+    input_parameters = get_inputs_defaults(__doc__)
     def __init__(self, device:KeithleyDevice, parameters={}, **kwargs):
         super().__init__(device, parameters, **kwargs)
         return
@@ -96,6 +114,8 @@ class OCV(Program):
     Parameters:
         count (int, optional): number of readings to take and average over. Defaults to 1.
     """
+    __short_doc__ = __doc__.split('==========\n')[-1]
+    input_parameters = get_inputs_defaults(__doc__)
     def __init__(self, device:KeithleyDevice, parameters={}, **kwargs):
         super().__init__(device, parameters, **kwargs)
         return
@@ -281,3 +301,5 @@ class OCV(Program):
         
 #         self.data_df = self.sub_program['sweep'].run(voltages=voltages, dwell_time=dwell_time, num_points=num_points, wait=wait)
 #         return
+
+# %%
