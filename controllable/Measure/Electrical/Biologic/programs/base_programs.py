@@ -17,6 +17,7 @@ PROGRAM_LIST = [
     'OCV', 'CA', 'CP', 'CALimit', 'CPLimit', 'PEIS', 'GEIS', 'JV_Scan', 
     'MPP_Tracking', 'MPP', 'MPP_Cycles'
 ]
+INPUTS_LIST = []
 
 class CALIMIT( Enum ):
     Voltage_step      = float
