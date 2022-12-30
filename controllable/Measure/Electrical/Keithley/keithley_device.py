@@ -69,7 +69,7 @@ class KeithleyDevice(object):
         return
     
     @staticmethod
-    def _get_fields(self, fields:list):
+    def _get_fields(fields:list):
         """
         Check list of fields
 
@@ -138,12 +138,12 @@ class KeithleyDevice(object):
         if current:
             unit = 'A'
             for lim in [10e-9, 100e-9, 1e-6, 10e-6, 100e-6, 1e-3, 10e-3, 100e-3, 1]:
-                if lim > abs(limit):
+                if lim >= abs(limit):
                     return lim
         else:
             unit = 'V'
             for lim in [20e-3, 200e-3, 2, 20, 200]:
-                if lim > abs(limit):
+                if lim >= abs(limit):
                     return lim
         raise Exception(f'Please set a current limit that is between -{lim} and {lim} {unit}')
     
@@ -185,7 +185,8 @@ class KeithleyDevice(object):
             print(command)
             if self.verbose:
                 print("")
-            return
+            dummy_return = [0 for _ in range(command.count(';')+1)] if "?" in command else None
+            return dummy_return
         if "?" in command:
             reply = self.instrument.query(command)
             if ',' in reply:
@@ -265,6 +266,7 @@ class KeithleyDevice(object):
         self.sense = func
         self._send(f'SENSe:FUNCtion "{self.sense}"')
         
+        is_current = (self.sense=='CURRent')
         if unit is None:
             if self.sense == 'CURRent':
                 unit = 'AMP'
@@ -274,8 +276,9 @@ class KeithleyDevice(object):
         if not 1<=count<=count_upper_limit:
             raise Exception(f"Please select a count from 1 to {count_upper_limit}")
         kwargs = {
-            'RANGe': self._get_limit(limit=limit),
+            'RANGe': self._get_limit(limit=limit, current=is_current),
             'RSENse': 'ON' if probe_4_point else 'OFF',
+            'UNIT': unit,
             'COUNt': count
         }
         self._sense_details.update(kwargs)
@@ -295,11 +298,13 @@ class KeithleyDevice(object):
         self.source = func
         self._send(f'SOURce:FUNCtion {self.source}')
         
+        is_current = (self.source=='CURRent')
         kwargs = {
-            'RANGe': self._get_limit(limit=limit),
-            self._get_limit_type(self.source): self._get_limit(limit=measure_limit)
+            'RANGe': self._get_limit(limit=limit, current=is_current),
+            self._get_limit_type(self.source): self._get_limit(limit=measure_limit, current=not(is_current))
         }
         self._source_details.update(kwargs)
+        self._source_details.update({'invoked': 0})
         commands = [f'SOURce:{self.source}:{key} {value}' for key,value in kwargs.items()]
         return self.configure(commands=commands)
     
@@ -316,7 +321,7 @@ class KeithleyDevice(object):
         print("Setting up Keithley communications...")
         if ip_address is None:
             ip_address = self.ip_address
-        self.ip_address = ip_address
+        self._ip_address = ip_address
         instrument = None
         try:
             rm = visa.ResourceManager('@py')
@@ -408,13 +413,17 @@ class KeithleyDevice(object):
             name = self._active_buffer
         fields = self._get_fields(fields=fields)
         start,end = self.getBufferIndices(name=name)
+        count = self._sense_details.get('COUNt', 1)
         
         data = self._send(f'TRACe:DATA? {start}, {end}, "{name}", {", ".join(fields)}')
+        if not all([start,end]): # dummy data
+            num_rows = count * max(10, self._source_details.get('invoked', 10))
+            data = [0] * (num_rows * len(fields))
         data = np.reshape(np.array(data), (-1,len(fields)))
         df = pd.DataFrame(data, columns=fields)
         if average:
-            avg = df.groupby(np.arange(len(df))//2).mean()
-            std = df.groupby(np.arange(len(df))//2).std()
+            avg = df.groupby(np.arange(len(df))//count).mean()
+            std = df.groupby(np.arange(len(df))//count).std()
             df = avg.join(std, rsuffix='_std')
         return df
     
@@ -434,15 +443,17 @@ class KeithleyDevice(object):
             name = self._active_buffer
         fields = self._get_fields(fields=fields)
         _,end = self.getBufferIndices(name=name)
-        num_rows = self._sense_details.get('COUNt', 1)
-        start = end - num_rows + 1
+        count = self._sense_details.get('COUNt', 1)
+        start = end - count + 1
         
         data = self._send(f'TRACe:DATA? {start}, {end}, "{name}", {", ".join(fields)}')
+        if not all([start,end]): # dummy data
+            data = [0] * (count * len(fields))
         data = np.reshape(np.array(data), (-1,len(fields)))
         df = pd.DataFrame(data, columns=fields)
         if average:
-            avg = df.groupby(np.arange(len(df))//2).mean()
-            std = df.groupby(np.arange(len(df))//2).std()
+            avg = df.groupby(np.arange(len(df))//count).mean()
+            std = df.groupby(np.arange(len(df))//count).std()
             df = avg.join(std, rsuffix='_std')
         return df
     
@@ -503,9 +514,12 @@ class KeithleyDevice(object):
         """
         capacity = 1 if self.source=='CURRent' else 200
         limit = self._source_details.get('RANGe', capacity)
+        if type(limit) == str:
+            limit = capacity
         unit = 'A' if self.source=='CURRent' else 'V'
         if abs(value) > limit:
             raise Exception(f'Please set a source value between -{limit} and {limit} {unit}')
+        self._source_details['invoked'] += 1
         return self._send(f'SOURce:{self.source} {value}')
 
     def start(self, consecutive_readings=False):
