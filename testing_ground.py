@@ -166,11 +166,11 @@ if __name__ == "__main__":
     pass
 
 # %% GUI examples
-from controllable.Move.Cartesian import Ender
+from controllable.Move.Cartesian import Primitiv
 from controllable.Control.GUI import MoverPanel
 if __name__ == "__main__":
-    gui = MoverPanel(**dict(mover=Ender('COM4'), axes=['X','Y','Z']))
-    gui.runGUI('Ender')
+    gui = MoverPanel(**dict(mover=Primitiv('COM4'), axes=['X','Y']))
+    gui.runGUI('Primitiv')
     pass
 
 # %% GUI examples
