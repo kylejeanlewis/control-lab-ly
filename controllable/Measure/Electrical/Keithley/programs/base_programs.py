@@ -91,6 +91,7 @@ class IV_Scan(Program):
         device.configureSource('current', measure_limit=200)
         device.configureSense('voltage', 200, True, count=self.parameters.get('count', 1))
         device.makeBuffer()
+        device.start(consecutive_readings=True)
         device.beep()
         
         for current in self.parameters.get('currents', []):
@@ -130,6 +131,7 @@ class OCV(Program):
         device.configureSource('current', limit=1, measure_limit=20)
         device.configureSense('voltage', 20, count=self.parameters.get('count', 1))
         device.makeBuffer()
+        device.start(consecutive_readings=True)
         device.beep()
         
         device.setSource(value=0)
