@@ -154,8 +154,8 @@ class Camera(object):
         Returns:
             bytes: byte representation of image/frame
         """
-        if type(frame) == type(None):
-            if type(image) != type(None):
+        if frame is None:
+            if image is not None:
                 return image.encode(ext)
             else:
                 raise Exception('Please input either image or frame.')
@@ -224,8 +224,8 @@ class Camera(object):
         Returns:
             bool: True if successfully saved
         """
-        if type(frame) == type(None):
-            if type(image) != type(None):
+        if frame is None:
+            if image is not None:
                 return image.save(filename)
             else:
                 raise Exception('Please input either image or frame.')
@@ -270,7 +270,7 @@ class Camera(object):
         Returns:
             pd.DataFrame: dataframe of detected targets
         """
-        if type(self.classifier) == type(None):
+        if self.classifier is None:
             raise Exception('Please load a classifier first.')
         image.grayscale(inplace=True)
         detected_data = self.classifier.detect(image=image, scale=scale, neighbors=neighbors)
