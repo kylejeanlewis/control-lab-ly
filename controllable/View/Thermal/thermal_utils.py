@@ -11,7 +11,7 @@ import pkgutil
 
 # Local application imports
 from ..view_utils import Camera
-from .Flir.ax8.ax8 import Ax8ThermalCamera
+from .Flir.ax8 import Ax8ThermalCamera
 print(f"Import: OK <{__name__}>")
 
 class Thermal(Camera):
@@ -38,8 +38,9 @@ class Thermal(Camera):
         """
         Connect to the imaging device
         """
-        self.device = Ax8ThermalCamera(self.ip_address, verbose=False)
-        if self.device.modbus.is_open:
+        self.device = Ax8ThermalCamera(self.ip_address, verbose=True)
+        # if self.device.modbus.is_open:
+        if True:
             self.feed = self.device.video.stream
             self._flags['isConnected'] = True
         return
@@ -51,14 +52,13 @@ class Thermal(Camera):
         Returns:
             bool, array: True if frame is obtained; array of frame
         """
-        return self.device.modbus.is_open, self.feed.read()
+        return True, self.feed.read()
     
     def _release(self):
         """
         Release the camera feed
         """
-        if self.device.modbus.is_open:
-            self.feed.stop()
-            self.feed.stream.release()
+        self.feed.stop()
+        self.feed.stream.release()
         return
     

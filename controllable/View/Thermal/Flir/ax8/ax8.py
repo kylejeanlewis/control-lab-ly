@@ -44,8 +44,6 @@ class Ax8ThermalCamera:
         except Exception as ee:
             print("Unable to establish Modbus TCP! Error-", str(ee))
             raise ee
-        if not self.modbus.is_open:
-            return
         # Port opened succesfully
         if self.verbose:
                 print("Established Modbus TCP at", self.modbus.host)
@@ -69,8 +67,6 @@ class Ax8ThermalCamera:
         cam_temp : float
 
         """
-        if not self.modbus.is_open:
-            return 0
         # self.modbus.unit_id(1)
         cam_temp = parse_float(self.modbus.read_holding_registers(reg_addr=1017, reg_nb=2))
         if self.verbose:
