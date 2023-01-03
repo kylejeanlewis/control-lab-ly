@@ -130,6 +130,7 @@ class MeasurerPanel(Panel):
         # 3. Reset measurer
         if event == self._mangle('-Reset-'):
             print('Reset')
+            self.measurer.reset()
         
         # 4. Clear input fields
         if event == self._mangle('-Clear-'):
