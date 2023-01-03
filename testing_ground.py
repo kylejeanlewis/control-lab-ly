@@ -174,6 +174,14 @@ if __name__ == "__main__":
     pass
 
 # %% GUI examples
+from controllable.Move.Jointed.Dobot import M1Pro
+from controllable.Control.GUI import MoverPanel
+if __name__ == "__main__":
+    gui = MoverPanel(**dict(mover=M1Pro(ip_address='192.168.2.21', home_position=(300,0,100)), axes=['X','Y','Z','a']))
+    gui.runGUI('M1Pro')
+    pass
+
+# %% GUI examples
 from controllable.Measure.Electrical.Keithley import Keithley, base_programs
 from controllable.Control.GUI import MeasurerPanel
 if __name__ == "__main__":
@@ -214,8 +222,8 @@ from controllable.Control.Schedule import ScanningScheduler
 if __name__ == "__main__":
     REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
     RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
-    REAGENTS = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
-    RECIPE = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
+    # REAGENTS = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
+    # RECIPE = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
     spinbot = SpinbotController(config_option=1)
     # spinbot.loadRecipe(REAGENTS, RECIPE)
     # spinbot.prepareSetup()
