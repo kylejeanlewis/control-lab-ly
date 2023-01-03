@@ -38,7 +38,7 @@ if __name__ == "__main__":
 # %% Jointed MG400 examples
 from controllable.Move.Jointed.Dobot import MG400
 if __name__ == "__main__":
-    mover = MG400(ip_address='192.168.1.7')
+    mover = MG400(ip_address='192.168.2.8')
     pass
 
 # %% Jointed M1 Pro examples
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     pipet = Sartorius('COM17')
     pass
 
-# %% GUI examples
+# %% GUI examples: Ensemble
 from controllable.Measure.Electrical.Keithley import Keithley
 from controllable.Move.Cartesian import Ender, Primitiv
 from controllable.Move.Jointed.Dobot import M1Pro
@@ -157,15 +157,15 @@ if __name__ == "__main__":
         'Camera': (ViewerPanel, dict(viewer=Optical())),
         'Thermal': (ViewerPanel, dict(viewer=Thermal('192.168.1.111'))),
         'Primitiv': (MoverPanel, dict(mover=Primitiv('COM5'), axes=['X','Y','Z'])),
-        'Ender': (MoverPanel, dict(mover=Ender('COM4'), axes=['X','Y','Z'])),
-        'M1Pro': (MoverPanel, dict(mover=M1Pro(), axes=['X','Y','Z','a','b','c'])),
+        'Ender': (MoverPanel, dict(mover=Ender('COM17'), axes=['X','Y','Z'])),
+        # 'M1Pro': (MoverPanel, dict(mover=M1Pro(), axes=['X','Y','Z','a','b','c'])),
         'Keithley': (MeasurerPanel, dict(measurer=Keithley('192.168.1.104'))),
     }
     gui = CompoundPanel(ensemble)
     gui.runGUI('Demo')
     pass
 
-# %% GUI examples
+# %% GUI examples: Primitiv
 from controllable.Move.Cartesian import Primitiv
 from controllable.Control.GUI import MoverPanel
 if __name__ == "__main__":
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     gui.runGUI('Primitiv')
     pass
 
-# %% GUI examples
+# %% GUI examples: M1Pro
 from controllable.Move.Jointed.Dobot import M1Pro
 from controllable.Control.GUI import MoverPanel
 if __name__ == "__main__":
@@ -181,13 +181,22 @@ if __name__ == "__main__":
     gui.runGUI('M1Pro')
     pass
 
-# %% GUI examples
+# %% GUI examples: Keithley
 from controllable.Measure.Electrical.Keithley import Keithley, base_programs
 from controllable.Control.GUI import MeasurerPanel
 if __name__ == "__main__":
     # me = base_programs.OCV
     gui = MeasurerPanel(**dict(measurer=Keithley('192.168.1.104'), name='Keithley'))
     gui.runGUI('Keithley')
+    pass
+
+# %% GUI examples: Keithley
+from controllable.View.Thermal import Thermal
+from controllable.Control.GUI import ViewerPanel
+if __name__ == "__main__":
+    # me = base_programs.OCV
+    gui = ViewerPanel(**dict(viewer=Thermal('192.168.1.111'), name='AX8'))
+    gui.runGUI('AX8')
     pass
 
 # %% Spinner examples
@@ -207,8 +216,8 @@ from controllable.Control.Schedule import ScanningScheduler
 if __name__ == "__main__":
     REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
     RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
-    REAGENTS = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
-    RECIPE = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
+    # REAGENTS = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
+    # RECIPE = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
     spinbot = SpinbotController(config_option=0)
     spinbot.loadRecipe(REAGENTS, RECIPE)
     spinbot.prepareSetup()
