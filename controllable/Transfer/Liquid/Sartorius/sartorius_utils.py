@@ -24,7 +24,7 @@ DEFAULT_STEPS = {
     'air_gap': 10,
     'pullback': 5
 }
-READ_TIMEOUT_S = 1
+READ_TIMEOUT_S = 2
 WETTING_CYCLES = 1
 
 # z = 250 (w/o tip)
@@ -286,6 +286,8 @@ class Sartorius(LiquidHandler):
         response = ''
         try:
             response = self.device.readline()
+            if len(response) == 0:
+                response = self.device.readline()
             response = response[2:-2].decode('utf-8')
             if response in ERRS:
                 print(getattr(ErrorCode, response).value)
@@ -319,7 +321,7 @@ class Sartorius(LiquidHandler):
         Close serial connection and shutdown
         """
         self.toggleFeedbackLoop(on=False)
-        self.zero()
+        # self.zero()
         self.device.close()
         self._flags = {
             'busy': False,
