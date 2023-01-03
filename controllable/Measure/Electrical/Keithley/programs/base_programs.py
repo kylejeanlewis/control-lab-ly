@@ -86,20 +86,22 @@ class IV_Scan(Program):
         Run the measurement program
         """
         device = self.device
-        device.reset
+        device.reset()
         device.configure(['ROUTe:TERMinals FRONT'])
         device.configureSource('current', measure_limit=200)
         device.configureSense('voltage', 200, True, count=self.parameters.get('count', 1))
         device.makeBuffer()
-        device.start(consecutive_readings=True)
         device.beep()
         
         for current in self.parameters.get('currents', []):
             device.setSource(value=current)
             device.toggleOutput(on=True)
-            time.sleep(0.1)
+            device.start()
+            time.sleep(0.1*self.parameters.get('count', 1))
+        time.sleep(1)
         self.data_df = device.readAll()
         device.beep()
+        device.getErrors()
         return
 
 
@@ -126,19 +128,20 @@ class OCV(Program):
         Run the measurement program
         """
         device = self.device
-        device.reset
-        device.configure(['ROUTe:TERMinals FRONT', 'OUTPut:SMODe HIMPedance'])
+        device.reset()
+        device.configure(['ROUTe:TERMinals FRONt', 'OUTPut:SMODe HIMPedance'])
         device.configureSource('current', limit=1, measure_limit=20)
         device.configureSense('voltage', 20, count=self.parameters.get('count', 1))
         device.makeBuffer()
-        device.start(consecutive_readings=True)
         device.beep()
         
         device.setSource(value=0)
         device.toggleOutput(on=True)
-        time.sleep(0.1)
+        device.start()
+        time.sleep(0.1*self.parameters.get('count', 1))
         self.data_df = device.readAll()
         device.beep()
+        device.getErrors()
         return
 
 
