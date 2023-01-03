@@ -33,7 +33,7 @@ class KeithleyDevice(object):
         self._sense_details = {}
         self._source_details = {}
         
-        self.verbose = False
+        self.verbose = True
         self._flags = {
             'busy': False
         }
@@ -171,6 +171,50 @@ class KeithleyDevice(object):
         """
         return self._send('*IDN?')
     
+    def _generate_commands(self, sense=True):
+        func_details = self._sense_details if sense else self._source_details
+        header = 'SENSe' if sense else 'SOURce'
+        excluded_keys = ['COUNt', 'function', 'invoked']
+        commands = [f'{header}:{func_details["function"]}:{key} {value}' for key,value in func_details.items() if key not in excluded_keys]
+        
+        for i,command in enumerate(commands):
+            if 'AUTO' in command:
+                new_command = ':AUTO'.join((command.split(' AUTO')))
+                commands[i] = new_command
+        if sense:
+            commands = commands + [f'SENSe:COUNt {func_details.get("COUNt",1)}']
+        return commands
+    
+    def _parse_reply(self, raw_reply:str):
+        """
+        Parse the response from instrument
+
+        Args:
+            raw_reply (str): raw response string from instrument
+
+        Returns:
+            float, str, or list: float for numeric values, str for strings, list for multiple replies
+        """
+        if ',' in raw_reply:
+            replies = raw_reply.split(',')
+        elif ';' in raw_reply:
+            replies = raw_reply.split(';')
+        else:
+            try:
+                raw_reply = float(raw_reply)
+            finally:
+                return raw_reply
+        output = []
+        for reply in replies:
+            try:
+                output.append(float(reply))
+            except ValueError:
+                output.append(reply)
+        if self.verbose:
+            print(output)
+            self.getErrors()
+        return output
+    
     def _send(self, command:str):
         """
         Write command to instrument, using query if expecting reply
@@ -181,33 +225,43 @@ class KeithleyDevice(object):
         Returns:
             any: response from query, or None
         """
+        reply = None 
         if self.instrument is None:
             print(command)
             if self.verbose:
                 print("")
-            dummy_return = [0 for _ in range(command.count(';')+1)] if "?" in command else None
-            return dummy_return
-        if "?" in command:
-            reply = self.instrument.query(command)
-            if ',' in reply:
-                replies = reply.split(',')
-            elif ';' in reply:
-                replies = reply.split(';')
+            _dummy_return = [0 for _ in range(command.count(';')+1)] if "?" in command else None
+            return _dummy_return
+        if self.verbose:
+            print(command)
+        try:
+            if "?" not in command:
+                self.instrument.write(command)
             else:
-                try:
-                    reply = float(reply)
-                finally:
-                    return reply
-            
-            output = []
-            for reply in replies:
-                try:
-                    output.append(float(reply))
-                except ValueError:
-                    output.append(reply)
-            return output
-        self.instrument.write(command)
-        return
+                raw_reply = self._query(command)
+                reply = self._parse_reply(raw_reply=raw_reply)
+            if self.verbose:
+                self.getErrors()
+        except visa.VisaIOError:
+            self.getErrors()
+        return reply
+    
+    def _query(self, command:str):
+        """
+        Perform a query on instrument
+
+        Args:
+            command (str): command string to query
+
+        Returns:
+            str: response from query, or None
+        """
+        reply = self.instrument.query(command)
+        # reply = None
+        # self.instrument.write(command)
+        # while reply is None:
+        #     reply = self.instrument.read()
+        return reply
     
     def beep(self, frequency=440, duration=1):
         """
@@ -225,7 +279,7 @@ class KeithleyDevice(object):
             raise Exception('Please enter a frequency between 20 and 8000')
         if not 0.001<=duration<=100:
             raise Exception('Please enter a duration between 0.001 and 100')
-        return self._send(f'SYSTem:BEEPer {frequency}, {duration}')
+        return self._send(f'SYSTem:BEEPer {frequency},{duration}')
     
     def clearBuffer(self, name=None):
         """
@@ -280,11 +334,10 @@ class KeithleyDevice(object):
             'RANGe': self._get_limit(limit=limit, current=is_current),
             'RSENse': 'ON' if probe_4_point else 'OFF',
             'UNIT': unit,
-            'COUNt': count
+            'COUNt': int(count)
         }
         self._sense_details.update(kwargs)
-        commands = [f'SOURce:{self.source}:{key} {value}' for key,value in kwargs.items() if key!='COUNt']
-        commands = commands + [f'SENSe:COUNt {count}']
+        commands = self._generate_commands(sense=True)
         return self.configure(commands=commands)
     
     def configureSource(self, func, limit=None, measure_limit='DEFault'):
@@ -306,7 +359,7 @@ class KeithleyDevice(object):
         }
         self._source_details.update(kwargs)
         self._source_details.update({'invoked': 0})
-        commands = [f'SOURce:{self.source}:{key} {value}' for key,value in kwargs.items()]
+        commands = self._generate_commands(sense=False)
         return self.configure(commands=commands)
     
     def connect(self, ip_address=None):
@@ -332,7 +385,7 @@ class KeithleyDevice(object):
             instrument.read_termination = '\n'
             
             self.beep(500)
-            print(f"{self.__info__}")
+            print(f"{self.__info__()}")
             print(f"{self.name.title()} Keithley ready")
         except Exception as e:
             print("Unable to connect to Keithley!")
@@ -353,6 +406,22 @@ class KeithleyDevice(object):
         if name is None:
             name = self.buffer_name
         return self._send(f'TRACe:ACTual:STARt? "{name}" ; END? "{name}"')
+    
+    def getErrors(self):
+        """
+        Get Errors from Keithley
+        """
+        errors = []
+        reply = self._query('SYSTem:ERRor:COUNt?')
+        while not reply.isnumeric():
+            print(reply)
+            reply = self._query('SYSTem:ERRor:COUNt?')
+        num_errors = int(reply)
+        for i in range(num_errors):
+            error = self._query('SYSTem:ERRor?')
+            errors.append((error))
+            print(f'>>> Error {i+1}: {error}')
+        return errors
     
     def getStatus(self):
         """
@@ -396,7 +465,7 @@ class KeithleyDevice(object):
             self._active_buffer = name
         if buffer_size < 10 and buffer_size != 0:
             buffer_size = 10
-        return self._send(f'TRACe:MAKE "{name}", {buffer_size}')
+        return self._send(f'TRACe:MAKE "{name}",{buffer_size}')
     
     def readAll(self, name=None, fields=['SOURce','READing', 'SEConds'], average=True):
         """
@@ -416,7 +485,7 @@ class KeithleyDevice(object):
         start,end = self.getBufferIndices(name=name)
         count = self._sense_details.get('COUNt', 1)
         
-        data = self._send(f'TRACe:DATA? {start}, {end}, "{name}", {", ".join(fields)}')
+        data = self._send(f'TRACe:DATA? {int(start)},{int(end)},"{name}",{",".join(fields)}')
         if not all([start,end]): # dummy data
             num_rows = count * max(1, self._source_details.get('invoked', 1))
             data = [0] * int(num_rows * len(fields))
@@ -447,7 +516,7 @@ class KeithleyDevice(object):
         count = self._sense_details.get('COUNt', 1)
         start = end - count + 1
         
-        data = self._send(f'TRACe:DATA? {start}, {end}, "{name}", {", ".join(fields)}')
+        data = self._send(f'TRACe:DATA? {int(start)},{int(end)},"{name}",{",".join(fields)}')
         if not all([start,end]): # dummy data
             data = [0] * int(count * len(fields))
         data = np.reshape(np.array(data), (-1,len(fields)))
@@ -476,7 +545,7 @@ class KeithleyDevice(object):
         """
         Reset the instrument
         """
-        return self._send("*RST")
+        return self._send('*RST')
     
     def saveState(self, state:int):
         """
@@ -523,17 +592,17 @@ class KeithleyDevice(object):
         self._source_details['invoked'] += 1
         return self._send(f'SOURce:{self.source} {value}')
 
-    def start(self, consecutive_readings=False):
+    def start(self, sequential_commands=True):
         """
         Initialise the measurement
 
         Args:
-            consecutive_readings (bool, optional): whether to take readings only after the measurement. Defaults to False.
+            sequential_commands (bool, optional): whether commands whose operations must finish before the next command is executed. Defaults to True.
         """
-        if consecutive_readings:
-            command = 'INITiate; *WAIt'
-        else:
+        if sequential_commands:
             command = f'TRACe:TRIGger "{self._active_buffer}"'
+        else:
+            command = 'INITiate ; *WAIt'
         return self._send(command=command)
 
     def stop(self):
