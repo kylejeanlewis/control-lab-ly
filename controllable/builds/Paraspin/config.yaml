@@ -2,13 +2,13 @@
   mover: 
     class: Cartesian.Primitiv
     settings:
-      port: COM4 #8
+      port: COM7
       limits: [[-470,0,0], [0,0,0]]
       safe_height: 0
   liquid: 
     class: Liquid.SyringeAssembly
     settings:
-      port: COM18 #7
+      port: COM8
       capacities: [3000,3000,3000,3000,3000]
       channels: [3,4,5,6,7]
       offsets:
