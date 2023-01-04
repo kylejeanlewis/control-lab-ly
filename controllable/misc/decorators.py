@@ -8,9 +8,17 @@ Notes / actionables:
 """
 # Standard library imports
 import functools
+import inspect
 
 # Local application imports
 print(f"Import: OK <{__name__}>")
+
+def inherit_docstring(cls):
+    for base in inspect.getmro(cls):
+        if base.__doc__ is not None:
+            cls.__doc__ = base.__doc__
+            break
+    return cls
 
 def multichannel(all_channels):
     def decorator_multi(func):
