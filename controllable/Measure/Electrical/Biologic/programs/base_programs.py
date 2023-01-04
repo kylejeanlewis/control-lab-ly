@@ -9,8 +9,13 @@ Created on Fri 2022/11/14 17:00:00
 Notes / actionables:
 - 
 """
+# Standard library imports
 from enum import Enum
+
+# Third party imports
 from easy_biologic.base_programs import * # pip install easy-biologic
+
+# Local application imports
 print(f"Import: OK <{__name__}>")
 
 PROGRAM_LIST = [
