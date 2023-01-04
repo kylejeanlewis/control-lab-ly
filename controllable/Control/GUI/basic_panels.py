@@ -108,7 +108,7 @@ class MeasurerPanel(Panel):
             selected_program = values[self._mangle('-PROGRAMS-')][0]
             if selected_program != self.current_program:
                 self.measurer.loadProgram(selected_program)
-                update = self.showInputs(self.measurer.program_type.input_parameters)
+                update = self.showInputs(self.measurer.program_details['inputs_and_defaults'])
                 updates.update(update)
             self.current_program = selected_program
         
@@ -117,7 +117,7 @@ class MeasurerPanel(Panel):
             if self.measurer.program_type is not None:
                 print('Start measure')
                 parameters = {}
-                for input_field in self.measurer.program_type.input_parameters:
+                for input_field in self.measurer.program_details['inputs_and_defaults']:
                     key = self._mangle(f'-{input_field}-VALUE-')
                     if key in values.keys():
                         value = self.parseInput(values[key])
@@ -134,7 +134,7 @@ class MeasurerPanel(Panel):
         
         # 4. Clear input fields
         if event == self._mangle('-Clear-'):
-            update = self.showInputs(self.measurer.program_type.input_parameters)
+            update = self.showInputs(self.measurer.program_details['inputs_and_defaults'])
             updates.update(update)
         return updates
     
@@ -146,9 +146,9 @@ class MeasurerPanel(Panel):
             updates[key_label] = dict(visible=False)
             updates[key_input] = dict(visible=False)
             if input_field in active_inputs.keys():
-                updates[key_label] = dict(visible=True)
-                updates[key_input] = dict(visible=True , value=active_inputs[input_field], 
-                                          tooltip=self.measurer.program_type.__short_doc__)
+                updates[key_label] = dict(visible=True, tooltip=self.measurer.program_details['tooltip'])
+                updates[key_input] = dict(visible=True, value=active_inputs[input_field], 
+                                          tooltip=self.measurer.program_details['tooltip'])
         return updates
 
 

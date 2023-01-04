@@ -88,6 +88,54 @@ class Biologic(Electrical):
         }
         self.buffer_df.rename(columns=name_map, inplace=True)
         return
+    
+    def _get_program_details(self):
+        """
+        Get the input fields and defaults
+
+        Raises:
+            Exception: Load a program first
+
+        Returns:
+            dict: dictionary of program details
+        """
+        if self.program_type is None:
+            raise Exception('Load a program first.')
+        doc = self.program_type.__init__.__doc__
+        
+        # Extract input fields and defaults
+        input_parameters = {}
+        parameter_list = [_s.strip() for _s in doc.split('Params are')[-1].split('\n')]
+        for i,parameter in enumerate(parameter_list):
+            if len(parameter) == 0:
+                continue
+            if parameter.startswith('[Default'):
+                continue
+            _input = parameter.split(':')[0]
+            _default = parameter_list[i+1].split(' ')[-1][:-1] if 'Default' in parameter_list[i+1] else 0
+            input_parameters[_input]= _default
+        
+        # Extract truncated docstring and parameter listing
+        lines = doc.split('\n')
+        start, end = 0,0
+        for i,line in enumerate(lines):
+            line = line.strip()
+            if line.startswith(':param params:'):
+                start = i
+            if line.startswith(':param **kwargs:') and start:
+                end = i
+                break
+        short_lines = self.program_type.__doc__.split('\n') + lines[start+1:end-1]
+        short_doc = '\n'.join(short_lines)
+        tooltip = '\n'.join(lines[start+1:end-1])
+        print(short_doc)
+        
+        self.program_details = {
+            'inputs_and_defaults': input_parameters,
+            'short_doc': short_doc,
+            'tooltip': tooltip
+        }
+        return
         
     def _shutdown(self):
         """

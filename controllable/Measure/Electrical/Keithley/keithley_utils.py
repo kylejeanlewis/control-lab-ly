@@ -67,6 +67,52 @@ class Keithley(Electrical):
         self.setFlag('read', True)
         return True
     
+    def _get_program_details(self):
+        """
+        Get the input fields and defaults
+
+        Raises:
+            Exception: Load a program first
+
+        Returns:
+            dict: dictionary of program details
+        """
+        if self.program_type is None:
+            raise Exception('Load a program first.')
+        doc = self.program_type.__doc__
+        
+        # Extract truncated docstring and parameter listing
+        lines = doc.split('\n')
+        start, end = 0,0
+        for i,line in enumerate(lines):
+            line = line.strip()
+            if line.startswith('Args:'):
+                start = i
+            if line.startswith('==========') and start:
+                end = i
+                break
+        short_lines = lines[:start-1] + lines[end:]
+        short_doc = '\n'.join(short_lines)
+        tooltip = '\n'.join(['Parameters:'] + [f'- {_l.strip()}' for _l in lines[end+2:] if len(_l.strip())])
+        print(short_doc)
+        
+        # Extract input fields and defaults
+        input_parameters = {}
+        parameter_list = [_s.strip() for _s in doc.split('Parameters:')[-1].split('\n')]
+        for parameter in parameter_list:
+            if len(parameter) == 0:
+                continue
+            _input = parameter.split(' ')[0]
+            _default = parameter.split(' ')[-1][:-1] if 'Defaults' in parameter else 0
+            input_parameters[_input]= _default
+        
+        self.program_details = {
+            'inputs_and_defaults': input_parameters,
+            'short_doc': short_doc,
+            'tooltip': tooltip
+        }
+        return
+    
     def connect(self):
         """
         Establish connection to Keithley.
