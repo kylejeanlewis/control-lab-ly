@@ -14,12 +14,12 @@ import nest_asyncio
 import pandas as pd
 
 # Third party imports
-import easy_biologic as biologic_api # pip install easy-biologic
+# import easy_biologic as biologic_api # pip install easy-biologic
 # import easy_biologic.base_programs as base_programs
 
 # Local application imports
-from ....Analyse.Data import Types
 from ..electrical_utils import Electrical
+from .biologic_api import BiologicDeviceLocal
 from .programs import base_programs
 print(f"Import: OK <{__name__}>")
 
@@ -56,7 +56,8 @@ class Biologic(Electrical):
             BiologicDevice: object representation from API
         """
         self._ip_address = ip_address
-        self.device = biologic_api.BiologicDevice(ip_address, populate_info=True)
+        # self.device = biologic_api.BiologicDevice(ip_address, populate_info=True)
+        self.device = BiologicDeviceLocal(ip_address, populate_info=True)
         return self.device
     
     def _extract_data(self):
