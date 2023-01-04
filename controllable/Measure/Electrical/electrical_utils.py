@@ -65,8 +65,7 @@ class Electrical(object):
         if self.program is None:
             print("Please load a program first.")
             return False
-        # Retrieve data from program here
-        self.buffer_df = pd.DataFrame()
+        self.buffer_df = pd.DataFrame() # Retrieve data from program here
         if len(self.buffer_df) == 0:
             print("No data found.")
             return False
@@ -223,6 +222,8 @@ class Electrical(object):
         self.clearCache()
         self.program = self.program_type(self.device, parameters, channels=channels, **kwargs)
         self._last_used_parameters = parameters
+        
+        # Run test
         self.program.run()
         self.setFlag('measured', True)
         self.getData()
