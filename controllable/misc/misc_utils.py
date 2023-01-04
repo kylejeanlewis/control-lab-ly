@@ -7,6 +7,7 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from datetime import date, datetime
 import os
 import pandas as pd
 import time
@@ -25,6 +26,14 @@ class Helper(object):
         self.all_logs = []
         self.logs = {}
         pass
+    
+    # @staticmethod
+    # def create_folder(parent_folder:str):
+    #     now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+    #     folder_name = f"{parent_folder}/{now}"
+    #     if not os.path.exists(folder_name):
+    #         os.makedirs(folder_name)
+    #     return
     
     @staticmethod
     def display_ports():
