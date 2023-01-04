@@ -7,7 +7,6 @@ Notes / actionables:
 -
 """
 # Standard library imports
-import math
 import matplotlib.pylab as plt
 import numpy as np
 import os
@@ -26,7 +25,7 @@ class VideoProcessor(object):
     Enables processing large amounts of video files with few lines of code
 
     Args:
-        root_dir (str): directory that contains al folders with 'yyyy-MM-dd_HHmm' convention (i.e. session folders)
+        root_dir (str): directory that contains all folders with 'yyyy-MM-dd_HHmm' convention (i.e. session folders)
     """
     def __init__(self, root_dir):
         self._root = root_dir
