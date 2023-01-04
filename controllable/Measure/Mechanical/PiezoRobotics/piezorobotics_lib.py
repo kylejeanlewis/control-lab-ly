@@ -12,12 +12,19 @@ from enum import Enum
 # Local application imports
 print(f"Import: OK <{__name__}>")
 
+class CommandCode(Enum):
+    INIT    = 'To initialize after every power-up, make sure there is no sample placed on the pr.DMA'
+    CLAMP   = 'To control the automatic clamping system'
+    RUN     = 'To run the test and apply a compressive sinusoidal force on the material sample'
+    GET     = 'To export the measurement results of the previously run test - complex modulus of the material sample as a function of frequency'
+    CLR     = 'To clear previously acquired data stored in the pr.DMA'
+
 class ErrorCode(Enum):
-    ERROR1 = 'Invalid syntax (the specified forma is incorrect or parameters are missing).'
-    ERROR2 = 'Serial number not matching the device.'
-    ERROR3 = 'Wrong parameters.'
-    ERROR4 = 'Invalid function specified.'
-    ERROR5 = 'No sample detected while clamping.'
+    ERROR1  = 'Invalid syntax (the specified forma is incorrect or parameters are missing).'
+    ERROR2  = 'Serial number not matching the device.'
+    ERROR3  = 'Wrong parameters.'
+    ERROR4  = 'Invalid function specified.'
+    ERROR5  = 'No sample detected while clamping.'
     
 class FrequencyCode(Enum):
     FREQ_01 = 1.1
@@ -74,3 +81,7 @@ class FrequencyCode(Enum):
     FREQ_52 = 90.8
     FREQ_53 = 99.8
     FREQ_54 = 110.9
+
+COMMANDS    = [command.name for command in CommandCode]
+ERRORS      = [error.name for error in ErrorCode]
+FREQUENCIES = [frequency.value for frequency in FrequencyCode]
