@@ -17,7 +17,8 @@ import serial # pip install pyserial
 
 # Local application imports
 from ..liquid_utils import LiquidHandler
-from .sartorius_lib import ErrorCode, ModelInfo, StatusCode, ERRS, STATUS_QUERIES, QUERIES
+from .sartorius_lib import ErrorCode, ModelInfo, StatusCode
+from .sartorius_lib import ERRORS, MODELS, STATUSES, STATUS_QUERIES, QUERIES
 print(f"Import: OK <{__name__}>")
 
 DEFAULT_STEPS = {
@@ -97,7 +98,20 @@ class Sartorius(LiquidHandler):
         }
         return speed
     @speed.setter
-    def speed(self, speed_code:int, direction:str):
+    def speed(self, value):
+        """
+        Set the intake or outflow speeds
+
+        Args:
+            value (iterable):
+                speed_code (int): Preset speed code
+                direction (str): 'in' or 'out'
+
+        Raises:
+            Exception: Select a valid speed code
+            Exception: Select a valid direction
+        """
+        speed_code, direction = value
         if not (0 < speed_code < len(self._speed_codes)):
             raise Exception(f'Please select a valid speed code from 1 to {len(self._speed_codes)-1}')
         if direction == 'in':
@@ -117,9 +131,8 @@ class Sartorius(LiquidHandler):
         return StatusCode(self._status_code).name
     @status.setter
     def status(self, status_code:str):
-        status_codes = [s.value for s in StatusCode]
-        if status_code not in status_codes:
-            raise Exception(f"Please input a valid status code from: {', '.join(status_codes)}")
+        if status_code not in STATUSES:
+            raise Exception(f"Please input a valid status code from: {', '.join(STATUSES)}")
         self._status_code = status_code
         return
     
@@ -221,7 +234,7 @@ class Sartorius(LiquidHandler):
         Returns:
             bool: whether the response is an expected reply
         """
-        if response in ERRS:
+        if response in ERRORS:
             return True
         if message_code not in QUERIES and response == 'ok':
             return True
@@ -289,8 +302,8 @@ class Sartorius(LiquidHandler):
             if len(response) == 0:
                 response = self.device.readline()
             response = response[2:-2].decode('utf-8')
-            if response in ERRS:
-                print(getattr(ErrorCode, response).value)
+            if response in ERRORS:
+                print(ErrorCode[response].value)
                 return response
             elif response == 'ok':
                 return response
@@ -500,11 +513,10 @@ class Sartorius(LiquidHandler):
             Exception: Select a valid model name
         """
         model = self.__model__().split('-')[0]
-        models = [m for m in dir(ModelInfo) if not m.startswith('__') or not m.endswith('__')]
-        if model not in models:
+        if model not in MODELS:
             print(f'Received: {model}')
-            raise Exception(f"Please select a valid model from: {', '.join(models)}")
-        info = getattr(ModelInfo, model).value
+            raise Exception(f"Please select a valid model from: {', '.join(MODELS)}")
+        info = ModelInfo[model].value
         print(info)
         
         self.limits = (info['tip_eject_position'], info['max_position'])
@@ -536,6 +548,12 @@ class Sartorius(LiquidHandler):
             str: device response
         """
         response = self._query('DS')
+        try:
+            response = int(response)
+        except ValueError as e:
+            if self.verbose:
+                print(e)
+            return response
         if response in ['4','6','8']:
             self.setFlag('busy', True)
             if self.verbose:
