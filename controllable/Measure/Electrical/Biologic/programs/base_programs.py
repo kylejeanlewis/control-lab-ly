@@ -222,7 +222,7 @@ class CALimit( BiologicProgram ):
 
 class CPLimit( BiologicProgram ):
     """
-    Runs a chrono-potentiommetry technique with limits technqiue.
+    Runs a chrono-potentiommetry technique with limits technique.
     """
     # TODO: Add limit conditions as parameters, not hard coded
     def __init__(
@@ -385,7 +385,7 @@ class CPLimit( BiologicProgram ):
 
 class CV( BiologicProgram ):
     """
-    Runs a cyclic voltammetry technqiue.
+    Runs a cyclic voltammetry technique.
     """
     def __init__(
         self,
