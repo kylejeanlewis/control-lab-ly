@@ -170,7 +170,7 @@ class Electrical(object):
             self.datatype = datatype
         else:
             raise Exception("Please input only one of 'name' or 'datatype'")
-        print(f"Loaded datatype: {datatype.__module__}")
+        print(f"Loaded datatype: {self.datatype.__name__}")
         return
     
     def loadProgram(self, name=None, program_type=None, program_module=None):
