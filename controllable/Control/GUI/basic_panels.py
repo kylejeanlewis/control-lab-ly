@@ -14,7 +14,7 @@ import time
 import PySimpleGUI as sg # pip install PySimpleGUI
 
 # Local application imports
-from...Measure.Electrical import Electrical
+from ...misc import Helper
 from .gui_utils import Panel
 print(f"Import: OK <{__name__}>")
 
@@ -35,7 +35,7 @@ class MeasurerPanel(Panel):
         font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
         group (str, optional): name of group. Defaults to 'measurer'.
     """
-    def __init__(self, measurer:Electrical, name='MEASURE', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group='measurer'):
+    def __init__(self, measurer, name='MEASURE', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group='measurer'):
         super().__init__(name=name, theme=theme, typeface=typeface, font_sizes=font_sizes, group=group)
         self.current_program = ''
         self.measurer = measurer
@@ -47,8 +47,14 @@ class MeasurerPanel(Panel):
         """
         return super().close()
     
-    def _getInputSection(self):
-        # add template for procedurally adding input fields
+    def getInputSection(self):
+        """
+        Get the layout for the input section
+
+        Returns:
+            list: list of columns
+        """
+        # template for procedurally adding input fields
         labels = []
         inputs = []
         for input_field in self.measurer.possible_inputs:
@@ -56,13 +62,13 @@ class MeasurerPanel(Panel):
             key_input = self._mangle(f'-{input_field}-VALUE-')
             _label = sg.pin(
                 sg.Column(
-                    [[sg.Text(input_field.title(), key=key_label, visible=False)]],
+                    [[sg.Text(input_field.title(), key=key_label, visible=True)]],
                     key=f'{key_label}BOX-', visible=False
                 )
             )
             _input = sg.pin(
                 sg.Column(
-                    [[sg.Input(0, size=(5,2), key=key_input, visible=False, tooltip='')]],
+                    [[sg.Input(0, size=(5,2), key=key_input, visible=True, tooltip='')]],
                     key=f'{key_input}BOX-', visible=False
                 )
             )
@@ -89,20 +95,13 @@ class MeasurerPanel(Panel):
         
         font = (self.typeface, self.font_sizes[title_font_level+1])
         # add dropdown for program list
-        dropdown = sg.Listbox(values=self.measurer.available_programs, size=(20, 5), key=self._mangle('-PROGRAMS-'), enable_events=True)
+        dropdown = sg.Combo(
+            values=self.measurer.available_programs, size=(20, 1), 
+            key=self._mangle('-PROGRAMS-'), enable_events=True, readonly=True
+        )
         
         # add template for procedurally adding input fields
-        labels_inputs = self._getInputSection()
-        # labels = []
-        # inputs = []
-        # for input_field in self.measurer.possible_inputs:
-        #     _label = sg.Column([[sg.Text(input_field.title(), key=self._mangle(f'-{input_field}-LABEL-'), visible=False)]])
-        #     _input = sg.Column([[sg.Input(0, size=(5,2), key=self._mangle(f'-{input_field}-VALUE-'), visible=False, tooltip='')]])
-        #     labels.append([_label])
-        #     inputs.append([_input])
-        # labels_column = sg.Column(labels, justification='right', pad=10, visible=True)
-        # inputs_column = sg.Column(inputs, justification='left', pad=10, visible=True)
-        # labels_inputs = [labels_column, inputs_column]
+        labels_inputs = self.getInputSection()
         
         # add run, clear, reset buttons
         layout = [
@@ -132,11 +131,11 @@ class MeasurerPanel(Panel):
         updates = {}
         # 1. Select program
         if event == self._mangle('-PROGRAMS-'):
-            selected_program = values[self._mangle('-PROGRAMS-')][0]
+            selected_program = values[self._mangle('-PROGRAMS-')]       # COMBO
             if selected_program != self.current_program:
                 self.measurer.loadProgram(selected_program)
-                update = self.showInputs(self.measurer.program_details['inputs_and_defaults'])
-                updates.update(update)
+                update_part = self.showInputs(self.measurer.program_details['inputs_and_defaults'])
+                updates.update(update_part)
             self.current_program = selected_program
         
         # 2. Start measure
@@ -161,23 +160,30 @@ class MeasurerPanel(Panel):
         
         # 4. Clear input fields
         if event == self._mangle('-Clear-'):
-            update = self.showInputs(self.measurer.program_details['inputs_and_defaults'])
-            updates.update(update)
+            update_part = self.showInputs(self.measurer.program_details['inputs_and_defaults'])
+            updates.update(update_part)
         return updates
     
     def showInputs(self, active_inputs:list):
+        """
+        Show the relevant input fields
+
+        Args:
+            active_inputs (list): list of relevant input fields
+
+        Returns:
+            dict: dictionary of updates
+        """
         updates = {}
         for input_field in self.measurer.possible_inputs:
             key_label = self._mangle(f'-{input_field}-LABEL-')
             key_input = self._mangle(f'-{input_field}-VALUE-')
-            updates[key_label] = dict(visible=False)
-            updates[key_input] = dict(visible=False)
             updates[f'{key_label}BOX-'] = dict(visible=False)
             updates[f'{key_input}BOX-'] = dict(visible=False)
             if input_field in active_inputs.keys():
-                updates[key_label] = dict(visible=True, tooltip=self.measurer.program_details['tooltip'])
-                updates[key_input] = dict(visible=True, value=active_inputs[input_field], 
-                                          tooltip=self.measurer.program_details['tooltip'])
+                updates[key_label] = dict(tooltip=self.measurer.program_details['tooltip'])
+                updates[key_input] = dict(tooltip=self.measurer.program_details['tooltip'], 
+                                          value=active_inputs[input_field])
                 updates[f'{key_label}BOX-'] = dict(visible=True)
                 updates[f'{key_input}BOX-'] = dict(visible=True)
         return updates
@@ -200,9 +206,50 @@ class MoverPanel(Panel):
         super().__init__(name=name, theme=theme, typeface=typeface, font_sizes=font_sizes, group=group)
         self.axes = axes
         self.buttons = {}
+        self.current_attachment = ''
+        self.attachment_methods = []
+        self.methods_fn_key_map = {}
         self.mover = mover
         self.flags['update_position'] = True
         return
+    
+    def getFunctionButtons(self, font):
+        """
+        Get function buttons for attachment
+
+        Args:
+            font (tuple): tuple of typeface and font size
+
+        Returns:
+            column: column of labelled buttons if there is an attachment, else placeholder buttons
+        """
+        show_section = False
+        show_buttons = False
+        alt_texts = []
+        fn_layout = []
+        button_labels = [f'FN{i+1}' for i in range(max(self.mover.max_actions,5))]  # Placeholder buttons
+        if 'attachment' in dir(self.mover):
+            show_section = True
+            default_value = self.mover.attachment.__name__ if self.mover.attachment is not None else 'None'
+            dropdown = sg.Combo(
+                values=self.mover.possible_attachments+['None'], default_value=default_value,
+                size=(20, 1), key=self._mangle('-ATTACH-'), enable_events=True, readonly=True
+            )
+            dropdown_column = sg.Column([[dropdown]], justification='center')
+            fn_layout.append([dropdown_column])
+            fn_layout.append([self._pad()])
+            if self.mover.attachment is not None:
+                show_buttons = True
+                self.current_attachment = self.mover.attachment.__name__
+                self.attachment_methods = Helper.get_method_names(self.mover.attachment)
+                alt_texts = [l.title() for l in self.attachment_methods]
+                self.methods_fn_key_map = {f'-{self.name}-{k}-':v for k,v in zip(button_labels, alt_texts)}
+        buttons = self.getButtons(button_labels, (5,2), self.name, font, texts=alt_texts)
+        buttons_column = sg.Column([buttons], justification='center', visible=show_buttons, key=self._mangle('-FN-BUTTONS-'))
+        fn_layout.append([buttons_column])
+        
+        column = sg.Column(fn_layout, justification='center', visible=show_section)
+        return column
         
     def getLayout(self, title_font_level=1, **kwargs):
         """
@@ -224,14 +271,13 @@ class MoverPanel(Panel):
         font = (self.typeface, self.font_sizes[title_font_level+1])
         color_codes = {
             'X':None, 'Y':None, 'Z':None,
-            # 'X':'#bbbbff', 'Y':'#bbffbb', 'Z':'#ffbbbb',
             'a':'#ffffbb', 'b':'#ffbbff', 'c':'#bbffff'
         }
         tooltips = {
             'X':None, 'Y':None, 'Z':None,
-            'a':'Rotation (in degrees) about Z-axis', 
-            'b':'Rotation (in degrees) about Y-axis', 
-            'c':'Rotation (in degrees) about X-axis'
+            'a':'Rotation (in degrees) about Z-axis or yaw', 
+            'b':'Rotation (in degrees) about Y-axis or roll', 
+            'c':'Rotation (in degrees) about X-axis or pitch'
         }
         labels = {axis: [] for axis in axes}
         elements = {}
@@ -270,6 +316,9 @@ class MoverPanel(Panel):
             specials[center] = dict(button_color=('#000000', '#ffffff'))
             elements[axis] = self.getButtons(labels[axis], (5,2), self.name, font, specials=specials)
         
+        # Generate function buttons
+        function_buttons = self.getFunctionButtons(font=font)
+        
         layout = [
             [layout],
             [self._pad()],
@@ -286,6 +335,8 @@ class MoverPanel(Panel):
             input_fields,
             [self._pad()],
             [sg.Column([self.getButtons(['Go','Clear','Reset'], (5,2), self.name, font)], justification='center')],
+            [self._pad()],
+            [function_buttons],
             [self._pad()]
         ]
         layout = sg.Column(layout, vertical_alignment='top')
@@ -349,14 +400,70 @@ class MoverPanel(Panel):
         if event == self._mangle(f'-Reset-'):
             self.mover.reset()
             tool_position = cache_position
+            
+        # 7. Function buttons for attachment
+        if event in self.methods_fn_key_map:
+            fn_name = self.methods_fn_key_map[event].lower()
+            print(fn_name)
+            action = getattr(self.mover.attachment, fn_name, None)
+            if callable(action):
+                action()
+                
+        # 8. Select attachment
+        if event == self._mangle('-ATTACH-'):
+            selected_attachment = values[self._mangle('-ATTACH-')]         # COMBO
+            if selected_attachment != self.current_attachment:
+                if selected_attachment == 'None':
+                    selected_attachment = ''
+                    self.mover.toggleAttachment(False)
+                    self.attachment_methods = []
+                    update_part = self.toggleButtons(False)
+                else:
+                    self.mover.toggleAttachment(True, selected_attachment)
+                    self.attachment_methods = Helper.get_method_names(self.mover.attachment)
+                    fn_buttons = [l.title() for l in self.attachment_methods]
+                    update_part = self.toggleButtons(True, fn_buttons)
+                updates.update(update_part)
+            self.current_attachment = selected_attachment
         
-        # 7. Update position
+        # 9. Update position
         if self.flags['update_position']:
             for i,axis in enumerate(['X','Y','Z','a','b','c']):
                 updates[self._mangle(f'-{axis}-VALUE-')] = dict(value=tool_position[i])
                 if axis in ['a','b','c']:
                     updates[self._mangle(f'-{axis}-SLIDER-')] = dict(value=tool_position[i])
         self.flags['update_position'] = False
+        return updates
+    
+    def toggleButtons(self, on=True, active_buttons=[]):
+        """
+        Toggle between shown the function buttons for attachment
+
+        Args:
+            on (bool, optional): whether to show buttons. Defaults to True.
+            active_buttons (list, optional): list of method names. Defaults to [].
+
+        Returns:
+            dict: dictionary of updates
+        """
+        updates = {}
+        self.methods_fn_key_map = {}
+        # Hide all buttons
+        if not on:
+            updates[self._mangle('-FN-BUTTONS-')] = dict(visible=False)
+            return updates
+        
+        # Show buttons and change labels
+        updates[self._mangle('-FN-BUTTONS-')] = dict(visible=True)
+        for i,method in enumerate(active_buttons):
+            key_button = self._mangle(f'-FN{i+1}-')
+            updates[key_button] = dict(visible=True, text=method)
+            self.methods_fn_key_map[key_button] = method
+        
+        # Hide remaining buttons
+        for j in range(i+1, max(self.mover.max_actions,5)):
+            key_button = self._mangle(f'-FN{j+1}-')
+            updates[key_button] = dict(visible=False, text=f'FN{j+1}')
         return updates
 
 
