@@ -7,32 +7,44 @@ Notes / actionables:
 -
 """
 # Standard library imports
-import numpy as np
 import pandas as pd
-import time
-
-# Third party imports
-import serial # pip install pyserial
 
 # Local application imports
 from ....Analyse.Data import Types
-from .piezorobotics_lib import ErrorCode, FrequencyCode
-from .piezorobotics_lib import COMMANDS, ERRORS, FREQUENCIES
+from .piezorobotics_device import PiezoRoboticsDevice
+from .programs import base_programs
 print(f"Import: OK <{__name__}>")
 
 READ_TIMEOUT_S = 1
 
-class PiezoRoboticsDMA(object):
-    model = 'pr_dma_'
+class PiezoRobotics(object):
+    """
+    PiezoRobotics object
+
+    Args:
+        port (str): com port address to device
+        channel (int, optional): assigned device serial number. Defaults to 1.
+    """
+    model = 'piezorobotics_'
+    available_programs = base_programs.PROGRAM_NAMES
+    possible_inputs = base_programs.INPUTS_SET
     def __init__(self, port:str, channel=1, **kwargs):
-        self.channel = channel
+        
+        self.channel = 1
         self.device = None
         
         self.buffer_df = pd.DataFrame()
         self.data = None
         self.datatype = None
-        self._frequency_range_codes = ('','')
+        self.program = None
+        self.program_type = None
+        self.program_details = {
+            'inputs_and_defaults': {},
+            'short_doc': '',
+            'tooltip': ''
+        }
         self._last_used_parameters = {}
+        self._measure_method_docstring = self.measure.__doc__
         
         self.verbose = True
         self._flags = {
@@ -43,68 +55,27 @@ class PiezoRoboticsDMA(object):
             'read': False
         }
         self.port = ''
-        self._baudrate = None
-        self._timeout = None
-        self._connect(port)
-        pass
-    
-    @property
-    def frequency_codes(self):
-        lo_code, hi_code = self._frequency_range_codes
-        return int(lo_code[-2:]), int(hi_code[-2:])
-    
-    @property
-    def frequency_range(self):
-        lo_code, hi_code = self._frequency_range_codes
-        return FrequencyCode[lo_code].value, FrequencyCode[hi_code].value
-    @frequency_range.setter
-    def frequency_range(self, frequencies):
-        """
-        Set the operating frequency range
-
-        Args:
-            frequencies (iterable): frequency lower and upper limits
-                low_frequency (float): lower frequency limit
-                high_frequency (float): upper frequency limit
-        """
-        low_frequency, high_frequency = list(frequencies).sorted()
-        all_freq = np.array(FREQUENCIES)
-        freq_in_range_indices = np.where((all_freq>=low_frequency) & (all_freq<=high_frequency))
-        lo_code_number = max( (freq_in_range_indices[0]+1) - 1, 1)
-        hi_code_number = min( (freq_in_range_indices[-1]+1) + 1, len(all_freq))
-        self._frequency_range_codes = (f'FREQ_{lo_code_number:02}', f'FREQ_{hi_code_number:02}')
+        self._connect(port, channel)
         return
     
     def __delete__(self):
         self._shutdown()
         return
     
-    def _connect(self, port:str, baudrate=115200, timeout=1):
+    def _connect(self, port:str, channel=1):
         """
-        Connect to machine control unit
+        Connect to device
 
         Args:
             port (str): com port address
-            baudrate (int): baudrate. Defaults to 115200.
-            timeout (int, optional): timeout in seconds. Defaults to None.
+            channel (int, optional): assigned device serial number. Defaults to 1.
             
         Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
+            PiezoRoboticsDevice: PiezoRoboticsDevice object
         """
         self.port = port
-        self._baudrate = baudrate
-        self._timeout = timeout
-        device = None
-        try:
-            device = serial.Serial(port, self._baudrate, timeout=self._timeout)
-            self.device = device
-            print(f"Connection opened to {port}")
-            self.setFlag('connected', True)
-            
-        except Exception as e:
-            if self.verbose:
-                print(f"Could not connect to {port}")
-                print(e)
+        self.channel = channel
+        self.device = PiezoRoboticsDevice(port=port, channel=channel)
         return self.device
     
     def _extract_data(self):
@@ -114,63 +85,28 @@ class PiezoRoboticsDMA(object):
         Returns:
             bool: whether the data extraction is successful
         """
-        response = self._query('GET,0') # Retrieve data from program here
-        self.buffer_df = pd.DataFrame(response)
+        if self.program is None:
+            print("Please load a program first.")
+            return False
+        self.buffer_df = self.program.data_df
         if len(self.buffer_df) == 0:
             print("No data found.")
             return False
         self.setFlag('read', True)
         return True
     
-    def _initialise(self, low_frequency, high_frequency):
-        self.frequency_range = low_frequency, high_frequency
-        self._query(f"INIT,{','.join(self.frequency_codes)}")
-        self.setFlag('initialised', True)
+    def _get_program_details(self):
+        """
+        Get the input fields and defaults
+
+        Raises:
+            Exception: Load a program first
+        """
+        if self.program_type is None:
+            raise Exception('Load a program first.')
+        self.program_details = self.program_type.getDetails(verbose=self.verbose)
         return
-    
-    def _is_expected_reply(self, message_code:str, response:str):
-        """
-        Check whether the response is an expected reply
 
-        Args:
-            message_code (str): command code
-            response (str): response string from device
-
-        Returns:
-            bool: whether the response is an expected reply
-        """
-        if response in ERRORS:
-            return True
-        if response in ['OKR', 'OKC']:
-            return True
-        if message_code == 'GET':
-            if self.verbose:
-                print(f'[{message_code}] {response}')
-            return True
-        return False
-    
-    def _read(self):
-        """
-        Read response from device
-
-        Returns:
-            str: response string
-        """
-        response = ''
-        try:
-            response = self.device.readline()
-            if len(response) == 0:
-                response = self.device.readline()
-            if response in ERRORS:
-                print(ErrorCode[response].value)
-                return response
-            elif response in ['OKR', 'OKC']:
-                return response
-        except Exception as e:
-            if self.verbose:
-                print(e)
-        return response
-    
     def _shutdown(self):
         """
         Close serial connection and shutdown
@@ -179,54 +115,6 @@ class PiezoRoboticsDMA(object):
         self.reset()
         return
 
-    def _write(self, string:str):
-        """
-        Sends message to device
-
-        Args:
-            string (str): <message code>,<option 1>[,<option 2>]
-
-        Raises:
-            Exception: Select a valid command code.
-        
-        Returns:
-            str: two-character message code
-        """
-        message_code = string.split(',')[0].strip().upper()
-        if message_code not in COMMANDS:
-            raise Exception(f"Please select a valid command code from: {', '.join(COMMANDS)}")
-        fstring = f'DMA,SN{self.channel},{string},END' # message template: <PRE>,<SN>,<CODE>,<OPTIONS>,<POST>
-        bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
-        try:
-            self.device.write(bstring)
-            self.setFlag('busy', True)
-        except Exception as e:
-            if self.verbose:
-                print(e)
-        return message_code
-    
-    def _query(self, string:str, timeout_s=READ_TIMEOUT_S):
-        """
-        Send query and wait for response
-
-        Args:
-            string (str): message string
-            timeout_s (int, optional): duration to wait before timeout. Defaults to READ_TIMEOUT_S.
-
-        Returns:
-            str: message readout
-        """
-        message_code = self._write(string)
-        _start_time = time.time()
-        response = ''
-        while not self._is_expected_reply(message_code, response):
-            if time.time() - _start_time > timeout_s and message_code != 'RUN':
-                break
-            response = self._read()
-        self.setFlag('busy', False)
-        time.sleep(0.1)
-        return response
-    
     def clearCache(self, device_only=True):
         """
         Clear data from device. Optionally reset data and flags.
@@ -234,23 +122,24 @@ class PiezoRoboticsDMA(object):
         Args:
             device_only (bool, optional): whether to only clear data from device. Defaults to True.
         """
+        self.device.clearCache()
         if device_only:
-            self._query('CLR,0')
             return
         self.buffer_df = pd.DataFrame()
         self.data = None
+        self.program = None
         self.setFlag('measured', False)
         self.setFlag('read', False)
         return
     
     def connect(self):
         """
-        Reconnect to device using existing port and baudrate
+        Reconnect to device using existing port and channel
         
         Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
+            PiezoRoboticsDevice: PiezoRoboticsDevice object
         """
-        return self._connect(self.port, self._baudrate, self._timeout)
+        return self._connect(self.port, self.channel)
     
     def getData(self):
         """
@@ -310,14 +199,64 @@ class PiezoRoboticsDMA(object):
         print(f"Loaded datatype: {datatype.__module__}")
         return
 
-    def measure(self, parameters:dict={}, channels=[0], **kwargs):
+    def loadProgram(self, name=None, program_type=None, program_module=base_programs): #TODO
+        """
+        Load a program for device to run and its parameters
+
+        Args:
+            name (str, optional): name of program type in program_module. Defaults to None.
+            program_type (any, optional): program to load. Defaults to None.
+            program_module (module, optional): module containing relevant programs. Defaults to None.
+
+        Raises:
+            Exception: Provide a module containing relevant programs
+            Exception: Select a valid program name
+            Exception: Input only one of 'name' or 'program_type'
+        """
+        if name is None and program_type is not None:
+            self.program_type = program_type
+        elif name is not None and program_type is None:
+            if program_module is None:
+                raise Exception(f"Please provide a module containing relevant programs")
+            if name not in program_module.PROGRAM_NAMES:
+                raise Exception(f"Please select a program name from: {', '.join(program_module.PROGRAM_NAMES)}")
+            program_type = getattr(program_module, name)
+            self.program_type = program_type
+        elif name is None and program_type is None:
+            if len(program_module.PROGRAMS) > 1:
+                raise Exception("Please input at least one of 'name' or 'program_type'")
+            self.program_type = program_module.PROGRAMS[0]
+        else:
+            raise Exception("Please input only one of 'name' or 'program_type'")
+        print(f"Loaded program: {self.program_type.__name__}")
+        self._get_program_details()
+        self.measure.__func__.__doc__ = self._measure_method_docstring + self.program_details['short_doc']
+        return
+    
+    def measure(self, parameters={}, channels=[0], **kwargs):
+        """
+        Performs measurement and tries to plot the data
+
+        Args:
+            parameters (dict, optional): dictionary of parameters. Use help() to find out about program parameters. Defaults to {}.
+            channels (list, optional): list of channels to assign the program to. Defaults to [0].
+            
+        Raises:
+            Exception: Load a program first
+        """
+        if self.program_type is None:
+            try: 
+                self.loadProgram()
+            except Exception:
+                raise Exception('Load a program first.')
         self.setFlag('busy', True)
         print("Measuring...")
         self.clearCache()
+        self.program = self.program_type(self.device, parameters, channels=channels, **kwargs)
         self._last_used_parameters = parameters
         
         # Run test
-        self._query(f"RUN,{parameters.get('sample_thickness', 1E-6)}")
+        self.program.run()
         self.setFlag('measured', True)
         self.getData()
         self.plot()
@@ -354,9 +293,12 @@ class PiezoRoboticsDMA(object):
         """
         self.buffer_df = pd.DataFrame()
         self.data = None
+        self.program = None
         self.datatype = None
-        self._frequency_range_codes = ('','')
-        self._last_used_parameters = {}
+        self.program_type = None
+        self.measure.__func__.__doc__ = self._measure_method_docstring
+        
+        self.verbose = False
         self._flags = {
             'busy': False,
             'connected': False,
@@ -396,8 +338,7 @@ class PiezoRoboticsDMA(object):
         """
         Stop clamp movement
         """
-        self._query('CLAMP,0')
-        return
+        return self.device.stopClamp()
     
     def toggleClamp(self, on=False):
         """
@@ -406,6 +347,4 @@ class PiezoRoboticsDMA(object):
         Args:
             on (bool, optional): whether to clamp down on sample. Defaults to False.
         """
-        option = -1 if on else 1
-        self._query(f'CLAMP,{option}')
-        return
+        return self.device.toggleClamp(on=on)
