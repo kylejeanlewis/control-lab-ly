@@ -164,10 +164,9 @@ class Electrical(object):
         if name is None and datatype is not None:
             self.datatype = datatype
         elif name is not None and datatype is None:
-            if name not in Types.TYPES_LIST:
-                raise Exception(f"Please select a valid custom datatype from: {', '.join(Types.TYPES_LIST)}")
-            datatype = getattr(Types, name)
-            self.datatype = datatype
+            if name not in Types.TYPE_NAMES:
+                raise Exception(f"Please select a valid custom datatype from: {', '.join(Types.TYPE_NAMES)}")
+            self.datatype = getattr(Types, name)
         else:
             raise Exception("Please input only one of 'name' or 'datatype'")
         print(f"Loaded datatype: {self.datatype.__name__}")
@@ -185,6 +184,7 @@ class Electrical(object):
         Raises:
             Exception: Provide a module containing relevant programs
             Exception: Select a valid program name
+            Exception: Input at least one of 'name' or 'program_type'
             Exception: Input only one of 'name' or 'program_type'
         """
         if name is None and program_type is not None:
@@ -194,8 +194,7 @@ class Electrical(object):
                 raise Exception(f"Please provide a module containing relevant programs")
             if name not in program_module.PROGRAM_NAMES:
                 raise Exception(f"Please select a program name from: {', '.join(program_module.PROGRAM_NAMES)}")
-            program_type = getattr(program_module, name)
-            self.program_type = program_type
+            self.program_type = getattr(program_module, name)
         elif name is None and program_type is None:
             if len(program_module.PROGRAMS) > 1:
                 raise Exception("Please input at least one of 'name' or 'program_type'")
