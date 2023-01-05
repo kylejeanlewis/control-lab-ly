@@ -37,7 +37,7 @@ if __name__ == "__main__":
 # %% Jointed MG400 examples
 from controllable.Move.Jointed.Dobot import MG400
 if __name__ == "__main__":
-    mover = MG400(ip_address='192.168.2.8')
+    mover = MG400(ip_address='192.109.209.8')
     pass
 
 # %% Jointed M1 Pro examples
@@ -57,8 +57,6 @@ if __name__ == "__main__":
 
 # %% BioLogic examples
 from controllable.Measure.Electrical.Biologic import Biologic
-from controllable.Measure.Electrical.Biologic.programs import base_programs
-from controllable.Analyse.Data.Types.eis_datatype import ImpedanceSpectrum
 if __name__ == "__main__":
     measurer = Biologic('192.109.209.128')
     measurer.reset()
@@ -73,8 +71,8 @@ if __name__ == "__main__":
         'wait': 0.10
     }
 
-    measurer.loadProgram(base_programs.PEIS)
-    measurer.loadDataType(ImpedanceSpectrum)
+    measurer.loadProgram(name='PEIS')
+    measurer.loadDataType(name='ImpedanceSpectrum')
     measurer.measure(params, channels=[0])
     pass
 
@@ -86,8 +84,8 @@ if __name__ == "__main__":
         'voltage_interval': 0.01
     }
 
-    measurer.loadProgram('OCV', params, channels=[0])
-    measurer.measure(None)
+    measurer.loadProgram('OCV')
+    measurer.measure(params, channels=[0])
     pass
 
 # %% BioLogic examples
@@ -104,8 +102,9 @@ if __name__ == "__main__":
         wait= 0.5
     )
 
-    measurer.loadProgram('GEIS', params, channels=[0])
-    measurer.measure(ImpedanceSpectrum)
+    measurer.loadProgram(name='GEIS')
+    measurer.loadDataType(name='ImpedanceSpectrum')
+    measurer.measure(params, channels=[0])
     pass
 
 # %% BioLogic examples
@@ -120,8 +119,8 @@ if __name__ == "__main__":
         cycles = 1
     )
 
-    measurer.loadProgram(base_programs.CV, params, channels=[0])
-    measurer.measure(None)
+    measurer.loadProgram(name='CV')
+    measurer.measure(params, channels=[0])
     pass
 
 # %% Webcam examples
@@ -250,6 +249,20 @@ if __name__ == "__main__":
 from controllable.builds.PrimitivBench import PrimitivController
 if __name__ == "__main__":
     primitiv = PrimitivController()
+    pass
+
+# %% PiezoRobotics examples
+from controllable.Measure.Mechanical.PiezoRobotics import PiezoRobotics
+if __name__ == "__main__":
+    measurer = PiezoRobotics('COM13')
+    measurer.reset()
+    params = {
+        'low_frequency': 1.1,
+        'high_frequency': 1.3,
+        'sample_thickness': 1E-6
+    }
+
+    measurer.measure(params)
     pass
 
 # %%
