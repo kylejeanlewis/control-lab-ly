@@ -46,7 +46,7 @@ class Panel(object):
         return
     
     @staticmethod
-    def getButtons(labels:list, size, key_prefix, font:tuple, **kwargs):
+    def getButtons(labels:list, size, key_prefix, font:tuple, texts=[], **kwargs):
         """
         Get list of panel buttons
 
@@ -55,24 +55,39 @@ class Panel(object):
             size (int, or tuple): button width (,height)
             key_prefix (any): prefix of button key
             font (tuple): (typeface, font size)
+            texts (list, optional): alternative text labels for buttons. Defaults to [].
 
         Returns:
             list: list of PySimpleGUI.Button objects
         """
         buttons = []
         specials = kwargs.pop('specials', {})
-        for label in labels:
+        for i,label in enumerate(labels):
             key_string = label.replace('\n','')
             key = f"-{key_prefix}-{key_string}-" if key_prefix else f"-{key_string}-"
             kw = kwargs.copy()
             if label in specials.keys():
                 for k,v in specials[label].items():
                     kw[k] = v
+            if len(texts):
+                try:
+                    label = texts[i]
+                except IndexError:
+                    pass
             buttons.append(sg.Button(label, size=size, key=key, font=font, **kw))
         return buttons
     
     @staticmethod
-    def parseInput(string):
+    def parseInput(string:str):
+        """
+        Parse inputs from GUI
+
+        Args:
+            string (str): input string read from GUI window
+
+        Returns:
+            any: appropriate values
+        """
         if ',' in string:
             strings = string.split(',')
         elif ';' in string:
