@@ -83,19 +83,10 @@ class Electrical(object):
 
         Raises:
             Exception: Load a program first
-
-        Returns:
-            dict: dictionary of program details
         """
         if self.program_type is None:
             raise Exception('Load a program first.')
-        doc = self.program_type.__doc__
-        # Extract program details here
-        self.program_details = {
-            'inputs_and_defaults': {},
-            'short_doc': '',
-            'tooltip': ''
-        }
+        self.program_details = self.program_type.getDetails(verbose=self.verbose)
         return
         
     def _shutdown(self):
@@ -201,7 +192,7 @@ class Electrical(object):
         elif name is not None and program_type is None:
             if program_module is None:
                 raise Exception(f"Please provide a module containing relevant programs")
-            if name not in program_module.PROGRAM_LIST:
+            if name not in program_module.PROGRAM_NAMES:
                 raise Exception(f"Please select a program name from: {', '.join(program_module.PROGRAM_LIST)}")
             program_type = getattr(program_module, name)
             self.program_type = program_type

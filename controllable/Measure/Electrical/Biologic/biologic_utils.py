@@ -16,6 +16,7 @@ import pandas as pd
 # Third party imports
 # import easy_biologic as biologic_api # pip install easy-biologic
 # import easy_biologic.base_programs as base_programs
+from easy_biologic.lib import ec_lib as ecl
 
 # Local application imports
 from ..electrical_utils import Electrical
@@ -31,11 +32,11 @@ class Biologic(Electrical):
     BioLogic class.
     
     Args:
-        ip_address (str, optional): IP address of Bioogic device. Defaults to '192.109.209.128'.
+        ip_address (str, optional): IP address of Biologic device. Defaults to '192.109.209.128'.
     """
     model = 'biologic_'
-    available_programs = base_programs.PROGRAM_LIST
-    possible_inputs = base_programs.INPUTS_LIST
+    available_programs = base_programs.PROGRAM_NAMES
+    possible_inputs = base_programs.INPUTS_SET
     def __init__(self, ip_address='192.109.209.128', name='def'):
         self._ip_address = ''
         super().__init__(ip_address=ip_address, name=name)
@@ -45,7 +46,7 @@ class Biologic(Electrical):
     def ip_address(self):
         return self._ip_address
         
-    def _connect(self, ip_address:str):
+    def _connect(self, ip_address:str, name:str):
         """
         Connect to device
 
@@ -57,7 +58,10 @@ class Biologic(Electrical):
         """
         self._ip_address = ip_address
         # self.device = biologic_api.BiologicDevice(ip_address, populate_info=True)
-        self.device = BiologicDeviceLocal(ip_address, populate_info=True)
+        try:
+            self.device = BiologicDeviceLocal(ip_address, populate_info=True)
+        except ecl.EcError:
+            print('Could not establish communication with instrument.')
         return self.device
     
     def _extract_data(self):
@@ -87,54 +91,6 @@ class Biologic(Electrical):
             "Impendance_ce phase": "Impedance_ce phase [rad]"
         }
         self.buffer_df.rename(columns=name_map, inplace=True)
-        return
-    
-    def _get_program_details(self):
-        """
-        Get the input fields and defaults
-
-        Raises:
-            Exception: Load a program first
-
-        Returns:
-            dict: dictionary of program details
-        """
-        if self.program_type is None:
-            raise Exception('Load a program first.')
-        doc = self.program_type.__init__.__doc__
-        
-        # Extract input fields and defaults
-        input_parameters = {}
-        parameter_list = [_s.strip() for _s in doc.split('Params are')[-1].split('\n')]
-        for i,parameter in enumerate(parameter_list):
-            if len(parameter) == 0:
-                continue
-            if parameter.startswith('[Default'):
-                continue
-            _input = parameter.split(':')[0]
-            _default = parameter_list[i+1].split(' ')[-1][:-1] if 'Default' in parameter_list[i+1] else 0
-            input_parameters[_input]= _default
-        
-        # Extract truncated docstring and parameter listing
-        lines = doc.split('\n')
-        start, end = 0,0
-        for i,line in enumerate(lines):
-            line = line.strip()
-            if line.startswith(':param params:'):
-                start = i
-            if line.startswith(':param **kwargs:') and start:
-                end = i
-                break
-        short_lines = self.program_type.__doc__.split('\n') + lines[start+1:end-1]
-        short_doc = '\n'.join(short_lines)
-        tooltip = '\n'.join(lines[start+1:end-1])
-        print(short_doc)
-        
-        self.program_details = {
-            'inputs_and_defaults': input_parameters,
-            'short_doc': short_doc,
-            'tooltip': tooltip
-        }
         return
         
     def _shutdown(self):
