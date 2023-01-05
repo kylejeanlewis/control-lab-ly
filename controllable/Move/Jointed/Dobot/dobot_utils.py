@@ -38,6 +38,8 @@ class Dobot(RobotArm):
         verbose (bool, optional): whether to print outputs. Defaults to False.
         safe_height (float, optional): safe height. Defaults to None.
     """
+    possible_attachments = attachments.ATTACHMENT_NAMES
+    max_actions = max( [len(m) for m in attachments.METHODS] )
     def __init__(self, ip_address:str, **kwargs):
         super().__init__(**kwargs)
         self.ip_address = ip_address
@@ -360,11 +362,13 @@ class Dobot(RobotArm):
             else:
                 raise Exception("Please input only one of 'name' or 'attachment_type'")
             
-            input("Please secure tool attachment")
+            # input("Please secure tool attachment")
+            print("Please secure tool attachment")
             self.attachment = attachment_type(self.dashboard)
             self.setImplementOffset(self.attachment.implement_offset)
         else: # Remove attachment
-            input("Please remove tool attachment")
+            # input("Please remove tool attachment")
+            print("Please remove tool attachment")
             self.attachment = None
             self.setImplementOffset((0,0,0))
         return
