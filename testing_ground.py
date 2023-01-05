@@ -43,7 +43,7 @@ if __name__ == "__main__":
 # %% Jointed M1 Pro examples
 from controllable.Move.Jointed.Dobot import M1Pro
 if __name__ == "__main__":
-    mover = M1Pro(ip_address='192.168.2.21', home_position=(300,0,100))
+    mover = M1Pro(ip_address='192.168.2.21', home_coordinates=(300,0,100))
     pass
 
 # %% Keithley examples
@@ -145,6 +145,7 @@ if __name__ == "__main__":
 
 # %% GUI examples: Ensemble
 from controllable.Measure.Electrical.Keithley import Keithley
+from controllable.Measure.Electrical.Biologic import Biologic
 from controllable.Move.Cartesian import Ender, Primitiv
 from controllable.Move.Jointed.Dobot import M1Pro
 from controllable.View.Optical import Optical
@@ -153,11 +154,12 @@ from controllable.Control.GUI import CompoundPanel, MeasurerPanel, MoverPanel, V
 if __name__ == "__main__":
     ensemble = {
         'Camera': (ViewerPanel, dict(viewer=Optical())),
-        'Thermal': (ViewerPanel, dict(viewer=Thermal('192.168.1.111'))),
+        # 'Thermal': (ViewerPanel, dict(viewer=Thermal('192.168.1.111'))),
         'Primitiv': (MoverPanel, dict(mover=Primitiv('COM5'), axes=['X','Y','Z'])),
         'Ender': (MoverPanel, dict(mover=Ender('COM17'), axes=['X','Y','Z'])),
-        # 'M1Pro': (MoverPanel, dict(mover=M1Pro(), axes=['X','Y','Z','a','b','c'])),
+        'M1Pro': (MoverPanel, dict(mover=M1Pro(), axes=['X','Y','Z','a','b','c'])),
         'Keithley': (MeasurerPanel, dict(measurer=Keithley('192.168.1.104'))),
+        'Biologic': (MeasurerPanel, dict(measurer=Biologic('192.168.1.104'))),
     }
     gui = CompoundPanel(ensemble)
     gui.runGUI('Demo')
@@ -175,7 +177,7 @@ if __name__ == "__main__":
 from controllable.Move.Jointed.Dobot import M1Pro
 from controllable.Control.GUI import MoverPanel
 if __name__ == "__main__":
-    gui = MoverPanel(**dict(mover=M1Pro(ip_address='192.168.2.21', home_position=(300,0,100)), axes=['X','Y','Z','a']))
+    gui = MoverPanel(**dict(mover=M1Pro(ip_address='192.168.2.21', home_coordinates=(300,0,100)), axes=['X','Y','Z','a']))
     gui.runGUI('M1Pro')
     pass
 
@@ -261,7 +263,6 @@ if __name__ == "__main__":
         'high_frequency': 1.3,
         'sample_thickness': 1E-6
     }
-
     measurer.measure(params)
     pass
 
