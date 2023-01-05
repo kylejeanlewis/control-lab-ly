@@ -26,6 +26,7 @@ class Mover(object):
         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
         verbose (bool, optional): whether to print outputs. Defaults to False.
     """
+    max_actions = 0
     def __init__(self, **kwargs):
         self._coordinates = (0,0,0)
         self._orientation = (0,0,0)
