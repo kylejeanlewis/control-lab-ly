@@ -1,0 +1,45 @@
+standard:
+  0:
+    name: Randles
+    string: R0-p(R1-W1,C1)
+  1:
+    name: Randles w/ CPE
+    string: R0-p(R1-W1,CPE1)
+  2:
+    name: Randles w/ CPE w/ Warburg
+    string: R0-p(R1-W1,CPE1)-W2
+  3:
+    name: RC-RC
+    string: R0-p(R1,C1)-p(R2,C2)
+  4:
+    name: RC-RC w/ CPE
+    string: R0-p(R1,CPE1)-p(R2,CPE2)
+  5:
+    name: RC-RC w/ Warburg
+    string: R0-p(R1,C1)-p(R2,C2)-W1
+  6:
+    name: RC-RC w/ Warburg w/ CPE
+    string: R0-p(R1,CPE1)-p(R2,CPE2)-Wo1
+  7:
+    name: Polymer electrolyte
+    string: R0-C1-p(R1,C2)-C3
+  8:
+    name: Polymer electrolyte w/ CPE
+    string: R0-CPE1-p(R1,CPE2)-CPE3
+
+custom:
+  0:
+    name: Mingyan
+    string: R0-p(R1-CPE1,CPE2)
+  1:
+    name: Mingyan w/o CPE
+    string: R0-p(R1-C1,C2)
+  2:
+    name: Mingyan (CPE in series)
+    string: R0-p(R1,CPE1)-CPE2
+  3:
+    name: Derrick
+    string: R0-p(R1,CPE1)-R2
+  4:
+    name: Derrick (R in parallel)
+    string: R0-p(R1-CPE1,R2)

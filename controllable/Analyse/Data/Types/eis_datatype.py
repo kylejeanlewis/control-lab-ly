@@ -21,6 +21,7 @@ import pkgutil
 from scipy.signal import argrelextrema
 import time
 
+
 # Third party imports
 from impedance import preprocessing # pip install impedance
 from impedance.models.circuits import CustomCircuit
@@ -28,12 +29,14 @@ from impedance.models.circuits.fitting import rmse, extract_circuit_elements
 import plotly.express as px # pip install plotly-express
 import plotly.graph_objects as go # pip install plotly
 from plotly.subplots import make_subplots
+import yaml # pip install pyyaml
 
 # Local application imports
-from . import CircuitDiagram
+from .circuit_datatype import CircuitDiagram
 print(f"Import: OK <{__name__}>")
 
-circuit_diagram = CircuitDiagram()
+PACKAGE = __package__.split('.')[-1]
+TEST_CIRCUITS_FILE = f"{PACKAGE}/eis_test_circuits.yaml"
 
 class ImpedanceSpectrum(object):
     """
@@ -164,7 +167,8 @@ class ImpedanceSpectrum(object):
         Z = np.array(Z_trim)
         return f, Z
     
-    def _analyse(self, order=4):
+    @classmethod
+    def _analyse(cls, data, order=4):
         """
         Analyse the Nyquist plot to get several features of the curve
 
@@ -174,13 +178,13 @@ class ImpedanceSpectrum(object):
         Returns:
             tuple: collection of curve features (frequency, nudged x values, nudeged y values, index of min points, index of max points, estimated r0, Warburg slope gradient, Warburg slope intercept)
         """
-        data = self.data_df[self.data_df['Imaginary']<0].copy()
+        data = data.copy()
         data.sort_values(by='Frequency', ascending=False, inplace=True)
         f = data['Frequency'].to_numpy()
         x = data['Real'].to_numpy()
         y = data['Imaginary'].to_numpy() * (-1)
         # Nudge running points to avoid curve from looping on itself
-        x,y = self.nudge_points(x,y)
+        x,y = cls.nudge_points(x,y)
 
         # dydx = np.gradient(y)/np.gradient(x)
         # d2ydx2 = np.gradient(dydx)/np.gradient(x)
@@ -236,9 +240,9 @@ class ImpedanceSpectrum(object):
             top_idx = max_idx[0]
             bot_idx = min_idx[1]
             mid_idx = int((top_idx+bot_idx)/2)
-            line1 = self.perpendicular_bisector((x[top_idx], y[top_idx]), (x[mid_idx], y[mid_idx]))
-            line2 = self.perpendicular_bisector((x[bot_idx], y[bot_idx]), (x[mid_idx], y[mid_idx]))
-            center = self.intersection(line1, line2)
+            line1 = cls.perpendicular_bisector((x[top_idx], y[top_idx]), (x[mid_idx], y[mid_idx]))
+            line2 = cls.perpendicular_bisector((x[bot_idx], y[bot_idx]), (x[mid_idx], y[mid_idx]))
+            center = cls.intersection(line1, line2)
             print(f'Center: {center}')
 
             r0_est = x[min_idx[1]] - 2*(x[min_idx[1]] - x[max_idx[0]])
@@ -283,7 +287,8 @@ class ImpedanceSpectrum(object):
 
         return f, x, y, min_idx, max_idx, r0_est, a ,b
 
-    def _generate_guess(self, circuit_string:str, f:np.ndarray, x:np.ndarray, y:np.ndarray, min_idx:list, max_idx:list, r0:float, a:float, b:float, constants={}):
+    @staticmethod
+    def _generate_guess(circuit_string:str, f:np.ndarray, x:np.ndarray, y:np.ndarray, min_idx:list, max_idx:list, r0:float, a:float, b:float, constants={}):
         """
         Generate initial guesses from circuit string
 
@@ -422,7 +427,8 @@ class ImpedanceSpectrum(object):
         fit_vectors = []
         rmse_values = []
         print(self.name)
-        stationary = self._analyse()
+        data = self.data_df[self.data_df['Imaginary']<0]
+        stationary = self._analyse(data=data)
         complex_Z = complex_Z + self.x_offset
 
         if type(self.circuit) != type(None):
@@ -432,8 +438,11 @@ class ImpedanceSpectrum(object):
             self.circuit.load(loadCircuit)
             circuits = [self.circuit]
         else:
-            json_string = pkgutil.get_data(__name__, 'eis_tests.json').decode('utf-8')
-            test_circuits = json.loads(json_string)
+            # json_string = pkgutil.get_data(__name__, 'eis_tests.json').decode('utf-8')
+            # test_circuits = json.loads(json_string)
+            yml = pkgutil.get_data(__name__, TEST_CIRCUITS_FILE).decode('utf-8')
+            test_circuits = yaml.safe_load(yml)
+            
             circuits_dict = {c['name']: c['string'] for c in test_circuits['standard']}
             if len(test_circuits['custom']):
                 for c in test_circuits['custom']:
@@ -486,8 +495,8 @@ class ImpedanceSpectrum(object):
         Returns:
             str: string drawing of circuit diagram
         """
-        simplifiedCircuit = circuit_diagram.simplifyCircuit(self.circuit.circuit, verbose=verbose)
-        self.diagram = circuit_diagram.drawCircuit(*simplifiedCircuit)
+        simplifiedCircuit = CircuitDiagram.simplifyCircuit(self.circuit.circuit, verbose=verbose)
+        self.diagram = CircuitDiagram.drawCircuit(*simplifiedCircuit)
         if verbose and self.isFitted:
             print(self.diagram)
             print(self.circuit)
@@ -495,7 +504,8 @@ class ImpedanceSpectrum(object):
             print("Circuit not yet fitted!")
         return self.diagram
 
-    def plot(self, plot_type=None, show_plot=True):
+    @classmethod
+    def plot(cls, plot_type=None, show_plot=True):
         """
         Create plots of the impedance data
 
@@ -509,9 +519,9 @@ class ImpedanceSpectrum(object):
         if plot_type is None:
             plot_type = 'nyquist'
         if plot_type.lower() == 'nyquist' or len(plot_type) == 0:
-            return self.plotNyquist(show_plot)
+            return cls.plotNyquist(show_plot)
         elif plot_type.lower() == 'bode':
-            return self.plotBode(show_plot)
+            return cls.plotBode(show_plot)
         else:
             print('Plot type not available!')
         return

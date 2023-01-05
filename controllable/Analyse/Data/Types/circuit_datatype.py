@@ -14,7 +14,8 @@ class CircuitDiagram(object):
     def __init__(self):
         return
 
-    def drawCircuit(self, string:str, parallel_parts:dict, canvas_size=(0,0), pad=5):
+    @classmethod
+    def drawCircuit(cls, string:str, parallel_parts:dict, canvas_size=(0,0), pad=5):
         """
         Draw circuit diagram from string representation of circuit
 
@@ -37,7 +38,7 @@ class CircuitDiagram(object):
             return d
         
         if canvas_size[0] == 0 and canvas_size[1] == 0:
-            canvas_size = self.sizeCircuit(string, parallel_parts)
+            canvas_size = cls.sizeCircuit(string, parallel_parts)
         components = string.split('-')
 
         if len(components) == 1:
@@ -47,8 +48,8 @@ class CircuitDiagram(object):
             if component.startswith('Pr'):
                 subs = parallel_parts[component]
                 for sub in subs:
-                    d = self.drawCircuit(sub, parallel_parts, pad=pad)
-                    drawing = self.mergeCircuit(drawing, d, 'v') if len(drawing) else d
+                    d = cls.drawCircuit(sub, parallel_parts, pad=pad)
+                    drawing = cls.mergeCircuit(drawing, d, 'v') if len(drawing) else d
                 drawing = trim(drawing)
                 return drawing
 
@@ -62,13 +63,14 @@ class CircuitDiagram(object):
         for component in components:
             if component.startswith('Pr'):
                 sep = '-' + canvas_size[1]*'\n '
-                drawing = self.mergeCircuit(drawing, sep, 'h')
-            d = self.drawCircuit(component, parallel_parts, canvas_size, pad)
-            drawing = self.mergeCircuit(drawing, d, 'h') if len(drawing) else d
+                drawing = cls.mergeCircuit(drawing, sep, 'h')
+            d = cls.drawCircuit(component, parallel_parts, canvas_size, pad)
+            drawing = cls.mergeCircuit(drawing, d, 'h') if len(drawing) else d
         drawing = trim(drawing)
         return drawing
 
-    def mergeCircuit(self, this:str, that:str, orientation:str):
+    @staticmethod
+    def mergeCircuit(this:str, that:str, orientation:str):
         """
         Concatenate circuit component diagrams
 
@@ -97,7 +99,8 @@ class CircuitDiagram(object):
             merged = "\n".join(this_lines) + "\n" + "\n".join(that_lines)
         return merged
 
-    def simplifyCircuit(self, string:str, verbose=True):
+    @staticmethod
+    def simplifyCircuit(string:str, verbose=True):
         """
         Generate parenthesised contents in string as pairs (level, contents)
 
@@ -130,7 +133,8 @@ class CircuitDiagram(object):
             print(parallel_parts)
         return string, parallel_parts
 
-    def sizeCircuit(self, string:str, parallel_parts:dict):
+    @classmethod
+    def sizeCircuit(cls, string:str, parallel_parts:dict):
         """
         Find the size of the circuit (i.e. number of components across and number of components wide)
 
@@ -149,7 +153,7 @@ class CircuitDiagram(object):
                 subs = parallel_parts[component]
                 max_width, max_height = (1, 1)
                 for sub in subs:
-                    s = self.sizeCircuit(sub, parallel_parts)
+                    s = cls.sizeCircuit(sub, parallel_parts)
                     max_width = max(max_width, s[0])
                     size = (max_width, size[1]+s[1])
                 return size
@@ -159,7 +163,7 @@ class CircuitDiagram(object):
         
         max_height = size[1]
         for component in components:
-            s = self.sizeCircuit(component, parallel_parts)
+            s = cls.sizeCircuit(component, parallel_parts)
             max_height = max(max_height, s[1])
             size = (size[0]+s[0], max_height)
         return size
