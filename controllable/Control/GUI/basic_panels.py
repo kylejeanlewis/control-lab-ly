@@ -47,6 +47,32 @@ class MeasurerPanel(Panel):
         """
         return super().close()
     
+    def _getInputSection(self):
+        # add template for procedurally adding input fields
+        labels = []
+        inputs = []
+        for input_field in self.measurer.possible_inputs:
+            key_label = self._mangle(f'-{input_field}-LABEL-')
+            key_input = self._mangle(f'-{input_field}-VALUE-')
+            _label = sg.pin(
+                sg.Column(
+                    [[sg.Text(input_field.title(), key=key_label, visible=False)]],
+                    key=f'{key_label}BOX-', visible=False
+                )
+            )
+            _input = sg.pin(
+                sg.Column(
+                    [[sg.Input(0, size=(5,2), key=key_input, visible=False, tooltip='')]],
+                    key=f'{key_input}BOX-', visible=False
+                )
+            )
+            labels.append([_label])
+            inputs.append([_input])
+        labels_column = sg.Column(labels, justification='right', pad=10, visible=True)
+        inputs_column = sg.Column(inputs, justification='left', pad=10, visible=True)
+        labels_inputs = [labels_column, inputs_column]
+        return labels_inputs
+    
     def getLayout(self, title='Panel', title_font_level=0, **kwargs):
         """
         Get layout object
@@ -66,16 +92,17 @@ class MeasurerPanel(Panel):
         dropdown = sg.Listbox(values=self.measurer.available_programs, size=(20, 5), key=self._mangle('-PROGRAMS-'), enable_events=True)
         
         # add template for procedurally adding input fields
-        labels = []
-        inputs = []
-        for input_field in self.measurer.possible_inputs:
-            _label = sg.Column([[sg.Text(input_field.title(), key=self._mangle(f'-{input_field}-LABEL-'), visible=False)]])
-            _input = sg.Column([[sg.Input(0, size=(5,2), key=self._mangle(f'-{input_field}-VALUE-'), visible=False, tooltip='')]])
-            labels.append([_label])
-            inputs.append([_input])
-        labels_column = sg.Column(labels, justification='right', pad=10, visible=True)
-        inputs_column = sg.Column(inputs, justification='left', pad=10, visible=True)
-        labels_inputs = [labels_column, inputs_column]
+        labels_inputs = self._getInputSection()
+        # labels = []
+        # inputs = []
+        # for input_field in self.measurer.possible_inputs:
+        #     _label = sg.Column([[sg.Text(input_field.title(), key=self._mangle(f'-{input_field}-LABEL-'), visible=False)]])
+        #     _input = sg.Column([[sg.Input(0, size=(5,2), key=self._mangle(f'-{input_field}-VALUE-'), visible=False, tooltip='')]])
+        #     labels.append([_label])
+        #     inputs.append([_input])
+        # labels_column = sg.Column(labels, justification='right', pad=10, visible=True)
+        # inputs_column = sg.Column(inputs, justification='left', pad=10, visible=True)
+        # labels_inputs = [labels_column, inputs_column]
         
         # add run, clear, reset buttons
         layout = [
@@ -145,10 +172,14 @@ class MeasurerPanel(Panel):
             key_input = self._mangle(f'-{input_field}-VALUE-')
             updates[key_label] = dict(visible=False)
             updates[key_input] = dict(visible=False)
+            updates[f'{key_label}BOX-'] = dict(visible=False)
+            updates[f'{key_input}BOX-'] = dict(visible=False)
             if input_field in active_inputs.keys():
                 updates[key_label] = dict(visible=True, tooltip=self.measurer.program_details['tooltip'])
                 updates[key_input] = dict(visible=True, value=active_inputs[input_field], 
                                           tooltip=self.measurer.program_details['tooltip'])
+                updates[f'{key_label}BOX-'] = dict(visible=True)
+                updates[f'{key_input}BOX-'] = dict(visible=True)
         return updates
 
 
