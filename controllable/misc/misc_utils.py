@@ -54,6 +54,27 @@ class Helper(object):
         return com_ports
     
     @staticmethod
+    def get_method_names(obj):
+        """
+        Get the names of the methods in object (class/instance)
+
+        Args:
+            obj (any): object of interest
+
+        Returns:
+            list: list of method names
+        """
+        method_list = []
+        # attribute is a string representing the attribute name
+        for attribute in dir(obj):
+            # Get the attribute value
+            attribute_value = getattr(obj, attribute)
+            # Check that it is callable; Filter all dunder (__ prefix) methods
+            if callable(attribute_value) and not attribute.startswith('__'):
+                method_list.append(attribute)
+        return method_list
+    
+    @staticmethod
     def pretty_print_duration(total_time:float):
         """
         Display time duration (s) as HH:MM:SS text
