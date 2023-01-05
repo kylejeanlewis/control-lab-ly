@@ -32,6 +32,14 @@ WETTING_CYCLES = 1
 # z = 330 (w/ tip)
 class Sartorius(LiquidHandler):
     def __init__(self, port:str, channel=1, offset=(0,0,0), **kwargs):
+        """
+        Sartorius object
+
+        Args:
+            port (str): com port address
+            channel (int, optional): device channel. Defaults to 1.
+            offset (tuple, optional): x,y,z offset of tip. Defaults to (0,0,0).
+        """
         super().__init__(**kwargs)
         self.channel = channel
         self.offset = offset
