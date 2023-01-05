@@ -10,9 +10,9 @@ Notes / actionables:
 import os
 import pandas as pd
 import time
-import yaml
 
 # Third party imports
+import yaml # pip install pyyaml
 
 # Local application imports
 from ...Control.Schedule import Scheduler
