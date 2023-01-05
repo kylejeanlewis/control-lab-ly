@@ -7,7 +7,6 @@ Notes / actionables:
 TODO
 - test View.Classifier
 - test builds
-- test Measure
 
 LATER TODO
 - test database_utils
@@ -185,9 +184,16 @@ if __name__ == "__main__":
 from controllable.Measure.Electrical.Keithley import Keithley, base_programs
 from controllable.Control.GUI import MeasurerPanel
 if __name__ == "__main__":
-    # me = base_programs.OCV
     gui = MeasurerPanel(**dict(measurer=Keithley('192.168.1.104'), name='Keithley'))
     gui.runGUI('Keithley')
+    pass
+
+# %% GUI examples: Biologic
+from controllable.Measure.Electrical.Biologic import Biologic, base_programs
+from controllable.Control.GUI import MeasurerPanel
+if __name__ == "__main__":
+    gui = MeasurerPanel(**dict(measurer=Biologic(), name='Biologic'))
+    gui.runGUI('Biologic')
     pass
 
 # %% GUI examples: Keithley
