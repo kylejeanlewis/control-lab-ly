@@ -10,6 +10,7 @@ Notes / actionables:
 import time
 
 # Local application imports
+from ....misc import Helper
 print(f"Import: OK <{__name__}>")
 
 class Attachment(object):
@@ -47,6 +48,7 @@ class TwoJawGrip(Attachment):
         try:
             self.dashboard.DOExecute(1,1)
         except (AttributeError, OSError):
+            print('Tried to drop...')
             print("Not connected to arm!")
             return False
         return True
@@ -61,6 +63,7 @@ class TwoJawGrip(Attachment):
         try:
             self.dashboard.DOExecute(1,0)
         except (AttributeError, OSError):
+            print('Tried to grab...')
             print("Not connected to arm!")
             return False
         return True
@@ -78,27 +81,6 @@ class VacuumGrip(Attachment):
         self.implement_offset = (0,0,-60)
         return
 
-    def push(self, duration=0):
-        """
-        Expel air
-
-        Args:
-            duration (int, optional): number of seconds to expel air. Defaults to 0.
-            
-        Returns:
-            bool: whether action is successful
-        """
-        try:
-            self.dashboard.DOExecute(2,1)
-            if duration > 0:
-                time.sleep(duration)
-                self.dashboard.DOExecute(2,0)
-                time.sleep(1)
-        except (AttributeError, OSError):
-            print("Not connected to arm!")
-            return False
-        return True
-
     def drop(self):
         """
         Let go of object
@@ -106,6 +88,7 @@ class VacuumGrip(Attachment):
         Returns:
             bool: whether action is successful
         """
+        print('Tried to drop...')
         return self.push(0.5)
     
     def grab(self):
@@ -115,7 +98,49 @@ class VacuumGrip(Attachment):
         Returns:
             bool: whether action is successful
         """
+        print('Tried to grab...')
         return self.pull(3)
+    
+    def pull(self, duration=None):
+        """
+        Inhale air
+
+        Args:
+            duration (int, optional): number of seconds to inhale air. Defaults to None.
+        """
+        try:
+            self.dashboard.DOExecute(1,1)
+            if duration is not None:
+                time.sleep(duration)
+                self.dashboard.DOExecute(1,0)
+                time.sleep(1)
+        except (AttributeError, OSError):
+            print('Tried to pull...')
+            print("Not connected to arm!")
+            return False
+        return True
+    
+    def push(self, duration=None):
+        """
+        Expel air
+
+        Args:
+            duration (int, optional): number of seconds to expel air. Defaults to None.
+            
+        Returns:
+            bool: whether action is successful
+        """
+        try:
+            self.dashboard.DOExecute(2,1)
+            if duration is not None:
+                time.sleep(duration)
+                self.dashboard.DOExecute(2,0)
+                time.sleep(1)
+        except (AttributeError, OSError):
+            print('Tried to push...')
+            print("Not connected to arm!")
+            return False
+        return True
     
     def stop(self):
         """
@@ -129,24 +154,7 @@ class VacuumGrip(Attachment):
             self.dashboard.DOExecute(1,0)
             time.sleep(1)
         except (AttributeError, OSError):
-            print("Not connected to arm!")
-            return False
-        return True
-    
-    def pull(self, duration=0):
-        """
-        Inhale air
-
-        Args:
-            duration (int, optional): number of seconds to inhale air. Defaults to 0.
-        """
-        try:
-            self.dashboard.DOExecute(1,1)
-            if duration > 0:
-                time.sleep(duration)
-                self.dashboard.DOExecute(1,0)
-                time.sleep(1)
-        except (AttributeError, OSError):
+            print('Tried to stop...')
             print("Not connected to arm!")
             return False
         return True
@@ -154,3 +162,5 @@ class VacuumGrip(Attachment):
 
 ATTACHMENTS = [TwoJawGrip, VacuumGrip]
 ATTACHMENT_NAMES = ['TwoJawGrip', 'VacuumGrip']
+METHODS = [Helper.get_method_names(attachment) for attachment in ATTACHMENTS]
+METHODS_SET = sorted( list(set([item for sublist in METHODS for item in sublist])) )
