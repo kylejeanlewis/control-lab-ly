@@ -262,7 +262,7 @@ class CALimit(_calimit_, Program):               ### PATCHED
         channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
         params = set_defaults( params, defaults, channels )
 
-        super().__init__(
+        super(_calimit_, self).__init__(
             device,
             params,
             **kwargs
@@ -332,126 +332,7 @@ class GEIS(_geis_, Program):                     ### PATCHED
             wait: Adds a delay before the measurement at each frequency. The delay is expressed as a fraction of the period. [Default: 0]
         :param **kwargs: Parameters passed to BiologicProgram.
         """
-        # set sweep to false if spacing is logarithmic
-        if 'sweep' in params:
-            if params.sweep == 'log':           ### BUG squashed
-                params.sweep = False
-
-            elif params.sweep == 'lin':         ### BUG squashed
-                params.sweep = True
-
-            else:
-                raise ValueError( 'Invalid sweep parameter' )
-
-        defaults = {
-            'vs_initial':           False,
-            'vs_final':             False,
-            'time_interval':        1,
-            'potential_interval':   0.001,
-            'sweep':                False,
-            'repeat':               1,
-            'correction':           False,
-            'wait':                 0
-        }
-
-        channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
-        params = set_defaults( params, defaults, channels )
-        super().__init__(
-            device,
-            params,
-            **kwargs
-        )
-
-        for ch, ch_params in self.params.items():
-            ch_params[ 'current_range' ] = self._get_current_range(
-                ch_params[ 'current' ]
-            )
-
-        self._techniques = [ 'geis' ]
-        self._parameter_types = tfs.GEIS
-        self._data_fields = (
-            dp.SP300_Fields.GEIS
-            if ecl.is_in_SP300_family( self.device.kind ) else
-            dp.VMP3_Fields.GEIS
-        )
-        
-        self.field_titles = [
-            'Process',
-            'Time [s]',
-            'Voltage [V]',
-            'Current [A]',
-            'abs( Voltage ) [V]',
-            'abs( Current ) [A]',
-            'Impendance phase',
-            'Voltage_ce [V]',
-            'abs( Voltage_ce ) [V]',
-            'abs( Current_ce ) [A]',
-            'Impendance_ce phase',
-            'Frequency [Hz]'
-        ]
-        
-        self._fields = namedtuple( 'GEIS_datum', [
-            'process',
-            'time',
-            'voltage',
-            'current',
-            'abs_voltage',
-            'abs_current',
-            'impendance_phase',
-            'voltage_ce',
-            'abs_voltage_ce',
-            'abs_current_ce',
-            'impendance_ce_phase',
-            'frequency'
-        ] )
-       
-        def _geis_fields( datum, segment ):
-            """
-            Define fields for _run function.
-            """
-            if segment.info.ProcessIndex == 0:
-                f = (
-                    segment.info.ProcessIndex,
-                    dp.calculate_time(
-                        datum.t_high,
-                        datum.t_low,
-                        segment.info,
-                        segment.values
-                    ),
-                    datum.voltage,
-                    datum.current,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None
-                )
-
-            elif segment.info.ProcessIndex == 1:
-                f = (
-                    segment.info.ProcessIndex,
-                    datum.time,
-                    datum.voltage,
-                    datum.current,
-                    datum.abs_voltage,
-                    datum.abs_current,
-                    datum.impendance_phase,
-                    datum.voltage_ce,
-                    datum.abs_voltage_ce,
-                    datum.abs_current_ce,
-                    datum.impendance_ce_phase,
-                    datum.frequency
-                )
-
-            else:
-                raise RuntimeError( f'Invalid ProcessIndex ({segment.info.ProcessIndex})' )
-
-            return f
-
-        self._field_values = _geis_fields
+        super().__init__(device, params, **kwargs)
 
     def _get_current_range( self, currents ):
         """
@@ -459,7 +340,7 @@ class GEIS(_geis_, Program):                     ### PATCHED
         :param currents: List of currents.
         :returns: ec_lib.IRange corresponding to largest current.
         """
-        i_max = abs( max(currents) )            ### BUG squashed
+        i_max = abs( currents )                 ### BUG squashed
 
         if i_max < 100e-12:
             i_range = ecl.IRange.p100
