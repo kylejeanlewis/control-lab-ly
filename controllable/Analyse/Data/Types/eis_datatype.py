@@ -510,7 +510,7 @@ class ImpedanceSpectrum(object):
         Create plots of the impedance data
 
         Args:
-            plot_type (str, optional): plot type ('nyquist' / 'bode'). Defaults to 'nyquist'.
+            plot_type (str, optional): plot type ('nyquist' / 'bode'). Defaults to None.
             show_plot (bool, optional): whether to show the plot. Defaults to True.
 
         Returns:
