@@ -12,10 +12,13 @@ import time
 # Local application imports
 print(f"Import: OK <{__name__}>")
 
-ATTACHMENT_LIST = ['TwoJawGrip', 'VacuumGrip']
-
-# First-party implement attachments
 class Attachment(object):
+    """
+    Dobot first part implement attachments
+
+    Args:
+        dashboard (any): Dashboard object
+    """
     def __init__(self, dashboard):
         self.dashboard = dashboard
         self.implement_offset = (0,0,0)
@@ -75,7 +78,7 @@ class VacuumGrip(Attachment):
         self.implement_offset = (0,0,-60)
         return
 
-    def blow(self, duration=0):
+    def push(self, duration=0):
         """
         Expel air
 
@@ -103,7 +106,7 @@ class VacuumGrip(Attachment):
         Returns:
             bool: whether action is successful
         """
-        return self.blow(0.5)
+        return self.push(0.5)
     
     def grab(self):
         """
@@ -112,7 +115,7 @@ class VacuumGrip(Attachment):
         Returns:
             bool: whether action is successful
         """
-        return self.suck(3)
+        return self.pull(3)
     
     def stop(self):
         """
@@ -130,7 +133,7 @@ class VacuumGrip(Attachment):
             return False
         return True
     
-    def suck(self, duration=0):
+    def pull(self, duration=0):
         """
         Inhale air
 
@@ -147,3 +150,7 @@ class VacuumGrip(Attachment):
             print("Not connected to arm!")
             return False
         return True
+
+
+ATTACHMENTS = [TwoJawGrip, VacuumGrip]
+ATTACHMENT_NAMES = ['TwoJawGrip', 'VacuumGrip']

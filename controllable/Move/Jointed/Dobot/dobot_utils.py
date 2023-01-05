@@ -328,20 +328,40 @@ class Dobot(RobotArm):
             print("Not connected to arm!")
         return
     
-    def toggleAttachment(self, on:bool, attachment_class_name=''):
+    def toggleAttachment(self, on:bool, name='', attachment_type=None, attachment_module=attachments):
         """
         Add an attachment that interfaces with the Dobot's Digital Output (DO)
 
         Args:
             on (bool): whether to add attachment, False if removing attachment
-            attachment_class (str, optional): class name of attachment. Defaults to ''.
+            name (str, optional): name of attachment type in attachment_module. Defaults to None.
+            attachment_type (any, optional): attachment to load. Defaults to None.
+            attachment_module (module, optional): module containing relevant attachments. Defaults to None.
+        
+        Raises:
+            Exception: Provide a module containing relevant attachments
+            Exception: Select a valid attachment name
+            Exception: Input at least one of 'name' or 'attachment_type'
+            Exception: Input only one of 'name' or 'attachment_type'
         """
         if on: # Add attachment
-            if attachment_class_name not in attachments.ATTACHMENT_LIST:
-                raise Exception(f"Please select valid attachment from: {', '.join(attachments.ATTACHMENT_LIST)}")
+            if name is None and attachment_type is not None:
+                pass
+            elif name is not None and attachment_type is None:
+                if attachment_module is None:
+                    raise Exception(f"Please provide a module containing relevant attachments")
+                if name not in attachment_module.ATTACHMENT_NAMES:
+                    raise Exception(f"Please select a program name from: {', '.join(attachment_module.ATTACHMENT_NAMES)}")
+                attachment_type = getattr(attachment_module, name)
+            elif name is None and attachment_type is None:
+                if len(attachment_module.ATTACHMENTS) > 1:
+                    raise Exception("Please input at least one of 'name' or 'attachment_type'")
+                attachment_type = attachment_module.ATTACHMENTS[0]
+            else:
+                raise Exception("Please input only one of 'name' or 'attachment_type'")
+            
             input("Please secure tool attachment")
-            attach_class = getattr(attachments, attachment_class_name)
-            self.attachment = attach_class(self.dashboard)
+            self.attachment = attachment_type(self.dashboard)
             self.setImplementOffset(self.attachment.implement_offset)
         else: # Remove attachment
             input("Please remove tool attachment")
