@@ -26,8 +26,8 @@ class Electrical(object):
         
         self.buffer_df = pd.DataFrame()
         self.data = None
-        self.program = None
         self.datatype = None
+        self.program = None
         self.program_type = None
         self.program_details = {
             'inputs_and_defaults': {},
@@ -193,9 +193,13 @@ class Electrical(object):
             if program_module is None:
                 raise Exception(f"Please provide a module containing relevant programs")
             if name not in program_module.PROGRAM_NAMES:
-                raise Exception(f"Please select a program name from: {', '.join(program_module.PROGRAM_LIST)}")
+                raise Exception(f"Please select a program name from: {', '.join(program_module.PROGRAM_NAMES)}")
             program_type = getattr(program_module, name)
             self.program_type = program_type
+        elif name is None and program_type is None:
+            if len(program_module.PROGRAMS) > 1:
+                raise Exception("Please input at least one of 'name' or 'program_type'")
+            self.program_type = program_module.PROGRAMS[0]
         else:
             raise Exception("Please input only one of 'name' or 'program_type'")
         print(f"Loaded program: {self.program_type.__name__}")
@@ -215,7 +219,10 @@ class Electrical(object):
             Exception: Load a program first
         """
         if self.program_type is None:
-            raise Exception('Load a program first.')
+            try: 
+                self.loadProgram()
+            except Exception:
+                raise Exception('Load a program first.')
         self.setFlag('busy', True)
         print("Measuring...")
         self.clearCache()
