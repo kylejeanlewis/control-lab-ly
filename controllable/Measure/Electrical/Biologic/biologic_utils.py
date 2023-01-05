@@ -71,10 +71,10 @@ class Biologic(Electrical):
         Returns:
             bool: whether the data extraction from program is successful
         """
-        if self._program is None:
+        if self.program is None:
             print("Please load a program first.")
             return False
-        self.buffer_df = pd.DataFrame(self._program.data[0], columns=self._program.field_titles)
+        self.buffer_df = pd.DataFrame(self.program.data[0], columns=self.program.field_titles)
         self._fix_column_names()
         if len(self.buffer_df) == 0:
             print("No data found.")
