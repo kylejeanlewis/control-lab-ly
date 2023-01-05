@@ -17,11 +17,17 @@ from enum import Enum
 # from easy_biologic.base_programs import * # pip install easy-biologic
 from easy_biologic.base_programs import BiologicProgram, set_defaults
 from easy_biologic.base_programs import dp, ecl, tfs
-from easy_biologic.base_programs import OCV, CA, CP, PEIS, JV_Scan
+
+# Classes to be decorated
+from easy_biologic.base_programs import OCV as _ocv_
+from easy_biologic.base_programs import CA as _ca_
+from easy_biologic.base_programs import CP as _cp_
+from easy_biologic.base_programs import PEIS as _peis_
+from easy_biologic.base_programs import JV_Scan as _jv_scan_
 
 # Classes to be patched
-from easy_biologic.base_programs import CALimit as CALimit_
-from easy_biologic.base_programs import GEIS as GEIS_
+from easy_biologic.base_programs import CALimit as _calimit_
+from easy_biologic.base_programs import GEIS as _geis_
 
 # Local application imports
 print(f"Import: OK <{__name__}>")
@@ -66,8 +72,164 @@ class CPLIMIT( Enum ):
     N_Cycles          = int
 
 
+# ========== Class template ==========
+class Program(object):
+    """
+    Base Program template
+    """
+    details = {
+        'inputs_and_defaults': {},
+        'short_doc': '',
+        'tooltip': ''
+    }
+    
+    @classmethod
+    def getDetails(cls, verbose=False):
+        """
+        Get the input fields and defaults
+        
+        Args:
+            verbose: whether to print out truncated docstring. Defaults to False.
+
+        Returns:
+            dict: dictionary of program details
+        """
+        doc = cls.__init__.__doc__
+        
+        # Extract truncated docstring and parameter listing
+        lines = doc.split('\n')
+        start, end = 0,0
+        for i,line in enumerate(lines):
+            line = line.strip()
+            if line.startswith(':param params:'):
+                start = i
+            if line.startswith(':param **kwargs:') and start:
+                end = i
+                break
+        parameter_list = sorted([_l.strip() for _l in lines[start+2:end] if len(_l.strip())])
+        short_lines = cls.__doc__.split('\n') + ['    Parameters:'] + [f'{" "*8}{_p}' for _p in parameter_list]
+        short_doc = '\n'.join(short_lines)
+        tooltip = '\n'.join(['Parameters:'] + [f'- {_p}' for _p in parameter_list])
+        if verbose:
+            print(short_doc)
+        
+        # Extract input fields and defaults
+        input_parameters = {}
+        for parameter in parameter_list:
+            if len(parameter) == 0:
+                continue
+            _input = parameter.split(':')[0]
+            _default = parameter.split('Default: ')[-1][:-1] if 'Default' in parameter else ''
+            input_parameters[_input] =  _default
+        
+        cls.details = {
+            'inputs_and_defaults': input_parameters,
+            'short_doc': short_doc,
+            'tooltip': tooltip
+        }
+        return cls.details
+
+
+# ========== Base classes (decorate) ==========
+class OCV(_ocv_, Program):
+    """
+    Runs an open circuit voltage scan.
+    """
+    def __init__(self, device, params, **kwargs):
+        """
+        :param device: BiologicDevice.
+        :param params: Program parameters.
+            Params are
+            time: Run time in seconds.
+            time_interval: Maximum time between readings. [Default: 1]
+            voltage_interval: Maximum interval between voltage readings. [Default: 0.01]
+        :param **kwargs: Parameters passed to BiologicProgram.
+        """
+        super().__init__(device, params, **kwargs)
+
+class CA(_ca_, Program):
+    """
+    Runs a chrono-amperometry technique.
+    """
+    def __init__(self, device, params, **kwargs):
+        """
+        :param device: BiologicDevice.
+        :param params: Program parameters.
+            Params are
+            voltages: List of voltages in Volts.
+            durations: List of times in seconds.
+            vs_initial: If step is vs. initial or previous. [Default: False]
+            time_interval: Maximum time interval between points in seconds. [Default: 1]
+            current_interval: Maximum current change between points in Amps. [Default: 0.001]
+        :param **kwargs: Parameters passed to BiologicProgram.
+        """
+        super().__init__(device, params, **kwargs)
+
+class CP(_cp_, Program):
+    """
+    Runs a chorono-potentiometry technique.
+    """
+    def __init__(self, device, params, **kwargs):
+        """
+        :param device: BiologicDevice.
+        :param params: Program parameters.
+            Params are
+            currents: List of currents in Amps.
+            durations: List of times in seconds.
+            vs_initial: If step is vs. initial or previous. [Default: False]
+            time_interval: Maximum time interval between points in seconds. [Default: 1]
+            voltage_interval: Maximum voltage change between points in Volts. [Default: 0.001]
+        :param **kwargs: Parameters passed to BiologicProgram.
+        """
+        super().__init__(device, params, **kwargs)
+
+class PEIS(_peis_, Program):
+    """
+    Runs Potentio Electrochemical Impedance Spectroscopy technique.
+    """
+    def __init__(self, device, params, **kwargs):
+        """
+        :param device: BiologicDevice.
+        :param params: Program parameters.
+            Params are
+            voltage: Initial potential in Volts.
+            amplitude_voltage: Sinus amplitude in Volts.
+            initial_frequency: Initial frequency in Hertz.
+            final_frequency: Final frequency in Hertz.
+            frequency_number: Number of frequencies.
+            duration: Overall duration in seconds.
+            vs_initial: If step is vs. initial or previous. [Default: False]
+            time_interval: Maximum time interval between points in seconds. [Default: 1]
+            current_interval: Maximum time interval between points in Amps. [Default: 0.001]
+            sweep: Defines whether the spacing between frequencies is logarithmic ('log') or linear ('lin'). [Default: 'log']
+            repeat: Number of times to repeat the measurement and average the values for each frequency. [Default: 1]
+            correction: Drift correction. [Default: False]
+            wait: Adds a delay before the measurement at each frequency. The delay is expressed as a fraction of the period. [Default: 0]
+        :param **kwargs: Parameters passed to BiologicProgram.
+        """
+        super().__init__(device, params, **kwargs)
+
+class JV_Scan(_jv_scan_, Program):
+    """
+    Runs a JV scan.
+    """
+    def __init__(self, device, params, **kwargs):
+        """
+        :param device: BiologicDevice.
+        :param params: Program parameters.
+            Params are
+            start: Dictionary of start voltages keyed by channels. [Default: 0]
+            end: Dictionary of end voltages keyed by channels.
+            step: Voltage step. [Default: 0.01]
+            rate: Scan rate in mV/s. [Default: 10]
+            average: Average over points. [Default: False]
+        :param **kwargs: Parameters passed to BiologicProgram.
+        """
+        super().__init__(device, params, **kwargs)
+        
+
 # ========== Base classes (patch) ==========
-class CALimit( CALimit_ ):                      ### PATCHED
+class CALimit(_calimit_, Program):               ### PATCHED
     """
     Runs a chrono-amperometry technique with limits technique.
     """
@@ -84,14 +246,10 @@ class CALimit( CALimit_ ):                      ### PATCHED
             Params are
             voltages: List of voltages in Volts.
             durations: List of times in seconds.
-            vs_initial: If step is vs. initial or previous.
-                [Default: False]
-            time_interval: Maximum time interval between points.
-                [Default: 1]
-            current_interval: Maximum current change between points.
-                [Default: 0.001]
-            current_range: Current range. Use ec_lib.IRange.
-                [Default: IRange.m10]
+            vs_initial: If step is vs. initial or previous. [Default: False]
+            time_interval: Maximum time interval between points. [Default: 1]
+            current_interval: Maximum current change between points. [Default: 0.001]
+            current_range: Current range. Use ec_lib.IRange. [Default: IRange.m10]
         :param **kwargs: Parameters passed to BiologicProgram.
         """
         defaults = {
@@ -145,7 +303,7 @@ class CALimit( CALimit_ ):                      ### PATCHED
         )
 
 
-class GEIS( GEIS_ ):                            ### PATCHED
+class GEIS(_geis_, Program):                     ### PATCHED
     """
     Runs Galvano Electrochemical Impedance Spectroscopy technique.
     """
@@ -165,20 +323,13 @@ class GEIS( GEIS_ ):                            ### PATCHED
             final_frequency: Final frequency in Hertz.
             frequency_number: Number of frequencies.
             duration: Overall duration in seconds. # Comment: Isn't this really a step duration?
-            vs_initial: If step is vs. initial or previous.
-                [Default: False]
-            time_interval: Maximum time interval between points in seconds.
-                [Default: 1]
-            potential_interval: Maximum interval between points in Volts.
-                [Default: 0.001]
-            sweep: Defines whether the spacing between frequencies is logarithmic ('log') or linear ('lin'). 
-                [Default: 'log']
-            repeat: Number of times to repeat the measurement and average the values for each frequency. 
-                [Default: 1]
-            correction: Drift correction. 
-                [Default: False]
-            wait: Adds a delay before the measurement at each frequency. The delay is expressed as a fraction of the period. 
-                [Default: 0]
+            vs_initial: If step is vs. initial or previous. [Default: False]
+            time_interval: Maximum time interval between points in seconds. [Default: 1]
+            potential_interval: Maximum interval between points in Volts. [Default: 0.001]
+            sweep: Defines whether the spacing between frequencies is logarithmic ('log') or linear ('lin'). [Default: 'log']
+            repeat: Number of times to repeat the measurement and average the values for each frequency. [Default: 1]
+            correction: Drift correction. [Default: False]
+            wait: Adds a delay before the measurement at each frequency. The delay is expressed as a fraction of the period. [Default: 0]
         :param **kwargs: Parameters passed to BiologicProgram.
         """
         # set sweep to false if spacing is logarithmic
@@ -346,13 +497,13 @@ class GEIS( GEIS_ ):                            ### PATCHED
         else:
             raise ValueError( 'Current too large.' )
 
-        return i_range    
-   
+        return i_range     
+
 
 # ========== Base classes (new) ==========
-class CPLimit( BiologicProgram ):               ### NEW
+class CPLimit(BiologicProgram, Program):        ### NEW
     """
-    Runs a chrono-potentiommetry technique with limits technique.
+    Runs a chrono-potentiometry technique with limits technique.
     """
     # TODO: Add limit conditions as parameters, not hard coded
     def __init__(
@@ -367,14 +518,10 @@ class CPLimit( BiologicProgram ):               ### NEW
             Params are
             currents: List of currents in Amperes.
             durations: List of times in seconds.
-            vs_initial: If step is vs. initial or previous.
-                [Default: False]
-            time_interval: Maximum time interval between points.
-                [Default: 1]
-            voltage_interval: Maximum voltage change between points.
-                [Default: 0.001]
-            voltage_range: Voltage range. Use ec_lib.ERange.
-                [Default: ERange.v2_5 ]
+            vs_initial: If step is vs. initial or previous. [Default: False]
+            time_interval: Maximum time interval between points. [Default: 1]
+            voltage_interval: Maximum voltage change between points. [Default: 0.001]
+            voltage_range: Voltage range. Use ec_lib.ERange. [Default: ERange.v2_5 ]
         :param **kwargs: Parameters passed to BiologicProgram.
         """
         defaults = {
@@ -511,7 +658,7 @@ class CPLimit( BiologicProgram ):               ### NEW
             )
 
 
-class CV( BiologicProgram ):                    ### NEW
+class CV(BiologicProgram, Program):             ### NEW
     """
     Runs a cyclic voltammetry technique.
     """
@@ -525,17 +672,12 @@ class CV( BiologicProgram ):                    ### NEW
         :param device: BiologicDevice.
         :param params: Program parameters.
             Params are
-            voltages: List of voltages in Volts. [Ei, E1, E2, Ei, Ef]
-                Refers to initial, 1st vertex, 2nd vertex, initial, and final voltages respectively.
+            voltages: List of voltages in Volts. [Ei, E1, E2, Ei, Ef]. Refers to initial, 1st vertex, 2nd vertex, initial, and final voltages respectively.
             scan_rate: List of scan rates in mV/s.
-            vs_initial: If step is vs. initial or previous.
-                [Default: False]
-            voltage_interval: Maximum voltage change between points.
-                [Default: 0.001]
-            wait: Wait for fraction of step before starting to measure.
-                [Default: 0.5]
-            cycles: Number of cycles to sweep.
-                [Default: 1]
+            vs_initial: If step is vs. initial or previous. [Default: False]
+            voltage_interval: Maximum voltage change between points. [Default: 0.001]
+            wait: Wait for fraction of step before starting to measure. [Default: 0.5]
+            cycles: Number of cycles to sweep. [Default: 1]
         :param **kwargs: Parameters passed to BiologicProgram.
         """
         defaults = {
@@ -665,3 +807,8 @@ class CV( BiologicProgram ):                    ### NEW
                 types = self._parameter_types
             )
 
+
+PROGRAMS = [OCV, CV, JV_Scan, CA, CP, PEIS, GEIS, CALimit, CPLimit]
+PROGRAM_NAMES = [prog.__name__ for prog in PROGRAMS]
+INPUTS = [item for item in [[key for key in prog.getDetails().get('inputs_and_defaults', {})] for prog in PROGRAMS]]
+INPUTS_SET = sorted( list(set([item for sublist in INPUTS for item in sublist])) )

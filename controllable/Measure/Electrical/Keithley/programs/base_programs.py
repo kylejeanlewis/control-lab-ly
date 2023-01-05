@@ -8,18 +8,11 @@ Notes / actionables:
 """
 # Standard library imports
 import pandas as pd
-import pkgutil
 import time
 
 # Local application imports
 from ..keithley_device import KeithleyDevice
-from .scpi_datatype import SCPI
 print(f"Import: OK <{__name__}>")
-
-MAX_BUFFER_SIZE = 10000
-# PROGRAM_LIST = ['IV_Scan', 'Logging', 'LSV', 'OCV', 'SweepV']
-PROGRAM_LIST = ['IV_Scan','OCV']
-INPUTS_LIST = ['count', 'currents']
 
 class Program(object):
     """
@@ -33,6 +26,11 @@ class Program(object):
     Parameters:
         None
     """
+    details = {
+        'inputs_and_defaults': {},
+        'short_doc': '',
+        'tooltip': ''
+    }
     def __init__(self, device:KeithleyDevice, parameters={}, **kwargs):
         self.device = device
         self.parameters = parameters
@@ -40,6 +38,52 @@ class Program(object):
         self.data_df = pd.DataFrame
         self._flags = {}
         return
+    
+    @classmethod
+    def getDetails(cls, verbose=False):
+        """
+        Get the input fields and defaults
+        
+        Args:
+            verbose: whether to print out truncated docstring. Defaults to False.
+
+        Returns:
+            dict: dictionary of program details
+        """
+        doc = cls.__doc__
+        
+        # Extract truncated docstring and parameter listing
+        lines = doc.split('\n')
+        start, end = 0,0
+        for i,line in enumerate(lines):
+            line = line.strip()
+            if line.startswith('Args:'):
+                start = i
+            if line.startswith('==========') and start:
+                end = i
+                break
+        parameter_list = sorted([_l.strip() for _l in lines[end+2:] if len(_l.strip())])
+        short_lines = lines[:start-1] + lines[end:]
+        short_doc = '\n'.join(short_lines)
+        tooltip = '\n'.join(['Parameters:'] + [f'- {_p}' for _p in parameter_list])
+        if verbose:
+            print(short_doc)
+        
+        # Extract input fields and defaults
+        input_parameters = {}
+        for parameter in parameter_list:
+            if len(parameter) == 0:
+                continue
+            _input = parameter.split(' ')[0]
+            _default = parameter.split(' ')[-1][:-1] if 'Defaults' in parameter else ''
+            input_parameters[_input] = _default
+        
+        cls.details = {
+            'inputs_and_defaults': input_parameters,
+            'short_doc': short_doc,
+            'tooltip': tooltip
+        }
+        return cls.details
     
     def run(self):
         """
@@ -127,7 +171,18 @@ class OCV(Program):
         return
 
 
+PROGRAMS = [IV_Scan, OCV]
+PROGRAM_NAMES = [prog.__name__ for prog in PROGRAMS]
+INPUTS = [item for item in [[key for key in prog.getDetails().get('inputs_and_defaults', {})] for prog in PROGRAMS]]
+INPUTS_SET = sorted( list(set([item for sublist in INPUTS for item in sublist])) )
+
 # """======================================================================================"""
+# import pkgutil
+# from .scpi_datatype import SCPI
+# 
+# MAX_BUFFER_SIZE = 10000
+# PROGRAM_LIST = ['IV_Scan', 'Logging', 'LSV', 'OCV', 'SweepV']
+#
 # class Programme(object):
 #     def __init__(self, device, params={}):
 #         self.data_df = pd.DataFrame()
