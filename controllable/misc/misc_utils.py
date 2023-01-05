@@ -150,4 +150,4 @@ class Helper(object):
         return
 
 HELPER = Helper() 
-"""NOTE: importing HELPER gives the same instance of the object wherever you import it"""
+"""NOTE: importing HELPER gives the same instance of the 'Helper' class wherever you import it"""
