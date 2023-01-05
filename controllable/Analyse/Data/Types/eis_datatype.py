@@ -495,7 +495,7 @@ class ImpedanceSpectrum(object):
             print("Circuit not yet fitted!")
         return self.diagram
 
-    def plot(self, plot_type='nyquist', show_plot=True):
+    def plot(self, plot_type=None, show_plot=True):
         """
         Create plots of the impedance data
 
@@ -506,6 +506,8 @@ class ImpedanceSpectrum(object):
         Returns:
             None, or plotly.graph_objects.Figure: plotly figure object of drawn plot
         """
+        if plot_type is None:
+            plot_type = 'nyquist'
         if plot_type.lower() == 'nyquist' or len(plot_type) == 0:
             return self.plotNyquist(show_plot)
         elif plot_type.lower() == 'bode':
