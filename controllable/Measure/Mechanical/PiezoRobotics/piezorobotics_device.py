@@ -20,6 +20,7 @@ from .piezorobotics_lib import COMMANDS, ERRORS, FREQUENCIES
 print(f"Import: OK <{__name__}>")
 
 READ_TIMEOUT_S = 1
+RUN_TIMEOUT_S = 10
 
 class PiezoRoboticsDevice(object):
     """
@@ -68,11 +69,11 @@ class PiezoRoboticsDevice(object):
                 low_frequency (float): lower frequency limit
                 high_frequency (float): upper frequency limit
         """
-        low_frequency, high_frequency = list(frequencies).sorted()
+        low_frequency, high_frequency = sorted(list(frequencies))
         all_freq = np.array(FREQUENCIES)
         freq_in_range_indices = np.where((all_freq>=low_frequency) & (all_freq<=high_frequency))
-        lo_code_number = max( (freq_in_range_indices[0]+1) - 1, 1)
-        hi_code_number = min( (freq_in_range_indices[-1]+1) + 1, len(all_freq))
+        lo_code_number = max( (freq_in_range_indices[0][0]+1) - 1, 1)
+        hi_code_number = min( (freq_in_range_indices[0][-1]+1) + 1, len(all_freq))
         self._frequency_range_codes = (f'FREQ_{lo_code_number:02}', f'FREQ_{hi_code_number:02}')
         return
     
@@ -105,7 +106,6 @@ class PiezoRoboticsDevice(object):
         except Exception as e:
             if self.verbose:
                 print(f"Could not connect to {port}")
-                print(e)
         return self.instrument
     
     def _is_expected_reply(self, message_code:str, response:str):
@@ -148,7 +148,7 @@ class PiezoRoboticsDevice(object):
                 return response
         except Exception as e:
             if self.verbose:
-                print(e)
+                pass
         return response
     
     def _shutdown(self):
@@ -182,7 +182,7 @@ class PiezoRoboticsDevice(object):
             self.setFlag('busy', True)
         except Exception as e:
             if self.verbose:
-                print(e)
+                print(fstring)
         return message_code
     
     def _query(self, string:str, timeout_s=READ_TIMEOUT_S):
@@ -201,6 +201,9 @@ class PiezoRoboticsDevice(object):
         response = ''
         while not self._is_expected_reply(message_code, response):
             if time.time() - _start_time > timeout_s and message_code != 'RUN':
+                break
+            elif time.time() - _start_time > RUN_TIMEOUT_S:
+                print('Timeout! Aborting run...')
                 break
             response = self._read()
         self.setFlag('busy', False)
@@ -227,7 +230,7 @@ class PiezoRoboticsDevice(object):
         if self._flags['initialised']:
             return
         self.frequency_range = low_frequency, high_frequency
-        self._query(f"INIT,{','.join(self.frequency_codes)}")
+        self._query(f"INIT,{','.join([str(_f) for _f in self.frequency_codes])}")
         self.setFlag('initialised', True)
         return
     
@@ -260,7 +263,9 @@ class PiezoRoboticsDevice(object):
             pd.DataFrame: dataframe of measurements
         """
         response = self._query('GET,0') # Retrieve data from program here
-        df = pd.DataFrame(response)
+        print(response)
+        data = response.split(',')
+        df = pd.DataFrame(data)
         return df
     
     def reset(self):
