@@ -21,7 +21,6 @@ import pkgutil
 from scipy.signal import argrelextrema
 import time
 
-
 # Third party imports
 from impedance import preprocessing # pip install impedance
 from impedance.models.circuits import CustomCircuit
