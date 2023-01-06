@@ -117,14 +117,11 @@ class PiezoRobotics(object):
 
     def clearCache(self, device_only=True):
         """
-        Clear data from device. Optionally reset data and flags.
+        Reset data and flags.
 
         Args:
             device_only (bool, optional): whether to only clear data from device. Defaults to True.
         """
-        self.device.clearCache()
-        if device_only:
-            return
         self.buffer_df = pd.DataFrame()
         self.data = None
         self.program = None
@@ -290,6 +287,7 @@ class PiezoRobotics(object):
         """
         Reset the program, data, and flags
         """
+        self.device.reset()
         self.buffer_df = pd.DataFrame()
         self.data = None
         self.program = None
