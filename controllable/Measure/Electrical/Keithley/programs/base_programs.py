@@ -114,10 +114,12 @@ class IV_Scan(Program):
         Run the measurement program
         """
         device = self.device
+        count = self.parameters.get('count', 1)
+        
         device.reset()
         device.configure(['ROUTe:TERMinals FRONT'])
         device.configureSource('current', measure_limit=200)
-        device.configureSense('voltage', 200, True, count=self.parameters.get('count', 1))
+        device.configureSense('voltage', 200, True, count=count)
         device.makeBuffer()
         device.beep()
         
@@ -125,7 +127,7 @@ class IV_Scan(Program):
             device.setSource(value=current)
             device.toggleOutput(on=True)
             device.start()
-            time.sleep(0.1*self.parameters.get('count', 1))
+            time.sleep(0.1*count)
         time.sleep(1)
         self.data_df = device.readAll()
         device.beep()
@@ -135,7 +137,7 @@ class IV_Scan(Program):
 
 class OCV(Program):
     """
-    OCV program
+    Open Circuit Voltage program
 
     Args:
         device (KeithleyDevice): Keithley Device object
@@ -154,24 +156,130 @@ class OCV(Program):
         Run the measurement program
         """
         device = self.device
+        count = self.parameters.get('count', 1)
+        
         device.reset()
         device.configure(['ROUTe:TERMinals FRONt', 'OUTPut:SMODe HIMPedance'])
         device.configureSource('current', limit=1, measure_limit=20)
-        device.configureSense('voltage', 20, count=self.parameters.get('count', 1))
+        device.configureSense('voltage', 20, count=count)
         device.makeBuffer()
         device.beep()
         
         device.setSource(value=0)
         device.toggleOutput(on=True)
         device.start()
-        time.sleep(0.1*self.parameters.get('count', 1))
+        time.sleep(0.1*count)
         self.data_df = device.readAll()
         device.beep()
         device.getErrors()
         return
 
 
-PROGRAMS = [IV_Scan, OCV]
+class LSV(Program):
+    """
+    Linear Sweep Voltammetry program
+
+    Args:
+        device (KeithleyDevice): Keithley Device object
+        parameters (dict, optional): dictionary of measurement parameters. Defaults to {}.
+    
+    ==========
+    Parameters:
+        None
+    """
+    def __init__(self, device: KeithleyDevice, parameters={}, **kwargs):
+        super().__init__(device, parameters, **kwargs)
+        return
+    
+    def run(self):
+        """
+        Run the measurement program
+        """
+        device= self.device
+        # Get OCV
+        ocv = self.runOCV()
+        
+        # Perform linear voltage sweep
+        lower = self.parameters.get('lower', 0.5)
+        upper = self.parameters.get('upper', 0.5)
+        bidirectional = self.parameters.get('bidirectional', True)
+        
+        mode = self.parameters.get('mode', 'lin').lower()
+        if mode in ['lin', 'linear']:
+            mode = 'lin'
+            step = self.parameters.get('step', 0.05)
+            sweep_rate = self.parameters.get('sweep_rate', 0.1)
+            points = int( ((stop - start) / step) + 1 )
+            dwell_time = step / sweep_rate
+        elif mode in ['log', 'logarithmic']:
+            mode = 'log'
+            points = self.parameters.get('points', 15)
+            dwell_time = self.parameters.get('dwell_time', 0.1)
+        else:
+            raise Exception("Please select one of 'lin' or 'log'")
+        
+        start = round(ocv - lower, 3)
+        stop = round(ocv + upper, 3)
+        voltages = ",".join(str(v) for v in (start,stop,points))
+        num_points = 2 * points - 1 if bidirectional else points
+        wait = num_points * dwell_time
+        print(f'Expected measurement time: {wait}s')
+
+        self.runSweep(voltages, dwell_time, bidirectional)
+        time.sleep(wait+3)
+        self.data_df = device.readAll()
+        device.beep()
+        device.getErrors()
+        return
+    
+    def runOCV(self):
+        """
+        Run OCV program
+
+        Returns:
+            float: open circuit voltage
+        """
+        subprogram = OCV(self.device, dict(count=3))
+        subprogram.run()
+        df = subprogram.data_df
+        ocv = round(df.at[0, 'READing'], 3)
+        print(f'OCV = {ocv}V')
+        return ocv
+    
+    def runSweep(self, voltages:str, dwell_time:float, mode:str = 'lin', bidirectional:bool = True, repeat:int = 1):
+        """
+        Run linear voltage sweep
+
+        Args:
+            voltages (str): start,stop,points for voltages
+            dwell_time (float): dwell time at each voltage in seconds
+            mode (str, optional): linear or logarithmic interpolation of points. Defaults to 'lin'.
+            bidirectional (bool, optional): whether to sweep in both directions. Defaults to True.
+            repeat (int, optional): how many times to repeat the sweep. Defaults to 1.
+        """
+        device = self.device
+        bidirectional = 'ON' if bidirectional else 'OFF'
+        if mode not in ['lin', 'log']:
+            raise Exception("Please select one of 'lin' or 'log'")
+        else:
+            mode = 'LINear' if mode is 'lin' else 'LOG'
+        
+        device.reset()
+        device.configure(['ROUTe:TERMinals FRONt', 'OUTPut:SMODe HIMPedance'])
+        device.configureSource('voltage', limit=20, measure_limit=1)
+        device.configureSense('current', limit=None, probe_4_point=False, count=3)
+        # device.makeBuffer()
+        device.beep()
+        
+        parameters = [voltages, dwell_time, repeat, 'AUTO', 'OFF', bidirectional]
+        device.configure(
+            [f'SOURce:SWEep:{device.source}:{mode} {",".join(parameters)}']
+        )
+        device.start(sequential_commands=False)
+        return
+
+
+PROGRAMS = [IV_Scan, OCV, LSV]
 PROGRAM_NAMES = [prog.__name__ for prog in PROGRAMS]
 INPUTS = [item for item in [[key for key in prog.getDetails().get('inputs_and_defaults', {})] for prog in PROGRAMS]]
 INPUTS_SET = sorted( list(set([item for sublist in INPUTS for item in sublist])) )
@@ -258,19 +366,6 @@ INPUTS_SET = sorted( list(set([item for sublist in INPUTS for item in sublist]))
 
 
 # ### Single programs
-# class IV_Scan(Programme):
-#     def __init__(self, device, params={}):
-#         super().__init__(device, params)
-#         super().loadSCPI('SCPI_iv.txt')
-#         return
-    
-#     def plot(self):
-#         return self.data_df.plot.scatter('I', 'V')
-    
-#     def run(self, values):
-#         return super().run(field_titles=['I', 'V'], values=values, average=True)
-
-
 # class Logging(Programme):
 #     def __init__(self, device, params={}):
 #         super().__init__(device, params)
@@ -287,17 +382,6 @@ INPUTS_SET = sorted( list(set([item for sublist in INPUTS for item in sublist]))
 #             self.data_df = pd.concat([self.data_df, df], ignore_index=True)
 #             time.sleep(timestep)
 #         return self.data_df
-
-
-# class OCV(Programme):
-#     def __init__(self, device, params={}):
-#         super().__init__(device, params)
-#         super().loadSCPI('SCPI_bias.txt')
-#         return
-    
-#     def run(self):
-#         return super().run(field_titles=['V'], average=True, fill_attributes=True)
-
 
 # class SweepV(Programme):
 #     def __init__(self, device, params={}):
