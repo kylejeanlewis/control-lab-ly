@@ -16,8 +16,6 @@ LATER TODO
 import numpy as np
 import pandas as pd
 
-# Third party imports
-
 # Local application imports
 print(f"Import: OK <{__name__}>")
 
@@ -280,6 +278,12 @@ if __name__ == "__main__":
     final_df = avg_df.join(std_df, rsuffix='_std')
     final_df.drop(columns=[col for col in final_df.columns if col.startswith('run')], inplace=True)
     final_df.reset_index(drop=True, inplace=True)
+    
+    fig1 = final_df.plot('Frequency (Hz)', ['Absolute Storage Modulus (MPa)','Absolute Loss Modulus (MPa)'])
+    fig2 = final_df.plot('Frequency (Hz)', 'Tan Delta')
+    fig1.show()
+    fig2.show()
+    
     pass
 
 # %%
