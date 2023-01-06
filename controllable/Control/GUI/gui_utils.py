@@ -120,7 +120,8 @@ class Panel(object):
         """
         return f'-{self.name}{string}'
     
-    def _pad(self):
+    @staticmethod
+    def pad():
         """
         Spacer / padding
 
@@ -134,7 +135,8 @@ class Panel(object):
             print(e)
         return ele
     
-    def arrangeElements(self, elements:list, shape=(0,0), form=''):
+    @classmethod
+    def arrangeElements(cls, elements:list, shape=(0,0), form=''):
         """
         Arrange elements in a horizontal / vertical / cross-shape pattern
 
@@ -154,19 +156,19 @@ class Panel(object):
             h = elements[0]
             v = elements[1]
             if len(h) == 0:
-                return self.arrangeElements(v, form='V')
+                return cls.arrangeElements(v, form='V')
             if len(v) == 0:
-                return self.arrangeElements(h, form='H')
+                return cls.arrangeElements(h, form='H')
             h_keys = [b.Key for b in h]
             for ele in reversed(v):
                 if ele.Key in h_keys:
-                    arranged_elements.append([self._pad()]+ h +[self._pad()])
+                    arranged_elements.append([cls.pad()]+ h +[cls.pad()])
                 else:
-                    arranged_elements.append([self._pad(), ele, self._pad()])
+                    arranged_elements.append([cls.pad(), ele, cls.pad()])
         elif form in ['V', 'v', 'vertical', '|']:
-            arranged_elements = [[self._pad(), ele, self._pad()] for ele in reversed(elements)]
+            arranged_elements = [[cls.pad(), ele, cls.pad()] for ele in reversed(elements)]
         elif form in ['H', 'h', 'horizontal', '-', '_']:
-            arranged_elements = [[self._pad()]+ elements +[self._pad()]]
+            arranged_elements = [[cls.pad()]+ elements +[cls.pad()]]
         else: # arrange in grid
             rows, cols = shape
             num = len(elements)
@@ -189,7 +191,7 @@ class Panel(object):
                 row = rows
             while n < num:
                 l,u = n, min(n+row, num)
-                arranged_elements.append([self._pad()]+ [elements[l:u]] +[self._pad()])
+                arranged_elements.append([cls.pad()]+ [elements[l:u]] +[cls.pad()])
                 n += row
         return arranged_elements
     
