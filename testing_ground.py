@@ -21,6 +21,8 @@ import pandas as pd
 # Local application imports
 print(f"Import: OK <{__name__}>")
 
+pd.options.plotting.backend = "plotly"
+
 # %% Helper examples
 from controllable.misc import HELPER
 if __name__ == "__main__":
@@ -174,11 +176,12 @@ if __name__ == "__main__":
     pass
 
 # %% GUI examples: M1Pro
-from controllable.Move.Jointed.Dobot import M1Pro
+from controllable.Move.Jointed.Dobot import M1Pro, MG400
 from controllable.Control.GUI import MoverPanel
 if __name__ == "__main__":
-    gui = MoverPanel(**dict(mover=M1Pro(ip_address='192.168.2.21', home_coordinates=(300,0,100)), axes=['X','Y','Z','a']))
-    gui.runGUI('M1Pro')
+    # gui = MoverPanel(**dict(mover=M1Pro(ip_address='192.168.2.21', home_coordinates=(300,0,100)), axes=['X','Y','Z','a']))
+    gui = MoverPanel(**dict(mover=MG400(ip_address='192.109.209.8'), axes=['X','Y','Z','a']))
+    gui.runGUI('MG400')
     pass
 
 # %% GUI examples: Keithley
@@ -256,14 +259,33 @@ if __name__ == "__main__":
 # %% PiezoRobotics examples
 from controllable.Measure.Mechanical.PiezoRobotics import PiezoRobotics
 if __name__ == "__main__":
-    measurer = PiezoRobotics('COM13')
+    measurer = PiezoRobotics('COM19')
     measurer.reset()
     params = {
-        'low_frequency': 1.1,
-        'high_frequency': 1.3,
-        'sample_thickness': 1E-6
+        'low_frequency': 1,
+        'high_frequency': 150,
+        'sample_thickness': 1E-3,
+        'repeat': 3
     }
     measurer.measure(params)
+    
+    df = measurer.buffer_df
+    df['Absolute Storage Modulus (MPa)'] = abs(df['Storage Modulus (MPa)'])
+    df['Absolute Loss Modulus (MPa)'] = abs(df['Loss Modulus (MPa)'])
+    df['Tan Delta'] = df['Absolute Loss Modulus (MPa)'] / df['Absolute Storage Modulus (MPa)'] 
+    df['freq_id'] = df.index % (len(df) / max(df['run']))
+    
+    avg_df = df.groupby('freq_id').mean()
+    std_df = df.groupby('freq_id').std()
+    final_df = avg_df.join(std_df, rsuffix='_std')
+    final_df.drop(columns=[col for col in final_df.columns if col.startswith('run')], inplace=True)
+    final_df.reset_index(drop=True, inplace=True)
+    pass
+
+# %%
+from controllable.Measure.Mechanical.PiezoRobotics.piezorobotics_device import PiezoRoboticsDevice
+if __name__ == "__main__":
+    device = PiezoRoboticsDevice('COM19')
     pass
 
 # %%
