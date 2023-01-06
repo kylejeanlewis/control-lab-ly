@@ -106,13 +106,13 @@ class MeasurerPanel(Panel):
         # add run, clear, reset buttons
         layout = [
             [layout],
-            [self._pad()],
+            [self.pad()],
             [sg.Column([[dropdown]], justification='center')],
-            [self._pad()],
+            [self.pad()],
             labels_inputs,
-            [self._pad()],
+            [self.pad()],
             [sg.Column([self.getButtons(['Run','Clear','Reset'], (5,2), self.name, font)], justification='center')],
-            [self._pad()]
+            [self.pad()]
         ]
         layout = sg.Column(layout, vertical_alignment='top')
         return layout
@@ -237,7 +237,7 @@ class MoverPanel(Panel):
             )
             dropdown_column = sg.Column([[dropdown]], justification='center')
             fn_layout.append([dropdown_column])
-            fn_layout.append([self._pad()])
+            fn_layout.append([self.pad()])
             if self.mover.attachment is not None:
                 show_buttons = True
                 self.current_attachment = self.mover.attachment.__name__
@@ -245,6 +245,7 @@ class MoverPanel(Panel):
                 alt_texts = [l.title() for l in self.attachment_methods]
                 self.methods_fn_key_map = {f'-{self.name}-{k}-':v for k,v in zip(button_labels, alt_texts)}
         buttons = self.getButtons(button_labels, (5,2), self.name, font, texts=alt_texts)
+        buttons = [sg.pin(button) for button in buttons]
         buttons_column = sg.Column([buttons], justification='center', visible=show_buttons, key=self._mangle('-FN-BUTTONS-'))
         fn_layout.append([buttons_column])
         
@@ -301,7 +302,7 @@ class MoverPanel(Panel):
                                    font=font, trough_color=bg_color, visible=(axis in self.axes),
                                    tooltip=tooltips[axis]
                                    )
-                elements[axis] = [[self._pad(), slider, self._pad()]]
+                elements[axis] = [[self.pad(), slider, self.pad()]]
                 continue
             
             if axis not in self.axes:
@@ -321,23 +322,23 @@ class MoverPanel(Panel):
         
         layout = [
             [layout],
-            [self._pad()],
+            [self.pad()],
             [
                 sg.Column([[sg.Column(elements['b'], justification='right')],
-                           [self._pad()],
+                           [self.pad()],
                            [sg.Column(self.arrangeElements(elements['Z'], form='V')),
                             sg.Column(self.arrangeElements([elements['X'], elements['Y']], form='X'))],
-                           [self._pad()],
+                           [self.pad()],
                            [sg.Column(elements['a'], justification='right')]]), 
                 sg.Column(elements['c'])
             ],
-            [self._pad()],
+            [self.pad()],
             input_fields,
-            [self._pad()],
+            [self.pad()],
             [sg.Column([self.getButtons(['Go','Clear','Reset'], (5,2), self.name, font)], justification='center')],
-            [self._pad()],
+            [self.pad()],
             [function_buttons],
-            [self._pad()]
+            [self.pad()]
         ]
         layout = sg.Column(layout, vertical_alignment='top')
         return layout
