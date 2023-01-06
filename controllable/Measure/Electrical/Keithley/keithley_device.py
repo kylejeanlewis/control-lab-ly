@@ -29,7 +29,7 @@ class KeithleyDevice(object):
         self._name = name
         self.instrument = None
         
-        self._active_buffer = None
+        self._active_buffer = 'defbuffer1'
         self._sense_details = {}
         self._source_details = {}
         
