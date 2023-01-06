@@ -120,7 +120,7 @@ class DMA(Program):
             low_frequency=self.parameters.get('low_frequency', FREQUENCIES[0]), 
             high_frequency=self.parameters.get('high_frequency', FREQUENCIES[-1])
         )
-        device.start(sample_thickness=self.parameters.get('sample_thickness', 1E-6))
+        device.start(sample_thickness=self.parameters.get('sample_thickness', 1E-3))
         time.sleep(1)
         self.data_df = device.readAll()
         return
