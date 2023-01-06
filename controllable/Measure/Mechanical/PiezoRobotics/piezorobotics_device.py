@@ -1,5 +1,7 @@
 # %% -*- coding: utf-8 -*-
 """
+Adapted from DMA code by @pablo
+
 Created: Tue 2023/01/03 17:13:35
 @author: Chang Jie
 
@@ -19,8 +21,7 @@ from .piezorobotics_lib import ErrorCode, FrequencyCode
 from .piezorobotics_lib import COMMANDS, ERRORS, FREQUENCIES
 print(f"Import: OK <{__name__}>")
 
-READ_TIMEOUT_S = 1
-RUN_TIMEOUT_S = 10
+TIMEOUT_S = 60
 
 class PiezoRoboticsDevice(object):
     """
@@ -34,7 +35,7 @@ class PiezoRoboticsDevice(object):
         self.channel = channel
         self.instrument = None
         
-        self._frequency_range_codes = ('','')
+        self._frequency_range_codes = ('0','0')
         
         self.verbose = True
         self._flags = {
@@ -69,13 +70,26 @@ class PiezoRoboticsDevice(object):
                 low_frequency (float): lower frequency limit
                 high_frequency (float): upper frequency limit
         """
+        lo_code_number, hi_code_number = self.range_finder(frequencies=frequencies)
+        self._frequency_range_codes = (f'FREQ_{lo_code_number:02}', f'FREQ_{hi_code_number:02}')
+        return
+    
+    @staticmethod
+    def range_finder(frequencies):
+        """
+        Find the appropriate the operating frequency range
+
+        Args:
+            frequencies (iterable): frequency lower and upper limits
+                low_frequency (float): lower frequency limit
+                high_frequency (float): upper frequency limit
+        """
         low_frequency, high_frequency = sorted(list(frequencies))
         all_freq = np.array(FREQUENCIES)
         freq_in_range_indices = np.where((all_freq>=low_frequency) & (all_freq<=high_frequency))
         lo_code_number = max( (freq_in_range_indices[0][0]+1) - 1, 1)
         hi_code_number = min( (freq_in_range_indices[0][-1]+1) + 1, len(all_freq))
-        self._frequency_range_codes = (f'FREQ_{lo_code_number:02}', f'FREQ_{hi_code_number:02}')
-        return
+        return lo_code_number, hi_code_number
     
     def __delete__(self):
         self._shutdown()
@@ -108,26 +122,34 @@ class PiezoRoboticsDevice(object):
                 print(f"Could not connect to {port}")
         return self.instrument
     
-    def _is_expected_reply(self, message_code:str, response:str):
+    def _query(self, string:str, timeout_s=TIMEOUT_S):
         """
-        Check whether the response is an expected reply
+        Send query and wait for reponse
 
         Args:
-            message_code (str): command code
-            response (str): response string from instrument
+            string (str): message string
+            timeout_s (int, optional): duration to wait before timeout. If None, no timeout duration. Defaults to TIMEOUT_S.
 
-        Returns:
-            bool: whether the response is an expected reply
+        Yields:
+            str: response string
         """
-        if response in ERRORS:
-            return True
-        if response in ['OKR', 'OKC']:
-            return True
+        start_time = time.time()
+        message_code = self._write(string)
+        cache = []
+        response = ''
+        while response != 'OKC':
+            if timeout_s is not None and (time.time()-start_time) > timeout_s:
+                print('Timeout! Aborting run...')
+                break
+            response = self._read()
+            if message_code == 'GET' and len(response):
+                cache.append(response)
+
+        self.setFlag('busy', False)
+        time.sleep(0.1)
         if message_code == 'GET':
-            if self.verbose:
-                print(f'[{message_code}] {response}')
-            return True
-        return False
+            return cache
+        return response
     
     def _read(self):
         """
@@ -139,13 +161,11 @@ class PiezoRoboticsDevice(object):
         response = ''
         try:
             response = self.instrument.readline()
-            if len(response) == 0:
-                response = self.instrument.readline()
+            response = response.decode("utf-8").strip()
+            if len(response) and (self.verbose or 'High-Voltage' in response):
+                print(response)
             if response in ERRORS:
                 print(ErrorCode[response].value)
-                return response
-            elif response in ['OKR', 'OKC']:
-                return response
         except Exception as e:
             if self.verbose:
                 pass
@@ -155,8 +175,9 @@ class PiezoRoboticsDevice(object):
         """
         Close serial connection and shutdown
         """
-        self.instrument.close()
+        self.toggleClamp(False)
         self.reset()
+        self.instrument.close()
         return
 
     def _write(self, string:str):
@@ -181,41 +202,16 @@ class PiezoRoboticsDevice(object):
             self.instrument.write(bstring)
             self.setFlag('busy', True)
         except Exception as e:
-            if self.verbose:
-                print(fstring)
+            print(e)
+        if self.verbose:
+            print(fstring)
         return message_code
     
-    def _query(self, string:str, timeout_s=READ_TIMEOUT_S):
+    def close(self):
         """
-        Send query and wait for response
-
-        Args:
-            string (str): message string
-            timeout_s (int, optional): duration to wait before timeout. Defaults to READ_TIMEOUT_S.
-
-        Returns:
-            str: message readout
+        Alias for _shutdown method
         """
-        message_code = self._write(string)
-        _start_time = time.time()
-        response = ''
-        while not self._is_expected_reply(message_code, response):
-            if time.time() - _start_time > timeout_s and message_code != 'RUN':
-                break
-            elif time.time() - _start_time > RUN_TIMEOUT_S:
-                print('Timeout! Aborting run...')
-                break
-            response = self._read()
-        self.setFlag('busy', False)
-        time.sleep(0.1)
-        return response
-    
-    def clearCache(self):
-        """
-        Clear data from instrument.
-        """
-        self._query('CLR,0')
-        return
+        return self._shutdown()
     
     def connect(self):
         """
@@ -226,12 +222,19 @@ class PiezoRoboticsDevice(object):
         """
         return self._connect(self.port, self._baudrate, self._timeout)
     
-    def initialise(self, low_frequency, high_frequency):
+    def initialise(self, low_frequency, high_frequency): # TODO: check frequencies if same as previous
         if self._flags['initialised']:
             return
-        self.frequency_range = low_frequency, high_frequency
-        self._query(f"INIT,{','.join([str(_f) for _f in self.frequency_codes])}")
+        if self.range_finder((low_frequency, high_frequency)) == self.frequency_codes:
+            print('Appropriate frequency range remains the same!')
+        else:
+            if any(self.frequency_codes):
+                self.reset()
+            self.frequency_range = low_frequency, high_frequency
+            input("Ensure no samples within the clamp area during initialization. Press 'Enter' to proceed.")
+            self._query(f"INIT,{','.join([str(_f) for _f in self.frequency_codes])}")
         self.setFlag('initialised', True)
+        print(self.frequency_range)
         return
     
     def isBusy(self):
@@ -252,7 +255,7 @@ class PiezoRoboticsDevice(object):
         """
         return self._flags['connected']
 
-    def readAll(self, fields=[]):
+    def readAll(self, **kwargs):
         """
         Read all data on buffer
 
@@ -262,17 +265,16 @@ class PiezoRoboticsDevice(object):
         Returns:
             pd.DataFrame: dataframe of measurements
         """
-        response = self._query('GET,0') # Retrieve data from program here
-        print(response)
-        data = response.split(',')
-        df = pd.DataFrame(data)
+        data = [line.split(', ') for line in self._query('GET,0') if ',' in line]
+        df = pd.DataFrame(data[1:], columns=data[0], dtype=float)
         return df
     
     def reset(self):
         """
-        Reset the program, data, and flags
+        Clear settings from instrument. Reset the program, data, and flags
         """
-        self._frequency_range_codes = ('','')
+        self._query('CLR,0')
+        self._frequency_range_codes = ('0','0')
         self._flags = {
             'busy': False,
             'connected': False,
@@ -307,7 +309,8 @@ class PiezoRoboticsDevice(object):
         """
         Stop clamp movement
         """
-        self._query('CLAMP,0')
+        # self._query('CLAMP,0')
+        print('Stop clamp function not available.')
         return
     
     def toggleClamp(self, on=False):
