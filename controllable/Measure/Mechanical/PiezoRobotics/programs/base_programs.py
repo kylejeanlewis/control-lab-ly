@@ -115,14 +115,25 @@ class DMA(Program):
         Run the measurement program
         """
         device = self.device
-        device.reset()
+        repeat = self.parameters.get('repeat', 1)
+        device.toggleClamp(False)
         device.initialise(
             low_frequency=self.parameters.get('low_frequency', FREQUENCIES[0]), 
             high_frequency=self.parameters.get('high_frequency', FREQUENCIES[-1])
         )
-        device.start(sample_thickness=self.parameters.get('sample_thickness', 1E-3))
-        time.sleep(1)
-        self.data_df = device.readAll()
+        
+        input("Please load sample. Press 'Enter' to proceed")
+        device.toggleClamp(True)
+        for i in range(repeat):
+            device.start(sample_thickness=self.parameters.get('sample_thickness', 1E-3))
+            time.sleep(1)
+            df = device.readAll()
+            df['run'] = i+1
+            if i == 0:
+                self.data_df = df
+            else:
+                self.data_df = pd.concat([self.data_df, df], ignore_index=True)
+        device.toggleClamp(False)
         return
 
 
