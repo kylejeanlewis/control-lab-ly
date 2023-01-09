@@ -228,8 +228,6 @@ class KeithleyDevice(object):
         reply = None 
         if self.instrument is None:
             print(command)
-            if self.verbose:
-                print("")
             _dummy_return = [0 for _ in range(command.count(';')+1)] if "?" in command else None
             return _dummy_return
         if self.verbose:
@@ -256,8 +254,9 @@ class KeithleyDevice(object):
         Returns:
             str: response from query, or None
         """
-        reply = self.instrument.query(command)
-        # reply = None
+        reply = ''
+        if self.instrument is not None:
+            reply = self.instrument.query(command)
         # self.instrument.write(command)
         # while reply is None:
         #     reply = self.instrument.read()
@@ -483,6 +482,8 @@ class KeithleyDevice(object):
             name = self._active_buffer
         fields = self._get_fields(fields=fields)
         start,end = self.getBufferIndices(name=name)
+        start = max(1, start)
+        end = max(start, end)
         count = self._sense_details.get('COUNt', 1)
         
         data = self._send(f'TRACe:DATA? {int(start)},{int(end)},"{name}",{",".join(fields)}')
@@ -512,9 +513,11 @@ class KeithleyDevice(object):
         if name is None:
             name = self._active_buffer
         fields = self._get_fields(fields=fields)
-        _,end = self.getBufferIndices(name=name)
+        _start,end = self.getBufferIndices(name=name)
+        _start = max(1, _start)
+        end = max(_start, end)
         count = self._sense_details.get('COUNt', 1)
-        start = end - count + 1
+        start = max(1, end - count + 1)
         
         data = self._send(f'TRACe:DATA? {int(start)},{int(end)},"{name}",{",".join(fields)}')
         if not all([start,end]): # dummy data
@@ -545,6 +548,9 @@ class KeithleyDevice(object):
         """
         Reset the instrument
         """
+        self._active_buffer = 'defbuffer1'
+        self._sense_details = {}
+        self._source_details = {}
         return self._send('*RST')
     
     def saveState(self, state:int):
@@ -600,10 +606,10 @@ class KeithleyDevice(object):
             sequential_commands (bool, optional): whether commands whose operations must finish before the next command is executed. Defaults to True.
         """
         if sequential_commands:
-            command = f'TRACe:TRIGger "{self._active_buffer}"'
+            commands = [f'TRACe:TRIGger "{self._active_buffer}"']
         else:
-            command = 'INITiate ; *WAIt'
-        return self._send(command=command)
+            commands = ['INITiate', '*WAIt']
+        return self.configure(commands=commands)
 
     def stop(self):
         """
