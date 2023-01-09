@@ -185,7 +185,14 @@ class LSV(Program):
     
     ==========
     Parameters:
-        None
+        lower (float): voltage below OCV
+        upper (float): voltage above OCV
+        bidirectional (bool): whether to sweep both directions
+        mode (str): whether to use linear 'lin' or logarithmic 'log' mode
+        step (float): voltage step
+        sweep_rate (float): voltage per seconds V/s
+        dwell_time (float): dwell time at each voltage
+        points (int): number of points
     """
     def __init__(self, device: KeithleyDevice, parameters={}, **kwargs):
         super().__init__(device, parameters, **kwargs)
@@ -203,8 +210,10 @@ class LSV(Program):
         lower = self.parameters.get('lower', 0.5)
         upper = self.parameters.get('upper', 0.5)
         bidirectional = self.parameters.get('bidirectional', True)
-        
         mode = self.parameters.get('mode', 'lin').lower()
+        start = round(ocv - lower, 3)
+        stop = round(ocv + upper, 3)
+        
         if mode in ['lin', 'linear']:
             mode = 'lin'
             step = self.parameters.get('step', 0.05)
@@ -218,14 +227,13 @@ class LSV(Program):
         else:
             raise Exception("Please select one of 'lin' or 'log'")
         
-        start = round(ocv - lower, 3)
-        stop = round(ocv + upper, 3)
+        
         voltages = ",".join(str(v) for v in (start,stop,points))
         num_points = 2 * points - 1 if bidirectional else points
         wait = num_points * dwell_time
         print(f'Expected measurement time: {wait}s')
 
-        self.runSweep(voltages, dwell_time, bidirectional)
+        self.runSweep(voltages=voltages, dwell_time=dwell_time, mode=mode, bidirectional=bidirectional)
         time.sleep(wait+3)
         self.data_df = device.readAll()
         device.beep()
@@ -262,7 +270,7 @@ class LSV(Program):
         if mode not in ['lin', 'log']:
             raise Exception("Please select one of 'lin' or 'log'")
         else:
-            mode = 'LINear' if mode is 'lin' else 'LOG'
+            mode = 'LINear' if mode == 'lin' else 'LOG'
         
         device.reset()
         device.configure(['ROUTe:TERMinals FRONt', 'OUTPut:SMODe HIMPedance'])
@@ -271,7 +279,7 @@ class LSV(Program):
         # device.makeBuffer()
         device.beep()
         
-        parameters = [voltages, dwell_time, repeat, 'AUTO', 'OFF', bidirectional]
+        parameters = [voltages, str(dwell_time), str(repeat), 'AUTO', 'OFF', bidirectional]
         device.configure(
             [f'SOURce:SWEep:{device.source}:{mode} {",".join(parameters)}']
         )
