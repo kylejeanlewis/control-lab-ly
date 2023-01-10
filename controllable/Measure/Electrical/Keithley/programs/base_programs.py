@@ -230,7 +230,7 @@ class LSV(Program):
         
         voltages = ",".join(str(v) for v in (start,stop,points))
         num_points = 2 * points - 1 if bidirectional else points
-        wait = num_points * dwell_time
+        wait = num_points * dwell_time * 2
         print(f'Expected measurement time: {wait}s')
 
         self.runSweep(voltages=voltages, dwell_time=dwell_time, mode=mode, bidirectional=bidirectional)
