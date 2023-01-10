@@ -51,8 +51,8 @@ from controllable.Measure.Electrical.Keithley import Keithley, base_programs
 if __name__ == "__main__":
     me = base_programs.IV_Scan
     measurer = Keithley('192.168.1.104')
-    measurer.loadProgram('IV_Scan')
-    # measurer.measure()
+    measurer.loadProgram('LSV')
+    measurer.measure()
     pass
 
 # %% BioLogic examples
@@ -177,8 +177,8 @@ if __name__ == "__main__":
 from controllable.Move.Jointed.Dobot import M1Pro, MG400
 from controllable.Control.GUI import MoverPanel
 if __name__ == "__main__":
-    # gui = MoverPanel(**dict(mover=M1Pro(ip_address='192.168.2.21', home_coordinates=(300,0,100)), axes=['X','Y','Z','a']))
-    gui = MoverPanel(**dict(mover=MG400(ip_address='192.109.209.8'), axes=['X','Y','Z','a']))
+    gui = MoverPanel(**dict(mover=M1Pro(ip_address='192.168.2.21', home_coordinates=(300,0,100)), axes=['X','Y','Z','a']))
+    # gui = MoverPanel(**dict(mover=MG400(ip_address='192.109.209.8'), axes=['X','Y','Z','a']))
     gui.runGUI('MG400')
     pass
 
