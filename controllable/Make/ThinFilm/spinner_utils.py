@@ -9,6 +9,7 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from threading import Thread
 import time
 
 # Third party imports
@@ -72,6 +73,15 @@ class Spinner(object):
                 print(e)
         self.device = device
         return self.device
+    
+    def _diagnostic(self):
+        """
+        Run diagnostic on tool
+        """
+        thread = Thread(target=self.execute, name=f'maker_diag_{self.order}')
+        thread.start()
+        time.sleep(1)
+        return
     
     def _run_speed(self, speed:int):
         """
@@ -185,6 +195,14 @@ class SpinnerAssembly(object):
     def __init__(self, ports=[], channels=[], positions=[]):
         properties = HELPER.zip_inputs('channel', port=ports, channel=channels, position=positions)
         self.channels = {key: Spinner(**value) for key,value in properties.items()}
+        return
+    
+    def _diagnostic(self):
+        """
+        Run diagnostic on tool
+        """
+        for _,spinner in self.channels.items():
+            spinner._diagnostic()
         return
         
     def execute(self, soak_time:int, spin_speed:int, spin_time:int, channel:int):
