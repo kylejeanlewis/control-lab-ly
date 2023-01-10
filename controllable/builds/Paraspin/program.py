@@ -162,11 +162,16 @@ class SpinbotController(Controller):
         )
         print(kwargs)
         
-        self.setup.fillLiquids(pause=manual_fill, **kwargs)
+        for channel,reagent,volume in zip(kwargs['channels'], kwargs['reagents'], kwargs['vols']):
+            if volume == 0:
+                continue
+            self.setup.liquid.pullback(channel=[channel])
+            self.setup.liquid.aspirate(volume=volume, reagent=reagent, channel=channel)
+            self.setup.liquid.pullback(channel=[channel])
         return
     
     def reset(self, hardware_only=True):
-        self.setup.reset(home=False, pause=True)
+        self.setup.reset()
         if not hardware_only:
             self.reagents_df = None
             self.recipe_df = None
