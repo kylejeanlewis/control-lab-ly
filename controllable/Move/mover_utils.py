@@ -132,13 +132,20 @@ class Mover(object):
     def position(self):
         return self.coordinates, self.orientation
     
+    def _diagnostic(self):
+        """
+        Run diagnostic on tool
+        """
+        self.home()
+        return
+    
     def _shutdown(self):
         """
         Close serial connection and shutdown
         """
         return
     
-    def _transform_in(self, coordinates=None, vector=None, stretch=True, tool_offset=False):
+    def _transform_in(self, coordinates=None, vector=None, stretch=False, tool_offset=False):
         """
         Order of transformations (scale, rotate, translate).
 
@@ -167,7 +174,7 @@ class Mover(object):
         scale = (1/self.scale) if stretch else 1
         return tuple( translate + np.matmul(self.orientate_matrix.T, scale * np.array(to_be_transformed)) )
 
-    def _transform_out(self, coordinates=None, vector=None, stretch=True, tool_offset=False):
+    def _transform_out(self, coordinates=None, vector=None, stretch=False, tool_offset=False):
         """
         Order of transformations (translate, rotate, scale).
 
@@ -222,14 +229,15 @@ class Mover(object):
         rot_matrix = np.array([[cos_theta,-sin_theta,0],[sin_theta,cos_theta,0],[0,0,1]])
         
         self.orientate_matrix = rot_matrix
-        self.translate_vector = (external_pt1 - internal_pt1)
-        self.scale = (space_mag / robot_mag)
+        # self.translate_vector = (external_pt1 - internal_pt2) # BUG
+        self.translate_vector = np.matmul( self.orientate_matrix.T, external_pt1) - internal_pt1 - self.implement_offset
+        self.scale = 1 #(space_mag / robot_mag)
         
         print(f'Orientate matrix:\n{self.orientate_matrix}')
         print(f'Translate vector: {self.translate_vector}')
         print(f'Scale factor: {self.scale}')
-        print(f'Offset angle: {rot_angle/math.pi*180} degree')
-        print(f'Offset vector: {(external_pt1 - internal_pt1)}')
+        # print(f'Offset angle: {rot_angle/math.pi*180} degree')
+        # print(f'Offset vector: {(external_pt1 - internal_pt2)}')
         return
     
     def getConfigSettings(self, attributes:list):
@@ -294,7 +302,7 @@ class Mover(object):
         """
         Home the mover
         """
-        return
+        return True
     
     def isFeasible(self, coordinates, transform=False, tool_offset=False, **kwargs):
         """
@@ -310,17 +318,23 @@ class Mover(object):
         """
         return True
     
-    def move(self, axis:str, value, **kwargs):
+    def move(self, axis:str, value, speed_fraction=1, **kwargs):
         """
         Move robot along axis by specified value
 
         Args:
             axis (str): axis to move in (x,y,z,a,b,c,j1,j2,j3,j4,j5,j6)
             value (int, or float): value to move by, in mm (translation) or degree (rotation)
+            speed_fraction (int, optional): fraction of full speed. Defaults to 1.
 
         Returns:
             bool: whether movement is successful
         """
+        success = False
+        speed_change = False
+        if 0 < speed_fraction < 1:
+            speed_change = True
+            self.setSpeed(int(max(1, speed_fraction*100)))      # change speed here
         axis = axis.lower()
         movement_L = {
             'x':0, 'y':0, 'z':0,
@@ -334,14 +348,16 @@ class Mover(object):
             movement_L[axis] = value
             vector = (movement_L['x'], movement_L['y'], movement_L['z'])
             angles = (movement_L['a'], movement_L['b'], movement_L['c'])
-            return self.moveBy(vector=vector, angles=angles, **kwargs)
+            success = self.moveBy(vector=vector, angles=angles, **kwargs)
         elif axis in movement_J.keys():
             movement_J[axis] = value
             angles1 = (movement_J['j1'], movement_J['j2'], movement_J['j3'])
             angles2 = (movement_J['j4'], movement_J['j5'], movement_J['j6'])
             angles = angles1 + angles2
-            return self.moveBy(angles=angles, **kwargs)
-        return False
+            success = self.moveBy(angles=angles, **kwargs)
+        if speed_change:
+            self.setSpeed(100)                                  # change speed back here
+        return success
     
     def moveBy(self, vector=None, angles=None, **kwargs):
         """
@@ -388,12 +404,57 @@ class Mover(object):
         if not self.isFeasible(coordinates):
             return False
         self.coordinates = coordinates
+        self.orientation = orientation
         return True
     
     def reset(self):
         """
         Clear any errors and enable robot
         """
+        return
+    
+    def safeMoveTo(self, coordinates=None, orientation=None, tool_offset=True, descent_speed_fraction=1, **kwargs):
+        """
+        Safe version of moveTo by moving in Z-axis first
+
+        Args:
+            coordinates (tuple, optional): x,y,z coordinates to move to. Defaults to None.
+            orientation (tuple, optional): a,b,c orientation to move to. Defaults to None.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
+            descent_speed_fraction (int, optional): _description_. Defaults to 1.
+            
+        Returns:
+            bool: whether movement is successful
+        """
+        if coordinates is None:
+            coordinates = self.getToolPosition() if tool_offset else self.getUserPosition()
+        if orientation is None:
+            orientation = self.orientation
+        coordinates = np.array(coordinates)
+        orientation = np.array(orientation)
+        
+        self.move('z', max(0, self.home_coordinates[2]-self.coordinates[2]))
+        intermediate_position = self.getToolPosition() if tool_offset else self.getUserPosition()
+        self.moveTo(
+            coordinates=list(coordinates[:2])+[float(intermediate_position[0][2])], 
+            orientation=orientation, 
+            tool_offset=tool_offset
+        )
+        if 0 < descent_speed_fraction < 1:
+            self.setSpeed(int(max(1, descent_speed_fraction*100)))      # change speed here
+            self.moveTo(
+                coordinates=coordinates,
+                orientation=orientation, 
+                tool_offset=tool_offset
+            )
+            self.setSpeed(100)                                          # change speed back here
+            pass
+        else:
+            self.moveTo(
+                coordinates=coordinates,
+                orientation=orientation, 
+                tool_offset=tool_offset
+            )
         return
     
     def setConfigSettings(self, config:dict):
@@ -451,6 +512,15 @@ class Mover(object):
         if home:
             self.home()
         return
+    
+    def setSpeed(self, speed:int):
+        """
+        Setting the movement speed rate.
+
+        Args:
+            speed (int): rate value (value range: 1~100)
+        """
+        return True
 
     def switchFlag(self, name:str):
         """
