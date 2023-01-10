@@ -230,7 +230,7 @@ class MoverPanel(Panel):
         button_labels = [f'FN{i+1}' for i in range(max(self.mover.max_actions,5))]  # Placeholder buttons
         if 'attachment' in dir(self.mover):
             show_section = True
-            default_value = self.mover.attachment.__name__ if self.mover.attachment is not None else 'None'
+            default_value = self.mover.attachment.__class__.__name__ if self.mover.attachment is not None else 'None'
             dropdown = sg.Combo(
                 values=self.mover.possible_attachments+['None'], default_value=default_value,
                 size=(20, 1), key=self._mangle('-ATTACH-'), enable_events=True, readonly=True
@@ -240,7 +240,7 @@ class MoverPanel(Panel):
             fn_layout.append([self.pad()])
             if self.mover.attachment is not None:
                 show_buttons = True
-                self.current_attachment = self.mover.attachment.__name__
+                self.current_attachment = self.mover.attachment.__class__.__name__
                 self.attachment_methods = Helper.get_method_names(self.mover.attachment)
                 alt_texts = [l.title() for l in self.attachment_methods]
                 self.methods_fn_key_map = {f'-{self.name}-{k}-':v for k,v in zip(button_labels, alt_texts)}
@@ -430,9 +430,9 @@ class MoverPanel(Panel):
         # 9. Update position
         if self.flags['update_position']:
             for i,axis in enumerate(['X','Y','Z','a','b','c']):
-                updates[self._mangle(f'-{axis}-VALUE-')] = dict(value=tool_position[i])
+                updates[self._mangle(f'-{axis}-VALUE-')] = dict(value=round(tool_position[i],1))
                 if axis in ['a','b','c']:
-                    updates[self._mangle(f'-{axis}-SLIDER-')] = dict(value=tool_position[i])
+                    updates[self._mangle(f'-{axis}-SLIDER-')] = dict(value=round(tool_position[i],1))
         self.flags['update_position'] = False
         return updates
     
