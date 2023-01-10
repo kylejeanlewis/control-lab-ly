@@ -36,6 +36,8 @@ class RobotArm(Mover):
         
         if safe_height is not None:
             self.setHeight('safe', safe_height)
+        # else:
+        #     self.setHeight('safe', self.home_coordinates[2])
         return
     
     def home(self, tool_offset=True):
