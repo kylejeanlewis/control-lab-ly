@@ -47,7 +47,7 @@ class Sartorius(LiquidHandler):
         self.device = None
         self.home_position = 0
         self.limits = (0,0)
-        # self.pipette_tip_length = 0
+        self.tip_length = 0
         
         self._flags = {
             'busy': False,
@@ -317,7 +317,8 @@ class Sartorius(LiquidHandler):
                 return response
         except Exception as e:
             if self.verbose:
-                print(e)
+                # print(e)
+                pass
         return response
     
     def _set_channel(self, new_channel:int):
@@ -373,9 +374,12 @@ class Sartorius(LiquidHandler):
                 print(e)
         return message_code
     
-    def addAirGap(self):
+    def addAirGap(self, channel=None):
         """
         Create an air gap between two volumes of liquid in pipette
+        
+        Args:
+            channel (int, optional): channel to add air gap. Defaults to None.
 
         Returns:
             str: device response
@@ -422,12 +426,13 @@ class Sartorius(LiquidHandler):
             input("Press 'Enter' to proceed.")
         return response
     
-    def blowout(self, home=True):
+    def blowout(self, home=True, channel=None):
         """
         Blowout last remaining drop in pipette
 
         Args:
             home (bool, optional): whether to return plunger to home position. Defaults to True.
+            channel (int, optional): channel to blowout. Defaults to None.
 
         Returns:
             str: device response
@@ -490,12 +495,13 @@ class Sartorius(LiquidHandler):
             input("Press 'Enter' to proceed.")
         return response
     
-    def eject(self, home=True):
+    def eject(self, home=True, channel=None):
         """
         Eject pipette tip
 
         Args:
             home (bool, optional): whether to return plunger to home position. Defaults to True.
+            channel (int, optional): channel to eject. Defaults to None.
 
         Returns:
             str: device response
@@ -504,9 +510,12 @@ class Sartorius(LiquidHandler):
         string = f'RE{self.home_position}' if home else f'RE'
         return self._query(string)
     
-    def getErrors(self):
+    def getErrors(self, channel=None):
         """
         Get errors from device
+        
+        Args:
+            channel (int, optional): channel to get errors. Defaults to None.
 
         Returns:
             str: device response
@@ -534,9 +543,12 @@ class Sartorius(LiquidHandler):
         self._speed_codes = info['speed_codes']
         return
     
-    def getLiquidLevel(self):
+    def getLiquidLevel(self, channel=None):
         """
         Get the liquid level by measuring capacitance
+        
+        Args:
+            channel (int, optional): channel to get liquid level. Defaults to None.
         
         Returns:
             str: device response
@@ -548,9 +560,12 @@ class Sartorius(LiquidHandler):
             pass
         return response
       
-    def getStatus(self):
+    def getStatus(self, channel=None):
         """
         Get the device status
+        
+        Args:
+            channel (int, optional): channel to get status. Defaults to None.
 
         Returns:
             str: device response
@@ -571,9 +586,12 @@ class Sartorius(LiquidHandler):
         self.status = response
         return response
     
-    def home(self):
+    def home(self, channel=None):
         """
         Return plunger to home position
+        
+        Args:
+            channel (int, optional): channel to home. Defaults to None.
 
         Returns:
             str: device response
@@ -613,14 +631,14 @@ class Sartorius(LiquidHandler):
         print(f"Range limits reached! {self.limits}")
         return False
     
-    def move(self, axis:str, value:int):
+    def move(self, axis:str, value:int, channel=None):
         """
         Move plunger either up or down
 
         Args:
             axis (str): desired direction of plunger (up / down)
             value (int): number of steps to move plunger by
-
+            channel (int, optional): channel to move. Defaults to None.
         Raises:
             Exception: Value has to be non-negative
             Exception: Axis direction either 'up' or 'down'
@@ -637,12 +655,13 @@ class Sartorius(LiquidHandler):
         else:
             raise Exception("Please select either 'up' or 'down'")
     
-    def moveBy(self, steps:int):
+    def moveBy(self, steps:int, channel=None):
         """
         Move plunger by specified number of steps
 
         Args:
             steps (int): number of steps to move plunger by (<0: move down/dispense; >0 move up/aspirate)
+            channel (int, optional): channel to move by. Defaults to None.
 
         Returns:
             str: device response
@@ -654,12 +673,13 @@ class Sartorius(LiquidHandler):
             response = self._query(f'RO{-steps}')
         return response
     
-    def moveTo(self, position:int):
+    def moveTo(self, position:int, channel=None):
         """
         Move plunger to specified position
 
         Args:
             position (int): desired plunger position
+            channel (int, optional): channel to move to. Defaults to None.
 
         Returns:
             str: device response
@@ -678,9 +698,12 @@ class Sartorius(LiquidHandler):
         """
         return self._query(f'RI{self._pullback_steps}')
     
-    def reset(self):
+    def reset(self, channel=None):
         """
         Alias for zero
+        
+        Args:
+            channel (int, optional): channel to reset. Defaults to None.
 
         Returns:
             str: device response
@@ -698,9 +721,12 @@ class Sartorius(LiquidHandler):
         self._flags[name] = value
         return
     
-    def toggleFeedbackLoop(self, on:bool):
+    def toggleFeedbackLoop(self, on:bool, channel=None):
         """
         Toggle between start and stopping feedback loop
+        
+        Args:
+            channel (int, optional): channel to toggle feedback loop. Defaults to None.
 
         Args:
             on (bool): whether to listen to feedback
@@ -714,9 +740,12 @@ class Sartorius(LiquidHandler):
             self._threads['feedback_loop'].join()
         return
 
-    def zero(self):
+    def zero(self, channel=None):
         """
         Zero the plunger position
+        
+        Args:
+            channel (int, optional): channel to zero. Defaults to None.
 
         Returns:
             str: device response
