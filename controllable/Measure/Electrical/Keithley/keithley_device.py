@@ -238,7 +238,7 @@ class KeithleyDevice(object):
             else:
                 raw_reply = self._query(command)
                 reply = self._parse_reply(raw_reply=raw_reply)
-            if self.verbose:
+            if self.verbose and "*WAI" not in command:
                 self.getErrors()
         except visa.VisaIOError:
             self.getErrors()
@@ -608,7 +608,7 @@ class KeithleyDevice(object):
         if sequential_commands:
             commands = [f'TRACe:TRIGger "{self._active_buffer}"']
         else:
-            commands = ['INITiate', '*WAIt']
+            commands = ['INITiate ; *WAI']
         return self.configure(commands=commands)
 
     def stop(self):
