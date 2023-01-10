@@ -317,7 +317,7 @@ class Dobot(RobotArm):
             print("Not connected to arm!")
         return
 
-    def setSpeed(self, speed):
+    def setSpeed(self, speed:int):
         """
         Setting the Global speed rate.
 
@@ -325,6 +325,7 @@ class Dobot(RobotArm):
             speed (int): rate value (value range: 1~100)
         """
         try:
+            print(f'Speed: {speed}')
             self.dashboard.SpeedFactor(speed)
         except (AttributeError, OSError):
             print("Not connected to arm!")
