@@ -47,6 +47,13 @@ class LiquidHandler(object):
         else:
             raise Exception("Please select either 'in' or 'out' for direction parameter")
         return
+    
+    def _diagnostic(self):
+        """
+        Run diagnostic on tool
+        """
+        self.pullback()
+        return
 
     def aspirate(self, volume, speed=None, wait=0, reagent='', pause=False, channel=None):
         """
@@ -59,6 +66,15 @@ class LiquidHandler(object):
             reagent (str, optional): name of reagent. Defaults to ''.
             pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
             channel (int, optional): channel to aspirate. Defaults to None.
+        """
+        return
+    
+    def blowout(self, channel=None):
+        """
+        Blowout liquid from tip
+
+        Args:
+            channel (int, optional): channel to pullback. Defaults to None.
         """
         return
 
@@ -103,7 +119,9 @@ class LiquidHandler(object):
             pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
             channel (int, optional): channel to empty. Defaults to None.
         """
-        return self.dispense(volume=self.capacity, speed=speed, wait=wait, force_dispense=True, pause=pause, channel=channel)
+        self.dispense(volume=self.capacity, speed=speed, wait=wait, force_dispense=True, pause=pause, channel=channel)
+        self.blowout(channel=channel)
+        return
     
     def fill(self, speed=None, wait=0, reagent='', pause=False, pre_wet=True, channel=None):
         """
@@ -120,7 +138,9 @@ class LiquidHandler(object):
         volume = self.capacity - self.volume
         if pre_wet:
             self.cycle(volume=volume, speed=speed, wait=wait, reagent=reagent, cycles=PRE_WET_CYCLES, channel=channel)
-        return self.aspirate(volume=volume, speed=speed, wait=wait, reagent=reagent, pause=pause, channel=channel)
+        self.aspirate(volume=volume, speed=speed, wait=wait, reagent=reagent, pause=pause, channel=channel)
+        self.pullback(channel=channel)
+        return
 
     def pullback(self, channel=None):
         """
@@ -154,81 +174,4 @@ class LiquidHandler(object):
             value (bool): flag value
         """
         self._flags[name] = value
-        return
-    
-    # FIXME: Deprecate
-    def _get_values(self, attribute:str, channels=[]):
-        """
-        Get attribute values of channels. If single-channel (i.e. no sub channels), will return attribute from self.
-
-        Args:
-            attribute (str): name of attribute
-            channels (list, optional): list of target channels. Defaults to [].
-
-        Returns:
-            list: list of tuples (channel, value)
-        """
-        if len(channels) == 0:
-            if len(self.channels):
-                channels = list(self.channels.keys())
-            else:
-                return [(self.channel, self.__dict__.get(attribute, None))]
-        return [(channel, getattr(self.channels[channel], attribute)) for channel in channels]
-    def getCapacities(self, channels=[]):
-        """
-        Get channel capacities. If single-channel (i.e. no sub channels), will return capacity from self.
-
-        Args:
-            channels (list, optional): list of target channels. Defaults to [].
-
-        Returns:
-            list: list of tuples (channel, reagent name)
-        """
-        return self._get_values('capacity', channels=channels)
-    def getReagents(self, channels=[]):
-        """
-        Get channel reagents. If single-channel (i.e. no sub channels), will return reagent name from self.
-
-        Args:
-            channels (list, optional): list of target channels. Defaults to [].
-
-        Returns:
-            list: list of tuples (channel, reagent name)
-        """
-        return self._get_values('reagent', channels=channels)
-    def getVolumes(self, channels=[]):
-        """
-        Get channel volumes. If single-channel (i.e. no sub channels), will return volume from self.
-
-        Args:
-            channels (list, optional): list of target channels. Defaults to [].
-
-        Returns:
-            list: list of tuples (channel, volume)
-        """
-        return self._get_values('volume', channels=channels)
-    def emptyAll(self, channels=[], wait=1, pause=False): # FIXME
-        if len(channels) == 0:
-            channels = list(self.channels.keys())
-        for channel in channels:
-            self.empty(channel, wait, pause)
-        return
-    def fillAll(self, channels=[], reagents=[], prewet=True, wait=1, pause=False): # FIXME
-        if len(channels) == 0:
-            channels = list(self.channels.keys())
-        self._checkInputs(channels=channels, reagents=reagents)
-        for channel,reagent in zip(channels, reagents):
-            self.fill(channel, reagent, prewet, wait, pause)
-        return
-    def pullbackAll(self, channels=[]): # FIXME
-        if len(channels) == 0:
-            channels = list(self.channels.keys())
-        for channel in channels:
-            self.pullback(channel)
-        return
-    def rinseAll(self, channels=[], reagents=[], rinse_cycles=3): # FIXME
-        if len(channels) == 0:
-            channels = list(self.channels.keys())
-        for channel,reagent in zip(channels, reagents):
-            self.rinse(channel, reagent, rinse_cycles)
         return
