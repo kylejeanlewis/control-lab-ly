@@ -223,3 +223,17 @@ class Gantry(Mover):
         self.updatePosition(coordinates=coordinates)
         return
     
+    def safeMoveTo(self, coordinates, jump_height=None, tool_offset=True, **kwargs):
+        """
+        Safe version of moveTo
+
+        Args:
+            coordinates (tuple): x,y,z coordinates to move to. Defaults to None.
+            jump_height (int, or float): height value to jump to. Defaults to None.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
+            
+        Returns:
+            bool: whether movement is successful
+        """
+        return self.moveTo(coordinates, to_safe_height=True, jump_height=jump_height, tool_offset=tool_offset, **kwargs)
+    
