@@ -256,6 +256,8 @@ if __name__ == "__main__":
 
 # %% PiezoRobotics examples
 from controllable.Measure.Mechanical.PiezoRobotics import PiezoRobotics
+import pandas as pd
+pd.options.plotting.backend = "plotly"
 if __name__ == "__main__":
     measurer = PiezoRobotics('COM19')
     measurer.reset()
@@ -266,8 +268,8 @@ if __name__ == "__main__":
         'repeat': 3
     }
     measurer.measure(params)
-    
     df = measurer.buffer_df
+    
     df['Absolute Storage Modulus (MPa)'] = abs(df['Storage Modulus (MPa)'])
     df['Absolute Loss Modulus (MPa)'] = abs(df['Loss Modulus (MPa)'])
     df['Tan Delta'] = df['Absolute Loss Modulus (MPa)'] / df['Absolute Storage Modulus (MPa)'] 
@@ -283,7 +285,6 @@ if __name__ == "__main__":
     fig2 = final_df.plot('Frequency (Hz)', 'Tan Delta')
     fig1.show()
     fig2.show()
-    
     pass
 
 # %%
