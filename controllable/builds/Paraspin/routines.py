@@ -134,7 +134,7 @@ class SpinbotSetup(Setup):
             return
         tip_length = self.liquid.tip_length
         self.mover.safeMoveTo(coordinates, descent_speed_fraction=0.2)
-        time.sleep(2)
+        time.sleep(1)
         self.liquid.eject()
         
         self.mover.implement_offset = tuple(np.array(self.mover.implement_offset) - np.array([0,0,-tip_length]))
