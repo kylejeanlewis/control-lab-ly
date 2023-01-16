@@ -16,24 +16,15 @@ import serial # pip install pyserial
 # Local application imports
 print(f"Import: OK <{__name__}>")
 
-DEFAULT_STEPS = {
-    'air_gap': 10,
-    'pullback': 5
-}
 READ_TIMEOUT_S = 2
-WETTING_CYCLES = 1
 
-# z = 250 (w/o tip)
-# z = 330 (w/ tip)
-class Sartorius:
+class MassBalance(object):
     def __init__(self, port:str, **kwargs):
         """
-        Sartorius object
+        Mass Balance object
 
         Args:
             port (str): com port address
-            channel (int, optional): device channel. Defaults to 1.
-            offset (tuple, optional): x,y,z offset of tip. Defaults to (0,0,0).
         """
         self.device = None
         self._flags = {
