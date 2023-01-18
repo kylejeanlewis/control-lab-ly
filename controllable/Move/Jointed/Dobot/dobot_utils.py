@@ -47,7 +47,6 @@ class Dobot(RobotArm):
         
         self.setFlag('retract', True)
         self._connect(ip_address)
-        self.home()
         pass
     
     @property
@@ -220,8 +219,11 @@ class Dobot(RobotArm):
         angles = tuple(angles)
         try:
             self.feedback.RelMovL(*vector)
+            self.feedback.WaitReply()
             self.rotateBy(angles)
-            time.sleep(MOVE_TIME_S)
+            move_time = max(abs(np.array(vector)) / self.speed) + max(abs(np.array(angles)) / self.speed_angular) +MOVE_TIME_S
+            print(f'Move time: {move_time}s ({self._speed_fraction})')
+            time.sleep(move_time)
         except (AttributeError, OSError):
             print("Not connected to arm!")
             self.updatePosition(vector=vector, angles=angles)
@@ -252,7 +254,13 @@ class Dobot(RobotArm):
         
         try:
             self.feedback.MovJ(*coordinates, *orientation)
-            time.sleep(MOVE_TIME_S)
+            self.feedback.WaitReply()
+            position = self.position
+            distances = abs(position[0] - np.array(coordinates))
+            rotations = abs(position[1] - np.array(orientation))
+            move_time = max([max(distances / self.speed),  max(rotations / self.speed_angular)]) +MOVE_TIME_S
+            print(f'Move time: {move_time}s ({self._speed_fraction})')
+            time.sleep(move_time)
         except (AttributeError, OSError):
             print("Not connected to arm!")
             self.updatePosition(coordinates=coordinates, orientation=orientation)
@@ -275,7 +283,10 @@ class Dobot(RobotArm):
         relative_angles = tuple(relative_angles)
         try:
             self.feedback.RelMovJ(*relative_angles)
-            time.sleep(MOVE_TIME_S)
+            self.feedback.WaitReply()
+            move_time = max(abs(np.array(relative_angles)) / self.speed_angular) +MOVE_TIME_S
+            print(f'Move time: {move_time}s ({self._speed_fraction})')
+            time.sleep(move_time)
         except (AttributeError, OSError):
             print("Not connected to arm!")
             self.updatePosition(angles=relative_angles[3:])
@@ -298,7 +309,10 @@ class Dobot(RobotArm):
         absolute_angles = tuple(absolute_angles)
         try:
             self.feedback.JointMovJ(*absolute_angles)
-            time.sleep(MOVE_TIME_S)
+            self.feedback.WaitReply()
+            move_time = max(abs(np.array(absolute_angles)) / self.speed_angular) +MOVE_TIME_S
+            print(f'Move time: {move_time}s ({self._speed_fraction})')
+            time.sleep(move_time)
         except (AttributeError, OSError):
             print("Not connected to arm!")
             self.updatePosition(orientation=absolute_angles[3:])
@@ -327,6 +341,7 @@ class Dobot(RobotArm):
         try:
             print(f'Speed: {speed}')
             self.dashboard.SpeedFactor(speed)
+            self._speed_fraction = (speed/100)
         except (AttributeError, OSError):
             print("Not connected to arm!")
         return
@@ -413,6 +428,10 @@ class MG400(Dobot):
     """
     def __init__(self, ip_address='192.168.2.8', retract=True, home_coordinates=(0,300,0), **kwargs):
         super().__init__(ip_address=ip_address, home_coordinates=home_coordinates, **kwargs)
+        self._speed = 1000
+        self._speed_angular = 300
+        self.home()
+        
         self.setFlag('retract', retract)
         self.setHeight('safe', 75)
         return
@@ -496,6 +515,10 @@ class M1Pro(Dobot):
     """
     def __init__(self, ip_address='192.168.2.21', handedness='right', home_coordinates=(0,300,100), **kwargs):
         super().__init__(ip_address=ip_address, home_coordinates=home_coordinates, **kwargs)
+        self._speed = 1000
+        self._speed_angular = 180
+        self.home()
+        
         self.setFlag('right_handed', None)
         self.setHandedness(handedness)
         return
@@ -589,6 +612,7 @@ class M1Pro(Dobot):
         if hand in ['left','l','L'] and handedness != 'left': #0
             try:
                 self.dashboard.SetArmOrientation(0,1,1,1)
+                time.sleep(2)
             except (AttributeError, OSError):
                 print("Not connected to arm!")
             finally:
@@ -597,6 +621,7 @@ class M1Pro(Dobot):
         elif hand in ['right','r','R'] and handedness != 'right': #1
             try:
                 self.dashboard.SetArmOrientation(1,1,1,1)
+                time.sleep(2)
             except (AttributeError, OSError):
                 print("Not connected to arm!")
             finally:
@@ -604,6 +629,7 @@ class M1Pro(Dobot):
                 set_hand = True
         if set_hand and stretch:
             self.stretchArm()
+            time.sleep(1)
         return
             
     def stretchArm(self):
