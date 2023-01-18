@@ -7,6 +7,8 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from datetime import datetime
+import pandas as pd
 from threading import Thread
 import time
 
@@ -17,6 +19,7 @@ import serial # pip install pyserial
 print(f"Import: OK <{__name__}>")
 
 READ_TIMEOUT_S = 2
+CALIB_MASS = 6.700627450980402 * 0.9724382408295394 # initial calibration factor * subsequent validation factor
 
 class MassBalance(object):
     def __init__(self, port:str, **kwargs):
@@ -37,6 +40,8 @@ class MassBalance(object):
         self._precision = 3
         self._threads = {}
         
+        self.buffer_df = pd.DataFrame(columns=['Time', 'Value'])
+        
         self.verbose = True
         self.port = ''
         self._baudrate = None
@@ -56,7 +61,7 @@ class MassBalance(object):
         self._shutdown()
         return
     
-    def _connect(self, port:str, baudrate=9600, timeout=1):
+    def _connect(self, port:str, baudrate=115200, timeout=1):
         """
         Connect to machine control unit
 
@@ -77,35 +82,12 @@ class MassBalance(object):
             self.device = device
             print(f"Connection opened to {port}")
             self.setFlag('connected', True)
-            self.zero()
             self.toggleFeedbackLoop(on=True)
         except Exception as e:
             if self.verbose:
                 print(f"Could not connect to {port}")
                 print(e)
         return self.device
-    
-    def _is_expected_reply(self, message_code:str, response:str):
-        """
-        Check whether the response is an expected reply
-
-        Args:
-            message_code (str): two-character message code
-            response (str): response string from device
-
-        Returns:
-            bool: whether the response is an expected reply
-        """
-        # if response in ERRORS:
-        #     return True
-        # if message_code not in QUERIES and response == 'ok':
-        #     return True
-        # if message_code in QUERIES and response[:2] == message_code.lower():
-        #     reply_code, data = response[:2], response[2:]
-        #     if self.verbose:
-        #         print(f'[{reply_code}] {data}')
-        #     return True
-        return False
     
     def _loop_feedback(self):
         """
@@ -118,37 +100,6 @@ class MassBalance(object):
             self.getMass()
         print('Stop listening...')
         return
-    
-    def _query(self, string:str, timeout_s=READ_TIMEOUT_S):
-        """
-        Send query and wait for response
-
-        Args:
-            string (str): message string
-            timeout_s (int, optional): duration to wait before timeout. Defaults to READ_TIMEOUT_S.
-
-        Returns:
-            str: message readout
-        """
-        # message_code = string[:2]
-        # if message_code not in STATUS_QUERIES:
-        #     self.setFlag('pause_feedback', True)
-        #     time.sleep(timeout_s)
-        # if self.isBusy():
-        #     time.sleep(timeout_s)
-        
-        # message_code = self._write(string)
-        # _start_time = time.time()
-        response = ''
-        # while not self._is_expected_reply(message_code, response):
-        #     if time.time() - _start_time > timeout_s:
-        #         break
-        #     response = self._read()
-        # if message_code in QUERIES:
-        #     response = response[2:]
-        # if message_code not in STATUS_QUERIES:
-        #     self.setFlag('pause_feedback', False)
-        return response
 
     def _read(self):
         """
@@ -160,14 +111,8 @@ class MassBalance(object):
         response = ''
         try:
             response = self.device.readline()
-            if len(response) == 0:
-                response = self.device.readline()
-            response = response[2:-2].decode('utf-8')
-            # if response in ERRORS:
-            #     print(ErrorCode[response].value)
-            #     return response
-            # elif response == 'ok':
-            #     return response
+            response = response.decode('utf-8').strip()
+            # print(repr(response))
         except Exception as e:
             if self.verbose:
                 # print(e)
@@ -188,27 +133,6 @@ class MassBalance(object):
         }
         return
     
-    def _write(self, string:str):
-        """
-        Sends message to device
-
-        Args:
-            string (str): <message code><value>
-
-        Returns:
-            str: two-character message code
-        """
-        message_code = string[:2]
-        fstring = f'{self.channel}{string}º\r' # message template: <PRE><ADR><CODE><DATA><LRC><POST>
-        bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
-        try:
-            # Typical timeout wait is 400ms
-            self.device.write(bstring)
-        except Exception as e:
-            if self.verbose:
-                print(e)
-        return message_code
-    
     def connect(self):
         """
         Reconnect to device using existing port and baudrate
@@ -225,9 +149,11 @@ class MassBalance(object):
         Returns:
             str: device response
         """
-        response = self._query('DN')
+        response = self._read()
         try:
-            self._mass = int(response)
+            value = int(response)
+            self._mass = value / CALIB_MASS
+            self.buffer_df = self.buffer_df.append({'Time': datetime.now(), 'Value': self._mass}, ignore_index=True)
         except ValueError:
             pass
         return response
@@ -252,15 +178,15 @@ class MassBalance(object):
    
     def reset(self):
         """
-        Alias for zero
+        Reset dataframe.
         
-        Args:
-            channel (int, optional): channel to reset. Defaults to None.
-
         Returns:
             str: device response
         """
-        return self.zero()
+        self.setFlag('pause_feedback', True)
+        self.buffer_df = pd.DataFrame(columns=['Time', 'Value'])
+        self.setFlag('pause_feedback', False)
+        return
 
     def setFlag(self, name:str, value:bool):
         """
@@ -303,6 +229,24 @@ class MassBalance(object):
         else:
             self._threads['feedback_loop'].join()
         return
+    
+    def toggleLivePlot(self, on:bool):
+        """
+        Toggle between start and stopping feedback loop
+        
+        Args:
+            channel (int, optional): channel to toggle feedback loop. Defaults to None.
+
+        Args:
+            on (bool): whether to listen to feedback
+        """
+        if on:
+            thread = Thread(target=self._loop_feedback)
+            thread.start()
+            self._threads['feedback_loop'] = thread
+        else:
+            self._threads['feedback_loop'].join()
+        return
 
     def zero(self):
         """
@@ -314,6 +258,8 @@ class MassBalance(object):
         Returns:
             str: device response
         """
-        response = self._query('RZ')
-        time.sleep(2)
-        return response
+        return
+    
+    def update_plot(self, fig):
+        return fig
+        
