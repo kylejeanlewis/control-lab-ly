@@ -9,6 +9,7 @@ Notes / actionables:
 -
 """
 # Standard library imports
+import numpy as np
 from threading import Thread
 import time
 
@@ -25,7 +26,8 @@ DEFAULT_STEPS = {
     'air_gap': 10,
     'pullback': 5
 }
-READ_TIMEOUT_S = 2
+READ_TIMEOUT_S = 1
+TIP_THRESHOLD = 276
 WETTING_CYCLES = 1
 
 # z = 250 (w/o tip)
@@ -53,7 +55,9 @@ class Sartorius(LiquidHandler):
             'busy': False,
             'connected': False,
             'get_feedback': False,
-            'pause_feedback':False
+            'occupied': False,
+            'pause_feedback':False,
+            'tip_on': False
         }
         self._levels = 0
         self._position = 0
@@ -67,7 +71,7 @@ class Sartorius(LiquidHandler):
         self._air_gap_steps = DEFAULT_STEPS['air_gap']
         self._pullback_steps = DEFAULT_STEPS['pullback']
         
-        self.verbose = True
+        self.verbose = False
         self.port = ''
         self._baudrate = None
         self._timeout = None
@@ -119,7 +123,9 @@ class Sartorius(LiquidHandler):
             Exception: Select a valid speed code
             Exception: Select a valid direction
         """
-        speed_code, direction = value
+        speed, direction = value
+        speed_code = np.argmin(np.abs(np.array(self._speed_codes)-speed)) + 1
+        # print(f'Speed Code: {speed_code}')
         if not (0 < speed_code < len(self._speed_codes)):
             raise Exception(f'Please select a valid speed code from 1 to {len(self._speed_codes)-1}')
         if direction == 'in':
@@ -185,7 +191,7 @@ class Sartorius(LiquidHandler):
         response = self._query('DR')
         try:
             res = int(response)
-            print(f'{res}nL')
+            print(f'{res/1000} uL / step')
             return res
         except ValueError:
             pass
@@ -223,11 +229,11 @@ class Sartorius(LiquidHandler):
             self.setFlag('connected', True)
             
             self.getInfo()
-            self.zero()
-            self.toggleFeedbackLoop(on=True)
+            self.reset()
+            self.toggleFeedbackLoop(on=False)
         except Exception as e:
+            print(f"Could not connect to {port}")
             if self.verbose:
-                print(f"Could not connect to {port}")
                 print(e)
         return self.device
     
@@ -266,7 +272,7 @@ class Sartorius(LiquidHandler):
         print('Stop listening...')
         return
     
-    def _query(self, string:str, timeout_s=READ_TIMEOUT_S):
+    def _query(self, string:str, timeout_s=READ_TIMEOUT_S, resume_feedback=True):
         """
         Send query and wait for response
 
@@ -278,7 +284,7 @@ class Sartorius(LiquidHandler):
             str: message readout
         """
         message_code = string[:2]
-        if message_code not in STATUS_QUERIES:
+        if message_code not in STATUS_QUERIES and not self._flags['pause_feedback']:
             self.setFlag('pause_feedback', True)
             time.sleep(timeout_s)
         if self.isBusy():
@@ -293,7 +299,7 @@ class Sartorius(LiquidHandler):
             response = self._read()
         if message_code in QUERIES:
             response = response[2:]
-        if message_code not in STATUS_QUERIES:
+        if message_code not in STATUS_QUERIES and resume_feedback:
             self.setFlag('pause_feedback', False)
         return response
 
@@ -317,8 +323,7 @@ class Sartorius(LiquidHandler):
                 return response
         except Exception as e:
             if self.verbose:
-                # print(e)
-                pass
+                print(e)
         return response
     
     def _set_channel(self, new_channel:int):
@@ -349,7 +354,9 @@ class Sartorius(LiquidHandler):
             'busy': False,
             'connected': False,
             'get_feedback': False,
-            'pause_feedback':False
+            'occupied': False,
+            'pause_feedback':False,
+            'tip_on': False
         }
         return
     
@@ -384,7 +391,9 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """
-        return self._query(f'RI{self._air_gap_steps}')
+        response = self._query(f'RI{self._air_gap_steps}')
+        time.sleep(1)
+        return response
         
     def aspirate(self, volume, speed=None, wait=0, reagent='', pause=False, channel=None):
         """
@@ -400,10 +409,14 @@ class Sartorius(LiquidHandler):
             
         Returns:
             str: device response
-        """
+        """ 
         if speed is None:
             speed = self.speed['in']
-        self.setFlag('busy', True)
+        else:
+            self.speed = speed,'in'
+        self.setFlag('pause_feedback', True)
+        time.sleep(READ_TIMEOUT_S)
+        self.setFlag('occupied', True)
         volume = min(volume, self.capacity - self.volume)
         steps = int(volume / self.resolution)
         volume = steps * self.resolution
@@ -411,6 +424,13 @@ class Sartorius(LiquidHandler):
         if volume == 0:
             return ''
         print(f'Aspirate {volume} uL')
+        if speed < self.speed['in']:
+            while steps >= 2*10:
+                response = self._query(f'RI10', resume_feedback=False)
+                if response != 'ok':
+                    return response
+                steps -= 10
+                time.sleep(10 * ((1/speed)-(1/self.speed['in'])))
         response = self._query(f'RI{steps}')
         if response != 'ok':
             return response
@@ -421,7 +441,8 @@ class Sartorius(LiquidHandler):
             self.reagent = reagent
         
         time.sleep(wait)
-        self.setFlag('busy', False)
+        self.setFlag('occupied', False)
+        self.setFlag('pause_feedback', False)
         if pause:
             input("Press 'Enter' to proceed.")
         return response
@@ -438,8 +459,10 @@ class Sartorius(LiquidHandler):
             str: device response
         """
         string = f'RB{self.home_position}' if home else f'RB'
-        return self._query(string)
-
+        response = self._query(string)
+        time.sleep(1)
+        return response
+    
     def connect(self):
         """
         Reconnect to device using existing port and baudrate
@@ -469,7 +492,11 @@ class Sartorius(LiquidHandler):
         """
         if speed is None:
             speed = self.speed['out']
-        self.setFlag('busy', True)
+        else:
+            self.speed = speed,'out'
+        self.setFlag('pause_feedback', True)
+        time.sleep(READ_TIMEOUT_S)
+        self.setFlag('occupied', True)
         if force_dispense:
             volume = min(volume, self.volume)
         elif volume > self.volume:
@@ -480,6 +507,13 @@ class Sartorius(LiquidHandler):
         if volume == 0:
             return ''
         print(f'Dispense {volume} uL')
+        if speed < self.speed['out']:
+            while steps >= 2*10:
+                response = self._query(f'RO10', resume_feedback=False)
+                if response != 'ok':
+                    return response
+                steps -= 10
+                time.sleep(10 * ((1/speed)-(1/self.speed['out'])))
         response = self._query(f'RO{steps}')
         if response != 'ok':
             return response
@@ -490,7 +524,8 @@ class Sartorius(LiquidHandler):
         time.sleep(wait)
         if self.volume == 0:
             self.blowout(home=True)
-        self.setFlag('busy', False)
+        self.setFlag('occupied', False)
+        self.setFlag('pause_feedback', False)
         if pause:
             input("Press 'Enter' to proceed.")
         return response
@@ -508,7 +543,9 @@ class Sartorius(LiquidHandler):
         """
         self.reagent = ''
         string = f'RE{self.home_position}' if home else f'RE'
-        return self._query(string)
+        response = self._query(string)
+        time.sleep(1)
+        return response
     
     def getErrors(self, channel=None):
         """
@@ -579,8 +616,7 @@ class Sartorius(LiquidHandler):
             return response
         if response in ['4','6','8']:
             self.setFlag('busy', True)
-            if self.verbose:
-                print(StatusCode(response).name)
+            print(StatusCode(response).name)
         elif response in ['0']:
             self.setFlag('busy', False)
         self.status = response
@@ -596,7 +632,9 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """
-        return self._query(f'RP{self.home_position}')
+        response = self._query(f'RP{self.home_position}')
+        time.sleep(1)
+        return response
     
     def isBusy(self):
         """
@@ -630,6 +668,18 @@ class Sartorius(LiquidHandler):
             return True
         print(f"Range limits reached! {self.limits}")
         return False
+    
+    def isTipOn(self):
+        """
+        Checks whether tip is on
+        
+        Returns:
+            bool: whether the tip in on
+        """
+        self.getLiquidLevel()
+        tip_on = (self._levels > TIP_THRESHOLD)
+        self.setFlag('tip_on', tip_on)
+        return tip_on
     
     def move(self, axis:str, value:int, channel=None):
         """
@@ -696,11 +746,13 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """
-        return self._query(f'RI{self._pullback_steps}')
+        response = self._query(f'RI{self._pullback_steps}')
+        time.sleep(1)
+        return response
     
     def reset(self, channel=None):
         """
-        Alias for zero
+        Zeros and go back to home position
         
         Args:
             channel (int, optional): channel to reset. Defaults to None.
@@ -708,7 +760,8 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """
-        return self.zero()
+        self.zero()
+        return self.home()
 
     def setFlag(self, name:str, value:bool):
         """
@@ -750,6 +803,7 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """
+        self.eject()
         response = self._query('RZ')
         time.sleep(2)
         return response
