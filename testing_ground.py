@@ -236,16 +236,44 @@ if __name__ == "__main__":
 # %% Paraspin examples (B1)
 from controllable.builds.Paraspin import SpinbotController
 from controllable.Control.Schedule import ScanningScheduler
+from controllable.Measure.Physical.balance_utils import MassBalance
+import time
+
+import pandas as pd
+pd.options.plotting.backend = 'plotly'
+
 if __name__ == "__main__":
-    REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
-    RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
-    # REAGENTS = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
-    # RECIPE = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
     spinbot = SpinbotController(config_option=1)
-    # spinbot.loadRecipe(REAGENTS, RECIPE)
-    # spinbot.prepareSetup()
-    # spinbot.loadScheduler(ScanningScheduler(), rest=False)
-    # spinbot.runExperiment()
+    balance = MassBalance('COM8')
+
+    setup =spinbot.setup
+    mover = spinbot.setup.mover
+    liquid = spinbot.setup.liquid
+    
+    pipette_tips = [
+        (124.3,23.6,20),
+        (124.3,32.1,20),
+        (124.3,41.2,20),
+        (124.9,50.6,20),
+        (124.9,59.6,20),
+        (125.2,68.4,20),
+        (125.5,77.5,20)
+    ]
+    for p,pipette_tip in enumerate(pipette_tips):
+        setup.attachTip(pipette_tip)
+        mover.home()
+        vol = 50 if p%2 else 100
+        for i in range(30):
+            print(f'Cycle {i+1}')
+            setup.aspirateAt((424.3,21,-74), vol)
+            setup.dispenseAt((227,30,-15), vol)
+            time.sleep(20)
+        balance.buffer_df.plot(x='Time', y='Value')
+        balance.buffer_df.to_csv(f'sartorius calib 5-{p}-{vol}uL.csv')
+        mover.move('z', 50)
+        mover.home()
+        setup.ejectTip(pipette_tip)
+        balance.reset()
     pass
 
 # %% Primitiv examples
@@ -292,5 +320,90 @@ from controllable.Measure.Mechanical.PiezoRobotics.piezorobotics_device import P
 if __name__ == "__main__":
     device = PiezoRoboticsDevice('COM19')
     pass
+
+# %%
+from controllable.Measure.Physical.balance_utils import MassBalance
+if __name__ == "__main__":
+    balance = MassBalance('COM8')
+    
+    pass
+# %%
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import matplotlib.pyplot as plt
+from scipy.signal import find_peaks
+
+RUNS = 7
+
+calibration_steps = []
+calib_dfs = []
+for i in range(RUNS):
+    volume = int(100/((i%2)+1))
+    filename = f'sartorius calib 5-{i}-{volume}uL.csv'
+    df = pd.read_csv(filename, index_col=0)
+    df['Time'] = pd.to_datetime(df['Time'])
+    df.dropna(inplace=True)
+    df = df[(df['Value']<df['Value'].mean()*0.8) & (df['Value']>df['Value'].mean()*1.2)]
+    df.reset_index(drop=True, inplace=True)
+
+    d1df = df['Value'].diff()
+    d2df = d1df.diff()
+    df = df.join(d1df, rsuffix='_d1')
+    df = df.join(d2df, rsuffix='_d2')
+    # fig = df.plot(x='Time', y=['Value', 'Value_d1','Value_d2'])
+    fig = px.scatter(df, x='Time', y=['Value', 'Value_d1','Value_d2'])
+    # fig.show()
+    
+    x = df['Value_d1']
+    peaks, _ = find_peaks(x, distance=100, height=(20,100))
+    plt.plot(x)
+    plt.plot(peaks, x[peaks], "x")
+    plt.show()
+    print(f'Number of peaks: {len(peaks)}')
+
+    levels = []
+    for peak in peaks:
+        avg = df.loc[peak-55:peak-5, 'Value'].mean()
+        levels.append(avg)
+    step_sizes = np.diff(np.array(levels))
+    avg_step_size = np.mean(step_sizes)
+    print(f'Average step size: {avg_step_size}')
+    
+    vol = int(filename.split('-')[-1].replace('uL.csv',''))
+    step_per_uL = avg_step_size / vol
+    print(f'Average step per uL: {step_per_uL}')
+    calibration_steps.append(step_per_uL)
+    
+    data = {
+        'step': [n for n in range(len(step_sizes))],
+        'step_size': step_sizes,
+        'step_per_uL': np.array(step_sizes) / volume,
+        'run': [f'{i}-{volume}uL' for _ in range(len(step_sizes))]
+    }
+    sub_df = pd.DataFrame(data)
+    calib_dfs.append(sub_df)
+
+calib_df = pd.concat(calib_dfs, ignore_index=True)
+overall_avg_calibration = np.mean(np.array(calibration_steps))
+print(f'Overall average step per uL: {overall_avg_calibration}')
+
+n_colors = RUNS
+colors = px.colors.sample_colorscale("viridis", [n/(n_colors -1) for n in range(n_colors)])
+fig = px.scatter(calib_df, x='step', y='step_size', color='run', color_discrete_sequence=colors)
+fig.show()
+
+fig = px.scatter(calib_df, x='step', y='step_per_uL', color='run', color_discrete_sequence=colors)
+fig.show()
+
+# print(len(averages))
+# jump_df['Value_avg'] = averages
+# jump_ddf = jump_df['Value_avg'].diff()
+# jump_df = jump_df.join(jump_ddf, rsuffix='_diff')
+
+# median = jump_df['Value_avg_diff'].median()
+# jump_slice = jump_df[(jump_df['Value_avg_diff']>median*0.75) & (jump_df['Value_avg_diff']<median*1.25)]
+# mean = jump_slice['Value_avg_diff'].mean()
+# print(f'Median: {median}\nMean: {mean}\nLength: {len(jump_slice)}')
 
 # %%
