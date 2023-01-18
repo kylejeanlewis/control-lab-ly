@@ -36,6 +36,8 @@ class Mover(object):
         self._translate_vector = (0,0,0)
         self._implement_offset = (0,0,0)
         self._scale = 1
+        self._speed = 1
+        self._speed_fraction = 1
 
         self.verbose = False
         self._flags = {}
@@ -119,6 +121,10 @@ class Mover(object):
         return
     
     @property
+    def position(self):
+        return self.coordinates, self.orientation
+    
+    @property
     def scale(self):
         return self._scale
     @scale.setter
@@ -129,8 +135,9 @@ class Mover(object):
         return
     
     @property
-    def position(self):
-        return self.coordinates, self.orientation
+    def speed(self):
+        print(f'Speed fraction: {self._speed_fraction}')
+        return self._speed * self._speed_fraction
     
     def _diagnostic(self):
         """
