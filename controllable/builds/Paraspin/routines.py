@@ -73,32 +73,45 @@ class SpinbotSetup(Setup):
         print('Ready!')
         return
 
-    def align(self, position, offset):
-        coordinates = np.array(position) - np.array(offset)
+    def align(self, coordinates, offset=(0,0,0)):
+        coordinates = np.array(coordinates) - np.array(offset)
         if not self.mover.isFeasible(coordinates, transform=True, tool_offset=True):
             print(f"Infeasible toolspace coordinates! {coordinates}")
-        self.mover.safeMoveTo(coordinates)
+        self.mover.safeMoveTo(coordinates, descent_speed_fraction=0.2)
         self._flags['at_rest'] = False
         
         # Time the wait
-        distance = np.linalg.norm(coordinates - np.array(self.mover.coordinates))
-        t_align = distance / CNC_SPEED + 2
-        time.sleep(t_align)
+        # distance = np.linalg.norm(coordinates - np.array(self.mover.coordinates))
+        # t_align = distance / CNC_SPEED + 2
+        # time.sleep(t_align)
+        return
+    
+    def aspirateAt(self, coordinates, volume, speed=None, channel=None, **kwargs):
+        if not self.liquid.isTipOn(): # or not self.liquid.tip_length:
+            print("There is no tip attached.")
+            return
+        offset = self.liquid.channels[channel].offset if 'channels' in dir(self.liquid) else self.liquid.offset
+        self.align(coordinates=coordinates, offset=offset)
+        self.liquid.aspirate(volume=volume, speed=speed, channel=channel)
         return
     
     def attachTip(self, coordinates, tip_length=80, channel=None):
         if 'eject' not in dir(self.liquid):
             print("'attachTip' method not available.")
             return
-        if self.liquid.tip_length:
+        if self.liquid.isTipOn():# or self.liquid.tip_length:
             print("Please eject current tip before attaching new tip.")
             return
-        self.liquid.tip_length = tip_length
         self.mover.safeMoveTo(coordinates, descent_speed_fraction=0.2)
         self.mover.move('z', -20, speed_fraction=0.01)
-        
+        time.sleep(3)
+        self.liquid.tip_length = tip_length
         self.mover.implement_offset = tuple(np.array(self.mover.implement_offset) + np.array([0,0,-tip_length]))
         self.mover.move('z', 20+tip_length, speed_fraction=0.2)
+        time.sleep(1)
+        return
+    
+    def checkTip(self):
         return
     
     def coat(self, maker_chn, liquid_chn, vol, maker_kwargs, rest=True, new_thread=True):
@@ -125,18 +138,26 @@ class SpinbotSetup(Setup):
             self.maker.channels[maker_chn].execute(maker_kwargs)
         return
     
+    def dispenseAt(self, coordinates, volume, speed=None, channel=None, **kwargs):
+        if not self.liquid.isTipOn(): # or not self.liquid.tip_length:
+            print("There is no tip attached.")
+            return
+        offset = self.liquid.channels[channel].offset if 'channels' in dir(self.liquid) else self.liquid.offset
+        self.align(coordinates=coordinates, offset=offset)
+        self.liquid.dispense(volume=volume, speed=speed, channel=channel)
+        return
+    
     def ejectTip(self, coordinates, channel=None):
         if 'eject' not in dir(self.liquid):
             print("'ejectTip' method not available.")
             return
-        if not self.liquid.tip_length:
+        if not self.liquid.isTipOn(): # or not self.liquid.tip_length:
             print("There is currently no tip to eject.")
             return
-        tip_length = self.liquid.tip_length
         self.mover.safeMoveTo(coordinates, descent_speed_fraction=0.2)
         time.sleep(1)
         self.liquid.eject()
-        
+        tip_length = self.liquid.tip_length
         self.mover.implement_offset = tuple(np.array(self.mover.implement_offset) - np.array([0,0,-tip_length]))
         self.liquid.tip_length = 0
         return
