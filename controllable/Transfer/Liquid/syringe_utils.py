@@ -15,7 +15,7 @@ import time
 import serial # pip install pyserial
 
 # Local application imports
-from ...misc import HELPER
+from ...misc import Helper
 from .liquid_utils import LiquidHandler
 print(f"Import: OK <{__name__}>")
 
@@ -344,7 +344,7 @@ class SyringeAssembly(LiquidHandler):
     def __init__(self, port:str, capacities=[], channels=[], offsets=[], **kwargs):
         super().__init__(**kwargs)
         self.pump = Pump(port)
-        properties = HELPER.zip_inputs('channel', capacity=capacities, channel=channels, offset=offsets)
+        properties = Helper.zip_inputs('channel', capacity=capacities, channel=channels, offset=offsets)
         self.channels = {key: Syringe(**value) for key,value in properties.items()}
         for syringe in self.channels.values():
             syringe.pump = self.pump

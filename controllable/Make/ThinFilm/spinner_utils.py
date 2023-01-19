@@ -16,7 +16,7 @@ import time
 import serial # pip install pyserial
 
 # Local application imports
-from ...misc import HELPER
+from ...misc import Helper
 print(f"Import: OK <{__name__}>")
 
 class Spinner(object):
@@ -193,7 +193,7 @@ class SpinnerAssembly(object):
         positions (list, optional): list of tuples of x,y,z spinner positions. Defaults to [].
     """
     def __init__(self, ports=[], channels=[], positions=[]):
-        properties = HELPER.zip_inputs('channel', port=ports, channel=channels, position=positions)
+        properties = Helper.zip_inputs('channel', port=ports, channel=channels, position=positions)
         self.channels = {key: Spinner(**value) for key,value in properties.items()}
         return
     
