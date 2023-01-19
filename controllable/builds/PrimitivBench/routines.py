@@ -13,33 +13,44 @@ import time
 # Third party imports
 
 # Local application imports
-from ...misc import HELPER
+from ...misc import Helper
 from ... import Measure
 from ... import Move
-from ..build_utils import Setup
 print(f"Import: OK <{__name__}>")
 
 CNC_SPEED = 200
+CONFIG_FILE = "config.yaml"
 
-class PrimitivSetup(Setup):
-    def __init__(self, config, ignore_connections=False, **kwargs):
-        super().__init__(**kwargs)
-        self.mover = None
-        self.measurer = None
-        self.viewer = None
-        
+class PrimitivSetup(object):
+    def __init__(self, config=CONFIG_FILE, config_option=0, ignore_connections=False, **kwargs):
+        self.components = {}
         self.tool_offset = (0,0,0)
-        self._config = config
+        self.positions = {}
+        self._config = Helper.read_plans(__name__, config, config_option)
+        self._flags = {}
         self._connect(ignore_connections=ignore_connections)
         pass
     
+    @property
+    def measurer(self):
+        return self.components.get('measure')
+
+    @property
+    def mover(self):
+        return self.components.get('move')
+    
+    @property
+    def viewer(self):
+        return self.components.get('view')
+    
     def _connect(self, ignore_connections=False):
-        mover_class = self._get_class(Move, self._config['mover']['class'])
-        measurer_class = self._get_class(Measure, self._config['measurer']['class'])
-        
-        self.mover = mover_class(**self._config['mover']['settings'])
-        self.measurer = measurer_class(**self._config['measurer']['settings'])
-        
+        for component in self._config:
+            if component not in ['measure','move']:
+                continue
+            component_module = component.split('_')[0].title()
+            component_class = Helper.get_class(component_module, self._config[component]['class'])
+            self.components[component] = component_class(**self._config[component]['settings'])
+            
         try:
             self.labelHeights(**self._config['height']['settings'])
         except KeyError:
@@ -99,7 +110,7 @@ class PrimitivSetup(Setup):
         return
     
     def labelHeights(self, names, z_heights, overwrite=False):
-        properties = HELPER.zip_inputs('names', names=names, z_heights=z_heights)
+        properties = Helper.zip_inputs('names', names=names, z_heights=z_heights)
         for name,z_height in properties.values():
             self.labelHeight(name, z_height, overwrite)
         return
@@ -112,7 +123,7 @@ class PrimitivSetup(Setup):
         return
     
     def labelPositions(self, names, coords, overwrite=False):
-        properties = HELPER.zip_inputs('names', names=names, coords=coords)
+        properties = Helper.zip_inputs('names', names=names, coords=coords)
         for name,coord in properties.values():
             self.labelPosition(name, coord, overwrite)
         return
