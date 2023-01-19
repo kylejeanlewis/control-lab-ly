@@ -1,11 +1,11 @@
 0:
-  mover: 
+  move: 
     class: Cartesian.Primitiv
     settings:
       port: COM7
       limits: [[-470,0,0], [0,0,0]]
       safe_height: 0
-  liquid: 
+  transfer: 
     class: Liquid.SyringeAssembly
     settings:
       port: COM8
@@ -17,7 +17,7 @@
         - [-50,0,0]
         - [-25,0,0]
         - [0,0,0]
-  maker: 
+  make: 
     class: ThinFilm.SpinnerAssembly
     settings:
       ports: &SpinnerPorts
@@ -40,7 +40,7 @@
     rest: [-370,0,0]
 
 1:
-  mover: 
+  move: 
     class: Jointed.Dobot.M1Pro
     settings:
       ip_address: '192.168.2.21'
@@ -50,13 +50,13 @@
       translate_vector: {'array': [-281.9,335.1,198.7]}
       scale: 1
       implement_offset: {'tuple': [0,0,-250]}
-  liquid: 
+  transfer: 
     class: Liquid.Sartorius.Sartorius
     settings:
       port: COM17
       channel: 1
       offset: [0,0,0]
-  maker: 
+  make: 
     class: ThinFilm.SpinnerAssembly
     settings:
       ports: *SpinnerPorts
