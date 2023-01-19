@@ -8,12 +8,16 @@ Notes / actionables:
 """
 # Standard library imports
 from datetime import date, datetime
+import importlib
+import numpy as np
 import os
 import pandas as pd
+import pkgutil
 import time
 
 # Third party imports
 import serial.tools.list_ports # pip install pyserial
+import yaml # pip install pyyaml
 
 # Local application imports
 print(f"Import: OK <{__name__}>")
@@ -54,6 +58,45 @@ class Helper(object):
         return com_ports
     
     @staticmethod
+    def get_class(module, dot_notation:str):
+        """
+        Retrieve the relevant class from the sub-package
+
+        Args:
+            package (module): sub-package
+            dot_notation (str): dot notation of class / module / package
+
+        Returns:
+            class: relevant class
+        """
+        top_package = __name__.split('.')[0]
+        import_path = f'{top_package}.{module}'
+        _class = importlib.import_module(import_path)
+        for child in dot_notation.split('.'):
+            _class = getattr(_class, child)
+        return _class
+    
+    @staticmethod
+    def get_details(details:dict):
+        """
+        Decode dictionary of configuration details to get np.ndarrays and tuples
+
+        Args:
+            details (dict): dictionary of configuration details
+
+        Returns:
+            dict: dictionary of configuration details
+        """
+        for k,v in details.items():
+            if type(v) != dict:
+                continue
+            if "tuple" in v.keys():
+                details[k] = tuple(v['tuple'])
+            elif "array" in v.keys():
+                details[k] = np.array(v['array'])
+        return details
+    
+    @staticmethod
     def get_method_names(obj):
         """
         Get the names of the methods in object (class/instance)
@@ -73,6 +116,22 @@ class Helper(object):
             if callable(attribute_value) and not attribute.startswith('__'):
                 method_list.append(attribute)
         return method_list
+    
+    @staticmethod
+    def is_overrun(start_time:float, timeout):
+        """
+        Check whether the process has timed out
+
+        Args:
+            start_time (float): start time in seconds since epoch
+            timeout (float): timeout duration
+
+        Returns:
+            bool: whether process has overrun
+        """
+        if timeout!=None and time.time() - start_time > timeout:
+            return True
+        return False
     
     @staticmethod
     def pretty_print_duration(total_time:float):
@@ -118,6 +177,28 @@ class Helper(object):
         kwargs_df.set_index(primary_keyword, drop=False, inplace=True)
         return kwargs_df.to_dict('index')
     
+    @classmethod
+    def read_plans(cls, package:str, config_file:str, config_option:int):
+        """
+        Read configuration file (yaml)
+
+        Args:
+            config_file (str): filename of configuration file
+            config_option (int): option index to use
+
+        Returns:
+            dict: dictionary of configuration parameters
+        """
+        yml = pkgutil.get_data(package, config_file).decode('utf-8')
+        configs = yaml.safe_load(yml)
+        config = configs[config_option]
+        for obj in config.keys():
+            if obj == 'labelled_positions':
+                continue
+            settings = config[obj]['settings']
+            config[obj]['settings'] = cls.get_details(settings)
+        return config
+
     def log_now(self, message:str, group=None):
         """
         Add log with timestamp
@@ -170,5 +251,5 @@ class Helper(object):
                     f.write(line + '\n')
         return
 
-HELPER = Helper() 
-"""NOTE: importing HELPER gives the same instance of the 'Helper' class wherever you import it"""
+LOGGER = Helper() 
+"""NOTE: importing LOGGER gives the same instance of the 'Helper' class wherever you import it"""
