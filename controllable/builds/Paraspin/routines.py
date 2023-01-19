@@ -14,41 +14,44 @@ import time
 # Third party imports
 
 # Local application imports
-from ...misc import HELPER
-from ... import Make
-from ... import Move
-from ... import Transfer
-from ..build_utils import Setup
+from ...misc import Helper
 print(f"Import: OK <{__name__}>")
 
 CNC_SPEED = 250
+CONFIG_FILE = "config.yaml"
 
-class SpinbotSetup(Setup):
-    def __init__(self, config, ignore_connections=False, **kwargs):
-        super().__init__(**kwargs)
-        self.mover = None
-        self.liquid = None
-        self.maker = None
-        
+class SpinbotSetup(object):
+    def __init__(self, config=CONFIG_FILE, config_option=0, ignore_connections=False, **kwargs):
+        self.components = {}
         self.positions = {}
-        self._config = config
+        self._config = Helper.read_plans(__name__, config, config_option)
         self._flags = {
             'at_rest': False
         }
         self._connect(ignore_connections=ignore_connections)
         pass
     
+    @property
+    def liquid(self):
+        return self.components.get('transfer')
+    
+    @property
+    def maker(self):
+        return self.components.get('make')
+    
+    @property
+    def mover(self):
+        return self.components.get('move')
+    
     def _connect(self, diagnostic=True, ignore_connections=False):
-        mover_class = self._get_class(Move, self._config['mover']['class'])
-        liquid_class = self._get_class(Transfer, self._config['liquid']['class'])
-        maker_class = self._get_class(Make, self._config['maker']['class'])
-        
-        self.mover = mover_class(**self._config['mover']['settings'])
-        self.liquid = liquid_class(**self._config['liquid']['settings'])
-        self.maker = maker_class(**self._config['maker']['settings'])
+        for component in self._config:
+            if component not in ['make','move','transfer']:
+                continue
+            component_module = component.split('_')[0].title()
+            component_class = Helper.get_class(component_module, self._config[component]['class'])
+            self.components[component] = component_class(**self._config[component]['settings'])
         
         if 'labelled_positions' in self._config.keys():
-            # names, coords = zip(*self._config['labelled_positions'].items())
             self.labelPositions(self._config['labelled_positions'])
 
         if diagnostic:
@@ -79,16 +82,11 @@ class SpinbotSetup(Setup):
             print(f"Infeasible toolspace coordinates! {coordinates}")
         self.mover.safeMoveTo(coordinates, descent_speed_fraction=0.2)
         self._flags['at_rest'] = False
-        
-        # Time the wait
-        # distance = np.linalg.norm(coordinates - np.array(self.mover.coordinates))
-        # t_align = distance / CNC_SPEED + 2
-        # time.sleep(t_align)
         return
     
     def aspirateAt(self, coordinates, volume, speed=None, channel=None, **kwargs):
-        if not self.liquid.isTipOn(): # or not self.liquid.tip_length:
-            print("There is no tip attached.")
+        if 'eject' in dir(self.liquid) and not self.liquid.isTipOn(): # or not self.liquid.tip_length:
+            print("[aspirate] There is no tip attached.")
             return
         offset = self.liquid.channels[channel].offset if 'channels' in dir(self.liquid) else self.liquid.offset
         self.align(coordinates=coordinates, offset=offset)
@@ -109,9 +107,6 @@ class SpinbotSetup(Setup):
         self.mover.implement_offset = tuple(np.array(self.mover.implement_offset) + np.array([0,0,-tip_length]))
         self.mover.move('z', 20+tip_length, speed_fraction=0.2)
         time.sleep(1)
-        return
-    
-    def checkTip(self):
         return
     
     def coat(self, maker_chn, liquid_chn, vol, maker_kwargs, rest=True, new_thread=True):
@@ -139,8 +134,8 @@ class SpinbotSetup(Setup):
         return
     
     def dispenseAt(self, coordinates, volume, speed=None, channel=None, **kwargs):
-        if not self.liquid.isTipOn(): # or not self.liquid.tip_length:
-            print("There is no tip attached.")
+        if 'eject' in dir(self.liquid) and not self.liquid.isTipOn(): # or not self.liquid.tip_length:
+            print("[dispense] There is no tip attached.")
             return
         offset = self.liquid.channels[channel].offset if 'channels' in dir(self.liquid) else self.liquid.offset
         self.align(coordinates=coordinates, offset=offset)
@@ -164,6 +159,9 @@ class SpinbotSetup(Setup):
     
     def isBusy(self):
         return any([self.liquid.isBusy(), self.maker.isBusy()])
+    
+    def isConnected(self):
+        return # all([component.isConnected() for component in self.components])
     
     def labelPositions(self, names_coords={}, overwrite=False):
         for name,coordinates in names_coords.items():
