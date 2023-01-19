@@ -22,9 +22,9 @@ print(f"Import: OK <{__name__}>")
 pd.options.plotting.backend = "plotly"
 
 # %% Helper examples
-from controllable.misc import HELPER
+from controllable.misc import Helper
 if __name__ == "__main__":
-    HELPER.display_ports()
+    Helper.display_ports()
     pass
 
 # %% Cartesian examples
@@ -234,7 +234,7 @@ if __name__ == "__main__":
     pass
 
 # %% Paraspin examples (B1)
-from controllable.builds.Paraspin import SpinbotController
+from controllable.builds.Paraspin import SpinbotSetup
 from controllable.Control.Schedule import ScanningScheduler
 from controllable.Measure.Physical.balance_utils import MassBalance
 import time
@@ -243,12 +243,12 @@ import pandas as pd
 pd.options.plotting.backend = 'plotly'
 
 if __name__ == "__main__":
-    spinbot = SpinbotController(config_option=1)
+    spinbot = SpinbotSetup(config_option=1)
     balance = MassBalance('COM8')
 
-    setup =spinbot.setup
-    mover = spinbot.setup.mover
-    liquid = spinbot.setup.liquid
+    setup =spinbot
+    mover = setup.mover
+    liquid = setup.liquid
     
     pipette_tips = [
         (124.3,23.6,20),
@@ -338,20 +338,23 @@ RUNS = 7
 
 calibration_steps = []
 calib_dfs = []
+pct_errors = []
 for i in range(RUNS):
     volume = int(100/((i%2)+1))
     filename = f'sartorius calib 5-{i}-{volume}uL.csv'
     df = pd.read_csv(filename, index_col=0)
     df['Time'] = pd.to_datetime(df['Time'])
+    df['Value'] = df['Value']/0.9955
     df.dropna(inplace=True)
-    df = df[(df['Value']<df['Value'].mean()*0.8) & (df['Value']>df['Value'].mean()*1.2)]
+    df = df[(df['Value']<df['Value'].mean()*0.8) & (df['Value']>df['Value'].mean()*1.2)]    #Filter
     df.reset_index(drop=True, inplace=True)
 
     d1df = df['Value'].diff()
     d2df = d1df.diff()
     df = df.join(d1df, rsuffix='_d1')
     df = df.join(d2df, rsuffix='_d2')
-    # fig = df.plot(x='Time', y=['Value', 'Value_d1','Value_d2'])
+    df = df[abs(df['Value_d1'])<500]    #Filter
+    df.reset_index(drop=True, inplace=True)
     fig = px.scatter(df, x='Time', y=['Value', 'Value_d1','Value_d2'])
     # fig.show()
     
@@ -367,43 +370,37 @@ for i in range(RUNS):
         avg = df.loc[peak-55:peak-5, 'Value'].mean()
         levels.append(avg)
     step_sizes = np.diff(np.array(levels))
+    step_sizes = np.extract(step_sizes>20, step_sizes)  #Filter
     avg_step_size = np.mean(step_sizes)
     print(f'Average step size: {avg_step_size}')
-    
-    vol = int(filename.split('-')[-1].replace('uL.csv',''))
-    step_per_uL = avg_step_size / vol
+    pct_error = abs((step_sizes - volume)/volume) *100
+    pct_errors.append(pct_error)
+
+    step_per_uL = avg_step_size / volume
     print(f'Average step per uL: {step_per_uL}')
     calibration_steps.append(step_per_uL)
     
     data = {
         'step': [n for n in range(len(step_sizes))],
-        'step_size': step_sizes,
-        'step_per_uL': np.array(step_sizes) / volume,
+        'mass_diff': step_sizes,
+        'mass_per_uL': np.array(step_sizes) / volume,
         'run': [f'{i}-{volume}uL' for _ in range(len(step_sizes))]
     }
     sub_df = pd.DataFrame(data)
     calib_dfs.append(sub_df)
 
 calib_df = pd.concat(calib_dfs, ignore_index=True)
-overall_avg_calibration = np.mean(np.array(calibration_steps))
-print(f'Overall average step per uL: {overall_avg_calibration}')
+overall_avg_calibration = calib_df['mass_per_uL'].mean()
+print(f'Overall average step per uL: {overall_avg_calibration:.5}')
+overall_pct_error = np.mean(np.concatenate(pct_errors))
+print(f'Overall percentage error: {overall_pct_error:.2}%')
 
 n_colors = RUNS
 colors = px.colors.sample_colorscale("viridis", [n/(n_colors -1) for n in range(n_colors)])
-fig = px.scatter(calib_df, x='step', y='step_size', color='run', color_discrete_sequence=colors)
+fig = px.scatter(calib_df, x='step', y='mass_diff', color='run', color_discrete_sequence=colors)
 fig.show()
 
-fig = px.scatter(calib_df, x='step', y='step_per_uL', color='run', color_discrete_sequence=colors)
+fig = px.scatter(calib_df, x='step', y='mass_per_uL', color='run', color_discrete_sequence=colors)
 fig.show()
-
-# print(len(averages))
-# jump_df['Value_avg'] = averages
-# jump_ddf = jump_df['Value_avg'].diff()
-# jump_df = jump_df.join(jump_ddf, rsuffix='_diff')
-
-# median = jump_df['Value_avg_diff'].median()
-# jump_slice = jump_df[(jump_df['Value_avg_diff']>median*0.75) & (jump_df['Value_avg_diff']<median*1.25)]
-# mean = jump_slice['Value_avg_diff'].mean()
-# print(f'Median: {median}\nMean: {mean}\nLength: {len(jump_slice)}')
 
 # %%
