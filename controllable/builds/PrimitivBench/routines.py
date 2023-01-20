@@ -77,17 +77,8 @@ class PrimitivSetup(object):
             if pause:
                 input("Press 'Enter' to proceed.")
         return
-    
-    def getData(self):
-        return self.measurer.getData()
-    
-    def home(self):
-        return self.mover.home()
-    
-    def loadProgram(self, program, params={}):
-        return self.measurer.loadProgram(program, params)
 
-    def measure(self, position):
+    def measureAt(self, position):
         self.align(self.tool_offset, position, safe_height='up')
         self.measurer.measure()
         return
@@ -97,9 +88,17 @@ class PrimitivSetup(object):
         self.measurer.reset()
         return
     
+    # Measure methods
+    def getData(self):
+        return self.measurer.getData()
+    def loadProgram(self, program, params={}):
+        return self.measurer.loadProgram(program, params)
     def saveData(self, filename):
         return self.measurer.saveData(filename)
     
+    # Move methods
+    def home(self):
+        return self.mover.home()
     
     # TODO: Deprecate
     def labelHeight(self, name, z_height, overwrite=False):
@@ -108,23 +107,19 @@ class PrimitivSetup(object):
         else:
             raise Exception(f"The height '{name}' has already been defined at: {self.mover.heights[name]}")
         return
-    
     def labelHeights(self, names, z_heights, overwrite=False):
         properties = Helper.zip_inputs('names', names=names, z_heights=z_heights)
         for name,z_height in properties.values():
             self.labelHeight(name, z_height, overwrite)
         return
-    
     def labelPosition(self, name, coord, overwrite=False):
         if name not in self.positions.keys() or overwrite:
             self.positions[name] = coord
         else:
             raise Exception(f"The position '{name}' has already been defined at: {self.positions[name]}")
         return
-    
     def labelPositions(self, names, coords, overwrite=False):
         properties = Helper.zip_inputs('names', names=names, coords=coords)
         for name,coord in properties.values():
             self.labelPosition(name, coord, overwrite)
         return
-
