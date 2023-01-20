@@ -8,7 +8,6 @@ Notes / actionables:
 """
 # Standard library imports
 import numpy as np
-from threading import Thread
 import time
 
 # Third party imports
