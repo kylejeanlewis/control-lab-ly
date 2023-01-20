@@ -14,8 +14,6 @@ import time
 
 # Local application imports
 from ...misc import Helper
-from ... import Measure
-from ... import Move
 print(f"Import: OK <{__name__}>")
 
 CNC_SPEED = 200
