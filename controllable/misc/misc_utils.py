@@ -70,10 +70,9 @@ class Helper(object):
             class: relevant class
         """
         top_package = __name__.split('.')[0]
-        import_path = f'{top_package}.{module}'
-        _class = importlib.import_module(import_path)
-        for child in dot_notation.split('.'):
-            _class = getattr(_class, child)
+        import_path = f'{top_package}.{module}.{dot_notation}'
+        package = importlib.import_module('.'.join(import_path.split('.')[:-1]))
+        _class = getattr(package, import_path.split('.')[-1])
         return _class
     
     @staticmethod
