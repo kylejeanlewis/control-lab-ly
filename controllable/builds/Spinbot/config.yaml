@@ -1,0 +1,21 @@
+0:
+  move: 
+    class: Jointed.Dobot.M1Pro
+    settings:
+      ip_address: '192.168.2.21'
+      home_coordinates: {'tuple': [300,0,200]}
+      home_orientation: {'tuple': [0,0,0]}
+      orientate_matrix: {'array': [[0,1,0],[-1,0,0],[0,0,1]]}
+      translate_vector: {'array': [-281.9,335.1,198.7]}
+      scale: 1
+      implement_offset: {'tuple': [0,0,-250]}
+  transfer: 
+    class: Liquid.Sartorius.Sartorius
+    settings:
+      port: COM17
+      channel: 1
+      offset: [0,0,0]
+  labelled_positions:
+    fill: [-100,0,0]
+    tips: [0,0,0]
+    bins: [0,0,0]
