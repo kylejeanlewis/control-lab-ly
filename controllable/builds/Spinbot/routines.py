@@ -205,7 +205,7 @@ class SpinbotSetup(object):
         Returns:
             bool: whether the setup us connected
         """
-        return # all([component.isConnected() for component in self.components])
+        return all([component.isConnected() for component in self.components.values])
     
     def labelPositions(self, names_coords={}, overwrite=False):
         """
