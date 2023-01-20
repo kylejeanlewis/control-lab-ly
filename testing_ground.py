@@ -234,16 +234,15 @@ if __name__ == "__main__":
     pass
 
 # %% Paraspin examples (B1)
-from controllable.builds.Paraspin import SpinbotSetup
-from controllable.Control.Schedule import ScanningScheduler
-from controllable.Measure.Physical.balance_utils import MassBalance
+from controllable.builds.Spinbot import SpinbotSetup
+from controllable.Measure.Physical import MassBalance
 import time
 
 import pandas as pd
 pd.options.plotting.backend = 'plotly'
 
 if __name__ == "__main__":
-    spinbot = SpinbotSetup(config_option=1)
+    spinbot = SpinbotSetup(config_option=0)
     balance = MassBalance('COM8')
 
     setup =spinbot
