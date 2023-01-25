@@ -177,13 +177,14 @@ class Helper(object):
         return kwargs_df.to_dict('index')
     
     @classmethod
-    def read_plans(cls, package:str, config_file:str, config_option:int):
+    def read_plans(cls, config_file:str, config_option:int, package:str = None):
         """
         Read configuration file (yaml)
 
         Args:
             config_file (str): filename of configuration file
             config_option (int): option index to use
+            package (str, optional): name of package to look in. Defaults to None.
 
         Returns:
             dict: dictionary of configuration parameters
@@ -193,6 +194,8 @@ class Helper(object):
         config = configs[config_option]
         for obj in config.keys():
             if obj == 'labelled_positions':
+                continue
+            if obj == 'deck':
                 continue
             settings = config[obj]['settings']
             config[obj]['settings'] = cls.get_details(settings)

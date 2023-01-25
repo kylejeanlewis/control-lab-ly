@@ -24,7 +24,7 @@ class SpinbotSetup(object):
     def __init__(self, config=CONFIG_FILE, config_option=0, ignore_connections=False, **kwargs):
         self.components = {}
         self.positions = {}
-        self._config = Helper.read_plans(__name__, config, config_option)
+        self._config = Helper.read_plans(config, config_option, __name__)
         self._flags = {
             'at_rest': False
         }

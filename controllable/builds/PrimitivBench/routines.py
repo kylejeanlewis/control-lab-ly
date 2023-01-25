@@ -24,7 +24,7 @@ class PrimitivSetup(object):
         self.components = {}
         self.tool_offset = (0,0,0)
         self.positions = {}
-        self._config = Helper.read_plans(__name__, config, config_option)
+        self._config = Helper.read_plans(config, config_option, __name__)
         self._flags = {}
         self._connect(ignore_connections=ignore_connections)
         pass
