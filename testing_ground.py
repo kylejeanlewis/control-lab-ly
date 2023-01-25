@@ -259,7 +259,7 @@ if __name__ == "__main__":
         (125.5,77.5,20)
     ]
     for p,pipette_tip in enumerate(pipette_tips):
-        setup.attachTip(pipette_tip)
+        setup.attachTipAt(pipette_tip)
         mover.home()
         vol = 50 if p%2 else 100
         for i in range(30):
@@ -271,7 +271,7 @@ if __name__ == "__main__":
         balance.buffer_df.to_csv(f'sartorius calib 5-{p}-{vol}uL.csv')
         mover.move('z', 50)
         mover.home()
-        setup.ejectTip(pipette_tip)
+        setup.ejectTipAt(pipette_tip)
         balance.reset()
     pass
 
@@ -402,4 +402,10 @@ fig.show()
 fig = px.scatter(calib_df, x='step', y='mass_per_uL', color='run', color_discrete_sequence=colors)
 fig.show()
 
+# %%
+from controllable.misc.layout_utils import Deck, Labware
+
+if __name__ == "__main__":
+    deck = Deck(r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\examples\Labware\layout.json')
+    pass
 # %%
