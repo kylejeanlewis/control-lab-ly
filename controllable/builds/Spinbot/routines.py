@@ -124,7 +124,18 @@ class SpinbotSetup(object):
         self.liquid.aspirate(volume=volume, speed=speed, channel=channel)
         return
     
-    def attachTip(self, coordinates:tuple, tip_length=80, channel=None):
+    def attachTip(self, tip_length=80, channel=None):
+        """
+        Attach new pipette tip
+
+        Args:
+            tip_length (int, optional): length of pipette tip. Defaults to 80.
+            channel (int, optional): channel to use. Defaults to None.
+        """
+        next_tip_location = self.positions.get('pipette_tips').pop(0)
+        return self.attachTipAt(next_tip_location, tip_length=tip_length, channel=channel)
+    
+    def attachTipAt(self, coordinates:tuple, tip_length=80, channel=None):
         """
         Attach new pipette tip from specified location
 
@@ -166,7 +177,17 @@ class SpinbotSetup(object):
         self.liquid.dispense(volume=volume, speed=speed, channel=channel)
         return
     
-    def ejectTip(self, coordinates, channel=None):
+    def ejectTip(self, channel=None):
+        """
+        Eject the pipette tip at the specified location
+
+        Args:
+            channel (int, optional): channel to use. Defaults to None.
+        """
+        bin_location = self.positions.get('bin')
+        return self.ejectTipAt(bin_location, channel=channel)
+    
+    def ejectTipAt(self, coordinates, channel=None):
         """
         Eject the pipette tip at the specified location
 
