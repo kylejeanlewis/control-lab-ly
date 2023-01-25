@@ -340,7 +340,7 @@ calib_dfs = []
 pct_errors = []
 for i in range(RUNS):
     volume = int(100/((i%2)+1))
-    filename = f'sartorius calib 5-{i}-{volume}uL.csv'
+    filename = f'C:\\Users\\leongcj\\Desktop\\Astar_git\\control-lab-le\\sartorius calib 5-{i}-{volume}uL.csv'
     df = pd.read_csv(filename, index_col=0)
     df['Time'] = pd.to_datetime(df['Time'])
     df['Value'] = df['Value']/0.9955
