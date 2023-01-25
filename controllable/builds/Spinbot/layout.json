@@ -1,0 +1,12 @@
+{
+	"reference_points":{
+		"1": [0,0,0],
+		"2": [150,0,0],
+		"3": [300,0,0]
+	},
+    "slots":{
+		"1": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json",
+		"2": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json",
+		"3": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json"
+	}
+}

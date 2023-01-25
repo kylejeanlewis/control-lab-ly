@@ -13,7 +13,7 @@ import time
 # Third party imports
 
 # Local application imports
-from ...misc import Helper
+from ...misc import Deck, Helper
 print(f"Import: OK <{__name__}>")
 
 CNC_SPEED = 250
@@ -30,12 +30,14 @@ class SpinbotSetup(object):
     """
     def __init__(self, config=CONFIG_FILE, config_option=0, ignore_connections=False, **kwargs):
         self.components = {}
+        self.deck = Deck()
         self.positions = {}
-        self._config = Helper.read_plans(__name__, config, config_option)
+        self._config = Helper.read_plans(config, config_option, __name__)
         self._flags = {
             'at_rest': False
         }
         self._connect(ignore_connections=ignore_connections)
+        self.loadDeck()
         pass
     
     @property
@@ -240,6 +242,13 @@ class SpinbotSetup(object):
                 self.positions[name] = coordinates
             else:
                 print(f"The position '{name}' has already been defined at: {self.positions[name]}")
+        return
+    
+    def loadDeck(self):
+        """
+        Load the deck layout from JSON file
+        """
+        self.deck.load_layout(self._config.get('deck'), __name__)
         return
     
     def reset(self):
