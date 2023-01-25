@@ -1,0 +1,28 @@
+{
+	"reference_points":{
+		"1": [0,0,0],
+		"2": [132.5,0,0],
+		"3": [264.5,0,0],
+		"4": [0,90.5,0],
+		"5": [132.5,90.5,0],
+		"6": [264.5,90.5,0],
+		"7": [0,181,0],
+		"8": [132.5,181,0],
+		"9": [264.5,181,0],
+		"10":[0,271.5,0],
+		"11":[132.5,271.5,0]
+	},
+    "slots":{
+		"1": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json",
+		"2": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json",
+		"3": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json",
+		"4": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json",
+		"5": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json",
+		"6": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json",
+		"7": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json",
+		"8": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json",
+		"9": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json",
+		"10":"C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json",
+		"11":"C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json"
+	}
+}
