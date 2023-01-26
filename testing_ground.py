@@ -249,9 +249,9 @@ if __name__ == "__main__":
     mover = setup.mover
     liquid = setup.liquid
     
-    for _ in range(96):
-        setup.attachTip()
-        setup.ejectTip()
+    # for _ in range(96):
+    #     setup.attachTip()
+    #     setup.ejectTip()
     
     # pipette_tips = [
     #     (124.3,23.6,20),
