@@ -249,30 +249,34 @@ if __name__ == "__main__":
     mover = setup.mover
     liquid = setup.liquid
     
-    pipette_tips = [
-        (124.3,23.6,20),
-        (124.3,32.1,20),
-        (124.3,41.2,20),
-        (124.9,50.6,20),
-        (124.9,59.6,20),
-        (125.2,68.4,20),
-        (125.5,77.5,20)
-    ]
-    for p,pipette_tip in enumerate(pipette_tips):
-        setup.attachTipAt(pipette_tip)
-        mover.home()
-        vol = 50 if p%2 else 100
-        for i in range(30):
-            print(f'Cycle {i+1}')
-            setup.aspirateAt((424.3,21,-74), vol)
-            setup.dispenseAt((227,30,-15), vol)
-            time.sleep(20)
-        balance.buffer_df.plot(x='Time', y='Value')
-        balance.buffer_df.to_csv(f'sartorius calib 5-{p}-{vol}uL.csv')
-        mover.move('z', 50)
-        mover.home()
-        setup.ejectTipAt(pipette_tip)
-        balance.reset()
+    for _ in range(96):
+        setup.attachTip()
+        setup.ejectTip()
+    
+    # pipette_tips = [
+    #     (124.3,23.6,20),
+    #     (124.3,32.1,20),
+    #     (124.3,41.2,20),
+    #     (124.9,50.6,20),
+    #     (124.9,59.6,20),
+    #     (125.2,68.4,20),
+    #     (125.5,77.5,20)
+    # ]
+    # for p,pipette_tip in enumerate(pipette_tips):
+    #     setup.attachTipAt(pipette_tip)
+    #     mover.home()
+    #     vol = 50 if p%2 else 100
+    #     for i in range(30):
+    #         print(f'Cycle {i+1}')
+    #         setup.aspirateAt((424.3,21,-74), vol)
+    #         setup.dispenseAt((227,30,-15), vol)
+    #         time.sleep(20)
+    #     balance.buffer_df.plot(x='Time', y='Value')
+    #     balance.buffer_df.to_csv(f'sartorius calib 5-{p}-{vol}uL.csv')
+    #     mover.move('z', 50)
+    #     mover.home()
+    #     setup.ejectTipAt(pipette_tip)
+    #     balance.reset()
     pass
 
 # %% Primitiv examples
