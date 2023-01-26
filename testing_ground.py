@@ -412,4 +412,20 @@ from controllable.misc.layout_utils import Deck, Labware
 if __name__ == "__main__":
     deck = Deck(r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\examples\Labware\layout.json')
     pass
+
+# %%
+from controllable.Move.Cartesian import Primitiv
+from controllable.View.Thermal import Thermal
+from controllable.Control.GUI import CompoundPanel, MoverPanel
+
+if __name__ == "__main__":
+    mover = Primitiv('COM5')
+    # thermal = Thermal('192.168.1.111')
+    ensemble = {
+        # 'Thermal': (ViewerPanel, dict(viewer=thermal)),
+        'Primitiv': (MoverPanel, dict(mover=mover, axes=['X','Y','Z']))
+    }
+    gui = CompoundPanel(ensemble)
+    gui.runGUI('Primitiv')
+    pass
 # %%
