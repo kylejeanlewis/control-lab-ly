@@ -330,7 +330,7 @@ if __name__ == "__main__":
     balance = MassBalance('COM8')
     
     pass
-# %%
+# %% Mass calibration
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -413,7 +413,7 @@ if __name__ == "__main__":
     deck = Deck(r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\examples\Labware\layout.json')
     pass
 
-# %%
+# %% Mass calibration
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -421,32 +421,48 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 
 pd.options.plotting.backend = 'plotly'
+filename = r"C:\Users\leongcj\Desktop\Astar_git\control-lab-le\data\calibration\balance\sartorius calib 6-0-25g.csv"
 
-df = pd.read_csv(r"C:\Users\leongcj\Desktop\Astar_git\control-lab-le\data\calibration\balance\sartorius calib 6-0-25g.csv", index_col=0)
-df.plot(x='Time', y='Value')
-d1df = df['Value'].diff()
+df = pd.read_csv(filename, index_col=0)
+df['Mass'] = df['Mass'] / 1.0288956629819839
+df['Mass'] = df['Mass'] - df.loc[:100,'Mass'].mean()
+d1df = df['Mass'].diff()
 d2df = d1df.diff()
 df = df.join(d1df, rsuffix='_d1')
 df.reset_index(drop=True, inplace=True)
 df = df.join(d2df, rsuffix='_d2')
 df.reset_index(drop=True, inplace=True)
 trim_threshold = 1000
-fig = px.line(df, x='Time', y=['Value', 'Value_d1','Value_d2'])
+fig = px.line(df, x='Time', y=['Mass', 'Mass_d1','Mass_d2'])
 fig.show()
 
-x = df['Value_d2']
-peaks, _ = find_peaks(x, distance = 100, height=5000)
+x = df['Mass_d2']
+peaks, _ = find_peaks(x, distance=100, height=5000)
 plt.plot(x)
 plt.plot(peaks, x[peaks], "x")
 plt.show()
 print(f'Number of peaks: {len(peaks)}')
+
 levels = []
 for peak in peaks:
-    avg = df.loc[peak-75:peak-50, 'Value'].mean()
+    avg = df.loc[peak-55:peak-5, 'Mass'].mean()
+    if len(levels):
+        avg -= levels[0]
     levels.append(avg)
+levels[0] = 0
+print(levels)
+
+A = 25_000
+B = 25_000
+C = 25_000
+D = 25_000
+order = [A,C,B,-C,-A,D,C,-D,-B,D,A,-A-C,A,B,C,-A-B-C-D]
+# order = [A,C,B,-C,-A,D,C,-D,-B,D,A,B,-C,-B,-A,-D]
 step_sizes = np.diff(np.array(levels))
-expected_step_sizes = np.array([25,25,25,-25,-25,25,25,-25,-25,25,25,-50,25,25,25,-100])*1000
+expected_step_sizes = np.array(order)
 calib = step_sizes/expected_step_sizes
-avg_calib = np.mean(calib)
-print(f'Average calibration factor: {avg_calib}')
+calib_avg = calib.mean()
+calib_std = calib.std()
+print(f'Average calibration factor: {calib_avg}')
+
 # %%
