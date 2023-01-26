@@ -18,8 +18,7 @@ import serial # pip install pyserial
 # Local application imports
 print(f"Import: OK <{__name__}>")
 
-READ_TIMEOUT_S = 2
-CALIB_MASS = 6.700627450980402 * 0.9955 # initial calibration factor * subsequent validation factor
+CALIBRATION_FACTOR = 6.86322241421569       # output reading to mg
 COLUMNS = ['Time', 'Value', 'Factor', 'Baseline', 'Mass']
 
 class MassBalance(object):
@@ -166,12 +165,12 @@ class MassBalance(object):
         response = self._read()
         try:
             value = int(response)
-            self._mass = value / CALIB_MASS - self.baseline
+            self._mass = value / CALIBRATION_FACTOR - self.baseline
             if self._flags.get('record', False):
                 row = {
                     'Time': datetime.now(), 
                     'Value': value,
-                    'Factor': CALIB_MASS,
+                    'Factor': CALIBRATION_FACTOR,
                     'Baseline': self.baseline,
                     'Mass': self._mass
                 }
