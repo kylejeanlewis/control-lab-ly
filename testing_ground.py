@@ -407,25 +407,46 @@ fig = px.scatter(calib_df, x='step', y='mass_per_uL', color='run', color_discret
 fig.show()
 
 # %%
-from controllable.misc.layout_utils import Deck, Labware
+from controllable.misc.layout_utils import Deck
 
 if __name__ == "__main__":
     deck = Deck(r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\examples\Labware\layout.json')
     pass
 
 # %%
-from controllable.Move.Cartesian import Primitiv
-from controllable.View.Thermal import Thermal
-from controllable.Control.GUI import CompoundPanel, MoverPanel
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import matplotlib.pyplot as plt
+from scipy.signal import find_peaks
 
-if __name__ == "__main__":
-    mover = Primitiv('COM5')
-    # thermal = Thermal('192.168.1.111')
-    ensemble = {
-        # 'Thermal': (ViewerPanel, dict(viewer=thermal)),
-        'Primitiv': (MoverPanel, dict(mover=mover, axes=['X','Y','Z']))
-    }
-    gui = CompoundPanel(ensemble)
-    gui.runGUI('Primitiv')
-    pass
+pd.options.plotting.backend = 'plotly'
+
+df = pd.read_csv(r"C:\Users\leongcj\Desktop\Astar_git\control-lab-le\data\calibration\balance\sartorius calib 6-0-25g.csv", index_col=0)
+df.plot(x='Time', y='Value')
+d1df = df['Value'].diff()
+d2df = d1df.diff()
+df = df.join(d1df, rsuffix='_d1')
+df.reset_index(drop=True, inplace=True)
+df = df.join(d2df, rsuffix='_d2')
+df.reset_index(drop=True, inplace=True)
+trim_threshold = 1000
+fig = px.line(df, x='Time', y=['Value', 'Value_d1','Value_d2'])
+fig.show()
+
+x = df['Value_d2']
+peaks, _ = find_peaks(x, distance = 100, height=5000)
+plt.plot(x)
+plt.plot(peaks, x[peaks], "x")
+plt.show()
+print(f'Number of peaks: {len(peaks)}')
+levels = []
+for peak in peaks:
+    avg = df.loc[peak-75:peak-50, 'Value'].mean()
+    levels.append(avg)
+step_sizes = np.diff(np.array(levels))
+expected_step_sizes = np.array([25,25,25,-25,-25,25,25,-25,-25,25,25,-50,25,25,25,-100])*1000
+calib = step_sizes/expected_step_sizes
+avg_calib = np.mean(calib)
+print(f'Average calibration factor: {avg_calib}')
 # %%
