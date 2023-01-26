@@ -239,21 +239,6 @@ class MassBalance(object):
             self._threads['feedback_loop'].join()
         return
     
-    # def toggleLivePlot(self, on:bool):
-    #     """
-    #     Toggle between start and stopping feedback loop
-
-    #     Args:
-    #         on (bool): whether to listen to feedback
-    #     """
-    #     if on:
-    #         thread = Thread(target=self._loop_feedback)
-    #         thread.start()
-    #         self._threads['feedback_loop'] = thread
-    #     else:
-    #         self._threads['feedback_loop'].join()
-    #     return
-    
     def toggleRecord(self, on:bool):
         """
         Toggle between start and stopping mass records
@@ -276,12 +261,9 @@ class MassBalance(object):
         """
         self.reset()
         self.toggleRecord(True)
-        print(f"Zero-ing... ({wait}s)")
+        print(f"Zeroing... ({wait}s)")
         time.sleep(wait)
         self.baseline = self.buffer_df['Mass'].mean()
         self.reset()
+        print("Zeroing complete.")
         return
-    
-    # def update_plot(self, fig):
-    #     return fig
-        
