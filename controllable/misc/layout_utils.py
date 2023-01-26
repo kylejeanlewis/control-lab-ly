@@ -356,7 +356,8 @@ class Deck(object):
             return
         self.details = self._read_json(json_file=layout_file, package=package)
         slots = self.details.get('slots', {})
-        for slot,info in slots.items():
+        for slot in sorted(list(slots)):
+            info = slots[slot]
             name = info.get('name')
             labware_file = info.get('filepath','')
             self.load_labware(slot=slot, name=name, labware_file=labware_file, package=labware_package)
