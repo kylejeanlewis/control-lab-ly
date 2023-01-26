@@ -354,7 +354,9 @@ class CompoundPanel(Panel):
         tab_group_order = tab_group_order + [grp for grp in list(tab_groups.keys()) if grp not in tab_group_order]
         ordered_tab_groups = OrderedDict()
         for key in tab_group_order:
-            ordered_tab_groups[key] = tab_groups[key]
+            if key not in tab_groups:
+                continue
+            ordered_tab_groups[key] = tab_groups.get(key)
         tab_groups = ordered_tab_groups
         
         panels = []
