@@ -20,6 +20,7 @@ print(f"Import: OK <{__name__}>")
 
 READ_TIMEOUT_S = 2
 CALIB_MASS = 6.700627450980402 * 0.9955 # initial calibration factor * subsequent validation factor
+COLUMNS = ['Time', 'Value', 'Factor', 'Baseline', 'Mass']
 
 class MassBalance(object):
     def __init__(self, port:str, **kwargs):
@@ -30,19 +31,21 @@ class MassBalance(object):
             port (str): com port address
         """
         self.device = None
+        self.baseline = 0
         self._flags = {
             'busy': False,
             'connected': False,
             'get_feedback': False,
-            'pause_feedback':False
+            'pause_feedback': False,
+            'record': False
         }
         self._mass = 0
         self._precision = 3
         self._threads = {}
         
-        self.buffer_df = pd.DataFrame(columns=['Time', 'Value'])
+        self.buffer_df = pd.DataFrame(columns=COLUMNS)
         
-        self.verbose = True
+        self.verbose = False
         self.port = ''
         self._baudrate = None
         self._timeout = None
@@ -56,6 +59,10 @@ class MassBalance(object):
     @property
     def precision(self):
         return 10**(-self._precision)
+    @precision.setter
+    def precision(self, value:int):
+        self._precision = value
+        return
     
     def __delete__(self):
         self._shutdown()
@@ -84,8 +91,8 @@ class MassBalance(object):
             self.setFlag('connected', True)
             self.toggleFeedbackLoop(on=True)
         except Exception as e:
+            print(f"Could not connect to {port}")
             if self.verbose:
-                print(f"Could not connect to {port}")
                 print(e)
         return self.device
     
@@ -112,11 +119,9 @@ class MassBalance(object):
         try:
             response = self.device.readline()
             response = response.decode('utf-8').strip()
-            # print(repr(response))
         except Exception as e:
             if self.verbose:
-                # print(e)
-                pass
+                print(e)
         return response
     
     def _shutdown(self):
@@ -131,6 +136,15 @@ class MassBalance(object):
             'get_feedback': False,
             'pause_feedback':False
         }
+        return
+    
+    def clearCache(self):
+        """
+        Clear dataframe.
+        """
+        self.setFlag('pause_feedback', True)
+        self.buffer_df = pd.DataFrame(columns=COLUMNS)
+        self.setFlag('pause_feedback', False)
         return
     
     def connect(self):
@@ -152,8 +166,16 @@ class MassBalance(object):
         response = self._read()
         try:
             value = int(response)
-            self._mass = value / CALIB_MASS
-            self.buffer_df = self.buffer_df.append({'Time': datetime.now(), 'Value': self._mass}, ignore_index=True)
+            self._mass = value / CALIB_MASS - self.baseline
+            if self._flags.get('record', False):
+                row = {
+                    'Time': datetime.now(), 
+                    'Value': value,
+                    'Factor': CALIB_MASS,
+                    'Baseline': self.baseline,
+                    'Mass': self._mass
+                }
+                self.buffer_df = self.buffer_df.append(row, ignore_index=True)
         except ValueError:
             pass
         return response
@@ -175,17 +197,13 @@ class MassBalance(object):
             bool: whether pipette is connected
         """
         return self._flags['connected']
-   
+    
     def reset(self):
         """
-        Reset dataframe.
-        
-        Returns:
-            str: device response
+        Reset baseline and clear buffer
         """
-        self.setFlag('pause_feedback', True)
-        self.buffer_df = pd.DataFrame(columns=['Time', 'Value'])
-        self.setFlag('pause_feedback', False)
+        self.baseline = 0
+        self.clearCache()
         return
 
     def setFlag(self, name:str, value:bool):
@@ -202,21 +220,12 @@ class MassBalance(object):
     def tare(self):
         """
         Alias for zero
-        
-        Args:
-            channel (int, optional): channel to reset. Defaults to None.
-
-        Returns:
-            str: device response
         """
         return self.zero()
     
     def toggleFeedbackLoop(self, on:bool):
         """
         Toggle between start and stopping feedback loop
-        
-        Args:
-            channel (int, optional): channel to toggle feedback loop. Defaults to None.
 
         Args:
             on (bool): whether to listen to feedback
@@ -230,36 +239,49 @@ class MassBalance(object):
             self._threads['feedback_loop'].join()
         return
     
-    def toggleLivePlot(self, on:bool):
+    # def toggleLivePlot(self, on:bool):
+    #     """
+    #     Toggle between start and stopping feedback loop
+
+    #     Args:
+    #         on (bool): whether to listen to feedback
+    #     """
+    #     if on:
+    #         thread = Thread(target=self._loop_feedback)
+    #         thread.start()
+    #         self._threads['feedback_loop'] = thread
+    #     else:
+    #         self._threads['feedback_loop'].join()
+    #     return
+    
+    def toggleRecord(self, on:bool):
         """
-        Toggle between start and stopping feedback loop
-        
-        Args:
-            channel (int, optional): channel to toggle feedback loop. Defaults to None.
+        Toggle between start and stopping mass records
 
         Args:
-            on (bool): whether to listen to feedback
+            on (bool): whether to start recording
         """
-        if on:
-            thread = Thread(target=self._loop_feedback)
-            thread.start()
-            self._threads['feedback_loop'] = thread
-        else:
-            self._threads['feedback_loop'].join()
+        self.setFlag('record', on)
+        self.setFlag('get_feedback', on)
+        self.setFlag('pause_feedback', False)
+        self.toggleFeedbackLoop(on=on)
         return
 
-    def zero(self):
+    def zero(self, wait=5):
         """
-        Zero the plunger position
+        Set current reading as baseline (i.e. zero mass)
         
         Args:
-            channel (int, optional): channel to zero. Defaults to None.
-
-        Returns:
-            str: device response
+            wait (int, optional): duration to wait while zeroing (seconds). Defaults to 5.
         """
+        self.reset()
+        self.toggleRecord(True)
+        print(f"Zero-ing... ({wait}s)")
+        time.sleep(wait)
+        self.baseline = self.buffer_df['Mass'].mean()
+        self.reset()
         return
     
-    def update_plot(self, fig):
-        return fig
+    # def update_plot(self, fig):
+    #     return fig
         
