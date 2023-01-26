@@ -134,7 +134,7 @@ class SpinbotSetup(object):
             tip_length (int, optional): length of pipette tip. Defaults to 80.
             channel (int, optional): channel to use. Defaults to None.
         """
-        next_tip_location = self.positions.get('pipette_tips').pop(0)
+        next_tip_location, tip_length = self.positions.get('pipette_tips', [(0,0,0), tip_length]).pop(0)
         return self.attachTipAt(next_tip_location, tip_length=tip_length, channel=channel)
     
     def attachTipAt(self, coordinates:tuple, tip_length=80, channel=None):
@@ -159,6 +159,11 @@ class SpinbotSetup(object):
         self.mover.implement_offset = tuple(np.array(self.mover.implement_offset) + np.array([0,0,-tip_length]))
         self.mover.move('z', 20+tip_length, speed_fraction=0.2)
         time.sleep(1)
+        if not self.liquid.isTipOn():# or self.liquid.tip_length:
+            tip_length = self.liquid.tip_length
+            self.mover.implement_offset = tuple(np.array(self.mover.implement_offset) - np.array([0,0,-tip_length]))
+            self.liquid.tip_length = 0
+            return
         return
     
     def dispenseAt(self, coordinates, volume, speed=None, channel=None, **kwargs):
@@ -186,7 +191,7 @@ class SpinbotSetup(object):
         Args:
             channel (int, optional): channel to use. Defaults to None.
         """
-        bin_location = self.positions.get('bin')
+        bin_location = self.positions.get('bin', (0,0,0))
         return self.ejectTipAt(bin_location, channel=channel)
     
     def ejectTipAt(self, coordinates, channel=None):
@@ -249,6 +254,7 @@ class SpinbotSetup(object):
         Load the deck layout from JSON file
         """
         self.deck.load_layout(self._config.get('deck'), __name__)
+        self.positions['pipette_tips'] = [(well.top, well.depth) for well in self.deck.get_slot(name='tip_rack').wells_list]
         return
     
     def reset(self):
