@@ -19,7 +19,7 @@ import serial # pip install pyserial
 print(f"Import: OK <{__name__}>")
 
 READ_TIMEOUT_S = 2
-CALIB_MASS = 6.700627450980402 * 0.9724382408295394 # initial calibration factor * subsequent validation factor
+CALIB_MASS = 6.700627450980402 * 0.9955 # initial calibration factor * subsequent validation factor
 
 class MassBalance(object):
     def __init__(self, port:str, **kwargs):
