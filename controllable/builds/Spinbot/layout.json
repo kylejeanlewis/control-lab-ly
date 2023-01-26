@@ -2,20 +2,24 @@
 	"reference_points":{
 		"1": [0,0,0],
 		"2": [150,0,0],
-		"3": [300,0,0]
+		"3": [300,0,0],
+		"4": [450,0,0]
 	},
     "slots":{
 		"3": {
 			"name": "tip_rack",
 			"filepath": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/opentrons_96_tiprack_1000ul.json"
 		},
-		"2": {
+		"1": {
 			"name": "balance",
 			"filepath": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json"
 		},
-		"1": {
+		"2": {
 			"name": "jars",
 			"filepath": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json"
+		},
+		"4": {
+			"name": "bin"
 		}
 	}
 }
