@@ -328,8 +328,10 @@ if __name__ == "__main__":
 from controllable.Measure.Physical.balance_utils import MassBalance
 if __name__ == "__main__":
     balance = MassBalance('COM8')
-    
+    balance.zero()
+    balance.toggleRecord(True)
     pass
+
 # %% Mass calibration
 import numpy as np
 import pandas as pd
@@ -421,10 +423,10 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 
 pd.options.plotting.backend = 'plotly'
-filename = r"C:\Users\leongcj\Desktop\Astar_git\control-lab-le\data\calibration\balance\sartorius calib 6-0-25g.csv"
+filename = r"C:\Users\leongcj\Desktop\Astar_git\control-lab-le\data\calibration\balance\sartorius calib 7-0-25g.csv"
 
 df = pd.read_csv(filename, index_col=0)
-df['Mass'] = df['Mass'] / 1.0288956629819839
+df['Mass'] = df['Mass'] 
 df['Mass'] = df['Mass'] - df.loc[:100,'Mass'].mean()
 d1df = df['Mass'].diff()
 d2df = d1df.diff()
@@ -437,7 +439,7 @@ fig = px.line(df, x='Time', y=['Mass', 'Mass_d1','Mass_d2'])
 fig.show()
 
 x = df['Mass_d2']
-peaks, _ = find_peaks(x, distance=100, height=5000)
+peaks, _ = find_peaks(x, distance=100, height=(2500,50000))
 plt.plot(x)
 plt.plot(peaks, x[peaks], "x")
 plt.show()
@@ -450,19 +452,28 @@ for peak in peaks:
         avg -= levels[0]
     levels.append(avg)
 levels[0] = 0
-print(levels)
+fig_lvl = px.bar(x=[i for i in range(len(levels))], y=np.array(levels)/1000)
+fig_lvl.show()
 
-A = 25_000
-B = 25_000
-C = 25_000
-D = 25_000
-order = [A,C,B,-C,-A,D,C,-D,-B,D,A,-A-C,A,B,C,-A-B-C-D]
-# order = [A,C,B,-C,-A,D,C,-D,-B,D,A,B,-C,-B,-A,-D]
+A = 24.9959
+B = 25.0015
+C = 25.0036
+D = 25.0054
+# order = np.array([A,C,B,-C,-A,D,C,-D,-B,D,A,-A-C,A,B,C,-A-B-C-D])*1000
+order = np.array([A,C,B,-C,-A,D,C,-D,-B,D,A,B,-C,-B,-A,-D])*1000
 step_sizes = np.diff(np.array(levels))
 expected_step_sizes = np.array(order)
 calib = step_sizes/expected_step_sizes
 calib_avg = calib.mean()
 calib_std = calib.std()
+error = abs(step_sizes - expected_step_sizes)
+error_avg = error.mean()
+error_std = error.std()
+pct_error = abs(calib - 1) * 100
+pct_error_avg = pct_error.mean()
+pct_error_std = pct_error.std()
 print(f'Average calibration factor: {calib_avg}')
+print(f'Mean absolute error: {error_avg:.03} mg')
+print(f'Mean absolute percentage error: {pct_error_avg:.03} %')
 
 # %%
