@@ -19,4 +19,4 @@
     fill: [-100,0,0]
     tips: [0,0,0]
     bins: [0,0,0]
-  deck: "layout.json"
+  deck: layout.json
