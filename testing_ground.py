@@ -126,7 +126,7 @@ if __name__ == "__main__":
 # %% Webcam examples
 from controllable.View.Optical import Optical
 if __name__ == "__main__":
-    viewer = Optical()
+    viewer = Optical(1)
     viewer.getImage()
     pass
 
@@ -153,13 +153,13 @@ from controllable.View.Thermal import Thermal
 from controllable.Control.GUI import CompoundPanel, MeasurerPanel, MoverPanel, ViewerPanel
 if __name__ == "__main__":
     ensemble = {
-        'Camera': (ViewerPanel, dict(viewer=Optical())),
+        'Camera': (ViewerPanel, dict(viewer=Optical(1))),
         # 'Thermal': (ViewerPanel, dict(viewer=Thermal('192.168.1.111'))),
-        'Primitiv': (MoverPanel, dict(mover=Primitiv('COM5'), axes=['X','Y','Z'])),
-        'Ender': (MoverPanel, dict(mover=Ender('COM17'), axes=['X','Y','Z'])),
-        'M1Pro': (MoverPanel, dict(mover=M1Pro(), axes=['X','Y','Z','a','b','c'])),
-        'Keithley': (MeasurerPanel, dict(measurer=Keithley('192.168.1.104'))),
-        'Biologic': (MeasurerPanel, dict(measurer=Biologic('192.168.1.104'))),
+        # 'Primitiv': (MoverPanel, dict(mover=Primitiv('COM5'), axes=['X','Y','Z'])),
+        # 'Ender': (MoverPanel, dict(mover=Ender('COM17'), axes=['X','Y','Z'])),
+        # 'M1Pro': (MoverPanel, dict(mover=M1Pro(), axes=['X','Y','Z','a','b','c'])),
+        # 'Keithley': (MeasurerPanel, dict(measurer=Keithley('192.168.1.104'))),
+        # 'Biologic': (MeasurerPanel, dict(measurer=Biologic('192.168.1.104'))),
     }
     gui = CompoundPanel(ensemble)
     gui.runGUI('Demo')
@@ -179,7 +179,7 @@ from controllable.Control.GUI import MoverPanel
 if __name__ == "__main__":
     gui = MoverPanel(**dict(mover=M1Pro(ip_address='192.168.2.21', home_coordinates=(300,0,100)), axes=['X','Y','Z','a']))
     # gui = MoverPanel(**dict(mover=MG400(ip_address='192.109.209.8'), axes=['X','Y','Z','a']))
-    gui.runGUI('MG400')
+    gui.runGUI('M1Pro')
     pass
 
 # %% GUI examples: Keithley
@@ -249,9 +249,9 @@ if __name__ == "__main__":
     mover = setup.mover
     liquid = setup.liquid
     
-    # for _ in range(96):
-    #     setup.attachTip()
-    #     setup.ejectTip()
+    for _ in range(96):
+        setup.attachTip()
+        setup.ejectTip()
     
     # pipette_tips = [
     #     (124.3,23.6,20),
@@ -478,5 +478,43 @@ print(f'Mean absolute error (step): {step_mae:.03} mg')
 print(f'Mean absolute percentage error (step): {step_mape:.03} %')
 fig_lvl = px.bar(x=[i for i in range(len(levels))], y=levels/1000)
 fig_lvl.show()
+
+# %% Camera record example
+from controllable.View.Optical import Optical
+import plotly.express as px
+import time
+
+cam = Optical(0)
+cam.toggleRecord(True, folder='C:/Users/leongcj/Desktop/machine vision', timeout=60)
+time.sleep(60)
+cam.toggleRecord(False)
+
+# %%
+# %% Paraspin examples (B1)
+from controllable.builds.Spinbot import SpinbotSetup
+from controllable.Measure.Physical import MassBalance
+from controllable.View.Optical import Optical
+import plotly.express as px
+import time
+
+import pandas as pd
+pd.options.plotting.backend = 'plotly'
+
+if __name__ == "__main__":
+    spinbot = SpinbotSetup(config_option=0)
+    balance = MassBalance('COM8')
+    camera = Optical(0)
+
+    setup =spinbot
+    mover = setup.mover
+    liquid = setup.liquid
+    
+    setup.align(setup.deck.get_slot(name='jars').get_well('A1').middle)
+    balance.toggleRecord(True)
+    camera.toggleRecord(True, folder='C:/Users/leongcj/Desktop/machine vision', timeout=60)
+    liquid.aspirate(volume=200, speed=None)
+    time.sleep(60)
+    balance.toggleRecord(False)
+    pass
 
 # %%
