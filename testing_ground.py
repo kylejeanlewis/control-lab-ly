@@ -445,35 +445,38 @@ plt.plot(peaks, x[peaks], "x")
 plt.show()
 print(f'Number of peaks: {len(peaks)}')
 
-levels = []
-for peak in peaks:
-    avg = df.loc[peak-55:peak-5, 'Mass'].mean()
-    if len(levels):
-        avg -= levels[0]
-    levels.append(avg)
-levels[0] = 0
-fig_lvl = px.bar(x=[i for i in range(len(levels))], y=np.array(levels)/1000)
-fig_lvl.show()
-
 A = 24.9959
 B = 25.0015
 C = 25.0036
 D = 25.0054
 # order = np.array([A,C,B,-C,-A,D,C,-D,-B,D,A,-A-C,A,B,C,-A-B-C-D])*1000
 order = np.array([A,C,B,-C,-A,D,C,-D,-B,D,A,B,-C,-B,-A,-D])*1000
-step_sizes = np.diff(np.array(levels))
+expected_levels = np.insert(np.cumsum(order), 0, 1E-10)
 expected_step_sizes = np.array(order)
-calib = step_sizes/expected_step_sizes
-calib_avg = calib.mean()
-calib_std = calib.std()
-error = abs(step_sizes - expected_step_sizes)
-error_avg = error.mean()
-error_std = error.std()
-pct_error = abs(calib - 1) * 100
-pct_error_avg = pct_error.mean()
-pct_error_std = pct_error.std()
-print(f'Average calibration factor: {calib_avg}')
-print(f'Mean absolute error: {error_avg:.03} mg')
-print(f'Mean absolute percentage error: {pct_error_avg:.03} %')
+
+levels = []
+for peak in peaks:
+    avg = df.loc[peak-55:peak-5, 'Mass'].mean()
+    levels.append(avg)
+levels = np.array(levels) - levels[0]
+level_error = levels - expected_levels
+level_pct_error = (levels/(expected_levels) - 1)*100
+level_mae = abs(level_error).mean()
+level_mape = abs(level_pct_error[1:-1]).mean()
+
+step_sizes = np.diff(np.array(levels))
+calib_factor = step_sizes/expected_step_sizes
+step_error = step_sizes - expected_step_sizes
+step_pct_error = abs(calib_factor - 1) * 100
+calib_factor_avg = calib_factor.mean()
+step_mae = abs(step_error).mean()
+step_mape = abs(step_pct_error).mean()
+print(f'Average calibration factor: {calib_factor_avg}')
+print(f'Mean absolute error (level): {level_mae:.03} mg')
+print(f'Mean absolute percentage error (level): {level_mape:.03} %')
+print(f'Mean absolute error (step): {step_mae:.03} mg')
+print(f'Mean absolute percentage error (step): {step_mape:.03} %')
+fig_lvl = px.bar(x=[i for i in range(len(levels))], y=levels/1000)
+fig_lvl.show()
 
 # %%
