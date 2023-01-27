@@ -7,8 +7,11 @@ Notes / actionables:
 - 
 """
 # Standard library imports
+from datetime import datetime
 import numpy as np
+import os
 import pandas as pd
+from threading import Thread
 
 # Third party imports
 import cv2 # pip install opencv-python
@@ -38,8 +41,13 @@ class Camera(object):
         self.rotation = rotation
         
         self._flags = {
-            'isConnected': False
+            'isConnected': False,
+            'pause_record': False,
+            'record': False
         }
+        self._threads = {}
+        self.record_folder = ''
+        self.record_timeout = None
         pass
     
     def __delete__(self):
@@ -79,6 +87,43 @@ class Camera(object):
         df.reset_index(inplace = True, drop = True)
         return df
     
+    def _loop_record(self):
+        """
+        Record loop to constantly get and save image frames
+        """
+        start_message = f'Recording...' if self.record_timeout is None else f'Recording... ({self.record_timeout}s)'
+        print(start_message)
+        timestamp = []
+        frame_num = 0
+        start = datetime.now()
+        folder = start.strftime("%Y-%m-%d_%H%M")
+        if len(self.record_folder):
+            folder = '/'.join([self.record_folder, folder])
+        if not os.path.exists(f'{folder}/frames'):
+            os.makedirs(f'{folder}/frames')
+        
+        start = datetime.now()
+        while self._flags['record']:
+            if self._flags['pause_record']:
+                continue
+            now = datetime.now()
+            _, image = self.getImage()
+            self.saveImage(image, filename=f'{folder}/frames/frame_{frame_num:05}.png')
+            timestamp.append(now)
+            frame_num += 1
+            if self.record_timeout is not None and (now - start).seconds > self.record_timeout:
+                break
+        end = datetime.now()
+        
+        duration = end - start
+        print('Stop recording...')
+        print(f'\nDuration: {str(duration)}')
+        print(f'\nFrames recorded: {frame_num}')
+        print(f'\nAverage FPS: {frame_num/duration.seconds}')
+        df = pd.DataFrame({'frame_num': [i for i in range(frame_num)], 'timestamp': timestamp})
+        df.to_csv(f'{folder}/timestamps.csv')
+        return
+    
     def _read(self):
         """
         Read camera feed
@@ -95,13 +140,14 @@ class Camera(object):
         self.feed.release()
         return
     
-    def _set_placeholder(self, filename='', img_bytes=None):
+    def _set_placeholder(self, filename='', img_bytes=None, resize=False):
         """
         Gets placeholder image for camera, if not connected
 
         Args:
             filename (str, optional): name of placeholder image file. Defaults to ''.
             img_bytes (bytes, optional): byte representation of placeholder image. Defaults to None.
+            resize (bool, optional): whether to resize the image. Defaults to False.
 
         Returns:
             Image: image of placeholder
@@ -112,7 +158,8 @@ class Camera(object):
         elif type(img_bytes) == bytes:
             array = np.asarray(bytearray(img_bytes), dtype="uint8")
             image = self.decodeImage(array)
-        image.resize(self.cam_size, inplace=True)
+        if resize:
+            image.resize(self.cam_size, inplace=True)
         self.placeholder_image = image
         return image
     
@@ -161,12 +208,13 @@ class Camera(object):
                 raise Exception('Please input either image or frame.')
         return cv2.imencode(ext, frame)[1].tobytes()
     
-    def getImage(self, crosshair=True):
+    def getImage(self, crosshair=False, resize=False):
         """
         Get image from camera feed
 
         Args:
-            crosshair (bool, optional): whether to overlay crosshair on image. Defaults to True.
+            crosshair (bool, optional): whether to overlay crosshair on image. Defaults to False.
+            resize (bool, optional): whether to resize the image. Defaults to False.
 
         Returns:
             bool, Image: True if image is obtained; image object
@@ -177,7 +225,8 @@ class Camera(object):
             ret, frame = self._read()
             if ret:
                 image = Image(frame)
-                image.resize(self.cam_size, inplace=True)
+                if resize:
+                    image.resize(self.cam_size, inplace=True)
                 image.rotate(self.rotation, inplace=True)
             else:
                 image = self.placeholder_image
@@ -209,6 +258,29 @@ class Camera(object):
         frame = cv2.imread(filename)
         return Image(frame)
     
+    def toggleRecord(self, on:bool, folder:str = '', timeout:int = None):
+        """
+        Toggle record
+
+        Args:
+            on (bool): whether to start recording frames
+            folder (str, optional): folder to save to. Defaults to ''.
+            timeout (int, optional): number of seconds to record. Defaults to None.
+        """
+        self.setFlag('record', on)
+        if on:
+            if 'record_loop' in self._threads:
+                self._threads['record_loop'].join()
+            self.record_folder = folder
+            self.record_timeout = timeout
+            thread = Thread(target=self._loop_record)
+            thread.start()
+            self._threads['record_loop'] = thread
+        else:
+            self._threads['record_loop'].join()
+            pass
+        return
+    
     def saveImage(self, image:Image=None, frame=None, filename='image.png'):
         """
         Save image to file
@@ -230,6 +302,17 @@ class Camera(object):
             else:
                 raise Exception('Please input either image or frame.')
         return cv2.imwrite(filename, frame)
+    
+    def setFlag(self, name:str, value:bool):
+        """
+        Set a flag truth value
+
+        Args:
+            name (str): label
+            value (bool): flag value
+        """
+        self._flags[name] = value
+        return
     
     # Image manipulation
     def annotateAll(self, df:pd.DataFrame, frame):
