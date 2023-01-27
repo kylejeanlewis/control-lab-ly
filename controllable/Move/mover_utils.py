@@ -220,6 +220,11 @@ class Mover(object):
             external_pt2 (numpy.ndarray): x,y,z coordinates of physical point 2
             internal_pt2 (numpy.ndarray): x,y,z coordinates of robot point 2
         """
+        external_pt1 = np.array(external_pt1)
+        external_pt2 = np.array(external_pt2)
+        internal_pt1 = np.array(internal_pt1)
+        internal_pt2 = np.array(internal_pt2)
+        
         space_vector = external_pt2 - external_pt1
         robot_vector = internal_pt2 - internal_pt1
         space_mag = np.linalg.norm(space_vector)
@@ -232,19 +237,16 @@ class Mover(object):
 
         cos_theta = dot_product
         sin_theta = math.copysign(np.linalg.norm(cross_product), cross_product[2])
-        rot_angle = math.acos(cos_theta) if sin_theta>0 else 2*math.pi - math.acos(cos_theta)
+        # rot_angle = math.acos(cos_theta) if sin_theta>0 else 2*math.pi - math.acos(cos_theta)
         rot_matrix = np.array([[cos_theta,-sin_theta,0],[sin_theta,cos_theta,0],[0,0,1]])
         
         self.orientate_matrix = rot_matrix
-        # self.translate_vector = (external_pt1 - internal_pt2) # BUG
-        self.translate_vector = np.matmul( self.orientate_matrix.T, external_pt1) - internal_pt1 - self.implement_offset
-        self.scale = 1 #(space_mag / robot_mag)
+        self.translate_vector = np.matmul( self.orientate_matrix.T, external_pt2) - internal_pt2 - self.implement_offset
+        self.scale = 1 # (space_mag / robot_mag)
         
         print(f'Orientate matrix:\n{self.orientate_matrix}')
         print(f'Translate vector: {self.translate_vector}')
-        print(f'Scale factor: {self.scale}')
-        # print(f'Offset angle: {rot_angle/math.pi*180} degree')
-        # print(f'Offset vector: {(external_pt1 - internal_pt2)}')
+        print(f'Scale factor: {self.scale}\n')
         return
     
     def getConfigSettings(self, attributes:list):
