@@ -84,6 +84,22 @@ class Image(object):
             return
         return Image(frame)
     
+    def convertToRGB(self, inplace=False):
+        """
+        Turn image to RGB
+
+        Args:
+            inplace (bool, optional): whether to perform action in place. Defaults to False.
+
+        Returns:
+            Image, or None: Image object, or None (if inplace=True)
+        """
+        frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
+        if inplace:
+            self.frame = frame
+            return
+        return Image(frame)
+    
     def convolve(self, inplace=False):
         """
         Perform convolution on image
