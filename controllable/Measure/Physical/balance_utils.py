@@ -231,6 +231,8 @@ class MassBalance(object):
         """
         self.setFlag('get_feedback', on)
         if on:
+            if 'feedback_loop' in self._threads:
+                self._threads['feedback_loop'].join()
             thread = Thread(target=self._loop_feedback)
             thread.start()
             self._threads['feedback_loop'] = thread
@@ -258,6 +260,8 @@ class MassBalance(object):
         Args:
             wait (int, optional): duration to wait while zeroing (seconds). Defaults to 5.
         """
+        temp_record_state = self._flags.get('record', False)
+        temp_buffer_df = self.buffer_df.copy()
         self.reset()
         self.toggleRecord(True)
         print(f"Zeroing... ({wait}s)")
@@ -265,5 +269,7 @@ class MassBalance(object):
         self.toggleRecord(False)
         self.baseline = self.buffer_df['Mass'].mean()
         self.clearCache()
+        self.buffer_df = temp_buffer_df.copy()
         print("Zeroing complete.")
+        self.toggleRecord(temp_record_state)
         return
