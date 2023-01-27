@@ -18,7 +18,7 @@ import serial # pip install pyserial
 # Local application imports
 print(f"Import: OK <{__name__}>")
 
-CALIBRATION_FACTOR = 6.86322241421569       # output reading to mg
+CALIBRATION_FACTOR = 6.862879436681862       # output reading to mg
 COLUMNS = ['Time', 'Value', 'Factor', 'Baseline', 'Mass']
 
 class MassBalance(object):
@@ -88,7 +88,7 @@ class MassBalance(object):
             self.device = device
             print(f"Connection opened to {port}")
             self.setFlag('connected', True)
-            self.toggleFeedbackLoop(on=True)
+            # self.toggleFeedbackLoop(on=True)
         except Exception as e:
             print(f"Could not connect to {port}")
             if self.verbose:
@@ -262,7 +262,8 @@ class MassBalance(object):
         self.toggleRecord(True)
         print(f"Zeroing... ({wait}s)")
         time.sleep(wait)
+        self.toggleRecord(False)
         self.baseline = self.buffer_df['Mass'].mean()
-        self.reset()
+        self.clearCache()
         print("Zeroing complete.")
         return
