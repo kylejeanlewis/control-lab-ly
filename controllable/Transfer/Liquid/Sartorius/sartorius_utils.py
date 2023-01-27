@@ -49,6 +49,7 @@ class Sartorius(LiquidHandler):
         self.device = None
         self.home_position = 0
         self.limits = (0,0)
+        self.implement_offset = (0,0,-250)
         self.tip_length = 0
         
         self._flags = {
