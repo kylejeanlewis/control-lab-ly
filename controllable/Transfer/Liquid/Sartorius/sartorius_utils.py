@@ -63,8 +63,8 @@ class Sartorius(LiquidHandler):
         self._levels = 0
         self._position = 0
         self._resolution = 0
-        self._speed_in = 0
-        self._speed_out = 0
+        self._speed_in = 3      # Default speed is setting 3
+        self._speed_out = 3     # Default speed is setting 3
         self._speed_codes = None
         self._status_code = ''
         self._threads = {}
@@ -678,8 +678,10 @@ class Sartorius(LiquidHandler):
             bool: whether the tip in on
         """
         self.getLiquidLevel()
-        tip_on = (self._levels > TIP_THRESHOLD)
-        self.setFlag('tip_on', tip_on)
+        print(f'Tip capacitance: {self._levels}')
+        # tip_on = (self._levels > TIP_THRESHOLD)
+        # self.setFlag('tip_on', tip_on)
+        tip_on = self._flags.get('tip_on')
         return tip_on
     
     def move(self, axis:str, value:int, channel=None):
