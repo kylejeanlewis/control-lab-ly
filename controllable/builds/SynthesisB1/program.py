@@ -7,20 +7,23 @@ Notes / actionables:
 -
 """
 # Standard library imports
-import json
 from collections import namedtuple
+import json
+
+import sys
+REPO = 'control-lab-le'
+here = '/'.join(__file__.split('\\')[:-1])
+root = here.split(REPO)[0]
+sys.path.append(f'{root}{REPO}')
 
 # Third party imports
 
 # Local application imports
-from ...Compound.LiquidMover import LiquidMoverSetup
-from ...Measure.Physical import MassBalance
-from ...View.Optical import Optical
+from controllable.Compound.LiquidMover import LiquidMoverSetup
+from controllable.Measure.Physical import MassBalance
+from controllable.View.Optical import Optical
 print(f"Import: OK <{__name__}>")
 
-REPO = 'control-lab-le'
-here = '/'.join(__file__.split('\\')[:-1])
-root = here.split(REPO)[0]
 config_file = f"{here}/config.yaml"
 layout_file = f"{here}/layout.json"
 
@@ -33,6 +36,8 @@ def create_setup():
     spinbot = LiquidMoverSetup(config=config_file, config_option=0, layout_dict=layout_dict)
     balance = MassBalance('COM8')
     camera = Optical(1)
+    setup_objects = ['setup', 'mover', 'liquid', 'balance', 'camera']
+    print(f"Objects created: {', '.join(setup_objects)}")
     
     Setup = namedtuple(
         'Setup', ['setup', 'mover', 'liquid', 'balance', 'camera']
