@@ -7,7 +7,6 @@ Notes / actionables:
 -
 """
 # Standard library imports
-from collections import namedtuple
 import json
 
 import sys
@@ -19,6 +18,7 @@ sys.path.append(f'{root}{REPO}')
 # Third party imports
 
 # Local application imports
+from . import create_named_tuple
 from controllable.Compound.LiquidMover import LiquidMoverSetup
 from controllable.Measure.Physical import MassBalance
 from controllable.View.Optical import Optical
@@ -32,15 +32,16 @@ with open(layout_file) as file:
 for slot in layout_dict['slots'].values():
     slot['filepath'] = f"{root}{slot['filepath']}"
 
+@create_named_tuple
 def create_setup():
     liquidmover = LiquidMoverSetup(config=config_file, config_option=0, layout_dict=layout_dict)
     balance = MassBalance('COM8')
     camera = Optical(1)
-    setup_objects = ['setup', 'mover', 'liquid', 'balance', 'camera']
-    print(f"Objects created: {', '.join(setup_objects)}")
-    
-    Setup = namedtuple(
-        'Setup', ['setup', 'mover', 'liquid', 'balance', 'camera']
-    )
-
-    return Setup(liquidmover, liquidmover.mover, liquidmover.liquid, balance, camera)
+    setup = {
+        'setup': liquidmover, 
+        'mover': liquidmover.mover, 
+        'liquid': liquidmover.liquid, 
+        'balance': balance, 
+        'camera': camera
+    }
+    return setup
