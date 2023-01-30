@@ -460,5 +460,5 @@ if __name__ == "__main__":
 # %%
 from controllable.builds.SynthesisB1 import program
 
-program.run()
+setup = program.create_setup()
 # %%
