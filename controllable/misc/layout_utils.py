@@ -343,18 +343,22 @@ class Deck(object):
         self._slots[str(slot)] = Labware(slot=str(slot), bottom_left_coordinates=bottom_left_coordinates, labware_file=labware_file, package=package)
         return
     
-    def load_layout(self, layout_file:str, package:str = None, labware_package:str = None):
+    def load_layout(self, layout_file:str = None, layout_dict:dict = None, package:str = None, labware_package:str = None):
         """
         Load deck layout
 
         Args:
-            layout_file (str): JSON filepath of deck layout
+            layout_file (str, optional): JSON filepath of deck layout. Defaults to None.
+            layout_dict (dict, optional): dictionary of layout. Defaults to None.
             package (str, optional): name of package to look in. Defaults to None.
             labware_package (str, optional): name of package to look in for labware file. Defaults to None.
         """
-        if layout_file is None:
+        if layout_file is None and layout_dict is None:
             return
-        self.details = self._read_json(json_file=layout_file, package=package)
+        elif layout_file is not None:
+            self.details = self._read_json(json_file=layout_file, package=package)
+        else:
+            self.details = layout_dict
         slots = self.details.get('slots', {})
         for slot in sorted(list(slots)):
             info = slots[slot]
