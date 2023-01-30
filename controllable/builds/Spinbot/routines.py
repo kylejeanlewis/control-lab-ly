@@ -148,10 +148,10 @@ class SpinbotSetup(object):
         """
         if 'eject' not in dir(self.liquid):
             print("'attachTip' method not available.")
-            return
+            return coordinates
         if self.liquid.isTipOn():# or self.liquid.tip_length:
             print("Please eject current tip before attaching new tip.")
-            return
+            return coordinates
         self.mover.safeMoveTo(coordinates, descent_speed_fraction=0.2)
         self.mover.move('z', -20, speed_fraction=0.01)
         time.sleep(3)
@@ -159,12 +159,14 @@ class SpinbotSetup(object):
         self.mover.implement_offset = tuple(np.array(self.mover.implement_offset) + np.array([0,0,-tip_length]))
         self.mover.move('z', 20+tip_length, speed_fraction=0.2)
         time.sleep(1)
-        if not self.liquid.isTipOn():# or self.liquid.tip_length:
-            tip_length = self.liquid.tip_length
-            self.mover.implement_offset = tuple(np.array(self.mover.implement_offset) - np.array([0,0,-tip_length]))
-            self.liquid.tip_length = 0
-            return
-        return
+        self.liquid.setFlag('tip_on', True)
+        # if not self.liquid.isTipOn():# or self.liquid.tip_length:
+        #     tip_length = self.liquid.tip_length
+        #     self.mover.implement_offset = tuple(np.array(self.mover.implement_offset) - np.array([0,0,-tip_length]))
+        #     self.liquid.tip_length = 0
+        #     self.liquid.setFlag('tip_on', False)
+        #     return coordinates
+        return coordinates
     
     def dispenseAt(self, coordinates, volume, speed=None, channel=None, **kwargs):
         """
@@ -204,17 +206,21 @@ class SpinbotSetup(object):
         """
         if 'eject' not in dir(self.liquid):
             print("'ejectTip' method not available.")
-            return
+            return coordinates
         if not self.liquid.isTipOn(): # or not self.liquid.tip_length:
             print("There is currently no tip to eject.")
-            return
+            tip_length = self.liquid.tip_length
+            self.mover.implement_offset = tuple(np.array(self.mover.implement_offset) - np.array([0,0,-tip_length]))
+            self.liquid.tip_length = 0
+            return coordinates
         self.mover.safeMoveTo(coordinates, descent_speed_fraction=0.2)
         time.sleep(1)
         self.liquid.eject()
         tip_length = self.liquid.tip_length
         self.mover.implement_offset = tuple(np.array(self.mover.implement_offset) - np.array([0,0,-tip_length]))
         self.liquid.tip_length = 0
-        return
+        self.liquid.setFlag('tip_on', False)
+        return coordinates
     
     def isBusy(self):
         """
