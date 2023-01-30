@@ -189,7 +189,11 @@ class Helper(object):
         Returns:
             dict: dictionary of configuration parameters
         """
-        yml = pkgutil.get_data(package, config_file).decode('utf-8')
+        try:
+            yml = pkgutil.get_data(package, config_file).decode('utf-8')
+        except AttributeError:
+            with open(config_file) as file:
+                yml = file.read()
         configs = yaml.safe_load(yml)
         config = configs[config_option]
         for obj in config.keys():
