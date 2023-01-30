@@ -218,20 +218,20 @@ if __name__ == "__main__":
         coord = setup.attachTip()
         setup.ejectTipAt(coordinates=(*coord[:2],coord[2]-18))
     
-    coord = setup.attachTip()
-    mover.home()
-    vol = 100
-    for i in range(30):
-        print(f'Cycle {i+1}')
-        setup.aspirateAt((424.3,21,-74), vol)
-        setup.dispenseAt((227,30,-15), vol)
-        time.sleep(20)
-    balance.buffer_df.plot(x='Time', y='Value')
-    balance.buffer_df.to_csv(f'sartorius calib 5-0-{vol}uL.csv')
-    mover.move('z', 50)
-    mover.home()
-    setup.ejectTipAt(*coord[:2],coord[2]-18)
-    balance.reset()
+    # coord = setup.attachTip()
+    # mover.home()
+    # vol = 100
+    # for i in range(30):
+    #     print(f'Cycle {i+1}')
+    #     setup.aspirateAt((424.3,21,-74), vol)
+    #     setup.dispenseAt((227,30,-15), vol)
+    #     time.sleep(20)
+    # balance.buffer_df.plot(x='Time', y='Value')
+    # balance.buffer_df.to_csv(f'sartorius calib 5-0-{vol}uL.csv')
+    # mover.move('z', 50)
+    # mover.home()
+    # setup.ejectTipAt(*coord[:2],coord[2]-18)
+    # balance.reset()
     pass
 
 # %% Primitiv examples
