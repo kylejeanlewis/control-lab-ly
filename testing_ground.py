@@ -199,7 +199,7 @@ if __name__ == "__main__":
     pass
 
 # %% Paraspin examples (B1)
-from controllable.builds.Spinbot import SpinbotSetup
+from controllable.Compound.LiquidMover import LiquidMoverSetup
 from controllable.Measure.Physical import MassBalance
 import time
 
@@ -207,7 +207,7 @@ import pandas as pd
 pd.options.plotting.backend = 'plotly'
 
 if __name__ == "__main__":
-    spinbot = SpinbotSetup(config_option=0)
+    spinbot = LiquidMoverSetup(config_option=0)
     balance = MassBalance('COM8')
 
     setup =spinbot
@@ -430,7 +430,7 @@ fig_lvl = px.bar(x=[i for i in range(len(levels))], y=levels/1000)
 fig_lvl.show()
 
 # %% Paraspin examples (B1)
-from controllable.builds.Spinbot import SpinbotSetup
+from controllable.Compound.LiquidMover import LiquidMoverSetup
 from controllable.Measure.Physical import MassBalance
 from controllable.View.Optical import Optical
 import plotly.express as px
@@ -440,7 +440,7 @@ import pandas as pd
 pd.options.plotting.backend = 'plotly'
 
 if __name__ == "__main__":
-    spinbot = SpinbotSetup(config_option=0)
+    spinbot = LiquidMoverSetup(config_option=0)
     balance = MassBalance('COM8')
     camera = Optical(1)
 
@@ -457,4 +457,8 @@ if __name__ == "__main__":
     # camera.toggleRecord(False)
     pass
 
+# %%
+from controllable.builds.SynthesisB1 import program
+
+program.run()
 # %%

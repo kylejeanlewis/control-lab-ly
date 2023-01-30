@@ -16,28 +16,26 @@ import time
 from ...misc import Deck, Helper
 print(f"Import: OK <{__name__}>")
 
-CNC_SPEED = 250
-CONFIG_FILE = "config.yaml"
-
-class SpinbotSetup(object):
+class LiquidMoverSetup(object):
     """
-    Spinbot routines
+    Liquid Mover Setup routines
 
     Args:
-        config (str, optional): filename of config .yaml file. Defaults to CONFIG_FILE.
+        config (str): filename of config .yaml file
         config_option (int, optional): configuration option from config file. Defaults to 0.
+        layout (str, optional): filename of config .yaml file. Defaults to None.
         ignore_connections (bool, optional): whether to ignore connections and run methods. Defaults to False.
     """
-    def __init__(self, config=CONFIG_FILE, config_option=0, ignore_connections=False, **kwargs):
+    def __init__(self, config:str, config_option=0, layout:str = None, ignore_connections:bool = False, **kwargs):
         self.components = {}
         self.deck = Deck()
         self.positions = {}
-        self._config = Helper.read_plans(config, config_option, __name__)
+        self._config = Helper.read_plans(config, config_option)
         self._flags = {
             'at_rest': False
         }
         self._connect(ignore_connections=ignore_connections)
-        self.loadDeck()
+        self.loadDeck(layout)
         pass
     
     @property
@@ -255,11 +253,14 @@ class SpinbotSetup(object):
                 print(f"The position '{name}' has already been defined at: {self.positions[name]}")
         return
     
-    def loadDeck(self):
+    def loadDeck(self, layout:str):
         """
         Load the deck layout from JSON file
+        
+        Args:
+            layout (str): filename of layout .json file
         """
-        self.deck.load_layout(self._config.get('deck'), __name__)
+        self.deck.load_layout(layout)
         self.positions['pipette_tips'] = [(well.top, well.depth) for well in self.deck.get_slot(name='tip_rack').wells_list]
         return
     
