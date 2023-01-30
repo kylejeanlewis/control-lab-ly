@@ -29,30 +29,29 @@ if __name__ == "__main__":
 
 # %% Cartesian examples
 from controllable.Move.Cartesian import Primitiv, Ender
+from controllable.Control.GUI import MoverPanel
 if __name__ == "__main__":
     mover = Ender('COM4')
-    # mover = Primitiv('COM5')
+    gui = MoverPanel(**dict(mover=mover, axes=['X','Y','Z']))
+    gui.runGUI('Primitiv')
     pass
 
 # %% Jointed MG400 examples
 from controllable.Move.Jointed.Dobot import MG400
+from controllable.Control.GUI import MoverPanel
 if __name__ == "__main__":
     mover = MG400(ip_address='192.109.209.8')
+    gui = MoverPanel(**dict(mover=mover, axes=['X','Y','Z','a']))
+    gui.runGUI('M1Pro')
     pass
 
 # %% Jointed M1 Pro examples
 from controllable.Move.Jointed.Dobot import M1Pro
+from controllable.Control.GUI import MoverPanel
 if __name__ == "__main__":
     mover = M1Pro(ip_address='192.168.2.21', home_coordinates=(300,0,100))
-    pass
-
-# %% Keithley examples
-from controllable.Measure.Electrical.Keithley import Keithley, base_programs
-if __name__ == "__main__":
-    me = base_programs.IV_Scan
-    measurer = Keithley('192.168.1.104')
-    measurer.loadProgram('LSV')
-    measurer.measure()
+    gui = MoverPanel(**dict(mover=mover, axes=['X','Y','Z','a']))
+    gui.runGUI('M1Pro')
     pass
 
 # %% BioLogic examples
@@ -107,34 +106,28 @@ if __name__ == "__main__":
     measurer.measure(params, channels=[0])
     pass
 
-# %% BioLogic examples
-if __name__ == "__main__":
-    measurer.reset()
-    params = dict(
-        voltages = [0,1,-2,0,0],
-        scan_rate = 1,
-        vs_initial = True,
-        voltage_interval = 0.001,
-        wait = 0.5,
-        cycles = 1
-    )
-
-    measurer.loadProgram(name='CV')
-    measurer.measure(params, channels=[0])
-    pass
-
 # %% Webcam examples
 from controllable.View.Optical import Optical
+import time
+
+FOLDER = 'C:/Users/leongcj/Desktop/machine vision'
+
 if __name__ == "__main__":
     viewer = Optical(1)
     viewer.getImage()
+    viewer.toggleRecord(True, folder=FOLDER, timeout=10)
+    time.sleep(10)
+    viewer.toggleRecord(False)
     pass
 
 # %% Thermal cam examples
 from controllable.View.Thermal import Thermal
+from controllable.Control.GUI import ViewerPanel
 if __name__ == "__main__":
     viewer = Thermal('192.168.1.111')
     viewer.getImage()
+    gui = ViewerPanel(**dict(viewer=viewer, name='AX8'))
+    gui.runGUI('AX8')
     pass
 
 # %% Sartorius examples
@@ -165,25 +158,8 @@ if __name__ == "__main__":
     gui.runGUI('Demo')
     pass
 
-# %% GUI examples: Primitiv
-from controllable.Move.Cartesian import Primitiv
-from controllable.Control.GUI import MoverPanel
-if __name__ == "__main__":
-    gui = MoverPanel(**dict(mover=Primitiv('COM4'), axes=['X','Y']))
-    gui.runGUI('Primitiv')
-    pass
-
-# %% GUI examples: M1Pro
-from controllable.Move.Jointed.Dobot import M1Pro, MG400
-from controllable.Control.GUI import MoverPanel
-if __name__ == "__main__":
-    gui = MoverPanel(**dict(mover=M1Pro(ip_address='192.168.2.21', home_coordinates=(300,0,100)), axes=['X','Y','Z','a']))
-    # gui = MoverPanel(**dict(mover=MG400(ip_address='192.109.209.8'), axes=['X','Y','Z','a']))
-    gui.runGUI('M1Pro')
-    pass
-
 # %% GUI examples: Keithley
-from controllable.Measure.Electrical.Keithley import Keithley, base_programs
+from controllable.Measure.Electrical.Keithley import Keithley
 from controllable.Control.GUI import MeasurerPanel
 if __name__ == "__main__":
     gui = MeasurerPanel(**dict(measurer=Keithley('192.168.1.104'), name='Keithley'))
@@ -191,20 +167,11 @@ if __name__ == "__main__":
     pass
 
 # %% GUI examples: Biologic
-from controllable.Measure.Electrical.Biologic import Biologic, base_programs
+from controllable.Measure.Electrical.Biologic import Biologic
 from controllable.Control.GUI import MeasurerPanel
 if __name__ == "__main__":
     gui = MeasurerPanel(**dict(measurer=Biologic(), name='Biologic'))
     gui.runGUI('Biologic')
-    pass
-
-# %% GUI examples: Keithley
-from controllable.View.Thermal import Thermal
-from controllable.Control.GUI import ViewerPanel
-if __name__ == "__main__":
-    # me = base_programs.OCV
-    gui = ViewerPanel(**dict(viewer=Thermal('192.168.1.111'), name='AX8'))
-    gui.runGUI('AX8')
     pass
 
 # %% Spinner examples
@@ -224,8 +191,6 @@ from controllable.Control.Schedule import ScanningScheduler
 if __name__ == "__main__":
     REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
     RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
-    # REAGENTS = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
-    # RECIPE = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
     spinbot = SpinbotController(config_option=0)
     spinbot.loadRecipe(REAGENTS, RECIPE)
     spinbot.prepareSetup()
@@ -250,33 +215,23 @@ if __name__ == "__main__":
     liquid = setup.liquid
     
     for _ in range(96):
-        setup.attachTip()
-        setup.ejectTip()
+        coord = setup.attachTip()
+        setup.ejectTipAt(coordinates=(*coord[:2],coord[2]-18))
     
-    # pipette_tips = [
-    #     (124.3,23.6,20),
-    #     (124.3,32.1,20),
-    #     (124.3,41.2,20),
-    #     (124.9,50.6,20),
-    #     (124.9,59.6,20),
-    #     (125.2,68.4,20),
-    #     (125.5,77.5,20)
-    # ]
-    # for p,pipette_tip in enumerate(pipette_tips):
-    #     setup.attachTipAt(pipette_tip)
-    #     mover.home()
-    #     vol = 50 if p%2 else 100
-    #     for i in range(30):
-    #         print(f'Cycle {i+1}')
-    #         setup.aspirateAt((424.3,21,-74), vol)
-    #         setup.dispenseAt((227,30,-15), vol)
-    #         time.sleep(20)
-    #     balance.buffer_df.plot(x='Time', y='Value')
-    #     balance.buffer_df.to_csv(f'sartorius calib 5-{p}-{vol}uL.csv')
-    #     mover.move('z', 50)
-    #     mover.home()
-    #     setup.ejectTipAt(pipette_tip)
-    #     balance.reset()
+    coord = setup.attachTip()
+    mover.home()
+    vol = 100
+    for i in range(30):
+        print(f'Cycle {i+1}')
+        setup.aspirateAt((424.3,21,-74), vol)
+        setup.dispenseAt((227,30,-15), vol)
+        time.sleep(20)
+    balance.buffer_df.plot(x='Time', y='Value')
+    balance.buffer_df.to_csv(f'sartorius calib 5-0-{vol}uL.csv')
+    mover.move('z', 50)
+    mover.home()
+    setup.ejectTipAt(*coord[:2],coord[2]-18)
+    balance.reset()
     pass
 
 # %% Primitiv examples
@@ -319,17 +274,13 @@ if __name__ == "__main__":
     pass
 
 # %%
-from controllable.Measure.Mechanical.PiezoRobotics.piezorobotics_device import PiezoRoboticsDevice
-if __name__ == "__main__":
-    device = PiezoRoboticsDevice('COM19')
-    pass
-
-# %%
 from controllable.Measure.Physical.balance_utils import MassBalance
 if __name__ == "__main__":
     balance = MassBalance('COM8')
     balance.zero()
     balance.toggleRecord(True)
+    time.sleep(10)
+    balance.toggleRecord(False)
     pass
 
 # %% Mass calibration
@@ -410,7 +361,6 @@ fig.show()
 
 # %%
 from controllable.misc.layout_utils import Deck
-
 if __name__ == "__main__":
     deck = Deck(r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\examples\Labware\layout.json')
     pass
@@ -479,17 +429,6 @@ print(f'Mean absolute percentage error (step): {step_mape:.03} %')
 fig_lvl = px.bar(x=[i for i in range(len(levels))], y=levels/1000)
 fig_lvl.show()
 
-# %% Camera record example
-from controllable.View.Optical import Optical
-import plotly.express as px
-import time
-
-cam = Optical(0)
-cam.toggleRecord(True, folder='C:/Users/leongcj/Desktop/machine vision', timeout=60)
-time.sleep(60)
-cam.toggleRecord(False)
-
-# %%
 # %% Paraspin examples (B1)
 from controllable.builds.Spinbot import SpinbotSetup
 from controllable.Measure.Physical import MassBalance
@@ -503,18 +442,19 @@ pd.options.plotting.backend = 'plotly'
 if __name__ == "__main__":
     spinbot = SpinbotSetup(config_option=0)
     balance = MassBalance('COM8')
-    camera = Optical(0)
+    camera = Optical(1)
 
     setup =spinbot
     mover = setup.mover
     liquid = setup.liquid
     
-    setup.align(setup.deck.get_slot(name='jars').get_well('A1').middle)
-    balance.toggleRecord(True)
-    camera.toggleRecord(True, folder='C:/Users/leongcj/Desktop/machine vision', timeout=60)
-    liquid.aspirate(volume=200, speed=None)
-    time.sleep(60)
-    balance.toggleRecord(False)
+    # setup.align(setup.deck.get_slot(name='jars').get_well('A1').middle)
+    # balance.toggleRecord(True)
+    # camera.toggleRecord(True, folder='C:/Users/leongcj/Desktop/machine vision', timeout=60)
+    # liquid.aspirate(volume=200, speed=None)
+    # time.sleep(60)
+    # balance.toggleRecord(False)
+    # camera.toggleRecord(False)
     pass
 
 # %%
