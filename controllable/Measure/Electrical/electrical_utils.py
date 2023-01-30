@@ -165,7 +165,7 @@ class Electrical(object):
             self.datatype = datatype
         elif name is not None and datatype is None:
             if name not in Types.TYPE_NAMES:
-                raise Exception(f"Please select a valid custom datatype from: {', '.join(Types.TYPE_NAMES)}")
+                raise Exception(f"Please select a valid custom datatype from: {', '.join(Types.TYPE_NAMES)}")   # FIXME: remove dependency on "Types"
             self.datatype = getattr(Types, name)
         else:
             raise Exception("Please input only one of 'name' or 'datatype'")
