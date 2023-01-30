@@ -119,7 +119,8 @@ class Dobot(RobotArm):
             self.dashboard.ResetRobot()
             self.dashboard.DisableRobot()
         except (AttributeError, OSError):
-            print("Not connected to arm!")
+            if self.verbose:
+                print("Not connected to arm!")
         return
       
     def _shutdown(self):
@@ -168,7 +169,8 @@ class Dobot(RobotArm):
             self.dashboard.close()
             self.feedback.close()
         except (AttributeError, OSError):
-            print("Not connected to arm!")
+            if self.verbose:
+                print("Not connected to arm!")
 
         self.device = None
         return self.device
@@ -224,7 +226,8 @@ class Dobot(RobotArm):
             print(f'Move time: {move_time}s ({self._speed_fraction})')
             time.sleep(move_time)
         except (AttributeError, OSError):
-            print("Not connected to arm!")
+            if self.verbose:
+                print("Not connected to arm!")
             self.updatePosition(vector=vector, angles=angles)
             return False
         self.updatePosition(vector=vector, angles=angles)
@@ -260,7 +263,8 @@ class Dobot(RobotArm):
             print(f'Move time: {move_time}s ({self._speed_fraction})')
             time.sleep(move_time)
         except (AttributeError, OSError):
-            print("Not connected to arm!")
+            if self.verbose:
+                print("Not connected to arm!")
             self.updatePosition(coordinates=coordinates, orientation=orientation)
             return False
         self.updatePosition(coordinates=coordinates, orientation=orientation)
@@ -285,7 +289,8 @@ class Dobot(RobotArm):
             print(f'Move time: {move_time}s ({self._speed_fraction})')
             time.sleep(move_time)
         except (AttributeError, OSError):
-            print("Not connected to arm!")
+            if self.verbose:
+                print("Not connected to arm!")
             self.updatePosition(angles=relative_angles[3:])
             return False
         self.updatePosition(angles=relative_angles[3:])
@@ -310,7 +315,8 @@ class Dobot(RobotArm):
             print(f'Move time: {move_time}s ({self._speed_fraction})')
             time.sleep(move_time)
         except (AttributeError, OSError):
-            print("Not connected to arm!")
+            if self.verbose:
+                print("Not connected to arm!")
             self.updatePosition(orientation=absolute_angles[3:])
             return False
         self.updatePosition(orientation=absolute_angles[3:])
@@ -324,7 +330,8 @@ class Dobot(RobotArm):
             self.dashboard.ClearError()
             self.dashboard.EnableRobot()
         except (AttributeError, OSError):
-            print("Not connected to arm!")
+            if self.verbose:
+                print("Not connected to arm!")
         return
 
     def setSpeed(self, speed:int):
@@ -339,7 +346,8 @@ class Dobot(RobotArm):
             self.dashboard.SpeedFactor(speed)
             self._speed_fraction = (speed/100)
         except (AttributeError, OSError):
-            print("Not connected to arm!")
+            if self.verbose:
+                print("Not connected to arm!")
         return
     
     def toggleAttachment(self, on:bool, name='', attachment_type=None, attachment_module=attachments):
@@ -610,7 +618,8 @@ class M1Pro(Dobot):
                 self.dashboard.SetArmOrientation(0,1,1,1)
                 time.sleep(2)
             except (AttributeError, OSError):
-                print("Not connected to arm!")
+                if self.verbose:
+                    print("Not connected to arm!")
             finally:
                 self.setFlag('right_handed', False)
                 set_hand = True
@@ -619,7 +628,8 @@ class M1Pro(Dobot):
                 self.dashboard.SetArmOrientation(1,1,1,1)
                 time.sleep(2)
             except (AttributeError, OSError):
-                print("Not connected to arm!")
+                if self.verbose:
+                    print("Not connected to arm!")
             finally:
                 self.setFlag('right_handed', True)
                 set_hand = True
