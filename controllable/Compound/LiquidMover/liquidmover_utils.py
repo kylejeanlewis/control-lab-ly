@@ -24,9 +24,10 @@ class LiquidMoverSetup(object):
         config (str): filename of config .yaml file
         config_option (int, optional): configuration option from config file. Defaults to 0.
         layout (str, optional): filename of config .yaml file. Defaults to None.
+        layout_dict (dict, optional): dictionary of layout. Defaults to None.
         ignore_connections (bool, optional): whether to ignore connections and run methods. Defaults to False.
     """
-    def __init__(self, config:str, config_option=0, layout:str = None, ignore_connections:bool = False, **kwargs):
+    def __init__(self, config:str, config_option=0, layout:str = None, layout_dict:dict = None, ignore_connections:bool = False, **kwargs):
         self.components = {}
         self.deck = Deck()
         self.positions = {}
@@ -35,7 +36,7 @@ class LiquidMoverSetup(object):
             'at_rest': False
         }
         self._connect(ignore_connections=ignore_connections)
-        self.loadDeck(layout)
+        self.loadDeck(layout, layout_dict)
         pass
     
     @property
@@ -253,14 +254,15 @@ class LiquidMoverSetup(object):
                 print(f"The position '{name}' has already been defined at: {self.positions[name]}")
         return
     
-    def loadDeck(self, layout:str):
+    def loadDeck(self, layout:str = None, layout_dict:dict = None):
         """
         Load the deck layout from JSON file
         
         Args:
-            layout (str): filename of layout .json file
+            layout (str, optional): filename of layout .json file. Defaults to None.
+            layout_dict (dict, optional): dictionary of layout. Defaults to None.
         """
-        self.deck.load_layout(layout)
+        self.deck.load_layout(layout, layout_dict)
         self.positions['pipette_tips'] = [(well.top, well.depth) for well in self.deck.get_slot(name='tip_rack').wells_list]
         return
     
