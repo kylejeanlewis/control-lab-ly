@@ -33,7 +33,7 @@ for slot in layout_dict['slots'].values():
     slot['filepath'] = f"{root}{slot['filepath']}"
 
 def create_setup():
-    spinbot = LiquidMoverSetup(config=config_file, config_option=0, layout_dict=layout_dict)
+    liquidmover = LiquidMoverSetup(config=config_file, config_option=0, layout_dict=layout_dict)
     balance = MassBalance('COM8')
     camera = Optical(1)
     setup_objects = ['setup', 'mover', 'liquid', 'balance', 'camera']
@@ -43,4 +43,4 @@ def create_setup():
         'Setup', ['setup', 'mover', 'liquid', 'balance', 'camera']
     )
 
-    return Setup(spinbot, spinbot.mover, spinbot.liquid, balance, camera)
+    return Setup(liquidmover, liquidmover.mover, liquidmover.liquid, balance, camera)
