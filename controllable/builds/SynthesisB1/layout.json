@@ -8,19 +8,19 @@
     "slots":{
 		"3": {
 			"name": "tip_rack",
-			"filepath": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/sartorious_robotic_96_tiprack_1000ul.json"
+			"filepath": "control-lab-le/examples/Labware/sartorious_robotic_96_tiprack_1000ul.json"
 		},
 		"1": {
 			"name": "balance",
-			"filepath": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json"
+			"filepath": "control-lab-le/examples/Labware/labware.json"
 		},
 		"2": {
 			"name": "jars",
-			"filepath": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json"
+			"filepath": "control-lab-le/examples/Labware/labware.json"
 		},
 		"4": {
 			"name": "bin",
-			"filepath": "C:/Users/leongcj/Desktop/Astar_git/control-lab-le/examples/Labware/labware.json"
+			"filepath": "control-lab-le/examples/Labware/labware.json"
 		}
 	}
 }
