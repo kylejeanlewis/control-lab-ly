@@ -189,9 +189,9 @@ class Helper(object):
         Returns:
             dict: dictionary of configuration parameters
         """
-        try:
+        if package is not None:
             yml = pkgutil.get_data(package, config_file).decode('utf-8')
-        except AttributeError:
+        else:
             with open(config_file) as file:
                 yml = file.read()
         configs = yaml.safe_load(yml)
