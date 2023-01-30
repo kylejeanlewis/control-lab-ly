@@ -219,7 +219,6 @@ class Dobot(RobotArm):
         angles = tuple(angles)
         try:
             self.feedback.RelMovL(*vector)
-            self.feedback.WaitReply()
             self.rotateBy(angles)
             move_time = max(abs(np.array(vector)) / self.speed) + max(abs(np.array(angles)) / self.speed_angular) +MOVE_TIME_S
             print(f'Move time: {move_time}s ({self._speed_fraction})')
@@ -254,7 +253,6 @@ class Dobot(RobotArm):
         
         try:
             self.feedback.MovJ(*coordinates, *orientation)
-            self.feedback.WaitReply()
             position = self.position
             distances = abs(position[0] - np.array(coordinates))
             rotations = abs(position[1] - np.array(orientation))
@@ -283,7 +281,6 @@ class Dobot(RobotArm):
         relative_angles = tuple(relative_angles)
         try:
             self.feedback.RelMovJ(*relative_angles)
-            self.feedback.WaitReply()
             move_time = max(abs(np.array(relative_angles)) / self.speed_angular) +MOVE_TIME_S
             print(f'Move time: {move_time}s ({self._speed_fraction})')
             time.sleep(move_time)
@@ -309,7 +306,6 @@ class Dobot(RobotArm):
         absolute_angles = tuple(absolute_angles)
         try:
             self.feedback.JointMovJ(*absolute_angles)
-            self.feedback.WaitReply()
             move_time = max(abs(np.array(absolute_angles)) / self.speed_angular) +MOVE_TIME_S
             print(f'Move time: {move_time}s ({self._speed_fraction})')
             time.sleep(move_time)
