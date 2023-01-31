@@ -460,5 +460,13 @@ if __name__ == "__main__":
 # %%
 from controllable.builds.SynthesisB1 import program
 
-setup = program.create_setup()
+this = program.create_setup()
+
+this.balance.toggleRecord(True)
+this.camera.toggleRecord(True, folder='C:/Users/leongcj/Desktop/machine vision', timeout=10)
+this.liquid.aspirate(volume=1000, speed=None)
+time.sleep(5)
+this.camera.toggleRecord(False)
+this.balance.toggleRecord(False)
+this.liquid.dispense(volume=1000, speed=None)
 # %%
