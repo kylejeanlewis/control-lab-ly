@@ -12,6 +12,7 @@ import numpy as np
 import os
 import pandas as pd
 from threading import Thread
+# from multiprocessing import Process
 
 # Third party imports
 import cv2 # pip install opencv-python
@@ -94,6 +95,7 @@ class Camera(object):
         start_message = f'Recording...' if self.record_timeout is None else f'Recording... ({self.record_timeout}s)'
         print(start_message)
         timestamp = []
+        # frames = []
         frame_num = 0
         start = datetime.now()
         folder = start.strftime("%Y-%m-%d_%H%M")
@@ -110,10 +112,16 @@ class Camera(object):
             _, image = self.getImage()
             self.saveImage(image, filename=f'{folder}/frames/frame_{frame_num:05}.png')
             timestamp.append(now)
+            # frames.append(image.frame)
             frame_num += 1
             if self.record_timeout is not None and (now - start).seconds > self.record_timeout:
                 break
         end = datetime.now()
+        
+        # for i,frame in enumerate(frames):
+        #     self.saveImage(frame=frame, filename=f'{folder}/frames/frame_{i:05}.png')
+        # frame_num = len(frames)
+        # del frames
         
         duration = end - start
         print('Stop recording...')
@@ -276,6 +284,9 @@ class Camera(object):
             thread = Thread(target=self._loop_record)
             thread.start()
             self._threads['record_loop'] = thread
+            # process = Process(target=self._loop_record)
+            # process.start()
+            # self._threads['record_loop'] = process
         else:
             self._threads['record_loop'].join()
             pass
