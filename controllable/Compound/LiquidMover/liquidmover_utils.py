@@ -125,15 +125,19 @@ class LiquidMoverSetup(object):
         self.liquid.aspirate(volume=volume, speed=speed, channel=channel)
         return
     
-    def attachTip(self, tip_length=80, channel=None):
+    def attachTip(self, slot='tip_rack', tip_length=80, channel=None):
         """
         Attach new pipette tip
 
         Args:
+            slot (str, optional): name of slot with pipette tips. Defaults to 'tip_rack'.
             tip_length (int, optional): length of pipette tip. Defaults to 80.
             channel (int, optional): channel to use. Defaults to None.
+        
+        Returns:
+            tuple: coordinates of top of tip rack well
         """
-        next_tip_location, tip_length = self.positions.get('pipette_tips', [(0,0,0), tip_length]).pop(0)
+        next_tip_location, tip_length = self.positions.get(slot, [(0,0,0), tip_length]).pop(0)
         return self.attachTipAt(next_tip_location, tip_length=tip_length, channel=channel)
     
     def attachTipAt(self, coordinates:tuple, tip_length=80, channel=None):
@@ -144,6 +148,9 @@ class LiquidMoverSetup(object):
             coordinates (tuple): coordinates of pipette tip
             tip_length (int, optional): length of pipette tip. Defaults to 80.
             channel (int, optional): channel to use. Defaults to None.
+            
+        Returns:
+            tuple: coordinates of attach tip location
         """
         if 'eject' not in dir(self.liquid):
             print("'attachTip' method not available.")
@@ -185,14 +192,18 @@ class LiquidMoverSetup(object):
         self.liquid.dispense(volume=volume, speed=speed, channel=channel)
         return
     
-    def ejectTip(self, channel=None):
+    def ejectTip(self, slot='bin', channel=None):
         """
         Eject the pipette tip at the specified location
 
         Args:
+            slot (str, optional): name of slot with bin. Defaults to 'bin'.
             channel (int, optional): channel to use. Defaults to None.
+            
+        Returns:
+            tuple: coordinates of top of bin well
         """
-        bin_location = self.positions.get('bin', (0,0,0))
+        bin_location,_ = self.positions.get(slot, [((0,0,0), 0)])[0]
         return self.ejectTipAt(bin_location, channel=channel)
     
     def ejectTipAt(self, coordinates, channel=None):
@@ -202,6 +213,9 @@ class LiquidMoverSetup(object):
         Args:
             coordinates (tuple): coordinate of where to eject tip
             channel (int, optional): channel to use. Defaults to None.
+            
+        Returns:
+            tuple: coordinates of eject tip location
         """
         if 'eject' not in dir(self.liquid):
             print("'ejectTip' method not available.")
@@ -263,7 +277,8 @@ class LiquidMoverSetup(object):
             layout_dict (dict, optional): dictionary of layout. Defaults to None.
         """
         self.deck.load_layout(layout, layout_dict)
-        self.positions['pipette_tips'] = [(well.top, well.depth) for well in self.deck.get_slot(name='tip_rack').wells_list]
+        for name in self.deck.names:
+            self.positions[name] = [(well.top, well.depth) for well in self.deck.get_slot(name=name).wells_list]
         return
     
     def reset(self):
