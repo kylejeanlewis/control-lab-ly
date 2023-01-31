@@ -12,16 +12,15 @@ import os
 # Third party imports
 
 # Local application imports
-from ..build_utils import Controller
+from ...misc import Helper
 from .routines import PrimitivSetup
 print(f"Import: OK <{__name__}>")
 
-PACKAGE = __package__.split('.')[-1]
-CONFIG_FILE = f"{PACKAGE}/config.yaml"
+CONFIG_FILE = "config.yaml"
 
-class PrimitivController(Controller):
+class PrimitivController(object):
     def __init__(self, config_file=CONFIG_FILE, ignore_connections=False, config_option=0):
-        self._config = self._readPlans(config_file, config_option)
+        self._config = Helper.read_plans(__name__, config_file, config_option)
         self.setup = PrimitivSetup(self._config, ignore_connections)
         self.window = None
         self._flags = {
@@ -116,12 +115,3 @@ class PrimitivController(Controller):
         return self.setup.labelPositions(names, coords, overwrite)
     def loadProgram(self, program, params={}):
         return self.setup.measurer.loadProgram(program, params)
-
-    # GUI methods
-    def _gui_build_window(self):
-        return
-    def _gui_disable_interface(self):
-        return
-    def _gui_loop(self):
-        return
-    

@@ -32,6 +32,7 @@ class RobotArm(Mover):
     def __init__(self, safe_height=None, **kwargs):
         super().__init__(**kwargs)
         self.device = None
+        self._speed_angular = 1
         self.setFlag('retract', False)
         
         if safe_height is not None:
@@ -39,6 +40,10 @@ class RobotArm(Mover):
         # else:
         #     self.setHeight('safe', self.home_coordinates[2])
         return
+    
+    @property
+    def speed_angular(self):
+        return self._speed_angular * self._speed_fraction
     
     def home(self, tool_offset=True):
         """
@@ -58,6 +63,8 @@ class RobotArm(Mover):
         
         # Go to home position
         coordinates = self.home_coordinates - self.implement_offset if tool_offset else self.home_coordinates
+        # coordinates = self._transform_out(coordinates=coordinates, tool_offset=tool_offset)
+        # ret = self.safeMoveTo(coordinates=coordinates, orientation=self.home_orientation)
         ret = self.moveCoordTo(coordinates, self.home_orientation)
         return_values.append(ret)
         print("Homed")

@@ -8,6 +8,7 @@ Notes / actionables:
 """
 # Standard library imports
 import numpy as np
+import time
 
 # Third party imports
 import serial # pip install pyserial
@@ -43,6 +44,7 @@ class Gantry(Mover):
         
         self.device = None
         self.limits = limits
+        self._speed = CNC_SPEED
         
         self.port = ''
         self._baudrate = None
@@ -219,7 +221,10 @@ class Gantry(Mover):
         except Exception as e:
             if self.verbose:
                 print(e)
-
+        distances = abs(self.coordinates - coordinates)
+        times = distances / self.speed
+        move_time = max(times[:2]) + times[2]
+        time.sleep(move_time)
         self.updatePosition(coordinates=coordinates)
         return
     

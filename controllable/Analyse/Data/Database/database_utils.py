@@ -10,7 +10,7 @@ Notes / actionables:
 import os
 import pandas as pd
 import sqlite3
-import sqlalchemy # pip install SQLAlchemy
+# import sqlalchemy # pip install SQLAlchemy
 print(f"Import: OK <{__name__}>")
 
 class SQLiteDB(object):

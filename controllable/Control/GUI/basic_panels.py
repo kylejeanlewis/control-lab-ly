@@ -370,6 +370,7 @@ class MoverPanel(Panel):
                 coord = tool_position[:2] + [self.mover.heights['safe']]
             except (AttributeError,KeyError):
                 coord = self.mover._transform_out(coordinates=self.mover.home_coordinates, tool_offset=True)
+                coord = (*tool_position[:2], coord[2])
             if tool_position[2] >= coord[2]:
                 print('Already cleared safe height. Staying put...')
             else:

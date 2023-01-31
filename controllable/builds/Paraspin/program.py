@@ -15,18 +15,16 @@ import time
 import yaml # pip install pyyaml
 
 # Local application imports
+from ...misc import Helper
 from ...Control.Schedule import Scheduler
-from ..build_utils import Controller
 from .routines import SpinbotSetup
 print(f"Import: OK <{__name__}>")
 
-PACKAGE = __package__.split('.')[-1]
-CONFIG_FILE = f"{PACKAGE}/config.yaml"
+CONFIG_FILE = "config.yaml"
 
-class SpinbotController(Controller):
+class SpinbotController(object):
     def __init__(self, config_file=CONFIG_FILE, ignore_connections=False, config_option=0, recover_state_from_file=''):
-        self._config = self._readPlans(config_file, config_option)
-        self.setup = SpinbotSetup(self._config, ignore_connections)
+        self.setup = SpinbotSetup(config_file, config_option, ignore_connections)
         self.window = None
         self.scheduler = None
         
@@ -184,7 +182,7 @@ class SpinbotController(Controller):
         start_time = time.time()
         while not self.isComplete():
             time.sleep(0.05)
-            if self._isOverrun(start_time, timeout) or self._flags['force_stop']:
+            if Helper.is_overrun(start_time, timeout) or self._flags['force_stop']:
                 break
             # run scheduler and queue actions
             statuses = self.getStatuses()
@@ -196,9 +194,8 @@ class SpinbotController(Controller):
             pass
         
         total_time_s = round(time.time() - start_time)
-        m, s = divmod(total_time_s, 60)
-        h, m = divmod(m, 60)
-        print(f'Experiment complete! ({int(h)}hr {int(m)}min {int(s):02}sec)')
+        ftime = Helper.pretty_print_duration(total_time_s)
+        print(f'Experiment complete! ({ftime})')
         return
     
     def saveState(self, folder=''):
@@ -247,12 +244,4 @@ class SpinbotController(Controller):
         return self.setup.labelPosition(name, coord, overwrite)
     def labelPositions(self, names, coords, overwrite=False):
         return self.setup.labelPositions(names, coords, overwrite)
-
-    # GUI methods
-    def _gui_build_window(self):
-        return
-    def _gui_disable_interface(self):
-        return
-    def _gui_loop(self):
-        return
     

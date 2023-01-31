@@ -1,2 +1,1 @@
-from .syringe_utils import SyringeAssembly
-from . import Sartorius
+from .syringe_utils import Syringe, SyringeAssembly

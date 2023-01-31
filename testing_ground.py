@@ -22,37 +22,36 @@ print(f"Import: OK <{__name__}>")
 pd.options.plotting.backend = "plotly"
 
 # %% Helper examples
-from controllable.misc import HELPER
+from controllable.misc import Helper
 if __name__ == "__main__":
-    HELPER.display_ports()
+    Helper.display_ports()
     pass
 
 # %% Cartesian examples
 from controllable.Move.Cartesian import Primitiv, Ender
+from controllable.Control.GUI import MoverPanel
 if __name__ == "__main__":
     mover = Ender('COM4')
-    # mover = Primitiv('COM5')
+    gui = MoverPanel(**dict(mover=mover, axes=['X','Y','Z']))
+    gui.runGUI('Primitiv')
     pass
 
 # %% Jointed MG400 examples
 from controllable.Move.Jointed.Dobot import MG400
+from controllable.Control.GUI import MoverPanel
 if __name__ == "__main__":
     mover = MG400(ip_address='192.109.209.8')
+    gui = MoverPanel(**dict(mover=mover, axes=['X','Y','Z','a']))
+    gui.runGUI('M1Pro')
     pass
 
 # %% Jointed M1 Pro examples
 from controllable.Move.Jointed.Dobot import M1Pro
+from controllable.Control.GUI import MoverPanel
 if __name__ == "__main__":
     mover = M1Pro(ip_address='192.168.2.21', home_coordinates=(300,0,100))
-    pass
-
-# %% Keithley examples
-from controllable.Measure.Electrical.Keithley import Keithley, base_programs
-if __name__ == "__main__":
-    me = base_programs.IV_Scan
-    measurer = Keithley('192.168.1.104')
-    measurer.loadProgram('LSV')
-    measurer.measure()
+    gui = MoverPanel(**dict(mover=mover, axes=['X','Y','Z','a']))
+    gui.runGUI('M1Pro')
     pass
 
 # %% BioLogic examples
@@ -107,34 +106,28 @@ if __name__ == "__main__":
     measurer.measure(params, channels=[0])
     pass
 
-# %% BioLogic examples
-if __name__ == "__main__":
-    measurer.reset()
-    params = dict(
-        voltages = [0,1,-2,0,0],
-        scan_rate = 1,
-        vs_initial = True,
-        voltage_interval = 0.001,
-        wait = 0.5,
-        cycles = 1
-    )
-
-    measurer.loadProgram(name='CV')
-    measurer.measure(params, channels=[0])
-    pass
-
 # %% Webcam examples
 from controllable.View.Optical import Optical
+import time
+
+FOLDER = 'C:/Users/leongcj/Desktop/machine vision'
+
 if __name__ == "__main__":
-    viewer = Optical()
+    viewer = Optical(1)
     viewer.getImage()
+    viewer.toggleRecord(True, folder=FOLDER, timeout=10)
+    time.sleep(10)
+    viewer.toggleRecord(False)
     pass
 
 # %% Thermal cam examples
 from controllable.View.Thermal import Thermal
+from controllable.Control.GUI import ViewerPanel
 if __name__ == "__main__":
     viewer = Thermal('192.168.1.111')
     viewer.getImage()
+    gui = ViewerPanel(**dict(viewer=viewer, name='AX8'))
+    gui.runGUI('AX8')
     pass
 
 # %% Sartorius examples
@@ -153,37 +146,20 @@ from controllable.View.Thermal import Thermal
 from controllable.Control.GUI import CompoundPanel, MeasurerPanel, MoverPanel, ViewerPanel
 if __name__ == "__main__":
     ensemble = {
-        'Camera': (ViewerPanel, dict(viewer=Optical())),
+        'Camera': (ViewerPanel, dict(viewer=Optical(1))),
         # 'Thermal': (ViewerPanel, dict(viewer=Thermal('192.168.1.111'))),
-        'Primitiv': (MoverPanel, dict(mover=Primitiv('COM5'), axes=['X','Y','Z'])),
-        'Ender': (MoverPanel, dict(mover=Ender('COM17'), axes=['X','Y','Z'])),
-        'M1Pro': (MoverPanel, dict(mover=M1Pro(), axes=['X','Y','Z','a','b','c'])),
-        'Keithley': (MeasurerPanel, dict(measurer=Keithley('192.168.1.104'))),
-        'Biologic': (MeasurerPanel, dict(measurer=Biologic('192.168.1.104'))),
+        # 'Primitiv': (MoverPanel, dict(mover=Primitiv('COM5'), axes=['X','Y','Z'])),
+        # 'Ender': (MoverPanel, dict(mover=Ender('COM17'), axes=['X','Y','Z'])),
+        # 'M1Pro': (MoverPanel, dict(mover=M1Pro(), axes=['X','Y','Z','a','b','c'])),
+        # 'Keithley': (MeasurerPanel, dict(measurer=Keithley('192.168.1.104'))),
+        # 'Biologic': (MeasurerPanel, dict(measurer=Biologic('192.168.1.104'))),
     }
     gui = CompoundPanel(ensemble)
     gui.runGUI('Demo')
     pass
 
-# %% GUI examples: Primitiv
-from controllable.Move.Cartesian import Primitiv
-from controllable.Control.GUI import MoverPanel
-if __name__ == "__main__":
-    gui = MoverPanel(**dict(mover=Primitiv('COM4'), axes=['X','Y']))
-    gui.runGUI('Primitiv')
-    pass
-
-# %% GUI examples: M1Pro
-from controllable.Move.Jointed.Dobot import M1Pro, MG400
-from controllable.Control.GUI import MoverPanel
-if __name__ == "__main__":
-    gui = MoverPanel(**dict(mover=M1Pro(ip_address='192.168.2.21', home_coordinates=(300,0,100)), axes=['X','Y','Z','a']))
-    # gui = MoverPanel(**dict(mover=MG400(ip_address='192.109.209.8'), axes=['X','Y','Z','a']))
-    gui.runGUI('MG400')
-    pass
-
 # %% GUI examples: Keithley
-from controllable.Measure.Electrical.Keithley import Keithley, base_programs
+from controllable.Measure.Electrical.Keithley import Keithley
 from controllable.Control.GUI import MeasurerPanel
 if __name__ == "__main__":
     gui = MeasurerPanel(**dict(measurer=Keithley('192.168.1.104'), name='Keithley'))
@@ -191,20 +167,11 @@ if __name__ == "__main__":
     pass
 
 # %% GUI examples: Biologic
-from controllable.Measure.Electrical.Biologic import Biologic, base_programs
+from controllable.Measure.Electrical.Biologic import Biologic
 from controllable.Control.GUI import MeasurerPanel
 if __name__ == "__main__":
     gui = MeasurerPanel(**dict(measurer=Biologic(), name='Biologic'))
     gui.runGUI('Biologic')
-    pass
-
-# %% GUI examples: Keithley
-from controllable.View.Thermal import Thermal
-from controllable.Control.GUI import ViewerPanel
-if __name__ == "__main__":
-    # me = base_programs.OCV
-    gui = ViewerPanel(**dict(viewer=Thermal('192.168.1.111'), name='AX8'))
-    gui.runGUI('AX8')
     pass
 
 # %% Spinner examples
@@ -224,8 +191,6 @@ from controllable.Control.Schedule import ScanningScheduler
 if __name__ == "__main__":
     REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
     RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
-    # REAGENTS = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
-    # RECIPE = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
     spinbot = SpinbotController(config_option=0)
     spinbot.loadRecipe(REAGENTS, RECIPE)
     spinbot.prepareSetup()
@@ -234,18 +199,39 @@ if __name__ == "__main__":
     pass
 
 # %% Paraspin examples (B1)
-from controllable.builds.Paraspin import SpinbotController
-from controllable.Control.Schedule import ScanningScheduler
+from controllable.Compound.LiquidMover import LiquidMoverSetup
+from controllable.Measure.Physical import MassBalance
+import time
+
+import pandas as pd
+pd.options.plotting.backend = 'plotly'
+
 if __name__ == "__main__":
-    REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
-    RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
-    # REAGENTS = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
-    # RECIPE = r'C:\Users\Asus\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
-    spinbot = SpinbotController(config_option=1)
-    # spinbot.loadRecipe(REAGENTS, RECIPE)
-    # spinbot.prepareSetup()
-    # spinbot.loadScheduler(ScanningScheduler(), rest=False)
-    # spinbot.runExperiment()
+    spinbot = LiquidMoverSetup(config_option=0)
+    balance = MassBalance('COM8')
+
+    setup =spinbot
+    mover = setup.mover
+    liquid = setup.liquid
+    
+    for _ in range(96):
+        coord = setup.attachTip()
+        setup.ejectTipAt(coordinates=(*coord[:2],coord[2]-18))
+    
+    # coord = setup.attachTip()
+    # mover.home()
+    # vol = 100
+    # for i in range(30):
+    #     print(f'Cycle {i+1}')
+    #     setup.aspirateAt((424.3,21,-74), vol)
+    #     setup.dispenseAt((227,30,-15), vol)
+    #     time.sleep(20)
+    # balance.buffer_df.plot(x='Time', y='Value')
+    # balance.buffer_df.to_csv(f'sartorius calib 5-0-{vol}uL.csv')
+    # mover.move('z', 50)
+    # mover.home()
+    # setup.ejectTipAt(*coord[:2],coord[2]-18)
+    # balance.reset()
     pass
 
 # %% Primitiv examples
@@ -288,9 +274,191 @@ if __name__ == "__main__":
     pass
 
 # %%
-from controllable.Measure.Mechanical.PiezoRobotics.piezorobotics_device import PiezoRoboticsDevice
+from controllable.Measure.Physical.balance_utils import MassBalance
 if __name__ == "__main__":
-    device = PiezoRoboticsDevice('COM19')
+    balance = MassBalance('COM8')
+    balance.zero()
+    balance.toggleRecord(True)
+    time.sleep(10)
+    balance.toggleRecord(False)
     pass
 
+# %% Mass calibration
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import matplotlib.pyplot as plt
+from scipy.signal import find_peaks
+
+RUNS = 7
+
+calibration_steps = []
+calib_dfs = []
+pct_errors = []
+for i in range(RUNS):
+    volume = int(100/((i%2)+1))
+    filename = f'C:\\Users\\leongcj\\Desktop\\Astar_git\\control-lab-le\\sartorius calib 5-{i}-{volume}uL.csv'
+    df = pd.read_csv(filename, index_col=0)
+    df['Time'] = pd.to_datetime(df['Time'])
+    df['Value'] = df['Value']/0.9955
+    df.dropna(inplace=True)
+    df = df[(df['Value']<df['Value'].mean()*0.8) & (df['Value']>df['Value'].mean()*1.2)]    #Filter
+    df.reset_index(drop=True, inplace=True)
+
+    d1df = df['Value'].diff()
+    d2df = d1df.diff()
+    df = df.join(d1df, rsuffix='_d1')
+    df = df.join(d2df, rsuffix='_d2')
+    df = df[abs(df['Value_d1'])<500]    #Filter
+    df.reset_index(drop=True, inplace=True)
+    fig = px.scatter(df, x='Time', y=['Value', 'Value_d1','Value_d2'])
+    # fig.show()
+    
+    x = df['Value_d1']
+    peaks, _ = find_peaks(x, distance=100, height=(20,100))
+    plt.plot(x)
+    plt.plot(peaks, x[peaks], "x")
+    plt.show()
+    print(f'Number of peaks: {len(peaks)}')
+
+    levels = []
+    for peak in peaks:
+        avg = df.loc[peak-55:peak-5, 'Value'].mean()
+        levels.append(avg)
+    step_sizes = np.diff(np.array(levels))
+    step_sizes = np.extract(step_sizes>20, step_sizes)  #Filter
+    avg_step_size = np.mean(step_sizes)
+    print(f'Average step size: {avg_step_size}')
+    pct_error = abs((step_sizes - volume)/volume) *100
+    pct_errors.append(pct_error)
+
+    step_per_uL = avg_step_size / volume
+    print(f'Average step per uL: {step_per_uL}')
+    calibration_steps.append(step_per_uL)
+    
+    data = {
+        'step': [n for n in range(len(step_sizes))],
+        'mass_diff': step_sizes,
+        'mass_per_uL': np.array(step_sizes) / volume,
+        'run': [f'{i}-{volume}uL' for _ in range(len(step_sizes))]
+    }
+    sub_df = pd.DataFrame(data)
+    calib_dfs.append(sub_df)
+
+calib_df = pd.concat(calib_dfs, ignore_index=True)
+overall_avg_calibration = calib_df['mass_per_uL'].mean()
+print(f'Overall average step per uL: {overall_avg_calibration:.5}')
+overall_pct_error = np.mean(np.concatenate(pct_errors))
+print(f'Overall percentage error: {overall_pct_error:.2}%')
+
+n_colors = RUNS
+colors = px.colors.sample_colorscale("viridis", [n/(n_colors -1) for n in range(n_colors)])
+fig = px.scatter(calib_df, x='step', y='mass_diff', color='run', color_discrete_sequence=colors)
+fig.show()
+
+fig = px.scatter(calib_df, x='step', y='mass_per_uL', color='run', color_discrete_sequence=colors)
+fig.show()
+
+# %%
+from controllable.misc.layout_utils import Deck
+if __name__ == "__main__":
+    deck = Deck(r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\examples\Labware\layout.json')
+    pass
+
+# %% Mass calibration
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import matplotlib.pyplot as plt
+from scipy.signal import find_peaks
+
+pd.options.plotting.backend = 'plotly'
+filename = r"C:\Users\leongcj\Desktop\Astar_git\control-lab-le\data\calibration\balance\sartorius calib 7-0-25g.csv"
+
+df = pd.read_csv(filename, index_col=0)
+df['Mass'] = df['Mass'] 
+df['Mass'] = df['Mass'] - df.loc[:100,'Mass'].mean()
+d1df = df['Mass'].diff()
+d2df = d1df.diff()
+df = df.join(d1df, rsuffix='_d1')
+df.reset_index(drop=True, inplace=True)
+df = df.join(d2df, rsuffix='_d2')
+df.reset_index(drop=True, inplace=True)
+trim_threshold = 1000
+fig = px.line(df, x='Time', y=['Mass', 'Mass_d1','Mass_d2'])
+fig.show()
+
+x = df['Mass_d2']
+peaks, _ = find_peaks(x, distance=100, height=(2500,50000))
+plt.plot(x)
+plt.plot(peaks, x[peaks], "x")
+plt.show()
+print(f'Number of peaks: {len(peaks)}')
+
+A = 24.9959
+B = 25.0015
+C = 25.0036
+D = 25.0054
+# order = np.array([A,C,B,-C,-A,D,C,-D,-B,D,A,-A-C,A,B,C,-A-B-C-D])*1000
+order = np.array([A,C,B,-C,-A,D,C,-D,-B,D,A,B,-C,-B,-A,-D])*1000
+expected_levels = np.insert(np.cumsum(order), 0, 1E-10)
+expected_step_sizes = np.array(order)
+
+levels = []
+for peak in peaks:
+    avg = df.loc[peak-55:peak-5, 'Mass'].mean()
+    levels.append(avg)
+levels = np.array(levels) - levels[0]
+level_error = levels - expected_levels
+level_pct_error = (levels/(expected_levels) - 1)*100
+level_mae = abs(level_error).mean()
+level_mape = abs(level_pct_error[1:-1]).mean()
+
+step_sizes = np.diff(np.array(levels))
+calib_factor = step_sizes/expected_step_sizes
+step_error = step_sizes - expected_step_sizes
+step_pct_error = abs(calib_factor - 1) * 100
+calib_factor_avg = calib_factor.mean()
+step_mae = abs(step_error).mean()
+step_mape = abs(step_pct_error).mean()
+print(f'Average calibration factor: {calib_factor_avg}')
+print(f'Mean absolute error (level): {level_mae:.03} mg')
+print(f'Mean absolute percentage error (level): {level_mape:.03} %')
+print(f'Mean absolute error (step): {step_mae:.03} mg')
+print(f'Mean absolute percentage error (step): {step_mape:.03} %')
+fig_lvl = px.bar(x=[i for i in range(len(levels))], y=levels/1000)
+fig_lvl.show()
+
+# %% Paraspin examples (B1)
+from controllable.Compound.LiquidMover import LiquidMoverSetup
+from controllable.Measure.Physical import MassBalance
+from controllable.View.Optical import Optical
+import plotly.express as px
+import time
+
+import pandas as pd
+pd.options.plotting.backend = 'plotly'
+
+if __name__ == "__main__":
+    spinbot = LiquidMoverSetup(config_option=0)
+    balance = MassBalance('COM8')
+    camera = Optical(1)
+
+    setup =spinbot
+    mover = setup.mover
+    liquid = setup.liquid
+    
+    # setup.align(setup.deck.get_slot(name='jars').get_well('A1').middle)
+    # balance.toggleRecord(True)
+    # camera.toggleRecord(True, folder='C:/Users/leongcj/Desktop/machine vision', timeout=60)
+    # liquid.aspirate(volume=200, speed=None)
+    # time.sleep(60)
+    # balance.toggleRecord(False)
+    # camera.toggleRecord(False)
+    pass
+
+# %%
+from controllable.builds.SynthesisB1 import program
+
+setup = program.create_setup()
 # %%
