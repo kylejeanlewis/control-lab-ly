@@ -125,8 +125,8 @@ class Sartorius(LiquidHandler):
             Exception: Select a valid direction
         """
         speed, direction = value
-        speed_code = np.argmin(np.abs(np.array(self._speed_codes)-speed)) + 1
-        # print(f'Speed Code: {speed_code}')
+        speed_code = [x for x,val in enumerate(np.array(self._speed_codes)-speed) if val >= 0][0]
+        print(f'Speed Code: {speed_code}')
         if not (0 < speed_code < len(self._speed_codes)):
             raise Exception(f'Please select a valid speed code from 1 to {len(self._speed_codes)-1}')
         if direction == 'in':
