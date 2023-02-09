@@ -15,7 +15,3 @@
       port: COM17
       channel: 1
       offset: [0,0,0]
-  labelled_positions:
-    fill: [-100,0,0]
-    tips: [0,0,0]
-    bins: [0,0,0]

@@ -460,5 +460,26 @@ if __name__ == "__main__":
 # %%
 from controllable.builds.SynthesisB1 import program
 
-setup = program.create_setup()
+this = program.create_setup()
+this.liquid.setFlag('tip_on', True)
+# %%
+from controllable.Control.GUI import MoverPanel
+gui = MoverPanel(mover=this.mover, axes=['X','Y','Z','a'])
+gui.runGUI()
+# %%
+import time
+import pandas as pd
+pd.options.plotting.backend = "plotly"
+# %%
+# time.sleep(2)
+# this.balance.toggleRecord(True)
+this.camera.toggleRecord(True, folder='C:/Users/leongcj/Desktop/machine vision')
+this.liquid.aspirate(volume=1000, speed=150, wait=5)
+# time.sleep(1)
+this.camera.toggleRecord(False)
+# this.balance.toggleRecord(False)
+this.liquid.dispense(volume=1000, speed=150)
+# %%
+df = pd.read_csv(r'C:\Users\leongcj\Desktop\machine vision\2023-01-30_1419\timestamps.csv')
+df.plot(x='frame_num', y='timestamp')
 # %%
