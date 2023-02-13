@@ -7,41 +7,41 @@ Notes / actionables:
 -
 """
 # Standard library imports
-import json
-
 import sys
 REPO = 'control-lab-le'
 here = '/'.join(__file__.split('\\')[:-1])
 root = here.split(REPO)[0]
 sys.path.append(f'{root}{REPO}')
 
-# Third party imports
-
 # Local application imports
-from . import create_named_tuple
-from controllable.Compound.LiquidMover import LiquidMoverSetup
-from controllable.Measure.Physical import MassBalance
-from controllable.View.Optical import Optical
+from controllable.misc import Helper, create_setup
 print(f"Import: OK <{__name__}>")
+
+BINDINGS = {
+    'mover': 'setup.mover',
+    'liquid': 'setup.liquid'
+}
 
 config_file = f"{here}/config.yaml"
 layout_file = f"{here}/layout.json"
 
-with open(layout_file) as file:
-    layout_dict = json.load(file)
+layout_dict = Helper.read_json(layout_file)
 for slot in layout_dict['slots'].values():
     slot['filepath'] = f"{root}{slot['filepath']}"
 
-@create_named_tuple
-def create_setup():
-    liquidmover = LiquidMoverSetup(config=config_file, config_option=0, layout_dict=layout_dict)
-    balance = MassBalance('COM8')
-    camera = Optical(1)
-    setup = {
-        'setup': liquidmover, 
-        'mover': liquidmover.mover, 
-        'liquid': liquidmover.liquid, 
-        'balance': balance, 
-        'camera': camera
-    }
+def modify_setup(setup:dict):
+    """
+    Function to modify the setup upon initialization
+
+    Args:
+        setup (dict): dictionary of name, object pairs
+
+    Returns:
+        dict: modified setup dictionary
+    """
+    setup['setup'].loadDeck(layout_dict=layout_dict)
     return setup
+
+
+SETUP = create_setup(config_file=config_file, registry_file=registry_file, bindings=BINDINGS, modify_func=modify_setup)
+"""NOTE: importing SETUP gives the same instance wherever you import it"""
