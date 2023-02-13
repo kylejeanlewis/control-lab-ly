@@ -9,30 +9,10 @@ Notes / actionables:
 -
 """
 # Standard library imports
-import json
-import pkgutil
 
 # Local application imports
+from .misc_utils import Helper
 print(f"Import: OK <{__name__}>")
-
-def read_json(json_file:str, package:str = None):
-    """
-    Read JSON file
-
-    Args:
-        json_file (str): JSON filepath
-        package (str, optional): name of package to look in. Defaults to None.
-
-    Returns:
-        dict: dictionary loaded from JSON file
-    """
-    if package is not None:
-        jsn = pkgutil.get_data(package, json_file).decode('utf-8')
-    else:
-        with open(json_file) as file:
-            jsn = file.read()
-    return json.loads(jsn)
-
 
 class Well(object):
     """
@@ -117,6 +97,42 @@ class Well(object):
         """
         depth = self.details.get('depth', 0)
         return tuple(map(sum, zip(self.center, (0,0,depth))))
+    
+    def from_bottom(self, offset:tuple):
+        """
+        Offset from bottom of well
+
+        Args:
+            offset (tuple): x,y,z offset
+
+        Returns:
+            tuple: bottom of well with offset
+        """
+        return tuple(map(sum, zip(self.bottom, offset)))
+    
+    def from_middle(self, offset:tuple):
+        """
+        Offset from middle of well
+
+        Args:
+            offset (tuple): x,y,z offset
+
+        Returns:
+            tuple: middle of well with offset
+        """
+        return tuple(map(sum, zip(self.middle, offset)))
+    
+    def from_top(self, offset:tuple):
+        """
+        Offset from top of well
+
+        Args:
+            offset (tuple): x,y,z offset
+
+        Returns:
+            tuple: top of well with offset
+        """
+        return tuple(map(sum, zip(self.top, offset)))
 
 
 class Labware(object):
@@ -130,7 +146,7 @@ class Labware(object):
         package (str, optional): name of package to look in. Defaults to None.
     """
     def __init__(self, slot:str, bottom_left_coordinates:tuple, labware_file:str, package:str = None):
-        self.details = self._read_json(json_file=labware_file, package=package)
+        self.details = Helper.read_json(json_file=labware_file, package=package)
         self.name = self.details.get('metadata',{}).get('displayName', '')
         self.reference_point = bottom_left_coordinates
         self.slot = slot
@@ -228,20 +244,7 @@ class Labware(object):
             list: list of wells
         """
         return [self._wells[well] for well in self.details.get('wells',{})]
-    
-    def _read_json(self, json_file:str, package:str = None):
-        """
-        Read JSON file
 
-        Args:
-            json_file (str): JSON filepath
-            package (str, optional): name of package to look in. Defaults to None.
-
-        Returns:
-            dict: dictionary loaded from JSON file
-        """
-        return read_json(json_file, package)
-    
     def get_well(self, name:str):
         """
         Get well using name
@@ -294,19 +297,6 @@ class Deck(object):
         """
         return self._slots
     
-    def _read_json(self, json_file:str, package:str = None):
-        """
-        Read JSON file
-
-        Args:
-            json_file (str): JSON filepath
-            package (str, optional): name of package to look in. Defaults to None.
-
-        Returns:
-            dict: dictionary loaded from JSON file
-        """
-        return read_json(json_file, package)
-    
     def get_slot(self, index:int = None, name:str = None):
         """
         Get labware in slot using index or name
@@ -356,7 +346,7 @@ class Deck(object):
         if layout_file is None and layout_dict is None:
             return
         elif layout_file is not None:
-            self.details = self._read_json(json_file=layout_file, package=package)
+            self.details = Helper.read_json(json_file=layout_file, package=package)
         else:
             self.details = layout_dict
         slots = self.details.get('slots', {})
