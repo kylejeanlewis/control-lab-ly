@@ -422,7 +422,7 @@ class Mover(object):
         """
         return
     
-    def safeMoveTo(self, coordinates=None, orientation=None, tool_offset=True, descent_speed_fraction=1, **kwargs):
+    def safeMoveTo(self, coordinates=None, orientation=None, tool_offset=True, ascent_speed_fraction=1, descent_speed_fraction=1, **kwargs):
         """
         Safe version of moveTo by moving in Z-axis first
 
@@ -442,7 +442,7 @@ class Mover(object):
         coordinates = np.array(coordinates)
         orientation = np.array(orientation)
         
-        self.move('z', max(0, self.home_coordinates[2]-self.coordinates[2]))
+        self.move('z', max(0, self.home_coordinates[2]-self.coordinates[2]), speed_fraction=ascent_speed_fraction)
         intermediate_position = self.getToolPosition() if tool_offset else self.getUserPosition()
         self.moveTo(
             coordinates=list(coordinates[:2])+[float(intermediate_position[0][2])], 
@@ -451,19 +451,12 @@ class Mover(object):
         )
         if 0 < descent_speed_fraction < 1:
             self.setSpeed(int(max(1, descent_speed_fraction*100)))      # change speed here
-            self.moveTo(
-                coordinates=coordinates,
-                orientation=orientation, 
-                tool_offset=tool_offset
-            )
-            self.setSpeed(100)                                          # change speed back here
-            pass
-        else:
-            self.moveTo(
-                coordinates=coordinates,
-                orientation=orientation, 
-                tool_offset=tool_offset
-            )
+        self.moveTo(
+            coordinates=coordinates,
+            orientation=orientation, 
+            tool_offset=tool_offset
+        )
+        self.setSpeed(100)                                          # change speed back here
         return
     
     def setConfigSettings(self, config:dict):
