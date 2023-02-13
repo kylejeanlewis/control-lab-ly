@@ -7,23 +7,22 @@ Notes / actionables:
 -
 """
 # Standard library imports
-import sys
-REPO = 'control-lab-le'
-here = '/'.join(__file__.split('\\')[:-1])
-root = here.split(REPO)[0]
-sys.path.append(f'{root}{REPO}')
 
 # Local application imports
-from controllable.misc import Helper, create_setup
+from ...misc import Helper, create_setup
 print(f"Import: OK <{__name__}>")
 
 BINDINGS = {
     'mover': 'setup.mover',
     'liquid': 'setup.liquid'
 }
+REPO = 'control-lab-le'
+here = '/'.join(__file__.split('\\')[:-1])
+root = here.split(REPO)[0]
 
 config_file = f"{here}/config.yaml"
 layout_file = f"{here}/layout.json"
+registry_file = f"{root}{REPO}/controllable/builds/registry.yaml"
 
 layout_dict = Helper.read_json(layout_file)
 for slot in layout_dict['slots'].values():
