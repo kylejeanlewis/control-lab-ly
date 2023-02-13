@@ -15,6 +15,11 @@ LATER TODO
 # Standard library imports
 import numpy as np
 import pandas as pd
+import sys
+REPO = 'control-lab-le'
+here = '/'.join(__file__.split('\\')[:-1])
+root = here.split(REPO)[0]
+sys.path.append(root)
 
 # Local application imports
 print(f"Import: OK <{__name__}>")
@@ -186,17 +191,17 @@ if __name__ == "__main__":
     pass
 
 # %% Paraspin examples (L6)
-from controllable.builds.Paraspin import SpinbotController
-from controllable.Control.Schedule import ScanningScheduler
-if __name__ == "__main__":
-    REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
-    RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
-    spinbot = SpinbotController(config_option=0)
-    spinbot.loadRecipe(REAGENTS, RECIPE)
-    spinbot.prepareSetup()
-    spinbot.loadScheduler(ScanningScheduler(), rest=False)
-    spinbot.runExperiment()
-    pass
+# from controllable.builds.Paraspin import SpinbotController
+# from controllable.Control.Schedule import ScanningScheduler
+# if __name__ == "__main__":
+#     REAGENTS = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\reagents.csv' 
+#     RECIPE = r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\controllable\builds\Paraspin\parameters\recipe.csv'
+#     spinbot = SpinbotController(config_option=0)
+#     spinbot.loadRecipe(REAGENTS, RECIPE)
+#     spinbot.prepareSetup()
+#     spinbot.loadScheduler(ScanningScheduler(), rest=False)
+#     spinbot.runExperiment()
+#     pass
 
 # %% Paraspin examples (B1)
 from controllable.Compound.LiquidMover import LiquidMoverSetup
@@ -235,10 +240,10 @@ if __name__ == "__main__":
     pass
 
 # %% Primitiv examples
-from controllable.builds.PrimitivBench import PrimitivController
-if __name__ == "__main__":
-    primitiv = PrimitivController()
-    pass
+# from controllable.builds.PrimitivBench import PrimitivController
+# if __name__ == "__main__":
+#     primitiv = PrimitivController()
+#     pass
 
 # %% PiezoRobotics examples
 from controllable.Measure.Mechanical.PiezoRobotics import PiezoRobotics

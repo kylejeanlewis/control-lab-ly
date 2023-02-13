@@ -1,3 +1,9 @@
+import sys
+REPO = 'control-lab-le'
+here = '/'.join(__file__.split('\\')[:-1])
+root = here.split(REPO)[0]
+sys.path.append(root)
+
 import pandas as pd
 from controllable.Analyse.Visualisation.visualisation_utils import VIZ
 
