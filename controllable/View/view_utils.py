@@ -9,7 +9,6 @@ Notes / actionables:
 # Standard library imports
 from datetime import datetime
 import numpy as np
-import os
 import pandas as pd
 from threading import Thread
 # from multiprocessing import Process
@@ -18,6 +17,7 @@ from threading import Thread
 import cv2 # pip install opencv-python
 
 # Local application imports
+from ..misc import Helper
 from .image_utils import Image
 from .Classifiers import Classifier
 print(f"Import: OK <{__name__}>")
@@ -97,12 +97,7 @@ class Camera(object):
         timestamp = []
         # frames = []
         frame_num = 0
-        start = datetime.now()
-        folder = start.strftime("%Y-%m-%d_%H%M")
-        if len(self.record_folder):
-            folder = '/'.join([self.record_folder, folder])
-        if not os.path.exists(f'{folder}/frames'):
-            os.makedirs(f'{folder}/frames')
+        folder = Helper.create_folder(self.record_folder, 'frames')
         
         start = datetime.now()
         while self._flags['record']:
