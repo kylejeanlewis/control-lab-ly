@@ -6,11 +6,11 @@
 		"4": [10.5,106.5,0]
 	},
     "slots":{
-		"3": {
+		"1": {
 			"name": "tip_rack",
 			"filepath": "control-lab-le/examples/Labware/sartorious_robotic_96_tiprack_1000ul.json"
 		},
-		"1": {
+		"3": {
 			"name": "balance",
 			"filepath": "control-lab-le/examples/Labware/labware.json"
 		},

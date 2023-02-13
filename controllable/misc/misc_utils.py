@@ -7,13 +7,17 @@ Notes / actionables:
 -
 """
 # Standard library imports
-from datetime import date, datetime
+from collections import namedtuple
+from datetime import datetime
 import importlib
+import json
 import numpy as np
 import os
 import pandas as pd
 import pkgutil
 import time
+from typing import Callable
+import uuid
 
 # Third party imports
 import serial.tools.list_ports # pip install pyserial
@@ -31,31 +35,23 @@ class Helper(object):
         self.logs = {}
         pass
     
-    # @staticmethod
-    # def create_folder(parent_folder:str):
-    #     now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-    #     folder_name = f"{parent_folder}/{now}"
-    #     if not os.path.exists(folder_name):
-    #         os.makedirs(folder_name)
-    #     return
-    
+    # Static methods
     @staticmethod
-    def display_ports():
+    def create_folder(parent_folder:str = None, child_folder:str = None):
         """
-        Displays available ports
+        Check and create folder if it does not exist
 
-        Returns:
-            list: list of connected serial ports
+        Args:
+            parent_folder (str, optional): parent folder directory. Defaults to None.
+            child_folder (str, optional): child folder directory. Defaults to None.
         """
-        com_ports = []
-        ports = serial.tools.list_ports.comports()
-        for port, desc, hwid in sorted(ports):
-            com_ports.append(str(port))
-            print(f"{port}: {desc} [{hwid}]")
-        if len(ports) == 0:
-            print("No ports detected!")
-            return ['']
-        return com_ports
+        main_folder = datetime.now().strftime("%Y-%m-%d_%H%M")
+        if parent_folder:
+            main_folder = '/'.join([parent_folder, main_folder])
+        folder = '/'.join([main_folder, child_folder]) if child_folder else main_folder
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        return main_folder
     
     @staticmethod
     def get_class(module, dot_notation:str):
@@ -69,32 +65,13 @@ class Helper(object):
         Returns:
             class: relevant class
         """
+        print('\n')
         top_package = __name__.split('.')[0]
         import_path = f'{top_package}.{module}.{dot_notation}'
         package = importlib.import_module('.'.join(import_path.split('.')[:-1]))
         _class = getattr(package, import_path.split('.')[-1])
         return _class
-    
-    @staticmethod
-    def get_details(details:dict):
-        """
-        Decode dictionary of configuration details to get np.ndarrays and tuples
-
-        Args:
-            details (dict): dictionary of configuration details
-
-        Returns:
-            dict: dictionary of configuration details
-        """
-        for k,v in details.items():
-            if type(v) != dict:
-                continue
-            if "tuple" in v.keys():
-                details[k] = tuple(v['tuple'])
-            elif "array" in v.keys():
-                details[k] = np.array(v['array'])
-        return details
-    
+        
     @staticmethod
     def get_method_names(obj):
         """
@@ -115,6 +92,34 @@ class Helper(object):
             if callable(attribute_value) and not attribute.startswith('__'):
                 method_list.append(attribute)
         return method_list
+    
+    @staticmethod
+    def get_node():
+        """
+        Display the machine's unique identifier
+
+        Returns:
+            str: machine unique identifier
+        """
+        return str(uuid.getnode())
+    
+    @staticmethod
+    def get_ports():
+        """
+        Get available ports
+
+        Returns:
+            list: list of connected serial ports
+        """
+        com_ports = []
+        ports = serial.tools.list_ports.comports()
+        for port, desc, hwid in sorted(ports):
+            com_ports.append(str(port))
+            print(f"{port}: {desc} [{hwid}]")
+        if len(ports) == 0:
+            print("No ports detected!")
+            return ['']
+        return com_ports
     
     @staticmethod
     def is_overrun(start_time:float, timeout):
@@ -148,6 +153,44 @@ class Helper(object):
         return f'{int(h)}hr {int(m)}min {int(s):02}sec'
     
     @staticmethod
+    def read_json(json_file:str, package:str = None):
+        """
+        Read JSON file
+
+        Args:
+            json_file (str): JSON filepath
+            package (str, optional): name of package to look in. Defaults to None.
+
+        Returns:
+            dict: dictionary loaded from JSON file
+        """
+        if package is not None:
+            jsn = pkgutil.get_data(package, json_file).decode('utf-8')
+        else:
+            with open(json_file) as file:
+                jsn = file.read()
+        return json.loads(jsn)
+    
+    @staticmethod
+    def read_yaml(yaml_file:str, package:str = None):
+        """
+        Read YAML file
+
+        Args:
+            yaml_file (str): YAML filepath
+            package (str, optional): name of package to look in. Defaults to None.
+
+        Returns:
+            dict: dictionary loaded from YAML file
+        """
+        if package is not None:
+            yml = pkgutil.get_data(package, yaml_file).decode('utf-8')
+        else:
+            with open(yaml_file) as file:
+                yml = file.read()
+        return yaml.safe_load(yml)
+    
+    @staticmethod
     def zip_inputs(primary_keyword:str, **kwargs):
         """
         Checks and zips multiple keyword arguments of lists into dictionary
@@ -176,35 +219,97 @@ class Helper(object):
         kwargs_df.set_index(primary_keyword, drop=False, inplace=True)
         return kwargs_df.to_dict('index')
     
+    # Class methods
     @classmethod
-    def read_plans(cls, config_file:str, config_option:int, package:str = None):
+    def get_details(cls, configs:dict, addresses:dict = {}):
         """
-        Read configuration file (yaml)
+        Decode dictionary of configuration details to get np.ndarrays and tuples
+
+        Args:
+            details (dict): dictionary of configuration details
+            addresses (dict, optional): dictionary of registered addresses. Defaults to {}.
+
+        Returns:
+            dict: dictionary of configuration details
+        """
+        for name, details in configs.items():
+            settings = details.get('settings', {})
+            
+            for key,value in settings.items():
+                if key == 'component_config':
+                    value = cls.get_details(value, addresses=addresses)
+                if type(value) == str:
+                    if key in ['cam_index', 'port'] and value.startswith('__'):
+                        settings[key] = addresses.get(key, {}).get(settings[key], value)
+                if type(value) == dict:
+                    if "tuple" in value:
+                        settings[key] = tuple(value['tuple'])
+                    elif "array" in value:
+                        settings[key] = np.array(value['array'])
+
+            configs[name] = details
+        return configs
+    
+    @classmethod
+    def get_machine_addresses(cls, registry:dict):
+        """
+        Get the appropriate addresses for current machine
+
+        Args:
+            registry_file (str): yaml file with com port addresses and camera ids
+
+        Returns:
+            dict: dictionary of com port addresses and camera ids for current machine
+        """
+        node_id = cls.get_node()
+        addresses = registry.get('machine_id',{}).get(node_id,{})
+        if len(addresses) == 0:
+            print("\nAppend machine id and camera ids/port addresses to registry file")
+            print(yaml.dump(registry))
+            raise Exception(f"Machine not yet registered. (Current machine id: {node_id})")
+        return addresses
+    
+    @classmethod
+    def get_plans(cls, config_file:str, registry_file:str = None, package:str = None):
+        """
+        Read configuration file (yaml) and get details
 
         Args:
             config_file (str): filename of configuration file
-            config_option (int): option index to use
+            registry_file (str, optional): filename of registry file. Defaults to None.
             package (str, optional): name of package to look in. Defaults to None.
 
         Returns:
             dict: dictionary of configuration parameters
         """
-        if package is not None:
-            yml = pkgutil.get_data(package, config_file).decode('utf-8')
-        else:
-            with open(config_file) as file:
-                yml = file.read()
-        configs = yaml.safe_load(yml)
-        config = configs[config_option]
-        for obj in config.keys():
-            if obj == 'labelled_positions':
-                continue
-            if obj == 'deck':
-                continue
-            settings = config[obj]['settings']
-            config[obj]['settings'] = cls.get_details(settings)
-        return config
+        configs = cls.read_yaml(config_file, package)
+        registry = cls.read_yaml(registry_file, package)
+        addresses = cls.get_machine_addresses(registry=registry)
+        configs = cls.get_details(configs, addresses=addresses)
+        return configs
+    
+    @classmethod
+    def load_components(cls, config:dict):
+        """
+        Load components of compound tools
 
+        Args:
+            config (dict): dictionary of configuration parameters
+
+        Returns:
+            dict: dictionary of component tools
+        """
+        components = {}
+        for name, details in config.items():
+            _module = details.get('module')
+            if _module is None:
+                continue
+            _class = cls.get_class(_module, details.get('class', ''))
+            settings = details.get('settings', {})
+            components[name] = _class(**settings)
+        return components
+    
+    # Instance methods
     def log_now(self, message:str, group=None):
         """
         Add log with timestamp
@@ -256,6 +361,49 @@ class Helper(object):
                 for line in self.logs[group]:
                     f.write(line + '\n')
         return
+    
+    # NOTE: DEPRECATE
+    @classmethod
+    def display_ports(cls):
+        print("'display_ports' method to be deprecated. Use 'get_ports' instead.")
+        return cls.get_ports()
+    
+
+def create_named_tuple(func):
+    def wrapper(*args, **kwargs):
+        setup_dict = func(*args, **kwargs)
+        field_list = []
+        object_list = []
+        for k,v in setup_dict.items():
+            field_list.append(k)
+            object_list.append(v)
+        
+        Setup = namedtuple('Setup', field_list)
+        print(f"Objects created: {', '.join(field_list)}")
+        return Setup(*object_list)
+    return wrapper
+
+
+@create_named_tuple
+def create_setup(config_file:str, registry_file:str = None, bindings:dict = {}, modify_func: Callable = None):
+    config = Helper.get_plans(config_file=config_file, registry_file=registry_file)
+    setup = Helper.load_components(config=config)
+    
+    for key,value in bindings.items():
+        parent, child = value.split('.')
+        tool = setup.get(parent)
+        if tool is None:
+            print(f"Tool does not exist ({parent})")
+            continue
+        if 'components' not in tool.__dict__:
+            print(f"Tool ({parent}) does not have components")
+            continue
+        setup[key] = tool.components.get(child)
+    
+    if modify_func is not None:
+        setup = modify_func(setup)
+    return setup
+
 
 LOGGER = Helper() 
 """NOTE: importing LOGGER gives the same instance of the 'Helper' class wherever you import it"""

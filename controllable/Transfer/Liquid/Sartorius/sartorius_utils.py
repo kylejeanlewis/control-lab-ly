@@ -26,7 +26,10 @@ DEFAULT_STEPS = {
     'air_gap': 10,
     'pullback': 5
 }
-READ_TIMEOUT_S = 1
+READ_TIMEOUT_S = 0.3
+STEP_RESOLUTION = 10
+STEP_RESOLUTION_ABS = 2
+TIME_RESOLUTION = 1.03
 TIP_THRESHOLD = 276
 WETTING_CYCLES = 1
 
@@ -206,6 +209,36 @@ class Sartorius(LiquidHandler):
             str: device version
         """
         return self._query('DV')
+
+    def _calculate_speed_parameters(self, volume:int, speed:int):
+        """
+        Calculates the best parameters for volume and speed
+
+        Args:
+            volume (int): volume to be transferred
+            speed (int): speed at which liquid is transferred
+
+        Returns:
+            dict: dictionary of best parameters
+        """
+        outcomes = {}
+        step_interval_limit = int(volume/self.resolution/STEP_RESOLUTION)
+        for standard in self._speed_codes:
+            if not standard or standard < speed:
+                continue
+            time_interval_limit = int(volume*(1/speed - 1/standard)/TIME_RESOLUTION)
+            if not step_interval_limit or not time_interval_limit:
+                continue
+            intervals = max(min(step_interval_limit, time_interval_limit), 1)
+            each_steps = volume/self.resolution/intervals
+            each_delay = volume*(1/speed - 1/standard)/intervals
+            area = 0.5 * (volume**2) * (1/self.resolution) * (1/intervals) * (1/speed - 1/standard)
+            outcomes[area] = {'delay': each_delay, 'intervals': intervals, 'standard': standard, 'step_size': int(each_steps)}
+        if len(outcomes) == 0:
+            print("No feasible speed parameters.")
+            return {}
+        print(f'Best parameters: {outcomes[min(outcomes)]}')
+        return outcomes[min(outcomes)]
     
     def _connect(self, port:str, baudrate=9600, timeout=1):
         """
@@ -273,7 +306,7 @@ class Sartorius(LiquidHandler):
         print('Stop listening...')
         return
     
-    def _query(self, string:str, timeout_s=READ_TIMEOUT_S, resume_feedback=True):
+    def _query(self, string:str, timeout_s=READ_TIMEOUT_S, resume_feedback=False):
         """
         Send query and wait for response
 
@@ -285,19 +318,22 @@ class Sartorius(LiquidHandler):
             str: message readout
         """
         message_code = string[:2]
-        if message_code not in STATUS_QUERIES and not self._flags['pause_feedback']:
-            self.setFlag('pause_feedback', True)
-            time.sleep(timeout_s)
-        if self.isBusy():
-            time.sleep(timeout_s)
+        if message_code not in STATUS_QUERIES:
+            if self._flags['get_feedback'] and not self._flags['pause_feedback']:
+                self.setFlag('pause_feedback', True)
+                time.sleep(timeout_s)
+            self.getStatus()
+            while self.isBusy():
+                self.getStatus()
         
+        start_time = time.time()
         message_code = self._write(string)
-        _start_time = time.time()
         response = ''
         while not self._is_expected_reply(message_code, response):
-            if time.time() - _start_time > timeout_s:
+            if time.time() - start_time > timeout_s:
                 break
             response = self._read()
+        # print(time.time() - start_time)
         if message_code in QUERIES:
             response = response[2:]
         if message_code not in STATUS_QUERIES and resume_feedback:
@@ -411,30 +447,54 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """ 
-        if speed is None:
-            speed = self.speed['in']
-        else:
-            self.speed = speed,'in'
         self.setFlag('pause_feedback', True)
-        time.sleep(READ_TIMEOUT_S)
         self.setFlag('occupied', True)
         volume = min(volume, self.capacity - self.volume)
         steps = int(volume / self.resolution)
         volume = steps * self.resolution
+        speed_parameters = {}
+        if speed is None:
+            speed = self.speed['in']
+        elif speed in self._speed_codes:
+            self.speed = speed,'in'
+        elif speed not in self._speed_codes:
+            print(volume)
+            print(speed)
+            speed_parameters = self._calculate_speed_parameters(volume=volume, speed=speed)
+            print(speed_parameters)
+            standard = speed_parameters.get('standard')
+            if standard == None:
+                print('Speed not feasible.')
+                return
+            self.speed = standard,'in'
         
         if volume == 0:
             return ''
         print(f'Aspirate {volume} uL')
-        if speed < self.speed['in']:
-            while steps >= 2*10:
-                response = self._query(f'RI10', resume_feedback=False)
+        start_aspirate = time.time()
+        if speed not in self._speed_codes:
+            delay = speed_parameters.get('delay', TIME_RESOLUTION)
+            step_size = speed_parameters.get('step_size', STEP_RESOLUTION)
+            intervals = speed_parameters.get('intervals', STEP_RESOLUTION)
+            for i in range(intervals):
+                start_time = time.time()
+                step = step_size if (i+1 != intervals) else steps
+                move_time = step*self.resolution / standard
+                response = self._query(f'RI{step}', resume_feedback=False)
                 if response != 'ok':
+                    print("Aspirate failed")
                     return response
-                steps -= 10
-                time.sleep(10 * ((1/speed)-(1/self.speed['in'])))
-        response = self._query(f'RI{steps}')
-        if response != 'ok':
-            return response
+                steps -= step
+                duration = time.time() - start_time
+                if duration < (delay+move_time):
+                    time.sleep(delay+move_time-duration)
+        else:
+            response = self._query(f'RI{steps}')
+            move_time = steps*self.resolution / speed
+            time.sleep(move_time)
+            if response != 'ok':
+                return response
+        print(f'Aspirate time: {time.time()-start_aspirate}s')
         
         # Update values
         self.volume += volume
@@ -491,12 +551,7 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """
-        if speed is None:
-            speed = self.speed['out']
-        else:
-            self.speed = speed,'out'
         self.setFlag('pause_feedback', True)
-        time.sleep(READ_TIMEOUT_S)
         self.setFlag('occupied', True)
         if force_dispense:
             volume = min(volume, self.volume)
@@ -504,20 +559,49 @@ class Sartorius(LiquidHandler):
             raise Exception('Required dispense volume is greater than volume in tip')
         steps = int(volume / self.resolution)
         volume = steps * self.resolution
+        speed_parameters = {}
+        if speed is None:
+            speed = self.speed['out']
+        elif speed in self._speed_codes:
+            self.speed = speed,'out'
+        elif speed not in self._speed_codes:
+            print(volume)
+            print(speed)
+            speed_parameters = self._calculate_speed_parameters(volume=volume, speed=speed)
+            print(speed_parameters)
+            standard = speed_parameters.get('standard')
+            if standard == None:
+                print('Speed not feasible.')
+                return
+            self.speed = standard,'out'
         
         if volume == 0:
             return ''
         print(f'Dispense {volume} uL')
-        if speed < self.speed['out']:
-            while steps >= 2*10:
-                response = self._query(f'RO10', resume_feedback=False)
+        start_dispense = time.time()
+        if speed not in self._speed_codes:
+            delay = speed_parameters.get('delay', TIME_RESOLUTION)
+            step_size = speed_parameters.get('step_size', STEP_RESOLUTION)
+            intervals = speed_parameters.get('intervals', STEP_RESOLUTION)
+            for i in range(intervals):
+                start_time = time.time()
+                step = step_size if (i+1 != intervals) else steps
+                move_time = step*self.resolution / standard
+                response = self._query(f'RO{step}', resume_feedback=False)
                 if response != 'ok':
+                    print("Dispense failed")
                     return response
-                steps -= 10
-                time.sleep(10 * ((1/speed)-(1/self.speed['out'])))
-        response = self._query(f'RO{steps}')
-        if response != 'ok':
-            return response
+                steps -= step
+                duration = time.time() - start_time
+                if duration < (delay+move_time):
+                    time.sleep(delay+move_time-duration)
+        else:
+            response = self._query(f'RO{steps}')
+            move_time = steps*self.resolution / speed
+            time.sleep(move_time)
+            if response != 'ok':
+                return response
+        print(f'Dispense time: {time.time()-start_dispense}s')
         
         # Update values
         self.volume = max(self.volume - volume, 0)
@@ -617,7 +701,8 @@ class Sartorius(LiquidHandler):
             return response
         if response in ['4','6','8']:
             self.setFlag('busy', True)
-            print(StatusCode(response).name)
+            if self.verbose:
+                print(StatusCode(response).name)
         elif response in ['0']:
             self.setFlag('busy', False)
         self.status = response
@@ -701,9 +786,9 @@ class Sartorius(LiquidHandler):
         """
         if value < 0:
             raise Exception("Please input non-negative value")
-        if axis in ['up','u','U']:
+        if axis.lower() in ['up','u']:
             return self.moveBy(value)
-        elif axis in ['down','d','D']:
+        elif axis.lower() in ['down','d']:
             return self.moveBy(-value)
         else:
             raise Exception("Please select either 'up' or 'down'")
@@ -793,7 +878,8 @@ class Sartorius(LiquidHandler):
             thread.start()
             self._threads['feedback_loop'] = thread
         else:
-            self._threads['feedback_loop'].join()
+            if 'feedback_loop' in self._threads:
+                self._threads['feedback_loop'].join()
         return
 
     def zero(self, channel=None):

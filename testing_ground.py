@@ -460,7 +460,7 @@ if __name__ == "__main__":
 # %%
 from controllable.builds.SynthesisB1 import program
 
-this = program.create_setup()
+this = program.SETUP
 this.liquid.setFlag('tip_on', True)
 # %%
 from controllable.Control.GUI import MoverPanel

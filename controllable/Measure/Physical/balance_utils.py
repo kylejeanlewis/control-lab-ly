@@ -142,6 +142,7 @@ class MassBalance(object):
         Clear dataframe.
         """
         self.setFlag('pause_feedback', True)
+        time.sleep(0.1)
         self.buffer_df = pd.DataFrame(columns=COLUMNS)
         self.setFlag('pause_feedback', False)
         return
@@ -165,7 +166,7 @@ class MassBalance(object):
         response = self._read()
         try:
             value = int(response)
-            self._mass = value / CALIBRATION_FACTOR - self.baseline
+            self._mass = (value - self.baseline) / CALIBRATION_FACTOR
             if self._flags.get('record', False):
                 row = {
                     'Time': datetime.now(), 
@@ -267,7 +268,7 @@ class MassBalance(object):
         print(f"Zeroing... ({wait}s)")
         time.sleep(wait)
         self.toggleRecord(False)
-        self.baseline = self.buffer_df['Mass'].mean()
+        self.baseline = self.buffer_df['Value'].mean()
         self.clearCache()
         self.buffer_df = temp_buffer_df.copy()
         print("Zeroing complete.")
