@@ -16,9 +16,10 @@ import time
 import serial # pip install pyserial
 
 # Local application imports
+from ...misc import Helper
 print(f"Import: OK <{__name__}>")
 
-CALIBRATION_FACTOR = 6.862879436681862       # output reading to mg
+CALIBRATION_FACTOR = Helper.get_calibration(f'{__name__}.CALIBRATION_FACTOR') # factor by which to divide output reading by to get mass in mg
 COLUMNS = ['Time', 'Value', 'Factor', 'Baseline', 'Mass']
 
 class MassBalance(object):

@@ -17,20 +17,19 @@ import time
 import serial # pip install pyserial
 
 # Local application imports
+from ....misc import Helper
 from ..liquid_utils import LiquidHandler
 from .sartorius_lib import ErrorCode, ModelInfo, StatusCode
 from .sartorius_lib import ERRORS, MODELS, STATUSES, STATUS_QUERIES, QUERIES
 print(f"Import: OK <{__name__}>")
 
-DEFAULT_STEPS = {
-    'air_gap': 10,
-    'pullback': 5
-}
+DEFAULT_AIRGAP = Helper.get_calibration(f'{__name__}.DEFAULT_AIRGAP') # number of plunger steps for air gap
+DEFAULT_PULLBACK = Helper.get_calibration(f'{__name__}.DEFAULT_PULLBACK') # number of plunger steps for pullback
 READ_TIMEOUT_S = 0.3
 STEP_RESOLUTION = 10
 STEP_RESOLUTION_ABS = 2
-TIME_RESOLUTION = 1.03
-TIP_THRESHOLD = 276
+TIME_RESOLUTION = Helper.get_calibration(f'{__name__}.TIME_RESOLUTION') # minimum drive response time [s]
+TIP_THRESHOLD = Helper.get_calibration(f'{__name__}.TIP_THRESHOLD') # capacitance value above which tip is attached
 
 class Sartorius(LiquidHandler):
     def __init__(self, port:str, channel=1, offset=(0,0,0), **kwargs):
@@ -68,9 +67,6 @@ class Sartorius(LiquidHandler):
         self._speed_codes = None
         self._status_code = ''
         self._threads = {}
-        
-        self._air_gap_steps = DEFAULT_STEPS['air_gap']
-        self._pullback_steps = DEFAULT_STEPS['pullback']
         
         self.verbose = False
         self.port = ''
@@ -415,17 +411,18 @@ class Sartorius(LiquidHandler):
                 print(e)
         return message_code
     
-    def addAirGap(self, channel=None):
+    def addAirGap(self, steps:int = DEFAULT_AIRGAP, channel=None):
         """
         Create an air gap between two volumes of liquid in pipette
         
         Args:
+            steps (int, optional): number of steps for air gap. Defaults to DEFAULT_AIRGAP.
             channel (int, optional): channel to add air gap. Defaults to None.
 
         Returns:
             str: device response
         """
-        response = self._query(f'RI{self._air_gap_steps}')
+        response = self._query(f'RI{steps}')
         time.sleep(1)
         return response
         
@@ -821,17 +818,18 @@ class Sartorius(LiquidHandler):
         """
         return self._query(f'RP{position}')
     
-    def pullback(self, channel=None):
+    def pullback(self, steps:int = DEFAULT_PULLBACK, channel=None):
         """
         Pullback liquid from tip
         
         Args:
+            steps (int, optional): number of steps to pullback. Defaults to DEFAULT_PULLBACK.
             channel (int, optional): channel to pullback. Defaults to None.
 
         Returns:
             str: device response
         """
-        response = self._query(f'RI{self._pullback_steps}')
+        response = self._query(f'RI{steps}')
         time.sleep(1)
         return response
     

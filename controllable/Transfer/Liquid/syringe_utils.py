@@ -19,12 +19,10 @@ from ...misc import Helper
 from .liquid_utils import LiquidHandler
 print(f"Import: OK <{__name__}>")
 
-CALIBRATION = {
-    'aspirate': 27,
-    'dispense': 23.5
-}
-DEFAULT_SPEED = 3000
-PULLBACK_TIME = 2
+CALIBRATION_ASPIRATE = Helper.get_calibration(f'{__name__}.CALIBRATION_ASPIRATE')
+CALIBRATION_DISPENSE = Helper.get_calibration(f'{__name__}.CALIBRATION_DISPENSE')
+DEFAULT_SPEED = Helper.get_calibration(f'{__name__}.DEFAULT_SPEED') # rotation speed of peristaltic pump [rpm]
+PULLBACK_TIME = Helper.get_calibration(f'{__name__}.PULLBACK_TIME') # amount of time to pullback [s]
 
 class Pump(object):
     """
@@ -229,7 +227,7 @@ class Syringe(LiquidHandler):
 
         if volume != 0:
             speed = -abs(speed)
-            t_aspirate = (volume / speed) * CALIBRATION['aspirate']
+            t_aspirate = (volume / speed) * CALIBRATION_ASPIRATE
             if self._previous_action == 'first':
                 t_aspirate *= 1.3
             elif self._previous_action == 'aspirate':
@@ -237,7 +235,7 @@ class Syringe(LiquidHandler):
             elif self._previous_action == 'dispense':
                 t_aspirate *= 1.6
             print(t_aspirate)
-            t_pullback = (50 / speed) * CALIBRATION['aspirate']
+            t_pullback = (50 / speed) * CALIBRATION_ASPIRATE
             print(f'Aspirate {volume} uL')
             self.pump.push(speed=speed, push_time=t_aspirate, pullback_time=t_pullback, channel=self.channel)
             
@@ -279,7 +277,7 @@ class Syringe(LiquidHandler):
         
         if force_dispense or volume <= self.volume:
             speed = abs(speed)
-            t_dispense = (volume / speed) * CALIBRATION['dispense']
+            t_dispense = (volume / speed) * CALIBRATION_DISPENSE
             if self._previous_action == 'first':
                 t_dispense *= 1
             elif self._previous_action == 'aspirate':
@@ -287,7 +285,7 @@ class Syringe(LiquidHandler):
             elif self._previous_action == 'dispense':
                 t_dispense *= 1
             print(t_dispense)
-            t_pullback = (50 / speed) * CALIBRATION['dispense']
+            t_pullback = (50 / speed) * CALIBRATION_DISPENSE
             self.pump.push(speed=speed, push_time=t_dispense, pullback_time=t_pullback, channel=self.channel)
             
             # Update values

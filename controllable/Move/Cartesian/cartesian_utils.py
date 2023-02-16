@@ -14,10 +14,11 @@ import time
 import serial # pip install pyserial
 
 # Local application imports
+from ...misc import Helper
 from ..mover_utils import Mover
 print(f"Import: OK <{__name__}>")
 
-CNC_SPEED = 250
+CNC_SPEED = Helper.get_calibration(f'{__name__}.CNC_SPEED')
     
 class Gantry(Mover):
     """

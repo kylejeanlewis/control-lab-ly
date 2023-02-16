@@ -16,7 +16,7 @@ import time
 from ...misc import Deck, Helper
 print(f"Import: OK <{__name__}>")
 
-TIP_APPROACH_HEIGHT = 12
+TIP_APPROACH_HEIGHT = Helper.get_calibration(f'{__name__}.TIP_APPROACH_HEIGHT')
 
 class LiquidMoverSetup(object):
     """
