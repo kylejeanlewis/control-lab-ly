@@ -15,8 +15,6 @@ from .piezorobotics_device import PiezoRoboticsDevice
 from .programs import base_programs
 print(f"Import: OK <{__name__}>")
 
-READ_TIMEOUT_S = 1
-
 class PiezoRobotics(object):
     """
     PiezoRobotics object
