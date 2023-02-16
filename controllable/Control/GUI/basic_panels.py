@@ -15,13 +15,8 @@ import PySimpleGUI as sg # pip install PySimpleGUI
 
 # Local application imports
 from ...misc import Helper
-from .gui_utils import Panel
+from .gui_utils import Panel, WIDTH, HEIGHT, THEME, TYPEFACE, FONT_SIZES
 print(f"Import: OK <{__name__}>")
-
-WIDTH, HEIGHT = sg.Window.get_screen_size()
-THEME = 'LightGreen'
-TYPEFACE = "Helvetica"
-FONT_SIZES = [14,12,10,8,6]
 
 class MeasurerPanel(Panel):
     """
