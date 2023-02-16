@@ -31,10 +31,7 @@ STEP_RESOLUTION = 10
 STEP_RESOLUTION_ABS = 2
 TIME_RESOLUTION = 1.03
 TIP_THRESHOLD = 276
-WETTING_CYCLES = 1
 
-# z = 250 (w/o tip)
-# z = 330 (w/ tip)
 class Sartorius(LiquidHandler):
     def __init__(self, port:str, channel=1, offset=(0,0,0), **kwargs):
         """
