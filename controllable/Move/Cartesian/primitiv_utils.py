@@ -21,7 +21,7 @@ class Primitiv(Gantry):
         port (str): com port address
         limits (list, optional): lower and upper bounds of movement. Defaults to [(0,0,0), (0,0,0)].
         safe_height (float, optional): safe height. Defaults to None.
-        move_speed (float, optional): movement speed. Defaults to 0.
+        max_speed (float, optional): maximum movement speed. Defaults to 250.
     
     Kwargs:
         home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,0,0).
