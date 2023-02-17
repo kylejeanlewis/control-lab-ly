@@ -2,6 +2,7 @@ setup:
   module: Compound
   class: LiquidMover.LiquidMoverSetup
   settings:
+    tip_approach_height: 20
     component_config:
       mover: 
         module: Move
