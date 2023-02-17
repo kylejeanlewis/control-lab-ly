@@ -16,14 +16,13 @@ import time
 import serial # pip install pyserial
 
 # Local application imports
-from ...misc import Helper
 print(f"Import: OK <{__name__}>")
 
-CALIBRATION_FACTOR = Helper.get_calibration(f'{__name__}.CALIBRATION_FACTOR') # factor by which to divide output reading by to get mass in mg
+CALIBRATION_FACTOR = 6.862879436681862 # factor by which to divide output reading by to get mass in mg
 COLUMNS = ['Time', 'Value', 'Factor', 'Baseline', 'Mass']
 
 class MassBalance(object):
-    def __init__(self, port:str, **kwargs):
+    def __init__(self, port:str, calibration_factor:float = CALIBRATION_FACTOR, **kwargs):
         """
         Mass Balance object
 
@@ -32,6 +31,7 @@ class MassBalance(object):
         """
         self.device = None
         self.baseline = 0
+        self.calibration_factor = calibration_factor
         self._flags = {
             'busy': False,
             'connected': False,
@@ -167,12 +167,12 @@ class MassBalance(object):
         response = self._read()
         try:
             value = int(response)
-            self._mass = (value - self.baseline) / CALIBRATION_FACTOR
+            self._mass = (value - self.baseline) / self.calibration_factor
             if self._flags.get('record', False):
                 row = {
                     'Time': datetime.now(), 
                     'Value': value,
-                    'Factor': CALIBRATION_FACTOR,
+                    'Factor': self.calibration_factor,
                     'Baseline': self.baseline,
                     'Mass': self._mass
                 }

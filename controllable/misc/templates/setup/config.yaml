@@ -28,6 +28,7 @@ balance:
   class: Physical.MassBalance
   settings:
     port: __balance_01__
+    calibration_factor: 6.862879436681862
 
 camera:
   module: View
