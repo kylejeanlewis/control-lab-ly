@@ -68,6 +68,7 @@ class Sartorius(LiquidHandler):
         
         self._flags = {
             'busy': False,
+            'conductive_tips': False,
             'connected': False,
             'get_feedback': False,
             'occupied': False,
@@ -775,8 +776,9 @@ class Sartorius(LiquidHandler):
         """
         self.getLiquidLevel()
         print(f'Tip capacitance: {self._levels}')
-        # tip_on = (self._levels > self.tip_threshold)
-        # self.setFlag('tip_on', tip_on)
+        if self._flags['conductive_tips']:
+            tip_on = (self._levels > self.tip_threshold)
+            self.setFlag('tip_on', tip_on)
         tip_on = self._flags.get('tip_on')
         return tip_on
     

@@ -113,7 +113,7 @@ class LiquidMoverSetup(object):
             speed (int, optional): speed to aspirate at (uL/s). Defaults to None.
             channel (int, optional): channel to use. Defaults to None.
         """
-        if 'eject' in dir(self.liquid) and not self.liquid.isTipOn(): # or not self.liquid.tip_length:
+        if 'eject' in dir(self.liquid) and not self.liquid.isTipOn():
             print("[aspirate] There is no tip attached.")
             return
         offset = self.liquid.channels[channel].offset if 'channels' in dir(self.liquid) else self.liquid.offset
@@ -151,7 +151,7 @@ class LiquidMoverSetup(object):
         if 'eject' not in dir(self.liquid):
             print("'attachTip' method not available.")
             return coordinates
-        if self.liquid.isTipOn():# or self.liquid.tip_length:
+        if self.liquid.isTipOn():
             print("Please eject current tip before attaching new tip.")
             return coordinates
         self.align(coordinates)
@@ -162,12 +162,11 @@ class LiquidMoverSetup(object):
         self.mover.move('z', self.tip_approach_height+tip_length, speed_fraction=0.2)
         time.sleep(1)
         self.liquid.setFlag('tip_on', True)
-        # if not self.liquid.isTipOn():# or self.liquid.tip_length:
-        #     tip_length = self.liquid.tip_length
-        #     self.mover.implement_offset = tuple(np.array(self.mover.implement_offset) - np.array([0,0,-tip_length]))
-        #     self.liquid.tip_length = 0
-        #     self.liquid.setFlag('tip_on', False)
-        #     return coordinates
+        if not self.liquid.isTipOn():
+            tip_length = self.liquid.tip_length
+            self.mover.implement_offset = tuple(np.array(self.mover.implement_offset) - np.array([0,0,-tip_length]))
+            self.liquid.tip_length = 0
+            self.liquid.setFlag('tip_on', False)
         self._temp_tip_home = coordinates
         return coordinates
     
@@ -181,7 +180,7 @@ class LiquidMoverSetup(object):
             speed (int, optional): speed to dispense at (uL/s). Defaults to None.
             channel (int, optional): channel to use. Defaults to None.
         """
-        if 'eject' in dir(self.liquid) and not self.liquid.isTipOn(): # or not self.liquid.tip_length:
+        if 'eject' in dir(self.liquid) and not self.liquid.isTipOn():
             print("[dispense] There is no tip attached.")
             return
         offset = self.liquid.channels[channel].offset if 'channels' in dir(self.liquid) else self.liquid.offset
@@ -197,10 +196,15 @@ class LiquidMoverSetup(object):
             slot (str, optional): name of slot with bin. Defaults to 'bin'.
             channel (int, optional): channel to use. Defaults to None.
             
+        Raises:
+            Exception: No bin location specified.
+            
         Returns:
             tuple: coordinates of top of bin well
         """
-        bin_location,_ = self.positions.get(slot, [((0,0,0), 0)])[0]
+        bin_location,_ = self.positions.get(slot, [(None, 0)])[0]
+        if bin_location is None:
+            raise Exception("No bin location specified.")
         return self.ejectTipAt(bin_location, channel=channel)
     
     def ejectTipAt(self, coordinates, channel=None):
@@ -217,7 +221,7 @@ class LiquidMoverSetup(object):
         if 'eject' not in dir(self.liquid):
             print("'ejectTip' method not available.")
             return coordinates
-        if not self.liquid.isTipOn(): # or not self.liquid.tip_length:
+        if not self.liquid.isTipOn():
             print("There is currently no tip to eject.")
             tip_length = self.liquid.tip_length
             self.mover.implement_offset = tuple(np.array(self.mover.implement_offset) - np.array([0,0,-tip_length]))
