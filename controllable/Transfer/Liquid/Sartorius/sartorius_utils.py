@@ -17,7 +17,6 @@ import time
 import serial # pip install pyserial
 
 # Local application imports
-from ....misc import Helper
 from ..liquid_utils import LiquidHandler
 from .sartorius_lib import ErrorCode, ModelInfo, StatusCode
 from .sartorius_lib import ERRORS, MODELS, STATUSES, STATUS_QUERIES, QUERIES
