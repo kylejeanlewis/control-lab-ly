@@ -1,0 +1,36 @@
+{
+	"reference_points":{
+		"1": ["_x01_","_y01_","_z01_"],
+		"2": ["_x02_","_y02_","_z02_"],
+		"3": ["_x03_","_y03_","_z03_"],
+		"4": ["_x04_","_y04_","_z04_"],
+		"5": ["_x05_","_y05_","_z05_"],
+		"6": ["_x06_","_y06_","_z06_"]
+	},
+    "slots":{
+		"1": {
+			"name": "__name_01__",
+			"filepath": "__repo_name__/.../__labware_01__.json"
+		},
+		"2": {
+			"name": "__name_02__",
+			"filepath": "__repo_name__/.../__labware_02__.json"
+		},
+		"3": {
+			"name": "__name_03__",
+			"filepath": "__repo_name__/.../__labware_03__.json"
+		},
+		"4": {
+			"name": "__name_04__",
+			"filepath": "__repo_name__/.../__labware_04__.json"
+		},
+		"5": {
+			"name": "__name_05__",
+			"filepath": "__repo_name__/.../__labware_05__.json"
+		},
+		"6": {
+			"name": "__name_06__",
+			"filepath": "__repo_name__/.../__labware_06__.json"
+		}
+	}
+}

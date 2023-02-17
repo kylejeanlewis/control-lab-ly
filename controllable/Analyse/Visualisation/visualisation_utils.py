@@ -7,9 +7,7 @@ Notes / actionables:
 -
 """
 # Third party imports
-import dash
-from dash import dcc
-from dash import html
+from dash import Dash, dcc, html
 
 # Local application imports
 print(f"Import: OK <{__name__}>")
@@ -25,7 +23,7 @@ class Visualiser(object):
     
     @staticmethod
     def display(graphs:list):
-        app = dash.Dash()
+        app = Dash()
         app.layout = html.Div(
             [dcc.Graph(figure=fig) for fig in graphs]
         )

@@ -12,9 +12,6 @@ from .keithley_device import KeithleyDevice
 from .programs import base_programs
 print(f"Import: OK <{__name__}>")
 
-BUFFER_SIZE = 100
-NUM_READINGS = 3
-
 class Keithley(Electrical):
     """
     Keithley class.

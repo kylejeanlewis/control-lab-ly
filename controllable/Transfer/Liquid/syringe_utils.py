@@ -19,12 +19,10 @@ from ...misc import Helper
 from .liquid_utils import LiquidHandler
 print(f"Import: OK <{__name__}>")
 
-CALIBRATION = {
-    'aspirate': 27,
-    'dispense': 23.5
-}
-DEFAULT_SPEED = 3000
-PULLBACK_TIME = 2
+CALIBRATION_ASPIRATE = 27
+CALIBRATION_DISPENSE = 23.5
+DEFAULT_SPEED = 3000 # speed of pump
+PULLBACK_TIME = 2 # amount of time to pullback [s]
 
 class Pump(object):
     """
@@ -189,12 +187,22 @@ class Syringe(LiquidHandler):
         capacity (int, or float): capacity of syringe
         channel (int): channel index
         offset (tuple, optional): coordinates offset. Defaults to None.
-        pullback_time (int, optional): duration of pullback. Defaults to PULLBACK_TIME.
+        pullback_time (int, optional): duration of pullback. Defaults to 2.
         
     Kwargs:
         verbose (bool, optional): whether to print output. Defaults to False.
     """
-    def __init__(self, capacity, channel, offset=None, pullback_time=PULLBACK_TIME, **kwargs):
+    def __init__(
+        self, 
+        capacity, 
+        channel, 
+        offset=None, 
+        pullback_time=PULLBACK_TIME, 
+        default_speed=DEFAULT_SPEED,
+        calibration_aspirate=CALIBRATION_ASPIRATE,
+        calibration_dispense=CALIBRATION_DISPENSE, 
+        **kwargs
+    ):
         super().__init__(**kwargs)
         self.capacity = capacity
         self.channel = channel
@@ -204,10 +212,12 @@ class Syringe(LiquidHandler):
         
         self.pump = None
         
+        self.calibration_aspirate = calibration_aspirate
+        self.calibration_dispense = calibration_dispense
         self._previous_action = 'first'
         self._pullback_time = pullback_time
-        self._speed_in = DEFAULT_SPEED
-        self._speed_out = DEFAULT_SPEED
+        self._speed_in = default_speed
+        self._speed_out = default_speed
         pass
     
     def aspirate(self, volume, speed=None, wait=0, reagent='', pause=False, channel=None):
@@ -229,7 +239,7 @@ class Syringe(LiquidHandler):
 
         if volume != 0:
             speed = -abs(speed)
-            t_aspirate = (volume / speed) * CALIBRATION['aspirate']
+            t_aspirate = (volume / speed) * self.calibration_aspirate
             if self._previous_action == 'first':
                 t_aspirate *= 1.3
             elif self._previous_action == 'aspirate':
@@ -237,7 +247,7 @@ class Syringe(LiquidHandler):
             elif self._previous_action == 'dispense':
                 t_aspirate *= 1.6
             print(t_aspirate)
-            t_pullback = (50 / speed) * CALIBRATION['aspirate']
+            t_pullback = (50 / speed) * self.calibration_aspirate
             print(f'Aspirate {volume} uL')
             self.pump.push(speed=speed, push_time=t_aspirate, pullback_time=t_pullback, channel=self.channel)
             
@@ -279,7 +289,7 @@ class Syringe(LiquidHandler):
         
         if force_dispense or volume <= self.volume:
             speed = abs(speed)
-            t_dispense = (volume / speed) * CALIBRATION['dispense']
+            t_dispense = (volume / speed) * self.calibration_dispense
             if self._previous_action == 'first':
                 t_dispense *= 1
             elif self._previous_action == 'aspirate':
@@ -287,7 +297,7 @@ class Syringe(LiquidHandler):
             elif self._previous_action == 'dispense':
                 t_dispense *= 1
             print(t_dispense)
-            t_pullback = (50 / speed) * CALIBRATION['dispense']
+            t_pullback = (50 / speed) * self.calibration_dispense
             self.pump.push(speed=speed, push_time=t_dispense, pullback_time=t_pullback, channel=self.channel)
             
             # Update values

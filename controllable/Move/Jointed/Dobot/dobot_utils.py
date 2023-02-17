@@ -19,7 +19,7 @@ print(f"Import: OK <{__name__}>")
 
 CONNECTION_TIMEOUT = 20
 SCALE = True
-MOVE_TIME_S = 0.5
+MOVE_TIME_BUFFER_S = 0.5
 
 class Dobot(RobotArm):
     """
@@ -222,7 +222,7 @@ class Dobot(RobotArm):
         try:
             self.feedback.RelMovL(*vector)
             self.rotateBy(angles)
-            move_time = max(abs(np.array(vector)) / self.speed) + max(abs(np.array(angles)) / self.speed_angular) +MOVE_TIME_S
+            move_time = max(abs(np.array(vector)) / self.speed) + max(abs(np.array(angles)) / self.speed_angular) +MOVE_TIME_BUFFER_S
             print(f'Move time: {move_time}s ({self._speed_fraction})')
             time.sleep(move_time)
         except (AttributeError, OSError):
@@ -259,7 +259,7 @@ class Dobot(RobotArm):
             position = self.position
             distances = abs(position[0] - np.array(coordinates))
             rotations = abs(position[1] - np.array(orientation))
-            move_time = max([max(distances / self.speed),  max(rotations / self.speed_angular)]) +MOVE_TIME_S
+            move_time = max([max(distances / self.speed),  max(rotations / self.speed_angular)]) +MOVE_TIME_BUFFER_S
             print(f'Move time: {move_time}s ({self._speed_fraction})')
             time.sleep(move_time)
         except (AttributeError, OSError):
@@ -285,7 +285,7 @@ class Dobot(RobotArm):
         relative_angles = tuple(relative_angles)
         try:
             self.feedback.RelMovJ(*relative_angles)
-            move_time = max(abs(np.array(relative_angles)) / self.speed_angular) +MOVE_TIME_S
+            move_time = max(abs(np.array(relative_angles)) / self.speed_angular) +MOVE_TIME_BUFFER_S
             print(f'Move time: {move_time}s ({self._speed_fraction})')
             time.sleep(move_time)
         except (AttributeError, OSError):
@@ -311,7 +311,7 @@ class Dobot(RobotArm):
         absolute_angles = tuple(absolute_angles)
         try:
             self.feedback.JointMovJ(*absolute_angles)
-            move_time = max(abs(np.array(absolute_angles)) / self.speed_angular) +MOVE_TIME_S
+            move_time = max(abs(np.array(absolute_angles)) / self.speed_angular) +MOVE_TIME_BUFFER_S
             print(f'Move time: {move_time}s ({self._speed_fraction})')
             time.sleep(move_time)
         except (AttributeError, OSError):

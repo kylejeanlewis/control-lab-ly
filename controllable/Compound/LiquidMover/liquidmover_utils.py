@@ -16,7 +16,7 @@ import time
 from ...misc import Deck, Helper
 print(f"Import: OK <{__name__}>")
 
-TIP_APPROACH_HEIGHT = 12
+TIP_APPROACH_HEIGHT = 20
 
 class LiquidMoverSetup(object):
     """
@@ -29,10 +29,11 @@ class LiquidMoverSetup(object):
         layout_dict (dict, optional): dictionary of layout. Defaults to None.
         ignore_connections (bool, optional): whether to ignore connections and run methods. Defaults to False.
     """
-    def __init__(self, config:str = None, layout:str = None, component_config:dict = None, layout_dict:dict = None, ignore_connections:bool = False, **kwargs):
+    def __init__(self, config:str = None, layout:str = None, component_config:dict = None, layout_dict:dict = None, ignore_connections:bool = False, tip_approach_height=TIP_APPROACH_HEIGHT, **kwargs):
         self.components = {}
         self.deck = Deck()
         self.positions = {}
+        self.tip_approach_height = tip_approach_height
         self._config = Helper.get_plans(config) if config is not None else component_config
         self._flags = {
             'at_rest': False
@@ -154,11 +155,11 @@ class LiquidMoverSetup(object):
             print("Please eject current tip before attaching new tip.")
             return coordinates
         self.align(coordinates)
-        self.mover.move('z', -TIP_APPROACH_HEIGHT, speed_fraction=0.01)
+        self.mover.move('z', -self.tip_approach_height, speed_fraction=0.01)
         time.sleep(3)
         self.liquid.tip_length = tip_length
         self.mover.implement_offset = tuple(np.array(self.mover.implement_offset) + np.array([0,0,-tip_length]))
-        self.mover.move('z', TIP_APPROACH_HEIGHT+tip_length, speed_fraction=0.2)
+        self.mover.move('z', self.tip_approach_height+tip_length, speed_fraction=0.2)
         time.sleep(1)
         self.liquid.setFlag('tip_on', True)
         if not self.liquid.isTipOn():

@@ -17,26 +17,32 @@ import time
 import serial # pip install pyserial
 
 # Local application imports
+from ....misc import Helper
 from ..liquid_utils import LiquidHandler
 from .sartorius_lib import ErrorCode, ModelInfo, StatusCode
 from .sartorius_lib import ERRORS, MODELS, STATUSES, STATUS_QUERIES, QUERIES
 print(f"Import: OK <{__name__}>")
 
-DEFAULT_STEPS = {
-    'air_gap': 10,
-    'pullback': 5
-}
+DEFAULT_AIRGAP = 10 # number of plunger steps for air gap
+DEFAULT_PULLBACK = 5 # number of plunger steps for pullback
 READ_TIMEOUT_S = 0.3
 STEP_RESOLUTION = 10
 STEP_RESOLUTION_ABS = 2
-TIME_RESOLUTION = 1.03
-TIP_THRESHOLD = 276
-WETTING_CYCLES = 1
+TIME_RESOLUTION = 1.03 # minimum drive response time [s]
+TIP_THRESHOLD = 276 # capacitance value above which tip is attached
 
-# z = 250 (w/o tip)
-# z = 330 (w/ tip)
 class Sartorius(LiquidHandler):
-    def __init__(self, port:str, channel=1, offset=(0,0,0), **kwargs):
+    def __init__(
+        self, 
+        port:str, 
+        channel=1, 
+        offset=(0,0,0), 
+        default_airgap=DEFAULT_AIRGAP,
+        default_pullback=DEFAULT_PULLBACK,
+        time_resolution=TIME_RESOLUTION,
+        tip_threshold=TIP_THRESHOLD,
+        **kwargs
+    ):
         """
         Sartorius object
 
@@ -55,6 +61,11 @@ class Sartorius(LiquidHandler):
         self.implement_offset = (0,0,-250)
         self.tip_length = 0
         
+        self.default_airgap = default_airgap
+        self.default_pullback = default_pullback
+        self.time_resolution = time_resolution
+        self.tip_threshold = tip_threshold
+        
         self._flags = {
             'busy': False,
             'conductive_tips': False,
@@ -72,9 +83,6 @@ class Sartorius(LiquidHandler):
         self._speed_codes = None
         self._status_code = ''
         self._threads = {}
-        
-        self._air_gap_steps = DEFAULT_STEPS['air_gap']
-        self._pullback_steps = DEFAULT_STEPS['pullback']
         
         self.verbose = False
         self.port = ''
@@ -227,7 +235,7 @@ class Sartorius(LiquidHandler):
         for standard in self._speed_codes:
             if not standard or standard < speed:
                 continue
-            time_interval_limit = int(volume*(1/speed - 1/standard)/TIME_RESOLUTION)
+            time_interval_limit = int(volume*(1/speed - 1/standard)/self.time_resolution)
             if not step_interval_limit or not time_interval_limit:
                 continue
             intervals = max(min(step_interval_limit, time_interval_limit), 1)
@@ -419,17 +427,20 @@ class Sartorius(LiquidHandler):
                 print(e)
         return message_code
     
-    def addAirGap(self, channel=None):
+    def addAirGap(self, steps:int = None, channel=None):
         """
         Create an air gap between two volumes of liquid in pipette
         
         Args:
+            steps (int, optional): number of steps for air gap. Defaults to DEFAULT_AIRGAP.
             channel (int, optional): channel to add air gap. Defaults to None.
 
         Returns:
             str: device response
         """
-        response = self._query(f'RI{self._air_gap_steps}')
+        if steps is None:
+            steps = self.default_airgap
+        response = self._query(f'RI{steps}')
         time.sleep(1)
         return response
         
@@ -474,7 +485,7 @@ class Sartorius(LiquidHandler):
         print(f'Aspirate {volume} uL')
         start_aspirate = time.time()
         if speed not in self._speed_codes:
-            delay = speed_parameters.get('delay', TIME_RESOLUTION)
+            delay = speed_parameters.get('delay', self.time_resolution)
             step_size = speed_parameters.get('step_size', STEP_RESOLUTION)
             intervals = speed_parameters.get('intervals', STEP_RESOLUTION)
             for i in range(intervals):
@@ -581,7 +592,7 @@ class Sartorius(LiquidHandler):
         print(f'Dispense {volume} uL')
         start_dispense = time.time()
         if speed not in self._speed_codes:
-            delay = speed_parameters.get('delay', TIME_RESOLUTION)
+            delay = speed_parameters.get('delay', self.time_resolution)
             step_size = speed_parameters.get('step_size', STEP_RESOLUTION)
             intervals = speed_parameters.get('intervals', STEP_RESOLUTION)
             for i in range(intervals):
@@ -766,7 +777,7 @@ class Sartorius(LiquidHandler):
         self.getLiquidLevel()
         print(f'Tip capacitance: {self._levels}')
         if self._flags['conductive_tips']:
-            tip_on = (self._levels > TIP_THRESHOLD)
+            tip_on = (self._levels > self.tip_threshold)
             self.setFlag('tip_on', tip_on)
         tip_on = self._flags.get('tip_on')
         return tip_on
@@ -826,17 +837,20 @@ class Sartorius(LiquidHandler):
         """
         return self._query(f'RP{position}')
     
-    def pullback(self, channel=None):
+    def pullback(self, steps:int = None, channel=None):
         """
         Pullback liquid from tip
         
         Args:
+            steps (int, optional): number of steps to pullback. Defaults to DEFAULT_PULLBACK.
             channel (int, optional): channel to pullback. Defaults to None.
 
         Returns:
             str: device response
         """
-        response = self._query(f'RI{self._pullback_steps}')
+        if steps is None:
+            steps = self.default_pullback
+        response = self._query(f'RI{steps}')
         time.sleep(1)
         return response
     

@@ -9,6 +9,7 @@ Notes / actionables:
 # Standard library imports
 from collections import namedtuple
 from datetime import datetime
+from distutils.dir_util import copy_tree
 import importlib
 import json
 import numpy as np
@@ -25,6 +26,8 @@ import yaml # pip install pyyaml
 
 # Local application imports
 print(f"Import: OK <{__name__}>")
+
+here = '/'.join(__file__.split('\\')[:-1])
 
 class Helper(object):
     """
@@ -221,6 +224,31 @@ class Helper(object):
     
     # Class methods
     @classmethod
+    def get_calibration(cls, constant:str):
+        """
+        Get the calibration constants from file
+
+        Args:
+            constant (str): path of constant
+
+        Raises:
+            Exception: Constant cannot be found
+
+        Returns:
+            any: value of constant
+        """
+        cwd = os.getcwd().replace('\\','/')
+        calibrations = cls.read_yaml(f"{cwd}/configs/calibration.yaml")
+        value = calibrations
+        constants = constant.split('.')
+        for c in constants:
+            if type(value) != dict:
+                print(calibrations)
+                raise Exception("Desired constant cannot be found.")
+            value = value.get(c)
+        return value
+    
+    @classmethod
     def get_details(cls, configs:dict, addresses:dict = {}):
         """
         Decode dictionary of configuration details to get np.ndarrays and tuples
@@ -256,7 +284,7 @@ class Helper(object):
         Get the appropriate addresses for current machine
 
         Args:
-            registry_file (str): yaml file with com port addresses and camera ids
+            registry (str): dictionary of yaml file with com port addresses and camera ids
 
         Returns:
             dict: dictionary of com port addresses and camera ids for current machine
@@ -365,11 +393,17 @@ class Helper(object):
     # NOTE: DEPRECATE
     @classmethod
     def display_ports(cls):
+        """
+        Get available ports
+
+        Returns:
+            list: list of connected serial ports
+        """
         print("'display_ports' method to be deprecated. Use 'get_ports' instead.")
         return cls.get_ports()
     
 
-def create_named_tuple(func):
+def named_tuple_from_dict(func):
     def wrapper(*args, **kwargs):
         setup_dict = func(*args, **kwargs)
         field_list = []
@@ -383,9 +417,45 @@ def create_named_tuple(func):
         return Setup(*object_list)
     return wrapper
 
+def create_setup(setup_name:str = None):
+    """
+    Create new setup folder
 
-@create_named_tuple
-def create_setup(config_file:str, registry_file:str = None, bindings:dict = {}, modify_func: Callable = None):
+    Args:
+        setup_name (str, optional): name of new setup. Defaults to None.
+    """
+    cwd = os.getcwd().replace('\\', '/')
+    if setup_name is None:
+        setup_num = 1
+        while True:
+            setup_name = f'Setup{str(setup_num).zfill(2)}'
+            if not os.path.exists(f"{cwd}/configs/{setup_name}"):
+                break
+            setup_num += 1
+    src = f"{here}/templates/setup"
+    cfg = f"{cwd}/configs"
+    dst = f"{cfg}/{setup_name}"
+    if not os.path.exists(cfg):
+        create_configs()
+    if not os.path.exists(dst):
+        print(f"Creating setup folder ({setup_name})...\n")
+        copy_tree(src=src, dst=dst)
+    return
+
+def create_configs():
+    """
+    Create new configs folder
+    """
+    cwd = os.getcwd().replace('\\', '/')
+    src = f"{here}/templates/configs"
+    dst = f"{cwd}/configs"
+    if not os.path.exists(dst):
+        print("Creating configs folder...\n")
+        copy_tree(src=src, dst=dst)
+    return
+
+@named_tuple_from_dict
+def load_setup(config_file:str, registry_file:str = None, bindings:dict = {}, modify_func: Callable = None):
     config = Helper.get_plans(config_file=config_file, registry_file=registry_file)
     setup = Helper.load_components(config=config)
     

@@ -17,7 +17,7 @@ import serial # pip install pyserial
 from ..mover_utils import Mover
 print(f"Import: OK <{__name__}>")
 
-CNC_SPEED = 250
+MAX_SPEED = 250 # [mm/s]
     
 class Gantry(Mover):
     """
@@ -27,7 +27,7 @@ class Gantry(Mover):
         port (str): com port address
         limits (list, optional): lower and upper bounds of movement. Defaults to [(0,0,0), (0,0,0)].
         safe_height (float, optional): safe height. Defaults to None.
-        move_speed (float, optional): movement speed. Defaults to 0.
+        max_speed (float, optional): maximum movement speed. Defaults to 250.
     
     Kwargs:
         home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,0,0).
@@ -38,18 +38,17 @@ class Gantry(Mover):
         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
         verbose (bool, optional): whether to print outputs. Defaults to False.
     """
-    def __init__(self, port:str, limits=[(0, 0, 0), (0, 0, 0)], safe_height=None, move_speed=-1, **kwargs):
+    def __init__(self, port:str, limits=[(0, 0, 0), (0, 0, 0)], safe_height=None, max_speed=MAX_SPEED, **kwargs):
         super().__init__(**kwargs)
         self._limits = [(0, 0, 0), (0, 0, 0)]
         
         self.device = None
         self.limits = limits
-        self._speed = CNC_SPEED
+        self._speed = max_speed
         
         self.port = ''
         self._baudrate = None
         self._timeout = None
-        # self._movement_speed = move_speed
         
         if safe_height is not None:
             self.setHeight('safe', safe_height)
