@@ -128,20 +128,20 @@ In `slots`, the name of each slot and the file reference for Lawbware block that
 
 ```json
 {
-	"reference_points":{
-		"1": ["_x01_","_y01_","_z01_"],
-		"2": ["_x02_","_y02_","_z02_"]
+  "reference_points":{
+	"1": ["_x01_","_y01_","_z01_"],
+	"2": ["_x02_","_y02_","_z02_"]
+  },
+  "slots":{
+	"1": {
+	  "name": "__name_01__",
+	  "filepath": "__repo_name__/.../__labware_01__.json"
 	},
-    "slots":{
-		"1": {
-			"name": "__name_01__",
-			"filepath": "__repo_name__/.../__labware_01__.json"
-		},
-		"2": {
-			"name": "__name_02__",
-			"filepath": "__repo_name__/.../__labware_02__.json"
-		}
+	"2": {
+	  "name": "__name_02__",
+	  "filepath": "__repo_name__/.../__labware_02__.json"
 	}
+  }
 }
 ```
 This file is optional if your setup does not involve moving objects around in a pre-defined workspace, and hence a layout configuration may not be required.
