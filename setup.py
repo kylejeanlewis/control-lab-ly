@@ -16,6 +16,7 @@ setup(
     author="Chang Jie Leong",
     author_email="<changjie.leong@outlook.com>",
     url="https://github.com/kylejeanlewis/control-lab-le",
+    license="MIT",
     
     packages=find_packages(where='src'),
     package_dir={"": "src"},
@@ -54,5 +55,6 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Operating System :: Microsoft :: Windows",
+        "License :: OSI Approved :: MIT License",
     ]
 )
