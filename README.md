@@ -39,7 +39,7 @@ Create a `/configs` folder in the base folder of your project repository to stor
 This only has to be done once when you first set up the project folder.
 
 ```python
-lab.create_project()
+lab.create_configs()
 ```
 
 A different address may be used by different machines for the same device. To manage the different addresses used by different machines, you first need your machine's unique identifier.
