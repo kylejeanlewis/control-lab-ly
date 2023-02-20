@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-VERSION = '0.1.3.9'
+VERSION = '0.1.3.10'
 DESCRIPTION = 'Lab Equipment Automation Package'
 
 # Setting up
@@ -21,7 +21,9 @@ setup(
     packages=find_packages(where='src'),
     package_dir={"": "src"},
     setup_requires=['wheel'],
-    package_data={'': ['*.json', '*.yaml', '*.png']},
+    package_data={
+        '': ['*.json', '*.yaml', '*.png']
+    },
     include_package_data=True,
     install_requires=[
         "dash>=2.7",
