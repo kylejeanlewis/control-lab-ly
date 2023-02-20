@@ -1,13 +1,10 @@
 from setuptools import setup, find_packages
-# import os
 
-# here = os.path.abspath(os.path.dirname(__file__))
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-VERSION = '0.1.3.4'
+VERSION = '0.1.3.5'
 DESCRIPTION = 'Lab Equipment Automation Package'
-LONG_DESCRIPTION = 'A package that enables flexible automation and reconfigurable setups for high-throughput experimentation and machine learning'
 
 # Setting up
 setup(
