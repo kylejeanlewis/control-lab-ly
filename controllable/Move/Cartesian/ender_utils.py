@@ -18,9 +18,9 @@ class Ender(Gantry):
         port (str): com port address
         limits (list, optional): lower and upper bounds of movement. Defaults to [(0,0,0), (0,0,0)].
         safe_height (float, optional): safe height. Defaults to None.
-        max_speed (float, optional): maximum movement speed. Defaults to 250.
     
     Kwargs:
+        max_speed (float, optional): maximum movement speed. Defaults to 250.
         home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,0,0).
         home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
         orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
