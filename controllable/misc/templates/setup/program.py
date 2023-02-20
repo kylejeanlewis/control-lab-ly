@@ -13,7 +13,7 @@ from controllable.misc import Helper, load_setup
 print(f"Import: OK <{__name__}>")
 
 BINDINGS = {
-    '__name__': '__object__.__component__'
+    '__name__': '__device_name__.__component__'
 }
 REPO = '__repo_name__'
 here = '/'.join(__file__.split('\\')[:-1])
