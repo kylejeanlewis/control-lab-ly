@@ -164,13 +164,11 @@ BINDINGS = {'__name__': '__device_name__.__component__'}    # User-defined 'devi
 Here, you define `REPO` as the folder name that contains the `/configs` folder created above (i.e. repository base folder name).
 
 3. `modify_setup()`\
-Here, you are free to change the contents of the function to modify the setup created upon initialisation. 
-
-> One typical modification step is to load the `Deck` during initialisation, using
-> ```python
-> setup['myCompoundDevice'].loadDeck(layout_dict = layout_dict)
-> # layout_dict is read from file a few lines before modify_setup()
-> ```
+Here, you are free to change the contents of the function to modify the setup created upon initialisation. One typical modification step is to load the `Deck` during initialisation, using
+```python
+setup['myCompoundDevice'].loadDeck(layout_dict = layout_dict)
+# layout_dict is read from file a few lines before modify_setup()
+```
 
 ### Load setup
 The initialisation of the setup occurs during the import of the `program.py` module.
