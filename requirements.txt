@@ -1,5 +1,4 @@
 dash==2.7.1
-easy_biologic==0.3.4
 impedance==1.4.1
 imutils==0.5.4
 matplotlib==3.3.4
