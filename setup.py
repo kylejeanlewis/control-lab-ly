@@ -21,7 +21,7 @@ setup(
     packages=find_packages(where='src'),
     package_dir={"": "src"},
     setup_requires=['wheel'],
-    package_data={'': ['*.json', '*.yaml']},
+    package_data={'': ['*.json', '*.yaml', '*.png']},
     include_package_data=True,
     install_requires=[
         "dash>=2.7",
