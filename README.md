@@ -131,7 +131,7 @@ In `slots`, the name of each slot and the file reference for Lawbware block that
   "reference_points":{
 	  "1": ["_x01_","_y01_","_z01_"],
 	  "2": ["_x02_","_y02_","_z02_"]
-    },
+  },
   "slots":{
     "1": {
       "name": "__name_01__",
