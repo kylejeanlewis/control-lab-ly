@@ -30,6 +30,7 @@ setup(
         "matplotlib>=3.3",
         "nest_asyncio>=1.5",
         "numpy>=1.19",
+        "opencv_python>=4.5.0",
         "pandas>=1.2",
         "plotly>=5.3",
         "pyModbusTCP>=0.2",
