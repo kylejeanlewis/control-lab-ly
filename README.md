@@ -24,7 +24,7 @@ User-friendly package that enables flexible automation an reconfigurable setups 
 
 ## Installation
 ```shell
-$ pip install -i https://test.pypi.org/simple/ control-lab-le
+$ pip install Control-Lab-Less
 ```
 
 ## Usage
