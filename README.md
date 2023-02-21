@@ -33,6 +33,13 @@ $ pip install -i https://test.pypi.org/simple/ control-lab-le
 import controllable as lab
 ```
 
+### Import desired class
+```python
+from controllable.Move.Cartesian import Ender
+mover = Ender(*args, **kwargs)
+mover.safeMoveTo((x,y,z))
+```
+
 ### Create new project
 Create a `/configs` folder in the base folder of your project repository to store all configuration related files from which the package will read from.
 
@@ -88,7 +95,7 @@ Each configuration starts with the `name` of your device, then its `module`, `cl
 ```yaml
 ### config.yaml ###
 
-__name_of_device_01__:                              # name of simple device (user-defined)
+Device01:                                           # name of simple device (user-defined)
   module: __module_name_01__                        # device module
   class: __submodule_1A__.__class_1A__              # device class
   settings:
@@ -102,18 +109,18 @@ __name_of_device_01__:                              # name of simple device (use
 ```yaml
 ### config.yaml ###
 
-__name_of_device_02__:                          # name of 'Compound' device (user-defined)
+Device02:                                       # name of 'Compound' device (user-defined)
   module: Compound                              # for 'Compound' device, there is a 'component_config' setting below
   class: __submodule_2A__.__class_2A__
   settings:
     __setting_C__: 1                            # other settings for your 'Compound' device
     component_config:                           # nest the device configuration settings for the component devices here
-      __name_of_component_01__: 
+      Component01: 
         module: __module_name_03__
         class: __submodule_3A__.__class_3A__
         settings:
           ip_address: '192.0.0.1'               # IP addresses do not vary between machines, so it can be defined here
-      __name_of_component_02__: 
+      Component02: 
         module: __module_name_04__
         class: __submodule_4A__.__class_4A__
         settings:
@@ -135,12 +142,12 @@ In `slots`, the name of each slot and the file reference for Lawbware block that
   },
   "slots":{
     "1": {
-      "name": "__name_01__",
-      "filepath": "__repo_name__/.../__labware_01__.json"
+      "name": "Labware01",
+      "filepath": "REPO/.../Labware01.json"
     },
     "2": {
-      "name": "__name_02__",
-      "filepath": "__repo_name__/.../__labware_02__.json"
+      "name": "Labware02",
+      "filepath": "REPO/.../Labware02.json"
     }
   }
 }
