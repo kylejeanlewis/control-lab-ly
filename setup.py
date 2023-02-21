@@ -9,7 +9,7 @@ DESCRIPTION = 'Lab Equipment Automation Package'
 
 # Setting up
 setup(
-    name="control-lab-le",
+    name="Control-Lab-Less",
     version=VERSION,
     description=DESCRIPTION,
     long_description=long_description,
