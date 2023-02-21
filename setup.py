@@ -4,12 +4,12 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 VERSION = '0.1.3.10'    # testpypi
-VERSION = '0.1.0'       # pypi
+VERSION = '0.0.0.5'     # pypi
 DESCRIPTION = 'Lab Equipment Automation Package'
 
 # Setting up
 setup(
-    name="Control-Lab-Less",
+    name="control-lab-les",
     version=VERSION,
     description=DESCRIPTION,
     long_description=long_description,

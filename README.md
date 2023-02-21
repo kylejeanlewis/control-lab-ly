@@ -24,7 +24,7 @@ User-friendly package that enables flexible automation an reconfigurable setups 
 
 ## Installation
 ```shell
-$ pip install Control-Lab-Less
+$ pip install control-lab-les
 ```
 
 ## Usage
@@ -64,10 +64,10 @@ Populate the YAML file in the format shown below.
 
 '0123456789ABCDE':              # insert your machine's ID here (from the above step)
     cam_index:                  # camera index of the connected imaging devices
-      __cam_01__: 1             # keep the leading and trailing double underscores, but change the names as you wish
+      __cam_01__: 1             # keep the leading and trailing double underscores
       __cam_02__: 0
     port:                       # addresses of serial COM ports
-      __device_01__: COM3       # keep the leading and trailing double underscores, but change the names as you wish
+      __device_01__: COM3       # keep the leading and trailing double underscores
       __device_02__: COM16
 ```
 
@@ -81,7 +81,8 @@ lab.Helper.get_ports()
 Create a new folder for the configuration files of your new setup. 
 
 ```python
-lab.create_setup(setup_name = "Setup01")        # replace "Setup01" with the desired name for your setup
+lab.create_setup(setup_name = "Setup01")
+# replace "Setup01" with the desired name for your setup
 ```
 
 If you had skipped the previous step of creating a project, calling `lab.create_setup` will also generate the required file structure. However, be sure to populate your machine ID and device addresses in the `registry.yaml` file.
@@ -95,13 +96,13 @@ Each configuration starts with the `name` of your device, then its `module`, `cl
 ```yaml
 ### config.yaml ###
 
-Device01:                                           # name of simple device (user-defined)
-  module: __module_name_01__                        # device module
-  class: __submodule_1A__.__class_1A__              # device class
+Device01:                                         # name of simple device (user-defined)
+  module: __module_name_01__                      # device module
+  class: __submodule_1A__.__class_1A__            # device class
   settings:
-    port: __device_01__                             # match port addresses with those defined in registry.yaml
-    __setting_A__: {'tuple': [300,0,200]}           # use dictionary keys to define the type of the iterable
-    __setting_B__: {'array': [[0,1,0],[-1,0,0]]}    # currently, only tuple and numpy.array supported
+    port: __device_01__                           # port addresses defined in registry.yaml
+    __setting_A__: {'tuple': [300,0,200]}         # use keys to define the type of iterable
+    __setting_B__: {'array': [[0,1,0],[-1,0,0]]}  # only tuple and np.array supported
 ```
 
 `Compound` devices are similarly configured. The configuration values for its component devices are defined under the `component_config` setting. The structure of the configuration values for the component devices are similar to that shown above, except indented to fall under the indentation of the `component_config` setting.
@@ -109,22 +110,22 @@ Device01:                                           # name of simple device (use
 ```yaml
 ### config.yaml ###
 
-Device02:                                       # name of 'Compound' device (user-defined)
-  module: Compound                              # for 'Compound' device, there is a 'component_config' setting below
+Device02:                                     # name of 'Compound' device (user-defined)
+  module: Compound                            
   class: __submodule_2A__.__class_2A__
   settings:
-    __setting_C__: 1                            # other settings for your 'Compound' device
-    component_config:                           # nest the device configuration settings for the component devices here
+    __setting_C__: 1                          # other settings for your 'Compound' device
+    component_config:                         # nest component configuration settings here
       Component01: 
         module: __module_name_03__
         class: __submodule_3A__.__class_3A__
         settings:
-          ip_address: '192.0.0.1'               # IP addresses do not vary between machines, so it can be defined here
+          ip_address: '192.0.0.1'             # IP addresses do not vary between machines
       Component02: 
         module: __module_name_04__
         class: __submodule_4A__.__class_4A__
         settings:
-          __setting_D__: 2                      # settings for your component device
+          __setting_D__: 2                    # settings for your component device
 ```
 
 #### `layout.json`
@@ -161,7 +162,8 @@ There are 3 objects that can be changed to suit your setup.
 1. `BINDING`\
 Here, you can define shortcuts for components in your `Compound` devices.
 ```python
-BINDINGS = {'__name__': '__device_name__.__component__'}    # User-defined 'device_name'
+BINDINGS = {'__name__': '__device_name__.__component__'}
+# User-defined 'device_name' in config.yaml
 ```
 > For example, 
 > ```python
