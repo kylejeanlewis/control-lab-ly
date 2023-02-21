@@ -3,7 +3,8 @@ from setuptools import setup, find_packages
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-VERSION = '0.1.3.10'
+VERSION = '0.1.3.10'    # testpypi
+VERSION = '0.0.0.1'     # pypi
 DESCRIPTION = 'Lab Equipment Automation Package'
 
 # Setting up
@@ -43,7 +44,6 @@ setup(
         "scipy>=1.6",
     ],
     # py_modules=[],
-    # packages=find_packages(),
     # extras_require = {
     #     "dev": [
     #         "pytest>=3.7",
