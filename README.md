@@ -22,21 +22,40 @@ User-friendly package that enables flexible automation an reconfigurable setups 
 - PyYAML (==6.0)
 - Scipy (>=1.6.2)
 
+## Device support
+- Make
+  - Multi-channel spin-coater \[Arduino\]
+- Measure
+  - (Keithley) 2450 Source Measure Unit (SMU) Instrument
+  - (PiezoRobotics) Dynamic Mechanical Analyser (DMA)
+  - Precision mass balance \[Arduino\]
+- Move
+  - (Creality) Ender-3
+  - (Dobot) M1 Pro
+  - (Dobot) MG400
+  - Primitiv \[Arduino\]
+- Transfer
+  - (Sartorius) rLINE® dispensing modules
+  - Peristaltic pump and syringe system \[Arduino\]
+- View
+  - (FLIR) AX8 thermal imaging camera - in development 
+  - Web cameras \[General\]
+
 ## Installation
 ```shell
-$ pip install control-lab-les
+$ pip install control-lab-ly
 ```
 
 ## Usage
 ### Import package
 ```python
-import controllable as lab
+import controllably as lab
 ```
 
 ### Import desired class
 ```python
-from controllable.Move.Cartesian import Ender
-mover = Ender(*args, **kwargs)
+from controllably.Move.Cartesian import Ender
+mover = Ender(...)
 mover.safeMoveTo((x,y,z))
 ```
 
