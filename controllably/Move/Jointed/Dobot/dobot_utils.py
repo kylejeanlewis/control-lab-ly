@@ -45,6 +45,8 @@ class Dobot(RobotArm):
         self.ip_address = ip_address
         self.attachment = None
         
+        self._speed = 100
+        
         self.setFlag('retract', True)
         self._connect(ip_address)
         pass
@@ -344,7 +346,7 @@ class Dobot(RobotArm):
         try:
             print(f'Speed: {speed}')
             self.dashboard.SpeedFactor(speed)
-            self._speed_fraction = (speed/100)
+            self._speed_fraction = (speed/self._speed)
         except (AttributeError, OSError):
             if self.verbose:
                 print("Not connected to arm!")
