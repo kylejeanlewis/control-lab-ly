@@ -4,8 +4,7 @@ Lab Equipment Automation Package
 ## Description
 User-friendly package that enables flexible automation an reconfigurable setups for high-throughput experimentation and machine learning.
 
-## Pre-requisites
-- Python (>=3.8)
+## Dependencies
 - Dash (>=2.7.1)
 - Impedance (>=1.4.1)
 - Imutils (>=0.5.4)
