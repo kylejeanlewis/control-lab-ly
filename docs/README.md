@@ -230,7 +230,6 @@ this.robot_arm
 6. Move
 7. Transfer
 8. View
-9. misc
 
 ## Contributors
 [@kylejeanlewis](https://github.com/kylejeanlewis)\
