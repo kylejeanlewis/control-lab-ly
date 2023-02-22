@@ -9,7 +9,7 @@ Notes / actionables:
 # Standard library imports
 
 # Local application imports
-from controllable.misc import Helper, load_setup
+from controllably import Helper, load_setup
 print(f"Import: OK <{__name__}>")
 
 BINDINGS = {
