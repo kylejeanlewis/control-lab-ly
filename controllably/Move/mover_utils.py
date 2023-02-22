@@ -365,7 +365,7 @@ class Mover(object):
             angles = angles1 + angles2
             success = self.moveBy(angles=angles, **kwargs)
         if speed_change:
-            self.setSpeed(100)                                  # change speed back here
+            self.setSpeed(self.speed)                           # change speed back here
         return success
     
     def moveBy(self, vector=None, angles=None, **kwargs):
@@ -456,7 +456,7 @@ class Mover(object):
             orientation=orientation, 
             tool_offset=tool_offset
         )
-        self.setSpeed(100)                                          # change speed back here
+        self.setSpeed(self.speed)                                       # change speed back here
         return
     
     def setConfigSettings(self, config:dict):
