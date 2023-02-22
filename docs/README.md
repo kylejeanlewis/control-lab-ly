@@ -1,4 +1,4 @@
-# Control.lab.ly
+# control.lab.ly
 Lab Equipment Automation Package
 
 ## Description
