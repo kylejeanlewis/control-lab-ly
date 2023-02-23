@@ -37,7 +37,7 @@ User-friendly package that enables flexible automation an reconfigurable setups 
   - (Sartorius) rLINE® dispensing modules
   - Peristaltic pump and syringe system \[Arduino\]
 - View
-  - (FLIR) AX8 thermal imaging camera - in development 
+  - (FLIR) AX8 thermal imaging camera - full functionality in development 
   - Web cameras \[General\]
 
 ## Installation
