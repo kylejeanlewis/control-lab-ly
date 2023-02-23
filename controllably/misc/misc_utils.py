@@ -224,31 +224,6 @@ class Helper(object):
     
     # Class methods
     @classmethod
-    def get_calibration(cls, constant:str):
-        """
-        Get the calibration constants from file
-
-        Args:
-            constant (str): path of constant
-
-        Raises:
-            Exception: Constant cannot be found
-
-        Returns:
-            any: value of constant
-        """
-        cwd = os.getcwd().replace('\\','/')
-        calibrations = cls.read_yaml(f"{cwd}/configs/calibration.yaml")
-        value = calibrations
-        constants = constant.split('.')
-        for c in constants:
-            if type(value) != dict:
-                print(calibrations)
-                raise Exception("Desired constant cannot be found.")
-            value = value.get(c)
-        return value
-    
-    @classmethod
     def get_details(cls, configs:dict, addresses:dict = {}):
         """
         Decode dictionary of configuration details to get np.ndarrays and tuples
