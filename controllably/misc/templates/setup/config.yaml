@@ -1,37 +1,28 @@
-setup:
-  module: Compound
-  class: LiquidMover.LiquidMoverSetup
+Device01:                                         # name of simple device (user-defined)
+  module: __module_name_01__                      # device module
+  class: __submodule_1A__.__class_1A__            # device class
   settings:
-    tip_approach_height: 20
-    component_config:
-      mover: 
-        module: Move
-        class: Jointed.Dobot.M1Pro
-        settings:
-          ip_address: '192.168.2.21'
-          home_coordinates: {'tuple': [300,0,200]}
-          home_orientation: {'tuple': [10,0,0]}
-          orientate_matrix: {'array': [[0.015426152906427654,0.9998810098239228,0],[-0.9998810098239228,0.015426152906427654,0],[0,0,1]]}
-          translate_vector: {'array': [-274.51943236148054,330.24797381150586,283.5]}
-          scale: 1
-          implement_offset: {'tuple': [0,0,-250]}
-      liquid: 
-        module: Transfer
-        class: Liquid.Sartorius.Sartorius
-        settings:
-          port: __sartorius_01__
-          channel: 1
-          offset: [0,0,0]
+    port: __device_01__                           # port addresses defined in registry.yaml
+    __setting_A__: {'tuple': [300,0,200]}         # use keys to define the type of iterable
+    __setting_B__: {'array': [[0,1,0],[-1,0,0]]}  # only tuple and np.array supported
 
-balance:
-  module: Measure
-  class: Physical.MassBalance
+Device02:                                         # name of 'Compound' device (user-defined)
+  module: Compound                            
+  class: __submodule_2A__.__class_2A__
   settings:
-    port: __balance_01__
-    calibration_factor: 6.862879436681862
+    __setting_C__: 1                              # other settings for your 'Compound' device
+    component_config:                             # nest component configuration settings here
+      Component01:                                # name of component
+        module: __module_name_03__
+        class: __submodule_3A__.__class_3A__
+        settings:
+          ip_address: '192.0.0.1'                 # IP addresses do not vary between machines
+      Component02: 
+        module: __module_name_04__
+        class: __submodule_4A__.__class_4A__
+        settings:
+          __setting_D__: 2                        # settings for your component device
 
-camera:
-  module: View
-  class: Optical.Optical
-  settings:
-    cam_index: __arducam__
+SHORTCUTS:
+  Nickname1: 'Device02.Component01'
+  Nickname2: 'Device02.Component02'
