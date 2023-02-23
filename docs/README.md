@@ -16,9 +16,9 @@ User-friendly package that enables flexible automation an reconfigurable setups 
 - Plotly (>=5.3.1)
 - PyModbusTCP (>=0.2.0)
 - Pyserial (>=3.5)
-- PySimpleGUI (==4.60.4)
+- PySimpleGUI (>=4.60)
 - PyVISA (>=1.12.0)
-- PyYAML (==6.0)
+- PyYAML (>=6.0)
 - Scipy (>=1.6.2)
 
 ## Device support

@@ -343,6 +343,7 @@ class Mover(object):
         speed_change = False
         if 0 < speed_fraction < 1:
             speed_change = True
+            speed = self.speed
             self.setSpeed(int(max(1, speed_fraction*100)))      # change speed here
         axis = axis.lower()
         movement_L = {
@@ -365,7 +366,7 @@ class Mover(object):
             angles = angles1 + angles2
             success = self.moveBy(angles=angles, **kwargs)
         if speed_change:
-            self.setSpeed(100)                                  # change speed back here
+            self.setSpeed(speed)                           # change speed back here
         return success
     
     def moveBy(self, vector=None, angles=None, **kwargs):
@@ -442,13 +443,16 @@ class Mover(object):
         coordinates = np.array(coordinates)
         orientation = np.array(orientation)
         
+        speed = self.speed
         self.move('z', max(0, self.home_coordinates[2]-self.coordinates[2]), speed_fraction=ascent_speed_fraction)
+        
         intermediate_position = self.getToolPosition() if tool_offset else self.getUserPosition()
         self.moveTo(
             coordinates=list(coordinates[:2])+[float(intermediate_position[0][2])], 
             orientation=orientation, 
             tool_offset=tool_offset
         )
+        
         if 0 < descent_speed_fraction < 1:
             self.setSpeed(int(max(1, descent_speed_fraction*100)))      # change speed here
         self.moveTo(
@@ -456,7 +460,7 @@ class Mover(object):
             orientation=orientation, 
             tool_offset=tool_offset
         )
-        self.setSpeed(100)                                          # change speed back here
+        self.setSpeed(speed)                                            # change speed back here
         return
     
     def setConfigSettings(self, config:dict):
