@@ -9,13 +9,13 @@ Notes / actionables:
 # Standard library imports
 from collections import namedtuple
 from datetime import datetime
-from distutils.dir_util import copy_tree
 import importlib
 import json
 import numpy as np
 import os
 import pandas as pd
 import pkgutil
+from shutil import copytree
 import time
 from typing import Callable
 import uuid
@@ -439,7 +439,7 @@ def create_setup(setup_name:str = None):
         create_configs()
     if not os.path.exists(dst):
         print(f"Creating setup folder ({setup_name})...\n")
-        copy_tree(src=src, dst=dst)
+        copytree(src=src, dst=dst)
     return
 
 def create_configs():
@@ -451,7 +451,7 @@ def create_configs():
     dst = f"{cwd}/configs"
     if not os.path.exists(dst):
         print("Creating configs folder...\n")
-        copy_tree(src=src, dst=dst)
+        copytree(src=src, dst=dst)
     return
 
 @named_tuple_from_dict
