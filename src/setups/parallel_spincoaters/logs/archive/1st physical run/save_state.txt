@@ -1,6 +1,0 @@
-syringe_0: 0.0
-syringe_1: 0.0
-syringe_2: 0.0
-syringe_3: 0.0
-syringe_4: 0.0
-cnc_align: 0
