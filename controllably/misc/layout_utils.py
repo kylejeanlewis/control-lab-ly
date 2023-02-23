@@ -329,7 +329,7 @@ class Deck(object):
         """
         if name is not None:
             self.names[name] = slot
-        bottom_left_coordinates = tuple(self.details.get('reference_points',{}).get(str(slot)))
+        bottom_left_coordinates = tuple(self.details.get('reference_points',{}).get(str(slot), [0,0,0]))
         self._slots[str(slot)] = Labware(slot=str(slot), bottom_left_coordinates=bottom_left_coordinates, labware_file=labware_file, package=package)
         return
     
