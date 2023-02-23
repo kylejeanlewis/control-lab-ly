@@ -79,7 +79,6 @@ Populate the YAML file in the format shown below.
 
 ```yaml
 ### registry.yaml ###
-
 '0123456789ABCDE':              # insert your machine's ID here (from the above step)
     cam_index:                  # camera index of the connected imaging devices
       __cam_01__: 1             # keep the leading and trailing double underscores
@@ -113,7 +112,6 @@ Each configuration starts with the `name` of your device, then its `module`, `cl
 
 ```yaml
 ### config.yaml ###
-
 Device01:                                         # name of simple device (user-defined)
   module: __module_name_01__                      # device module
   class: __submodule_1A__.__class_1A__            # device class
@@ -127,14 +125,13 @@ Device01:                                         # name of simple device (user-
 
 ```yaml
 ### config.yaml ###
-
 Device02:                                     # name of 'Compound' device (user-defined)
   module: Compound                            
   class: __submodule_2A__.__class_2A__
   settings:
     __setting_C__: 1                          # other settings for your 'Compound' device
     component_config:                         # nest component configuration settings here
-      Component01: 
+      Component01:                            # name of component
         module: __module_name_03__
         class: __submodule_3A__.__class_3A__
         settings:
@@ -144,6 +141,15 @@ Device02:                                     # name of 'Compound' device (user-
         class: __submodule_4A__.__class_4A__
         settings:
           __setting_D__: 2                    # settings for your component device
+```
+
+Lastly, you can define shortcuts to quickly access components of `Compound` devices.
+```yaml
+### config.yaml ###
+SHORTCUTS:
+  robot_arm: myCompoundDevice.mover
+  Nickname1: Device02.Component01
+  Nickname2: Device02.Component02
 ```
 
 #### `layout.json`
@@ -173,31 +179,6 @@ In `slots`, the name of each slot and the file reference for Lawbware block that
 ```
 This file is optional if your setup does not involve moving objects around in a pre-defined workspace, and hence a layout configuration may not be required.
 
-#### `program.py`
-Lastly, you can define how your setup is initialised in `program.py`.
-
-There are 3 objects that can be changed to suit your setup.
-1. `BINDING`\
-Here, you can define shortcuts for components in your `Compound` devices.
-```python
-BINDINGS = {'__name__': '__device_name__.__component__'}
-# User-defined 'device_name' in config.yaml
-```
-> For example, 
-> ```python
-> BINDINGS = {'robot_arm': 'myCompoundDevice.mover'}
-> ```
-
-2. `REPO`\
-Here, you define `REPO` as the folder name that contains the `/configs` folder created above (i.e. repository base folder name).
-
-3. `modify_setup()`\
-Here, you are free to change the contents of the function to modify the setup created upon initialisation. One typical modification step is to load the `Deck` during initialisation, using
-```python
-setup['myCompoundDevice'].loadDeck(layout_dict = layout_dict)
-# layout_dict is read from file a few lines before modify_setup()
-```
-
 ### Load setup
 The initialisation of the setup occurs during the import of the `program.py` module.
 
@@ -210,16 +191,23 @@ here = '/'.join(os.path.abspath('').split('\\')[:-1])
 root = here.split(REPO)[0]
 sys.path.append(f'{root}{REPO}')
 
-# Import the previously defined program.py
-from configs.SynthesisB1 import program
-this = program.SETUP
+# Import the initialised setup
+from configs.SynthesisB1 import SETUP
+this = SETUP
 ```
 
-With `this`, you can access all the devices that you have defined in `configs.yaml`, as well as in `BINDINGS`.
+With `this`, you can access all the devices that you have defined in `configs.yaml`.
 ```python
 this.myCompoundDevice
 this.robot_arm
 ```
+
+### Load deck
+To load the `Deck` from the layout file, use the `lab.load_deck` function.
+```python
+from configs.SynthesisB1 import LAYOUT_FILE
+lab.load_deck(this.DeviceWithDeck, LAYOUT_FILE)
+``` 
 
 ## Package Structure
 1. Analyse
