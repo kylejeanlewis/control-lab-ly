@@ -344,6 +344,7 @@ class Dobot(RobotArm):
             speed (int): rate value (value range: 1~100)
         """
         try:
+            speed = int(speed)
             print(f'Speed: {speed}')
             self.dashboard.SpeedFactor(speed)
             self._speed_fraction = (speed/self._speed)
