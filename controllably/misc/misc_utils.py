@@ -376,21 +376,21 @@ class Helper(object):
         """
         print("'display_ports' method to be deprecated. Use 'get_ports' instead.")
         return cls.get_ports()
-    
 
-def named_tuple_from_dict(func):
-    def wrapper(*args, **kwargs):
-        setup_dict = func(*args, **kwargs)
-        field_list = []
-        object_list = []
-        for k,v in setup_dict.items():
-            field_list.append(k)
-            object_list.append(v)
-        
-        Setup = namedtuple('Setup', field_list)
-        print(f"Objects created: {', '.join(field_list)}")
-        return Setup(*object_list)
-    return wrapper
+# Core functions
+def create_configs():
+    """
+    Create new configs folder
+    """
+    cwd = os.getcwd().replace('\\', '/')
+    src = f"{here}/templates/configs"
+    dst = f"{cwd}/configs"
+    if not os.path.exists(dst):
+        print("Creating configs folder...\n")
+        copytree(src=src, dst=dst)
+        node_id = Helper.get_node()
+        print(f"Current machine id: {node_id}")
+    return
 
 def create_setup(setup_name:str = None):
     """
@@ -417,24 +417,27 @@ def create_setup(setup_name:str = None):
         copytree(src=src, dst=dst)
     return
 
-def create_configs():
-    """
-    Create new configs folder
-    """
-    cwd = os.getcwd().replace('\\', '/')
-    src = f"{here}/templates/configs"
-    dst = f"{cwd}/configs"
-    if not os.path.exists(dst):
-        print("Creating configs folder...\n")
-        copytree(src=src, dst=dst)
-    return
+def named_tuple_from_dict(func):
+    def wrapper(*args, **kwargs):
+        setup_dict = func(*args, **kwargs)
+        field_list = []
+        object_list = []
+        for k,v in setup_dict.items():
+            field_list.append(k)
+            object_list.append(v)
+        
+        Setup = namedtuple('Setup', field_list)
+        print(f"Objects created: {', '.join(field_list)}")
+        return Setup(*object_list)
+    return wrapper
 
 @named_tuple_from_dict
-def load_setup(config_file:str, registry_file:str = None, bindings:dict = {}, modify_func: Callable = None):
+def load_setup(config_file:str, registry_file:str = None):
     config = Helper.get_plans(config_file=config_file, registry_file=registry_file)
     setup = Helper.load_components(config=config)
+    shortcuts = config.get('SHORTCUTS',{})
     
-    for key,value in bindings.items():
+    for key,value in shortcuts.items():
         parent, child = value.split('.')
         tool = setup.get(parent)
         if tool is None:
@@ -444,10 +447,21 @@ def load_setup(config_file:str, registry_file:str = None, bindings:dict = {}, mo
             print(f"Tool ({parent}) does not have components")
             continue
         setup[key] = tool.components.get(child)
-    
-    if modify_func is not None:
-        setup = modify_func(setup)
     return setup
+
+def load_deck(device, layout_file:str, get_absolute_filepath:bool = True):
+    layout_dict = Helper.read_json(layout_file)
+    if get_absolute_filepath:
+        get_repo_name = True
+        root = ''
+        for slot in layout_dict['slots'].values():
+            if get_repo_name:
+                repo_name = slot.get('filepath','').replace('\\', '/').split('/')[0]
+                root = layout_file.split(repo_name)[0]
+                get_repo_name = False
+            slot['filepath'] = f"{root}{slot['filepath']}"
+    device.loadDeck(layout_dict=layout_dict)
+    return device
 
 
 LOGGER = Helper() 
