@@ -1,8 +1,9 @@
 # Change Log
 
-## Unreleased (0.1.1)
+## Unreleased
+*Items in development*
 
-## 0.1.0
+## 0.0.1
 First release of [Control.lab.ly](https://pypi.org/project/control-lab-ly/) distributed on 23 Feb 2023.
 ### Added
 - Make
