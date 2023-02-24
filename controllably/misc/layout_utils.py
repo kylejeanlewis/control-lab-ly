@@ -297,6 +297,23 @@ class Deck(object):
         """
         return self._slots
     
+    def at(self, slot):
+        """
+        Alias for Deck.get_slot, with mixed input
+
+        Args:
+            slot (int/str): index or name of slot
+
+        Returns:
+            Labware: Labware in slot
+        """
+        if type(slot) == int:
+            return self.get_slot(index=slot)
+        elif type(slot) == str:
+            return self.get_slot(name=slot)
+        print("Input a valid index or name of Labware in slot.")
+        return
+    
     def get_slot(self, index:int = None, name:str = None):
         """
         Get labware in slot using index or name
@@ -329,7 +346,7 @@ class Deck(object):
         """
         if name is not None:
             self.names[name] = slot
-        bottom_left_coordinates = tuple(self.details.get('reference_points',{}).get(str(slot)))
+        bottom_left_coordinates = tuple(self.details.get('reference_points',{}).get(str(slot), [0,0,0]))
         self._slots[str(slot)] = Labware(slot=str(slot), bottom_left_coordinates=bottom_left_coordinates, labware_file=labware_file, package=package)
         return
     

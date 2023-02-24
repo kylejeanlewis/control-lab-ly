@@ -1,5 +1,9 @@
 machine_id:
-  '000000000000000':
-    cam_index: {}
-    port: {}
+  '000000000000000':          # insert your machine's ID here
+    cam_index:                # camera index of the connected imaging devices
+      __cam_1__: 0            # keep the leading and trailing double underscores
+      __cam_2__: 1
+    port:                     # addresses of serial COM ports
+      __port_1__: COM2        # keep the leading and trailing double underscores
+      __port_2__: COM6
     
