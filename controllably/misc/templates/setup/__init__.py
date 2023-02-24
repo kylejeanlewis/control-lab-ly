@@ -1,7 +1,8 @@
+from pathlib import Path
 from controllably import load_setup         # pip install control-lab-ly
 
-HERE = '/'.join(__file__.split('\\')[:-1])
-CONFIGS = '/'.join(HERE.split('/')[:-1])
+HERE = str(Path(__file__).parent.absolute()).replace('\\', '/')
+CONFIGS = str(Path(__file__).parent.parent.absolute()).replace('\\', '/')
 
 CONFIG_FILE = f"{HERE}/config.yaml"
 LAYOUT_FILE = f"{HERE}/layout.json"
