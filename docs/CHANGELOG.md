@@ -6,6 +6,8 @@
 ## 0.0.2.x
 Updates in setting up configuration files. Released 24 Feb 2023.
 ### Added
+#### 0.0.2.2
+- Added import of `CompoundSetup` class
 #### 0.0.2
 - `Deck.at()` method for directly referencing slots using either index numbers or names
 - New `CompoundSetup` class for common methods of `Compound` devices
