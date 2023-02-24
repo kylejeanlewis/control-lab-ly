@@ -79,8 +79,7 @@ $ python -m pydoc controllably.Move.Cartesian.Ender
 ```
 
 ### Create new project
-Create a `/configs` folder in the base folder of your project repository to store all configuration related files from which the package will read from.
-
+Create a `/configs` folder in the base folder of your project repository to store all configuration related files from which the package will read from.\
 This only has to be done once when you first set up the project folder.
 
 ```python
@@ -115,14 +114,12 @@ lab.Helper.get_ports()
 ```
 
 ### Create new setup
-Create a new folder for the configuration files of your new setup. 
+Create a new folder for the configuration files of your new setup. If you had skipped the previous step of creating a project, calling `lab.create_setup` will also generate the required file structure. However, be sure to populate your machine ID and device addresses in the `registry.yaml` file.
 
 ```python
 lab.create_setup(setup_name = "Setup01")
 # replace "Setup01" with the desired name for your setup
 ```
-
-If you had skipped the previous step of creating a project, calling `lab.create_setup` will also generate the required file structure. However, be sure to populate your machine ID and device addresses in the `registry.yaml` file.
 
 This creates a `/Setup01` folder that holds the configuration files for the setup, which includes `config.yaml` and `layout.json`.
 
@@ -175,9 +172,7 @@ SHORTCUTS:
 #### `layout.json`
 Layout configuration of your physical workspace (`Deck`) will be stored in `layout.json`. This package uses the same Labware files as those provided by [Opentrons](https://opentrons.com/), which can be found [here](https://labware.opentrons.com/), and custom Labware files can be created [here](https://labware.opentrons.com/create/). Labware files are JSON files that specifies the external and internal dimensions of a Labware block/module.
 
-In `reference_points`, the bottom-left coordinates of each slot in the workspace are defined. Slots are positions where Labware blocks may be placed.
-
-In `slots`, the name of each slot and the file reference for Lawbware block that occupies that slot are defined. The filepath starts with the repository's base folder name.
+This file is optional if your setup does not involve moving objects around in a pre-defined workspace, and hence a layout configuration may not be required.
 
 ```json
 {
@@ -197,7 +192,10 @@ In `slots`, the name of each slot and the file reference for Lawbware block that
   }
 }
 ```
-This file is optional if your setup does not involve moving objects around in a pre-defined workspace, and hence a layout configuration may not be required.
+
+In `reference_points`, the bottom-left coordinates of each slot in the workspace are defined. Slots are positions where Labware blocks may be placed.
+
+In `slots`, the name of each slot and the file reference for Lawbware block that occupies that slot are defined. The filepath starts with the repository's base folder name.
 
 ### Load setup
 The initialisation of the setup occurs during the import `SETUP` from within `configs/Setup01`.
