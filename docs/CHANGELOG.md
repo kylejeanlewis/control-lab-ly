@@ -3,6 +3,16 @@
 ## Unreleased
 *Items in development*
 
+## 0.0.2.x
+Updates in setting up configuration files
+### Added
+- `Deck.at()` method for directly referencing slots using either index numbers or names
+- New `CompoundSetup` class for common methods of `Compound` devices
+- New `load_deck()` function to load `Deck` after initialisation
+
+### Changed
+- Update documentation
+
 ## 0.0.1.x
 First release of [Control.lab.ly](https://pypi.org/project/control-lab-ly/) distributed on 23 Feb 2023.
 ### Added
