@@ -62,7 +62,7 @@ class Helper(object):
         Retrieve the relevant class from the sub-package
 
         Args:
-            package (module): sub-package
+            module (module): sub-package
             dot_notation (str): dot notation of class / module / package
 
         Returns:
@@ -125,7 +125,7 @@ class Helper(object):
         return com_ports
     
     @staticmethod
-    def is_overrun(start_time:float, timeout):
+    def is_overrun(start_time:float, timeout:float):
         """
         Check whether the process has timed out
 
@@ -229,7 +229,7 @@ class Helper(object):
         Decode dictionary of configuration details to get np.ndarrays and tuples
 
         Args:
-            details (dict): dictionary of configuration details
+            configs (dict): dictionary of configuration details
             addresses (dict, optional): dictionary of registered addresses. Defaults to {}.
 
         Returns:
@@ -418,6 +418,12 @@ def create_setup(setup_name:str = None):
     return
 
 def named_tuple_from_dict(func):
+    """
+    Wrapper for creating named tuple from dictionary
+
+    Args:
+        func (Callable): function to be wrapped
+    """
     def wrapper(*args, **kwargs):
         setup_dict = func(*args, **kwargs)
         field_list = []
@@ -433,6 +439,16 @@ def named_tuple_from_dict(func):
 
 @named_tuple_from_dict
 def load_setup(config_file:str, registry_file:str = None):
+    """
+    Load and initialise setup
+
+    Args:
+        config_file (str): config filename
+        registry_file (str, optional): registry filename. Defaults to None.
+
+    Returns:
+        dict: dictionary of loaded devices
+    """
     config = Helper.get_plans(config_file=config_file, registry_file=registry_file)
     setup = Helper.load_components(config=config)
     shortcuts = config.get('SHORTCUTS',{})
@@ -450,6 +466,17 @@ def load_setup(config_file:str, registry_file:str = None):
     return setup
 
 def load_deck(device, layout_file:str, get_absolute_filepath:bool = True):
+    """
+    Load the deck information from layout file
+
+    Args:
+        device (object): device object that has the deck attribute
+        layout_file (str): layout file name
+        get_absolute_filepath (bool, optional): whether to extend the filepaths defined in layout file to their absolute filepaths. Defaults to True.
+
+    Returns:
+        object: device with deck loaded
+    """
     layout_dict = Helper.read_json(layout_file)
     if get_absolute_filepath:
         get_repo_name = True

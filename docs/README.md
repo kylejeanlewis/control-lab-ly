@@ -58,6 +58,26 @@ mover = Ender(...)
 mover.safeMoveTo((x,y,z))
 ```
 
+More details for each class can be retrieved by using the `help` function.
+
+```python
+help(controllably.Move)
+help(Ender)
+help(mover)
+```
+
+Alternatively, you can use the native `pydoc` documentation generator.
+
+```shell
+$ python -m pydoc controllably.Move
+$ python -m pydoc controllably.Move.Cartesian.Ender
+```
+
+>Tip: when using Interactive Python (IPython) (e.g. Jupyter notebooks), add a exclamation mark (`!`) in front of the shell command
+```python
+>>> !python -m pydoc controllably
+```
+
 ### Create new project
 Create a `/configs` folder in the base folder of your project repository to store all configuration related files from which the package will read from.
 
