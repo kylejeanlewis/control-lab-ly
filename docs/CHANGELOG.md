@@ -4,15 +4,17 @@
 *Items in development*
 
 ## 0.0.2.x
-Updates in setting up configuration files
+Updates in setting up configuration files. Released 24 Feb 2023.
 ### Added
-#### 0.0.2.1
+#### 0.0.2
 - `Deck.at()` method for directly referencing slots using either index numbers or names
 - New `CompoundSetup` class for common methods of `Compound` devices
 - New `load_deck()` function to load `Deck` after initialisation
 
 ### Changed
 #### 0.0.2.1
+- Changed template files for `lab.create_setup()`
+#### 0.0.2
 - Update documentation
 
 ## 0.0.1.x
