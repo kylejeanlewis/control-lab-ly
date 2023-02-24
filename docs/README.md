@@ -4,23 +4,6 @@ Lab Equipment Automation Package
 ## Description
 User-friendly package that enables flexible automation an reconfigurable setups for high-throughput experimentation and machine learning.
 
-## Dependencies
-- Dash (>=2.7.1)
-- Impedance (>=1.4.1)
-- Imutils (>=0.5.4)
-- Matplotlib (>=3.3.4)
-- Nest-asyncio (>=1.5.1)
-- Numpy (>=1.19.5)
-- Opencv-python (>=4.5.4.58)
-- Pandas (>=1.2.4)
-- Plotly (>=5.3.1)
-- PyModbusTCP (>=0.2.0)
-- Pyserial (>=3.5)
-- PySimpleGUI (>=4.60)
-- PyVISA (>=1.12.0)
-- PyYAML (>=6.0)
-- Scipy (>=1.6.2)
-
 ## Device support
 - Make
   - Multi-channel spin-coater \[Arduino\]
@@ -58,9 +41,28 @@ mover = Ender(...)
 mover.safeMoveTo((x,y,z))
 ```
 
-### Create new project
-Create a `/configs` folder in the base folder of your project repository to store all configuration related files from which the package will read from.
+More details for each class / module / package can be explored by using the `help` function.
 
+```python
+help(controllably.Move)
+help(Ender)
+help(mover)
+```
+
+Alternatively, you can use the native `pydoc` documentation generator.
+
+```shell
+$ python -m pydoc controllably.Move
+$ python -m pydoc controllably.Move.Cartesian.Ender
+```
+
+>Tip: when using Interactive Python (IPython) (e.g. Jupyter notebooks), add a exclamation mark (`!`) in front of the shell command
+```python
+>>> !python -m pydoc controllably
+```
+
+### Create new project
+Create a `/configs` folder in the base folder of your project repository to store all configuration related files from which the package will read from.\
 This only has to be done once when you first set up the project folder.
 
 ```python
@@ -79,7 +81,6 @@ Populate the YAML file in the format shown below.
 
 ```yaml
 ### registry.yaml ###
-
 '0123456789ABCDE':              # insert your machine's ID here (from the above step)
     cam_index:                  # camera index of the connected imaging devices
       __cam_01__: 1             # keep the leading and trailing double underscores
@@ -96,16 +97,14 @@ lab.Helper.get_ports()
 ```
 
 ### Create new setup
-Create a new folder for the configuration files of your new setup. 
+Create a new folder for the configuration files of your new setup. If you had skipped the previous step of creating a project, calling `lab.create_setup` will also generate the required file structure. However, be sure to populate your machine ID and device addresses in the `registry.yaml` file.
 
 ```python
 lab.create_setup(setup_name = "Setup01")
 # replace "Setup01" with the desired name for your setup
 ```
 
-If you had skipped the previous step of creating a project, calling `lab.create_setup` will also generate the required file structure. However, be sure to populate your machine ID and device addresses in the `registry.yaml` file.
-
-This creates a `/Setup01` folder that holds the configuration files for the setup, which includes `config.yaml`, `layout.json`, and `program.py`.
+This creates a `/Setup01` folder that holds the configuration files for the setup, which includes `config.yaml` and `layout.json`.
 
 #### `config.yaml`
 Configuration and calibration values for your devices is stored in `config.yaml`.\
@@ -113,7 +112,6 @@ Each configuration starts with the `name` of your device, then its `module`, `cl
 
 ```yaml
 ### config.yaml ###
-
 Device01:                                         # name of simple device (user-defined)
   module: __module_name_01__                      # device module
   class: __submodule_1A__.__class_1A__            # device class
@@ -127,14 +125,13 @@ Device01:                                         # name of simple device (user-
 
 ```yaml
 ### config.yaml ###
-
 Device02:                                     # name of 'Compound' device (user-defined)
   module: Compound                            
   class: __submodule_2A__.__class_2A__
   settings:
     __setting_C__: 1                          # other settings for your 'Compound' device
     component_config:                         # nest component configuration settings here
-      Component01: 
+      Component01:                            # name of component
         module: __module_name_03__
         class: __submodule_3A__.__class_3A__
         settings:
@@ -146,12 +143,19 @@ Device02:                                     # name of 'Compound' device (user-
           __setting_D__: 2                    # settings for your component device
 ```
 
+Lastly, you can define shortcuts to quickly access components of `Compound` devices.
+```yaml
+### config.yaml ###
+SHORTCUTS:
+  robot_arm: myCompoundDevice.mover
+  Nickname1: Device02.Component01
+  Nickname2: Device02.Component02
+```
+
 #### `layout.json`
 Layout configuration of your physical workspace (`Deck`) will be stored in `layout.json`. This package uses the same Labware files as those provided by [Opentrons](https://opentrons.com/), which can be found [here](https://labware.opentrons.com/), and custom Labware files can be created [here](https://labware.opentrons.com/create/). Labware files are JSON files that specifies the external and internal dimensions of a Labware block/module.
 
-In `reference_points`, the bottom-left coordinates of each slot in the workspace are defined. Slots are positions where Labware blocks may be placed.
-
-In `slots`, the name of each slot and the file reference for Lawbware block that occupies that slot are defined. The filepath starts with the repository's base folder name.
+This file is optional if your setup does not involve moving objects around in a pre-defined workspace, and hence a layout configuration may not be required.
 
 ```json
 {
@@ -171,55 +175,39 @@ In `slots`, the name of each slot and the file reference for Lawbware block that
   }
 }
 ```
-This file is optional if your setup does not involve moving objects around in a pre-defined workspace, and hence a layout configuration may not be required.
 
-#### `program.py`
-Lastly, you can define how your setup is initialised in `program.py`.
+In `reference_points`, the bottom-left coordinates of each slot in the workspace are defined. Slots are positions where Labware blocks may be placed.
 
-There are 3 objects that can be changed to suit your setup.
-1. `BINDING`\
-Here, you can define shortcuts for components in your `Compound` devices.
-```python
-BINDINGS = {'__name__': '__device_name__.__component__'}
-# User-defined 'device_name' in config.yaml
-```
-> For example, 
-> ```python
-> BINDINGS = {'robot_arm': 'myCompoundDevice.mover'}
-> ```
-
-2. `REPO`\
-Here, you define `REPO` as the folder name that contains the `/configs` folder created above (i.e. repository base folder name).
-
-3. `modify_setup()`\
-Here, you are free to change the contents of the function to modify the setup created upon initialisation. One typical modification step is to load the `Deck` during initialisation, using
-```python
-setup['myCompoundDevice'].loadDeck(layout_dict = layout_dict)
-# layout_dict is read from file a few lines before modify_setup()
-```
+In `slots`, the name of each slot and the file reference for Labware block that occupies that slot are defined. The filepath starts with the repository's base folder name.
 
 ### Load setup
-The initialisation of the setup occurs during the import of the `program.py` module.
+The initialisation of the setup occurs during the import `SETUP` from within `configs/Setup01`.
 
 ```python
-# Add the configs folder to sys.path
-import os
+# Add repository folder to sys.path
+from pathlib import Path
 import sys
-REPO = '__repo_name__'
-here = '/'.join(os.path.abspath('').split('\\')[:-1])
-root = here.split(REPO)[0]
-sys.path.append(f'{root}{REPO}')
+REPO = 'REPO'
+ROOT = str(Path().absolute()).split(REPO)[0]
+sys.path.append(f'{ROOT}{REPO}')
 
-# Import the previously defined program.py
-from configs.SynthesisB1 import program
-this = program.SETUP
+# Import the initialised setup
+from configs.Setup01 import SETUP
+this = SETUP
 ```
 
-With `this`, you can access all the devices that you have defined in `configs.yaml`, as well as in `BINDINGS`.
+With `this`, you can access all the devices that you have defined in `configs.yaml`.
 ```python
 this.myCompoundDevice
 this.robot_arm
 ```
+
+### Load deck
+To load the `Deck` from the layout file, use the `lab.load_deck` function.
+```python
+from configs.Setup01 import LAYOUT_FILE
+lab.load_deck(this.DeviceWithDeck, LAYOUT_FILE)
+``` 
 
 ## Package Structure
 1. Analyse
@@ -230,6 +218,23 @@ this.robot_arm
 6. Move
 7. Transfer
 8. View
+
+## Dependencies
+- Dash (>=2.7.1)
+- Impedance (>=1.4.1)
+- Imutils (>=0.5.4)
+- Matplotlib (>=3.3.4)
+- Nest-asyncio (>=1.5.1)
+- Numpy (>=1.19.5)
+- Opencv-python (>=4.5.4.58)
+- Pandas (>=1.2.4)
+- Plotly (>=5.3.1)
+- PyModbusTCP (>=0.2.0)
+- Pyserial (>=3.5)
+- PySimpleGUI (>=4.60.4)
+- PyVISA (>=1.12.0)
+- PyYAML (>=6.0)
+- Scipy (>=1.6.2)
 
 ## Contributors
 [@kylejeanlewis](https://github.com/kylejeanlewis)\

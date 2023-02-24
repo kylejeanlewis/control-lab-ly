@@ -14,10 +14,10 @@ import json
 import numpy as np
 import os
 import pandas as pd
+from pathlib import Path
 import pkgutil
 from shutil import copytree
 import time
-from typing import Callable
 import uuid
 
 # Third party imports
@@ -27,7 +27,7 @@ import yaml # pip install pyyaml
 # Local application imports
 print(f"Import: OK <{__name__}>")
 
-here = '/'.join(__file__.split('\\')[:-1])
+here = str(Path(__file__).parent.absolute()).replace('\\', '/')
 
 class Helper(object):
     """
@@ -62,7 +62,7 @@ class Helper(object):
         Retrieve the relevant class from the sub-package
 
         Args:
-            package (module): sub-package
+            module (module): sub-package
             dot_notation (str): dot notation of class / module / package
 
         Returns:
@@ -125,7 +125,7 @@ class Helper(object):
         return com_ports
     
     @staticmethod
-    def is_overrun(start_time:float, timeout):
+    def is_overrun(start_time:float, timeout:float):
         """
         Check whether the process has timed out
 
@@ -224,37 +224,12 @@ class Helper(object):
     
     # Class methods
     @classmethod
-    def get_calibration(cls, constant:str):
-        """
-        Get the calibration constants from file
-
-        Args:
-            constant (str): path of constant
-
-        Raises:
-            Exception: Constant cannot be found
-
-        Returns:
-            any: value of constant
-        """
-        cwd = os.getcwd().replace('\\','/')
-        calibrations = cls.read_yaml(f"{cwd}/configs/calibration.yaml")
-        value = calibrations
-        constants = constant.split('.')
-        for c in constants:
-            if type(value) != dict:
-                print(calibrations)
-                raise Exception("Desired constant cannot be found.")
-            value = value.get(c)
-        return value
-    
-    @classmethod
     def get_details(cls, configs:dict, addresses:dict = {}):
         """
         Decode dictionary of configuration details to get np.ndarrays and tuples
 
         Args:
-            details (dict): dictionary of configuration details
+            configs (dict): dictionary of configuration details
             addresses (dict, optional): dictionary of registered addresses. Defaults to {}.
 
         Returns:
@@ -401,21 +376,21 @@ class Helper(object):
         """
         print("'display_ports' method to be deprecated. Use 'get_ports' instead.")
         return cls.get_ports()
-    
 
-def named_tuple_from_dict(func):
-    def wrapper(*args, **kwargs):
-        setup_dict = func(*args, **kwargs)
-        field_list = []
-        object_list = []
-        for k,v in setup_dict.items():
-            field_list.append(k)
-            object_list.append(v)
-        
-        Setup = namedtuple('Setup', field_list)
-        print(f"Objects created: {', '.join(field_list)}")
-        return Setup(*object_list)
-    return wrapper
+# Core functions
+def create_configs():
+    """
+    Create new configs folder
+    """
+    cwd = os.getcwd().replace('\\', '/')
+    src = f"{here}/templates/configs"
+    dst = f"{cwd}/configs"
+    if not os.path.exists(dst):
+        print("Creating configs folder...\n")
+        copytree(src=src, dst=dst)
+        node_id = Helper.get_node()
+        print(f"Current machine id: {node_id}")
+    return
 
 def create_setup(setup_name:str = None):
     """
@@ -442,24 +417,43 @@ def create_setup(setup_name:str = None):
         copytree(src=src, dst=dst)
     return
 
-def create_configs():
+def named_tuple_from_dict(func):
     """
-    Create new configs folder
+    Wrapper for creating named tuple from dictionary
+
+    Args:
+        func (Callable): function to be wrapped
     """
-    cwd = os.getcwd().replace('\\', '/')
-    src = f"{here}/templates/configs"
-    dst = f"{cwd}/configs"
-    if not os.path.exists(dst):
-        print("Creating configs folder...\n")
-        copytree(src=src, dst=dst)
-    return
+    def wrapper(*args, **kwargs):
+        setup_dict = func(*args, **kwargs)
+        field_list = []
+        object_list = []
+        for k,v in setup_dict.items():
+            field_list.append(k)
+            object_list.append(v)
+        
+        Setup = namedtuple('Setup', field_list)
+        print(f"Objects created: {', '.join(field_list)}")
+        return Setup(*object_list)
+    return wrapper
 
 @named_tuple_from_dict
-def load_setup(config_file:str, registry_file:str = None, bindings:dict = {}, modify_func: Callable = None):
+def load_setup(config_file:str, registry_file:str = None):
+    """
+    Load and initialise setup
+
+    Args:
+        config_file (str): config filename
+        registry_file (str, optional): registry filename. Defaults to None.
+
+    Returns:
+        dict: dictionary of loaded devices
+    """
     config = Helper.get_plans(config_file=config_file, registry_file=registry_file)
     setup = Helper.load_components(config=config)
+    shortcuts = config.get('SHORTCUTS',{})
     
-    for key,value in bindings.items():
+    for key,value in shortcuts.items():
         parent, child = value.split('.')
         tool = setup.get(parent)
         if tool is None:
@@ -469,10 +463,32 @@ def load_setup(config_file:str, registry_file:str = None, bindings:dict = {}, mo
             print(f"Tool ({parent}) does not have components")
             continue
         setup[key] = tool.components.get(child)
-    
-    if modify_func is not None:
-        setup = modify_func(setup)
     return setup
+
+def load_deck(device, layout_file:str, get_absolute_filepath:bool = True):
+    """
+    Load the deck information from layout file
+
+    Args:
+        device (object): device object that has the deck attribute
+        layout_file (str): layout file name
+        get_absolute_filepath (bool, optional): whether to extend the filepaths defined in layout file to their absolute filepaths. Defaults to True.
+
+    Returns:
+        object: device with deck loaded
+    """
+    layout_dict = Helper.read_json(layout_file)
+    if get_absolute_filepath:
+        get_repo_name = True
+        root = ''
+        for slot in layout_dict['slots'].values():
+            if get_repo_name:
+                repo_name = slot.get('filepath','').replace('\\', '/').split('/')[0]
+                root = layout_file.split(repo_name)[0]
+                get_repo_name = False
+            slot['filepath'] = f"{root}{slot['filepath']}"
+    device.loadDeck(layout_dict=layout_dict)
+    return device
 
 
 LOGGER = Helper() 
