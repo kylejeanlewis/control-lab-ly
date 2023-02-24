@@ -58,7 +58,7 @@ mover = Ender(...)
 mover.safeMoveTo((x,y,z))
 ```
 
-More details for each class can be retrieved by using the `help` function.
+More details for each class / module / package can be explored by using the `help` function.
 
 ```python
 help(controllably.Move)
@@ -124,7 +124,7 @@ lab.create_setup(setup_name = "Setup01")
 
 If you had skipped the previous step of creating a project, calling `lab.create_setup` will also generate the required file structure. However, be sure to populate your machine ID and device addresses in the `registry.yaml` file.
 
-This creates a `/Setup01` folder that holds the configuration files for the setup, which includes `config.yaml`, `layout.json`, and `program.py`.
+This creates a `/Setup01` folder that holds the configuration files for the setup, which includes `config.yaml` and `layout.json`.
 
 #### `config.yaml`
 Configuration and calibration values for your devices is stored in `config.yaml`.\
@@ -200,19 +200,18 @@ In `slots`, the name of each slot and the file reference for Lawbware block that
 This file is optional if your setup does not involve moving objects around in a pre-defined workspace, and hence a layout configuration may not be required.
 
 ### Load setup
-The initialisation of the setup occurs during the import of the `program.py` module.
+The initialisation of the setup occurs during the import `SETUP` from within `configs/Setup01`.
 
 ```python
-# Add the configs folder to sys.path
-import os
+# Add repository folder to sys.path
+from pathlib import Path
 import sys
-REPO = '__repo_name__'
-here = '/'.join(os.path.abspath('').split('\\')[:-1])
-root = here.split(REPO)[0]
-sys.path.append(f'{root}{REPO}')
+REPO = 'REPO'
+ROOT = str(Path().absolute()).split(REPO)[0]
+sys.path.append(f'{ROOT}{REPO}')
 
 # Import the initialised setup
-from configs.SynthesisB1 import SETUP
+from configs.Setup01 import SETUP
 this = SETUP
 ```
 
@@ -225,7 +224,7 @@ this.robot_arm
 ### Load deck
 To load the `Deck` from the layout file, use the `lab.load_deck` function.
 ```python
-from configs.SynthesisB1 import LAYOUT_FILE
+from configs.Setup01 import LAYOUT_FILE
 lab.load_deck(this.DeviceWithDeck, LAYOUT_FILE)
 ``` 
 
