@@ -178,7 +178,7 @@ This file is optional if your setup does not involve moving objects around in a 
 
 In `reference_points`, the bottom-left coordinates of each slot in the workspace are defined. Slots are positions where Labware blocks may be placed.
 
-In `slots`, the name of each slot and the file reference for Lawbware block that occupies that slot are defined. The filepath starts with the repository's base folder name.
+In `slots`, the name of each slot and the file reference for Labware block that occupies that slot are defined. The filepath starts with the repository's base folder name.
 
 ### Load setup
 The initialisation of the setup occurs during the import `SETUP` from within `configs/Setup01`.
