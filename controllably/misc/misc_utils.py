@@ -14,10 +14,10 @@ import json
 import numpy as np
 import os
 import pandas as pd
+from pathlib import Path
 import pkgutil
 from shutil import copytree
 import time
-from typing import Callable
 import uuid
 
 # Third party imports
@@ -27,7 +27,7 @@ import yaml # pip install pyyaml
 # Local application imports
 print(f"Import: OK <{__name__}>")
 
-here = '/'.join(__file__.split('\\')[:-1])
+here = str(Path(__file__).parent.absolute()).replace('\\', '/')
 
 class Helper(object):
     """
