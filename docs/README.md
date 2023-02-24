@@ -4,23 +4,6 @@ Lab Equipment Automation Package
 ## Description
 User-friendly package that enables flexible automation an reconfigurable setups for high-throughput experimentation and machine learning.
 
-## Dependencies
-- Dash (>=2.7.1)
-- Impedance (>=1.4.1)
-- Imutils (>=0.5.4)
-- Matplotlib (>=3.3.4)
-- Nest-asyncio (>=1.5.1)
-- Numpy (>=1.19.5)
-- Opencv-python (>=4.5.4.58)
-- Pandas (>=1.2.4)
-- Plotly (>=5.3.1)
-- PyModbusTCP (>=0.2.0)
-- Pyserial (>=3.5)
-- PySimpleGUI (>=4.60.4)
-- PyVISA (>=1.12.0)
-- PyYAML (>=6.0)
-- Scipy (>=1.6.2)
-
 ## Device support
 - Make
   - Multi-channel spin-coater \[Arduino\]
@@ -235,6 +218,23 @@ lab.load_deck(this.DeviceWithDeck, LAYOUT_FILE)
 6. Move
 7. Transfer
 8. View
+
+## Dependencies
+- Dash (>=2.7.1)
+- Impedance (>=1.4.1)
+- Imutils (>=0.5.4)
+- Matplotlib (>=3.3.4)
+- Nest-asyncio (>=1.5.1)
+- Numpy (>=1.19.5)
+- Opencv-python (>=4.5.4.58)
+- Pandas (>=1.2.4)
+- Plotly (>=5.3.1)
+- PyModbusTCP (>=0.2.0)
+- Pyserial (>=3.5)
+- PySimpleGUI (>=4.60.4)
+- PyVISA (>=1.12.0)
+- PyYAML (>=6.0)
+- Scipy (>=1.6.2)
 
 ## Contributors
 [@kylejeanlewis](https://github.com/kylejeanlewis)\
