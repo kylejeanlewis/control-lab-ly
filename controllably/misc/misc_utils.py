@@ -25,6 +25,7 @@ import serial.tools.list_ports # pip install pyserial
 import yaml # pip install pyyaml
 
 # Local application imports
+from .decorators import named_tuple_from_dict
 print(f"Import: OK <{__name__}>")
 
 here = str(Path(__file__).parent.absolute()).replace('\\', '/')
@@ -416,26 +417,6 @@ def create_setup(setup_name:str = None):
         print(f"Creating setup folder ({setup_name})...\n")
         copytree(src=src, dst=dst)
     return
-
-def named_tuple_from_dict(func):
-    """
-    Wrapper for creating named tuple from dictionary
-
-    Args:
-        func (Callable): function to be wrapped
-    """
-    def wrapper(*args, **kwargs):
-        setup_dict = func(*args, **kwargs)
-        field_list = []
-        object_list = []
-        for k,v in setup_dict.items():
-            field_list.append(k)
-            object_list.append(v)
-        
-        Setup = namedtuple('Setup', field_list)
-        print(f"Objects created: {', '.join(field_list)}")
-        return Setup(*object_list)
-    return wrapper
 
 @named_tuple_from_dict
 def load_setup(config_file:str, registry_file:str = None):
