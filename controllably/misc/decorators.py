@@ -35,7 +35,7 @@ def named_tuple_from_dict(func):
         return Setup(*object_list)
     return wrapper
 
-def safety_measures(mode='wait', countdown=3):
+def safety_measures(mode=None, countdown=3):
     """
     Wrapper for creating safe move functions
 
@@ -56,9 +56,8 @@ def safety_measures(mode='wait', countdown=3):
                 time.sleep(countdown)
             elif mode == 'pause':
                 print(f"Executing: {str_call}")
+                time.sleep(0.1)
                 input(f"Press 'Enter' to execute")
-            else:
-                return
             return func(*args, **kwargs)
         return wrapper
     return inner
