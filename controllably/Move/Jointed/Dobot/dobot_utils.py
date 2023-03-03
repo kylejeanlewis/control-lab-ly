@@ -440,7 +440,7 @@ class MG400(Dobot):
     """
     def __init__(self, ip_address='192.168.2.8', retract=True, home_coordinates=(0,300,0), **kwargs):
         super().__init__(ip_address=ip_address, home_coordinates=home_coordinates, **kwargs)
-        self._speed = 1000
+        self._speed = 100
         self._speed_angular = 300
         self.home()
         
@@ -527,7 +527,7 @@ class M1Pro(Dobot):
     """
     def __init__(self, ip_address='192.168.2.21', handedness='right', home_coordinates=(0,300,100), **kwargs):
         super().__init__(ip_address=ip_address, home_coordinates=home_coordinates, **kwargs)
-        self._speed = 1000
+        self._speed = 100
         self._speed_angular = 180
         self.home()
         
