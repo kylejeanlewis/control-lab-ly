@@ -470,6 +470,8 @@ class MG400(Dobot):
             return False
         if not (-150 < z < 230):
             return False
+        if self.deck.is_excluded(coordinates=coordinates):
+            return False
         return True
     
     def retractArm(self, target=None):
@@ -579,6 +581,8 @@ class M1Pro(Dobot):
         #     return False
         # if x < 76 and abs(y) < 150: # elevated structure
         #     return False
+        if self.deck.is_excluded(coordinates=coordinates):
+            return False
                 
         # x=4, y=3
         grad = abs(y/(x+1E-6))
