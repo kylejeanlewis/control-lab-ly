@@ -10,26 +10,32 @@
     "slots":{
 		"1": {
 			"name": "__name_01__",
+			"exclusion_height": -1,
 			"filepath": "__repo_name__/.../__labware_01__.json"
 		},
 		"2": {
 			"name": "__name_02__",
+			"exclusion_height": -1,
 			"filepath": "__repo_name__/.../__labware_02__.json"
 		},
 		"3": {
 			"name": "__name_03__",
+			"exclusion_height": -1,
 			"filepath": "__repo_name__/.../__labware_03__.json"
 		},
 		"4": {
 			"name": "__name_04__",
+			"exclusion_height": -1,
 			"filepath": "__repo_name__/.../__labware_04__.json"
 		},
 		"5": {
 			"name": "__name_05__",
+			"exclusion_height": -1,
 			"filepath": "__repo_name__/.../__labware_05__.json"
 		},
 		"6": {
 			"name": "__name_06__",
+			"exclusion_height": -1,
 			"filepath": "__repo_name__/.../__labware_06__.json"
 		}
 	}
