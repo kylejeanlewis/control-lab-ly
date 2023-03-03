@@ -22,13 +22,13 @@ CALIBRATION_FACTOR = 6.862879436681862 # factor by which to divide output readin
 COLUMNS = ['Time', 'Value', 'Factor', 'Baseline', 'Mass']
 
 class MassBalance(object):
-    def __init__(self, port:str, calibration_factor:float = CALIBRATION_FACTOR, **kwargs):
-        """
-        Mass Balance object
+    """
+    Mass Balance object
 
-        Args:
-            port (str): com port address
-        """
+    Args:
+        port (str): com port address
+    """
+    def __init__(self, port:str, calibration_factor:float = CALIBRATION_FACTOR, **kwargs):
         self.device = None
         self.baseline = 0
         self.calibration_factor = calibration_factor
@@ -165,17 +165,19 @@ class MassBalance(object):
             str: device response
         """
         response = self._read()
+        now = datetime.now()
         try:
             value = int(response)
             self._mass = (value - self.baseline) / self.calibration_factor
             if self._flags.get('record', False):
-                row = {
-                    'Time': datetime.now(), 
-                    'Value': value,
-                    'Factor': self.calibration_factor,
-                    'Baseline': self.baseline,
-                    'Mass': self._mass
-                }
+                values = [
+                    now, 
+                    value, 
+                    self.calibration_factor, 
+                    self.baseline, 
+                    self._mass
+                ]
+                row = {k:v for k,v in zip(COLUMNS, values)}
                 self.buffer_df = self.buffer_df.append(row, ignore_index=True)
         except ValueError:
             pass
