@@ -11,7 +11,7 @@ import math
 import numpy as np
 
 # Local application imports
-from ..misc import HELPER
+from ..misc import Deck, HELPER
 print(f"Import: OK <{__name__}>")
 
 class Mover(object):
@@ -39,6 +39,8 @@ class Mover(object):
         self._scale = 1
         self._speed = 1
         self._speed_fraction = 1
+        
+        self.deck = Deck()
 
         self.verbose = False
         self._flags = {}
@@ -326,7 +328,18 @@ class Mover(object):
         Returns:
             bool: whether coordinates is a feasible position
         """
-        return True
+        return not self.deck.is_excluded(coordinates)
+    
+    def loadDeck(self, layout:str = None, layout_dict:dict = None):
+        """
+        Load the deck layout from JSON file
+        
+        Args:
+            layout (str, optional): filename of layout .json file. Defaults to None.
+            layout_dict (dict, optional): dictionary of layout. Defaults to None.
+        """
+        self.deck.load_layout(layout, layout_dict)
+        return
     
     def move(self, axis:str, value, speed_fraction=1, **kwargs):
         """
