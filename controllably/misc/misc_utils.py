@@ -491,7 +491,12 @@ def load_deck(device, layout_file:str, get_absolute_filepath:bool = True):
     device.loadDeck(layout_dict=layout_dict)
     return device
 
-def set_safety(safety_mode, safety_countdown=3):
+def set_safety(safety_level, safety_countdown=3):
+    safety_mode = None
+    if safety_level == 'high':
+        safety_mode = 'pause'
+    elif safety_level == 'low':
+        safety_mode = 'wait'
     HELPER.safety_mode = safety_mode
     HELPER.safety_countdown = safety_countdown
     return
