@@ -11,11 +11,8 @@ import math
 import numpy as np
 
 # Local application imports
-from ..misc.decorators import safety_measures
+from ..misc import HELPER
 print(f"Import: OK <{__name__}>")
-
-SAFETY_MODE = 'pause'
-SAFETY_COUNTDOWN = 3
 
 class Mover(object):
     """
@@ -395,7 +392,7 @@ class Mover(object):
         new_orientation = np.round( user_position[1] + np.array(angles) , 2)
         return self.moveTo(coordinates=new_coordinates, orientation=new_orientation, tool_offset=False, **kwargs)
     
-    @safety_measures(mode=SAFETY_MODE, countdown=SAFETY_COUNTDOWN)
+    @HELPER.safety_measures
     def moveTo(self, coordinates=None, orientation=None, tool_offset=True, **kwargs):
         """
         Move robot to specified coordinates and orientation

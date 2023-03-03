@@ -10,6 +10,7 @@ Notes / actionables:
 import time
 
 # Local application imports
+from ...misc import HELPER
 from .cartesian_utils import Gantry
 print(f"Import: OK <{__name__}>")
 
@@ -66,6 +67,7 @@ class Primitiv(Gantry):
                 print(e)
         return device
     
+    @HELPER.safety_measures
     def home(self):
         """
         Homing cycle for Primitiv platform

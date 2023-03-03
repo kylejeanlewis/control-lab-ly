@@ -12,6 +12,7 @@ import numpy as np
 import time
 
 # Local application imports
+from ....misc import HELPER
 from ..jointed_utils import RobotArm
 from .dobot_api import dobot_api_dashboard, dobot_api_feedback
 from . import dobot_attachments as attachments
@@ -207,6 +208,7 @@ class Dobot(RobotArm):
             return False
         return True
 
+    @HELPER.safety_measures
     def moveCoordBy(self, vector=None, angles=None):
         """
         Relative Cartesian movement and tool orientation, using robot coordinates.
@@ -235,6 +237,7 @@ class Dobot(RobotArm):
         self.updatePosition(vector=vector, angles=angles)
         return True
 
+    @HELPER.safety_measures
     def moveCoordTo(self, coordinates=None, orientation=None):
         """
         Absolute Cartesian movement and tool orientation, using robot coordinates.
@@ -272,6 +275,7 @@ class Dobot(RobotArm):
         self.updatePosition(coordinates=coordinates, orientation=orientation)
         return True
 
+    @HELPER.safety_measures
     def moveJointBy(self, relative_angles):
         """
         Relative joint movement
@@ -298,6 +302,7 @@ class Dobot(RobotArm):
         self.updatePosition(angles=relative_angles[3:])
         return True
 
+    @HELPER.safety_measures
     def moveJointTo(self, absolute_angles):
         """
         Absolute joint movement
