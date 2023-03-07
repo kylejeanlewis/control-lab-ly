@@ -328,7 +328,7 @@ class Mover(object):
         Returns:
             bool: whether coordinates is a feasible position
         """
-        return not self.deck.is_excluded(coordinates)
+        return not self.deck.is_excluded(self._transform_out(coordinates, tool_offset=True))
     
     def loadDeck(self, layout:str = None, layout_dict:dict = None):
         """

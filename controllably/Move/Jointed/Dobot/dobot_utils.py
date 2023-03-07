@@ -470,7 +470,7 @@ class MG400(Dobot):
             return False
         if not (-150 < z < 230):
             return False
-        if self.deck.is_excluded(coordinates=coordinates):
+        if self.deck.is_excluded(coordinates=self._transform_out(coordinates, tool_offset=True)):
             return False
         return True
     
@@ -581,7 +581,7 @@ class M1Pro(Dobot):
         #     return False
         # if x < 76 and abs(y) < 150: # elevated structure
         #     return False
-        if self.deck.is_excluded(coordinates=coordinates):
+        if self.deck.is_excluded(coordinates=self._transform_out(coordinates, tool_offset=True)):
             return False
                 
         # x=4, y=3
