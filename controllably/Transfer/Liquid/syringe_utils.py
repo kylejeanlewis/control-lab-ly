@@ -17,7 +17,7 @@ import serial # pip install pyserial
 # Local application imports
 from ...misc import Helper
 from .liquid_utils import LiquidHandler
-from .Pumps import Peristaltic, C3000
+from .Pumps import Peristaltic
 print(f"Import: OK <{__name__}>")
 
 CALIBRATION_ASPIRATE = 27
