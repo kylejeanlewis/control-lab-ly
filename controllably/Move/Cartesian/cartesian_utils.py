@@ -14,6 +14,7 @@ import time
 import serial # pip install pyserial
 
 # Local application imports
+from ...misc import HELPER
 from ..mover_utils import Mover
 print(f"Import: OK <{__name__}>")
 
@@ -154,6 +155,8 @@ class Gantry(Mover):
         l_bound, u_bound = self.limits
         
         if all(np.greater_equal(coordinates, l_bound)) and all(np.less_equal(coordinates, u_bound)):
+            if self.deck.is_excluded(coordinates=self._transform_out(coordinates, tool_offset=True)):
+                return False
             return True
         print(f"Range limits reached! {self.limits}")
         return False
@@ -171,6 +174,7 @@ class Gantry(Mover):
         """
         return super().moveBy(vector=vector, to_safe_height=to_safe_height)
     
+    @HELPER.safety_measures
     def moveTo(self, coordinates, to_safe_height=True, jump_height=None, tool_offset=True, **kwargs):
         """
         Move robot to specified coordinates and orientation

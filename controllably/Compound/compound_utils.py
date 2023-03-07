@@ -83,6 +83,15 @@ class CompoundSetup(object):
         """
         return any([component.isBusy() for component in self.components.values() if 'isBusy' in dir(component)])
     
+    def isFeasible(self, coordinates):
+        """
+        Checks whether the coordinates is feasible
+
+        Returns:
+            bool: whether the coordinates is feasible
+        """
+        return not self.deck.is_excluded(coordinates)
+    
     def isConnected(self):
         """
         Checks whether the setup is connected

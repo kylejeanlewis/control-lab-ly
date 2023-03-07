@@ -9,6 +9,7 @@ Notes / actionables:
 -
 """
 # Standard library imports
+import numpy as np
 
 # Local application imports
 from .misc_utils import Helper
@@ -203,6 +204,20 @@ class Labware(object):
         return self.details.get('ordering', [[]])
     
     @property
+    def dimensions(self):
+        """
+        Size of labware
+
+        Returns:
+            tuple: coordinates of the center of labware
+        """
+        dimensions = self.details.get('dimensions',{})
+        x = dimensions.get('xDimension', 0)
+        y = dimensions.get('yDimension', 0)
+        z = dimensions.get('zDimension', 0)
+        return x,y,z
+    
+    @property
     def rows(self):
         """
         Labware rows
@@ -279,6 +294,7 @@ class Deck(object):
         self.details = {}
         self._slots = {}
         self.names = {}
+        self.exclusion_zones = {}
         self.load_layout(layout_file=layout_file, package=package)
         pass
     
@@ -328,13 +344,37 @@ class Deck(object):
         Returns:
             Labware: Labware in slot
         """
-        if not any((index, name)):
+        if not any((index, name)) or all((index, name)):
             raise Exception('Please input either slot index or name')
         if index is None and name is not None:
             index = self.names.get(name)
         return self._slots.get(str(index))
     
-    def load_labware(self, slot:int, labware_file:str, package:str = None, name:str = None):
+    def is_excluded(self, coordinates:tuple):
+        """
+        Determine whether the coordinates are in an excluded region.
+
+        Args:
+            coordinates (tuple): tuple of given coordinates
+
+        Returns:
+            bool: whether the coordinates are in an excluded region
+        """
+        coordinates = np.array(coordinates)
+        for key, value in self.exclusion_zones.items():
+            l_bound, u_bound = value
+            if key == 'boundary':
+                if any(np.less_equal(coordinates, l_bound)) and any(np.greater_equal(coordinates, u_bound)):
+                    print(f"Deck limits reached! {value}")
+                    return True
+                continue
+            if all(np.greater_equal(coordinates, l_bound)) and all(np.less_equal(coordinates, u_bound)):
+                name = [k for k,v in self.names.items() if str(v)==key][0] if key in self.names.values() else f'Labware in Slot {key}'
+                print(f"{name} is in the way! {value}")
+                return True
+        return False
+    
+    def load_labware(self, slot:int, labware_file:str, package:str = None, name:str = None, exclusion_height:float = None):
         """
         Load Labware into slot
 
@@ -344,10 +384,14 @@ class Deck(object):
             package (str, optional): name of package to look in. Defaults to None.
             name (str, optional): nickname of labware. Defaults to None.
         """
-        if name is not None:
+        if name:
             self.names[name] = slot
         bottom_left_coordinates = tuple(self.details.get('reference_points',{}).get(str(slot), [0,0,0]))
-        self._slots[str(slot)] = Labware(slot=str(slot), bottom_left_coordinates=bottom_left_coordinates, labware_file=labware_file, package=package)
+        labware = Labware(slot=str(slot), bottom_left_coordinates=bottom_left_coordinates, labware_file=labware_file, package=package)
+        self._slots[str(slot)] = labware
+        if exclusion_height is not None:
+            top_right_coordinates= tuple(map(sum, zip(bottom_left_coordinates, labware.dimensions, (0,0,exclusion_height))))
+            self.exclusion_zones[str(slot)] = (bottom_left_coordinates, top_right_coordinates)
         return
     
     def load_layout(self, layout_file:str = None, layout_dict:dict = None, package:str = None, labware_package:str = None):
@@ -371,5 +415,29 @@ class Deck(object):
             info = slots[slot]
             name = info.get('name')
             labware_file = info.get('filepath','')
-            self.load_labware(slot=slot, name=name, labware_file=labware_file, package=labware_package)
+            exclusion_height = info.get('exclusion_height', -1)
+            exclusion_height = exclusion_height if exclusion_height >= 0 else None
+            self.load_labware(slot=slot, name=name, exclusion_height=exclusion_height, labware_file=labware_file, package=labware_package)
+        return
+
+    def remove_labware(self, index:int = None, name:str = None):
+        """
+        Remove labware in slot using index or name
+
+        Args:
+            index (int, optional): slot index number. Defaults to None.
+            name (str, optional): nickname of labware. Defaults to None.
+
+        Raises:
+            Exception: Inputs 'index' and 'name' cannot be both 'None'
+        """
+        if not any((index, name)) or all((index, name)):
+            raise Exception('Please input either slot index or name')
+        if index is None and name is not None:
+            index = self.names.get(name)
+        elif index is not None and name is None:
+            name = [k for k,v in self.names.items() if v==index][0]
+        self.names.pop(name)
+        self._slots.pop(str(index))
+        self.exclusion_zones.pop(str(index))
         return
