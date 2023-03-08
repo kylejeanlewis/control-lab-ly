@@ -544,7 +544,7 @@ class Sartorius(LiquidHandler):
         """
         return self._connect(self.port, self._baudrate, self._timeout)
     
-    def dispense(self, volume, speed=None, wait=0, force_dispense=False, pause=False, channel=None):
+    def dispense(self, volume, speed=None, wait=0, force_dispense=False, pause=False, blowout=True, blowout_home=True, channel=None):
         """
         Dispense desired volume of reagent from channel
 
@@ -554,6 +554,8 @@ class Sartorius(LiquidHandler):
             wait (int, optional): wait time between steps in seconds. Defaults to 0.
             force_dispense (bool, optional): whether to continue dispensing even if insufficient volume in channel. Defaults to False.
             pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
+            blowout (bool, optional): whether to perform blowout when volume reaches zero. Defaults to True.
+            blowout_home (bool, optional): whether to home the plunger after blowout. Defaults to True.
             channel (int, optional): channel to dispense. Defaults to None.
 
         Raises:
@@ -618,8 +620,8 @@ class Sartorius(LiquidHandler):
         self.volume = max(self.volume - volume, 0)
         
         time.sleep(wait)
-        if self.volume == 0:
-            self.blowout(home=True)
+        if self.volume == 0 and blowout:
+            self.blowout(home=blowout_home)
         self.setFlag('occupied', False)
         self.setFlag('pause_feedback', False)
         if pause:

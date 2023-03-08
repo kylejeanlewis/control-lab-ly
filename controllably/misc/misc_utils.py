@@ -7,7 +7,6 @@ Notes / actionables:
 -
 """
 # Standard library imports
-from collections import namedtuple
 from datetime import datetime
 import importlib
 import json
@@ -25,6 +24,7 @@ import serial.tools.list_ports # pip install pyserial
 import yaml # pip install pyyaml
 
 # Local application imports
+from . import decorators
 print(f"Import: OK <{__name__}>")
 
 here = str(Path(__file__).parent.absolute()).replace('\\', '/')
@@ -34,8 +34,8 @@ class Helper(object):
     Helper class with miscellaneous methods
     """
     def __init__(self):
-        self.all_logs = []
-        self.logs = {}
+        self.safety_countdown = 3
+        self.safety_mode = None
         pass
     
     # Static methods
@@ -313,6 +313,35 @@ class Helper(object):
         return components
     
     # Instance methods
+    def safety_measures(self, func):
+        return decorators.safety_measures(mode=self.safety_mode, countdown=self.safety_countdown)(func=func)
+    
+    # NOTE: DEPRECATE
+    @classmethod
+    def display_ports(cls):
+        """
+        Get available ports
+
+        Returns:
+            list: list of connected serial ports
+        """
+        print("'display_ports' method to be deprecated. Use 'get_ports' instead.")
+        return cls.get_ports()
+
+HELPER = Helper() 
+"""NOTE: importing HELPER gives the same instance of the 'Helper' class wherever you import it"""
+
+
+class Logger(object):
+    """
+    Logger class with miscellaneous methods
+    """
+    def __init__(self):
+        self.all_logs = []
+        self.logs = {}
+        pass
+    
+    # Instance methods
     def log_now(self, message:str, group=None):
         """
         Add log with timestamp
@@ -364,18 +393,10 @@ class Helper(object):
                 for line in self.logs[group]:
                     f.write(line + '\n')
         return
-    
-    # NOTE: DEPRECATE
-    @classmethod
-    def display_ports(cls):
-        """
-        Get available ports
 
-        Returns:
-            list: list of connected serial ports
-        """
-        print("'display_ports' method to be deprecated. Use 'get_ports' instead.")
-        return cls.get_ports()
+LOGGER = Logger() 
+"""NOTE: importing LOGGER gives the same instance of the 'Logger' class wherever you import it"""
+
 
 # Core functions
 def create_configs():
@@ -417,27 +438,7 @@ def create_setup(setup_name:str = None):
         copytree(src=src, dst=dst)
     return
 
-def named_tuple_from_dict(func):
-    """
-    Wrapper for creating named tuple from dictionary
-
-    Args:
-        func (Callable): function to be wrapped
-    """
-    def wrapper(*args, **kwargs):
-        setup_dict = func(*args, **kwargs)
-        field_list = []
-        object_list = []
-        for k,v in setup_dict.items():
-            field_list.append(k)
-            object_list.append(v)
-        
-        Setup = namedtuple('Setup', field_list)
-        print(f"Objects created: {', '.join(field_list)}")
-        return Setup(*object_list)
-    return wrapper
-
-@named_tuple_from_dict
+@decorators.named_tuple_from_dict
 def load_setup(config_file:str, registry_file:str = None):
     """
     Load and initialise setup
@@ -490,6 +491,19 @@ def load_deck(device, layout_file:str, get_absolute_filepath:bool = True):
     device.loadDeck(layout_dict=layout_dict)
     return device
 
+def set_safety(safety_level:str = None, safety_countdown:int = 3):
+    """
+    Set safety level of session
 
-LOGGER = Helper() 
-"""NOTE: importing LOGGER gives the same instance of the 'Helper' class wherever you import it"""
+    Args:
+        safety_level (str): 'high' - pauses for input before every move action; 'low' - waits for safety timeout before every move action
+        safety_countdown (int, optional): safety timeout in seconds. Defaults to 3.
+    """
+    safety_mode = None
+    if safety_level == 'high':
+        safety_mode = 'pause'
+    elif safety_level == 'low':
+        safety_mode = 'wait'
+    HELPER.safety_mode = safety_mode
+    HELPER.safety_countdown = safety_countdown
+    return

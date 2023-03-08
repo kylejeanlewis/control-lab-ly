@@ -190,6 +190,18 @@ class LiquidMoverSetup(CompoundSetup):
         self.liquid.setFlag('tip_on', False)
         return coordinates
     
+    def loadDeck(self, layout:str = None, layout_dict:dict = None):
+        """
+        Load the deck layout from JSON file
+        
+        Args:
+            layout (str, optional): filename of layout .json file. Defaults to None.
+            layout_dict (dict, optional): dictionary of layout. Defaults to None.
+        """
+        super().loadDeck(layout, layout_dict)
+        self.mover.loadDeck(layout, layout_dict)
+        return
+    
     def reset(self):
         """
         Alias for rest

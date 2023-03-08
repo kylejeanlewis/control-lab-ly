@@ -12,6 +12,7 @@ import numpy as np
 import time
 
 # Local application imports
+from ....misc import HELPER
 from ..jointed_utils import RobotArm
 from .dobot_api import dobot_api_dashboard, dobot_api_feedback
 from . import dobot_attachments as attachments
@@ -207,6 +208,7 @@ class Dobot(RobotArm):
             return False
         return True
 
+    @HELPER.safety_measures
     def moveCoordBy(self, vector=None, angles=None):
         """
         Relative Cartesian movement and tool orientation, using robot coordinates.
@@ -235,6 +237,7 @@ class Dobot(RobotArm):
         self.updatePosition(vector=vector, angles=angles)
         return True
 
+    @HELPER.safety_measures
     def moveCoordTo(self, coordinates=None, orientation=None):
         """
         Absolute Cartesian movement and tool orientation, using robot coordinates.
@@ -272,6 +275,7 @@ class Dobot(RobotArm):
         self.updatePosition(coordinates=coordinates, orientation=orientation)
         return True
 
+    @HELPER.safety_measures
     def moveJointBy(self, relative_angles):
         """
         Relative joint movement
@@ -298,6 +302,7 @@ class Dobot(RobotArm):
         self.updatePosition(angles=relative_angles[3:])
         return True
 
+    @HELPER.safety_measures
     def moveJointTo(self, absolute_angles):
         """
         Absolute joint movement
@@ -435,7 +440,7 @@ class MG400(Dobot):
     """
     def __init__(self, ip_address='192.168.2.8', retract=True, home_coordinates=(0,300,0), **kwargs):
         super().__init__(ip_address=ip_address, home_coordinates=home_coordinates, **kwargs)
-        self._speed = 1000
+        self._speed = 100
         self._speed_angular = 300
         self.home()
         
@@ -464,6 +469,8 @@ class MG400(Dobot):
         if abs(j1) > 160:
             return False
         if not (-150 < z < 230):
+            return False
+        if self.deck.is_excluded(coordinates=self._transform_out(coordinates, tool_offset=True)):
             return False
         return True
     
@@ -522,7 +529,7 @@ class M1Pro(Dobot):
     """
     def __init__(self, ip_address='192.168.2.21', handedness='right', home_coordinates=(0,300,100), **kwargs):
         super().__init__(ip_address=ip_address, home_coordinates=home_coordinates, **kwargs)
-        self._speed = 1000
+        self._speed = 100
         self._speed_angular = 180
         self.home()
         
@@ -574,6 +581,8 @@ class M1Pro(Dobot):
         #     return False
         # if x < 76 and abs(y) < 150: # elevated structure
         #     return False
+        if self.deck.is_excluded(coordinates=self._transform_out(coordinates, tool_offset=True)):
+            return False
                 
         # x=4, y=3
         grad = abs(y/(x+1E-6))
