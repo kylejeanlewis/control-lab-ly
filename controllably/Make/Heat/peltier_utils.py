@@ -18,28 +18,31 @@ import serial # pip install pyserial
 # Local application imports
 print(f"Import: OK <{__name__}>")
 
-CALIBRATION_FACTOR = 6.862879436681862 # factor by which to divide output reading by to get mass in mg
-COLUMNS = ['Time', 'Value', 'Factor', 'Baseline', 'Mass']
+COLUMNS = ['Time', 'Set', 'Hot', 'Cold', 'Power']
+TEMPERATURE_TOLERANCE = 1
 
-class MassBalance(object):
+class Peltier(object):
     """
-    Mass Balance object
+    Peltier object
 
     Args:
         port (str): com port address
     """
-    def __init__(self, port:str, calibration_factor:float = CALIBRATION_FACTOR, **kwargs):
+    def __init__(self, port:str, **kwargs):
         self.device = None
-        self.baseline = 0
-        self.calibration_factor = calibration_factor
         self._flags = {
             'busy': False,
             'connected': False,
             'get_feedback': False,
             'pause_feedback': False,
-            'record': False
+            'record': False,
+            'temperature_reached': False
         }
-        self._mass = 0
+        self._set_point = None
+        self._temperature = None
+        self._cold_point = None
+        self._power = None
+        
         self._precision = 3
         self._threads = {}
         
@@ -53,8 +56,8 @@ class MassBalance(object):
         return
     
     @property
-    def mass(self):
-        return round(self._mass, self._precision)
+    def temperature(self):
+        return round(self._temperature, self._precision)
     
     @property
     def precision(self):
@@ -104,7 +107,7 @@ class MassBalance(object):
         while self._flags['get_feedback']:
             if self._flags['pause_feedback']:
                 continue
-            self.getMass()
+            self.getTemperatures()
         print('Stop listening...')
         return
 
@@ -157,9 +160,9 @@ class MassBalance(object):
         """
         return self._connect(self.port, self._baudrate, self._timeout)
     
-    def getMass(self):
+    def getTemperatures(self):
         """
-        Get the mass by measuring force response
+        Get the temperatures from device
         
         Returns:
             str: device response
@@ -167,16 +170,12 @@ class MassBalance(object):
         response = self._read()
         now = datetime.now()
         try:
-            value = int(response)
-            self._mass = (value - self.baseline) / self.calibration_factor
+            values = [float(v) for v in response.split(';')]
+            self._set_point, self._temperature, self._cold_point, self._power = values
+            ready = (abs(self._set_point - self._temperature)<=TEMPERATURE_TOLERANCE)
+            self.setFlag('temperature_reached', ready)
             if self._flags.get('record', False):
-                values = [
-                    now, 
-                    value, 
-                    self.calibration_factor, 
-                    self.baseline, 
-                    self._mass
-                ]
+                values = [now] + values
                 row = {k:v for k,v in zip(COLUMNS, values)}
                 self.buffer_df = self.buffer_df.append(row, ignore_index=True)
         except ValueError:
@@ -220,11 +219,21 @@ class MassBalance(object):
         self._flags[name] = value
         return
     
-    def tare(self):
+    def setTemperature(self, set_point:int):
         """
-        Alias for zero
+        Set Peltier temperature
+
+        Args:
+            set_point (int): temperature in degree Celsius
         """
-        return self.zero()
+        self.setFlag('pause_feedback', True)
+        time.sleep(0.1)
+        try:
+            self.device.write(bytes(f"{set_point}\n", 'utf-8'))
+        except AttributeError:
+            pass
+        self.setFlag('pause_feedback', False)
+        return
     
     def toggleFeedbackLoop(self, on:bool):
         """
@@ -246,7 +255,7 @@ class MassBalance(object):
     
     def toggleRecord(self, on:bool):
         """
-        Toggle between start and stopping mass records
+        Toggle between start and stopping temperature records
 
         Args:
             on (bool): whether to start recording
@@ -255,25 +264,4 @@ class MassBalance(object):
         self.setFlag('get_feedback', on)
         self.setFlag('pause_feedback', False)
         self.toggleFeedbackLoop(on=on)
-        return
-
-    def zero(self, wait=5):
-        """
-        Set current reading as baseline (i.e. zero mass)
-        
-        Args:
-            wait (int, optional): duration to wait while zeroing (seconds). Defaults to 5.
-        """
-        temp_record_state = self._flags.get('record', False)
-        temp_buffer_df = self.buffer_df.copy()
-        self.reset()
-        self.toggleRecord(True)
-        print(f"Zeroing... ({wait}s)")
-        time.sleep(wait)
-        self.toggleRecord(False)
-        self.baseline = self.buffer_df['Value'].mean()
-        self.clearCache()
-        self.buffer_df = temp_buffer_df.copy()
-        print("Zeroing complete.")
-        self.toggleRecord(temp_record_state)
         return
