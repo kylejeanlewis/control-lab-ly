@@ -3,8 +3,27 @@
 ## Unreleased
 *Items in development*
 
+## 0.0.3.x
+Minor changes to . First released 08 Mar 2023.
+### Added
+#### 0.0.3
+- `Make.Light.LEDArray` for controlling LEDs in the photo-reactor, as well as timing the LED "on" durations
+### Changed
+#### 0.0.3
+- Added safety measures for movement actions
+  - `Deck`
+    - added exclusion zones when reading the `layout.json` file
+    - new method `is_excluded()` to check if target coordinate is within the exclusion zone
+  - `Mover`
+    - update `isFeasible()` method to check if target coordinates violates the deck's exclusion zone
+  - `set_safety()`
+    - added safety modes when starting a new session to pause for input (in "high" safety setting) and to wait for safety countdown (in "low" safety setting)
+- `Sartorius`
+  - made the blowout/home optional for the dispense method upon emptying the pipette
+- Update documentation
+
 ## 0.0.2.x
-Updates in setting up configuration files. Released 24 Feb 2023.
+Updates in setting up configuration files. First released 24 Feb 2023.
 ### Added
 #### 0.0.2.2
 - Added import of `CompoundSetup` class
