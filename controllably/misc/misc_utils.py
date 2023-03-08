@@ -491,7 +491,14 @@ def load_deck(device, layout_file:str, get_absolute_filepath:bool = True):
     device.loadDeck(layout_dict=layout_dict)
     return device
 
-def set_safety(safety_level, safety_countdown=3):
+def set_safety(safety_level:str = None, safety_countdown:int = 3):
+    """
+    Set safety level of session
+
+    Args:
+        safety_level (str): 'high' - pauses for input before every move action; 'low' - waits for safety timeout before every move action
+        safety_countdown (int, optional): safety timeout in seconds. Defaults to 3.
+    """
     safety_mode = None
     if safety_level == 'high':
         safety_mode = 'pause'
