@@ -1,14 +1,13 @@
 # Change Log
 
 ## Unreleased
-*Items in development*
+*Items under development*
+- TriContinent Syringe Pumps
+- Peltier device \[Arduino\]
 
 ## 0.0.3.x
 Minor changes to . First released 08 Mar 2023.
 ### Added
-#### 0.0.3
-- `Make.Light.LEDArray` for controlling LEDs in the photo-reactor, as well as timing the LED "on" durations
-### Changed
 #### 0.0.3
 - Added safety measures for movement actions
   - `Deck`
@@ -18,6 +17,12 @@ Minor changes to . First released 08 Mar 2023.
     - update `isFeasible()` method to check if target coordinates violates the deck's exclusion zone
   - `set_safety()`
     - added safety modes when starting a new session to pause for input (in "high" safety setting) and to wait for safety countdown (in "low" safety setting)
+- `Make.Light.LEDArray` for controlling LEDs in the photo-reactor, as well as timing the LED "on" durations
+
+### Changed
+#### 0.0.3.1
+- Update documentation
+#### 0.0.3
 - `Sartorius`
   - made the blowout/home optional for the dispense method upon emptying the pipette
 - Update documentation
