@@ -1,9 +1,12 @@
 # %% -*- coding: utf-8 -*-
 """
-Class object to control the Tricontinent C-Series Syringe Pumps
+Adapted from @aniketchitre C3000_SyringePumpsv2
 
-Author: Aniket Chitre
-Date: July 2022
+Created: Tue 2022/11/01 17:13:35
+@author: Chang Jie
+
+Notes / actionables:
+-
 """
 # Standard library imports
 import string
@@ -81,7 +84,7 @@ class TriContinent(Pump):
             return False
         if response[0] != '/':
             return False
-        if response[1] != str(self.channel):
+        if response[1] != str(self.channel) and response[1] != str(0):
             return False
         return True
     
@@ -193,7 +196,7 @@ class TriContinent(Pump):
     
     @_single_action
     def moveBy(self, steps:int, channel:int = None):
-        message = f"P{abs(steps)}" if steps <0 else f"D{abs(steps)}"
+        message = f"P{abs(steps)}" if steps >0 else f"D{abs(steps)}"
         return message
     
     @_single_action
@@ -268,7 +271,7 @@ class TriContinent(Pump):
         message = f"{message}R"
         self._query(message)
         while self.isBusy():
-            time.sleep(0.1)
+            time.sleep(0.2)
         if 'Z' in message or 'Y' in message:
             self.setFlag('init_status', True)
         return message
