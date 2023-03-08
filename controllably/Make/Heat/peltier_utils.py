@@ -19,7 +19,8 @@ import serial # pip install pyserial
 print(f"Import: OK <{__name__}>")
 
 COLUMNS = ['Time', 'Set', 'Hot', 'Cold', 'Power']
-TEMPERATURE_TOLERANCE = 1
+POWER_THRESHOLD = 10
+TEMPERATURE_TOLERANCE = 1.5
 
 class Peltier(object):
     """
@@ -28,7 +29,8 @@ class Peltier(object):
     Args:
         port (str): com port address
     """
-    def __init__(self, port:str, **kwargs):
+    def __init__(self, port:str, tolerance:float = TEMPERATURE_TOLERANCE, **kwargs):
+        
         self.device = None
         self._flags = {
             'busy': False,
@@ -44,6 +46,7 @@ class Peltier(object):
         self._power = None
         
         self._precision = 3
+        self._tolerance = tolerance
         self._threads = {}
         
         self.buffer_df = pd.DataFrame(columns=COLUMNS)
@@ -54,17 +57,24 @@ class Peltier(object):
         self._timeout = None
         self._connect(port)
         return
-    
-    @property
-    def temperature(self):
-        return round(self._temperature, self._precision)
-    
     @property
     def precision(self):
         return 10**(-self._precision)
     @precision.setter
     def precision(self, value:int):
         self._precision = value
+        return
+    
+    @property
+    def temperature(self):
+        return round(self._temperature, self._precision)
+    
+    @property
+    def tolerance(self):
+        return f"+- {self._tolerance} °C"
+    @tolerance.setter
+    def tolerance(self, value:float):
+        self._tolerance = abs(value)
         return
     
     def __delete__(self):
@@ -77,7 +87,7 @@ class Peltier(object):
 
         Args:
             port (str): com port address
-            baudrate (int): baudrate. Defaults to 9600.
+            baudrate (int): baudrate. Defaults to 115200.
             timeout (int, optional): timeout in seconds. Defaults to None.
             
         Returns:
@@ -125,6 +135,7 @@ class Peltier(object):
         except Exception as e:
             if self.verbose:
                 print(e)
+        print(response)
         return response
     
     def _shutdown(self):
@@ -173,7 +184,11 @@ class Peltier(object):
             values = [float(v) for v in response.split(';')]
             self._set_point, self._temperature, self._cold_point, self._power = values
             ready = (abs(self._set_point - self._temperature)<=TEMPERATURE_TOLERANCE)
-            self.setFlag('temperature_reached', ready)
+            if self.isReady():
+                pass
+            elif ready and self._power <= POWER_THRESHOLD:
+                self.setFlag('temperature_reached', True)
+                print(f"Temperature of {self._set_point}°C reached!")
             if self._flags.get('record', False):
                 values = [now] + values
                 row = {k:v for k,v in zip(COLUMNS, values)}
@@ -181,24 +196,50 @@ class Peltier(object):
         except ValueError:
             pass
         return response
+    
+    def holdTemperature(self, temperature:float, time_s:float):
+        """
+        Hold a set temperature for duration
 
+        Args:
+            temperature (float): temperature in degree Celsius
+            time_s (float): duration in seconds
+        """
+        self.setTemperature(temperature)
+        print(f"Waiting for temperature to reach {self._set_point}°C")
+        while not self.isReady():
+            time.sleep(0.1)
+        print(f"Holding at {self._set_point}°C for {time_s} seconds")
+        time.sleep(time_s)
+        print(f"End of temperature hold")
+        return
+    
     def isBusy(self):
         """
-        Checks whether the pipette is busy
+        Checks whether the Peltier device is busy
         
         Returns:
-            bool: whether the pipette is busy
+            bool: whether the Peltier device is busy
         """
         return self._flags['busy']
     
     def isConnected(self):
         """
-        Check whether pipette is connected
+        Check whether Peltier device is connected
 
         Returns:
-            bool: whether pipette is connected
+            bool: whether Peltier device is connected
         """
         return self._flags['connected']
+    
+    def isReady(self):
+        """
+        Check whether target temperature is reached
+
+        Returns:
+            bool: whether target temperature is reached
+        """
+        return self._flags['temperature_reached']
     
     def reset(self):
         """
@@ -221,17 +262,19 @@ class Peltier(object):
     
     def setTemperature(self, set_point:int):
         """
-        Set Peltier temperature
+        Set temperature of Pelteir device
 
         Args:
             set_point (int): temperature in degree Celsius
         """
         self.setFlag('pause_feedback', True)
+        self.setFlag('temperature_reached', False)
         time.sleep(0.1)
         try:
             self.device.write(bytes(f"{set_point}\n", 'utf-8'))
         except AttributeError:
             pass
+        print(f"New set temperature at {set_point}°C")
         self.setFlag('pause_feedback', False)
         return
     
