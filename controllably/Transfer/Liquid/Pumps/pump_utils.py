@@ -43,6 +43,8 @@ class Pump(object):
         Returns:
             serial.Serial: serial connection to machine control unit if connection is successful, else None
         """
+        if not port:
+            return
         self.port = port
         self._baudrate = baudrate
         self._timeout = timeout
