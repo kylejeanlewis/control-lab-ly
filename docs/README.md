@@ -7,6 +7,7 @@ User-friendly package that enables flexible automation an reconfigurable setups 
 ## Device support
 - Make
   - Multi-channel spin-coater \[Arduino\]
+  - Multi-channel LED array \[Arduino\]
 - Measure
   - (Keithley) 2450 Source Measure Unit (SMU) Instrument
   - (PiezoRobotics) Dynamic Mechanical Analyser (DMA)
@@ -34,6 +35,12 @@ $ pip install control-lab-ly
 import controllably as lab
 ```
 
+### [Optional] Set safety level for session
+```python
+lab.set_safety('high')  # Pauses for input before every move action
+lab.set_safety('low')   # Waits for countdown before every move action
+```
+
 ### Import desired class
 ```python
 from controllably.Move.Cartesian import Ender
@@ -44,9 +51,9 @@ mover.safeMoveTo((x,y,z))
 More details for each class / module / package can be explored by using the `help` function.
 
 ```python
-help(controllably.Move)
-help(Ender)
-help(mover)
+help(controllably.Move)   # help on package
+help(Ender)               # help on class
+help(mover)               # help on instance/object
 ```
 
 Alternatively, you can use the native `pydoc` documentation generator.
