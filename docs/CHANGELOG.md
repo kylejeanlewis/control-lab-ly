@@ -6,7 +6,7 @@
 - Peltier device \[Arduino\]
 
 ## 0.0.3.x
-Minor changes to . First released 08 Mar 2023.
+Minor changes to movement robot safety and pipette control. Introduced control for LED array. First released 08 Mar 2023.
 ### Added
 #### 0.0.3
 - Added safety measures for movement actions
