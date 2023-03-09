@@ -251,9 +251,6 @@ class Peltier(object):
             `time_s` (float): duration in seconds
         """
         self.setTemperature(temperature)
-        print(f"Waiting for temperature to reach {self._set_point}°C")
-        while not self.isReady():
-            time.sleep(0.1)
         print(f"Holding at {self._set_point}°C for {time_s} seconds")
         time.sleep(time_s)
         print(f"End of temperature hold")
@@ -292,7 +289,7 @@ class Peltier(object):
         """
         self.toggleRecord(False)
         self.clearCache()
-        self.setTemperature(25)
+        self.setTemperature(set_point=25, blocking=False)
         return
 
     def setFlag(self, name:str, value:bool):
@@ -306,7 +303,7 @@ class Peltier(object):
         self._flags[name] = value
         return
     
-    def setTemperature(self, set_point:int):
+    def setTemperature(self, set_point:int, blocking:bool = True):
         """
         Set temperature of the device
 
@@ -322,9 +319,17 @@ class Peltier(object):
         except AttributeError:
             pass
         print(f"New set temperature at {set_point}°C")
+        
         self._stabilize_time = None
         self.setFlag('temperature_reached', False)
         self.setFlag('pause_feedback', False)
+        print(f"Waiting for temperature to reach {self._set_point}°C")
+        while not self.isReady():
+            if not self._flags['get_feedback']:
+                self.getTemperatures()
+            time.sleep(0.1)
+            if not blocking:
+                break
         return
     
     def toggleFeedbackLoop(self, on:bool):
