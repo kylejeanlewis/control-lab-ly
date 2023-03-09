@@ -8,6 +8,7 @@ User-friendly package that enables flexible automation an reconfigurable setups 
 - Make
   - Multi-channel spin-coater \[Arduino\]
   - Multi-channel LED array \[Arduino\]
+  - Peltier device \[Arduino\]
 - Measure
   - (Keithley) 2450 Source Measure Unit (SMU) Instrument
   - (PiezoRobotics) Dynamic Mechanical Analyser (DMA)
@@ -19,6 +20,7 @@ User-friendly package that enables flexible automation an reconfigurable setups 
   - Primitiv \[Arduino\]
 - Transfer
   - (Sartorius) rLINE® dispensing modules
+  - (TriContinent) C Series syringe pumps
   - Peristaltic pump and syringe system \[Arduino\]
 - View
   - (FLIR) AX8 thermal imaging camera - full functionality in development 
@@ -173,11 +175,18 @@ This file is optional if your setup does not involve moving objects around in a 
   "slots":{
     "1": {
       "name": "Labware01",
+      "exclusion_height": -1,
       "filepath": "REPO/.../Labware01.json"
     },
     "2": {
       "name": "Labware02",
+      "exclusion_height": 0,
       "filepath": "REPO/.../Labware02.json"
+    },
+    "3": {
+      "name": "Labware03",
+      "exclusion_height": 10,
+      "filepath": "REPO/.../Labware03.json"
     }
   }
 }
@@ -185,7 +194,9 @@ This file is optional if your setup does not involve moving objects around in a 
 
 In `reference_points`, the bottom-left coordinates of each slot in the workspace are defined. Slots are positions where Labware blocks may be placed.
 
-In `slots`, the name of each slot and the file reference for Labware block that occupies that slot are defined. The filepath starts with the repository's base folder name.
+In `slots`, the name of each slot and the file reference for Labware block that occupies that slot are defined. The filepath starts with the repository's base folder name.\
+The `exclusion_height` is the height (in mm) above the dimensions of the Labware block to steer clear from when performing move actions. Defaults to -1 (i.e. do not avoid).\
+\[Note: only applies to final coordinates. Does not guarantee avoidance when using point-to-point move actions. Use `safeMoveTo` instead.\]
 
 ### Load setup
 The initialisation of the setup occurs during the import `SETUP` from within `configs/Setup01`.
@@ -246,7 +257,8 @@ lab.load_deck(this.DeviceWithDeck, LAYOUT_FILE)
 ## Contributors
 [@kylejeanlewis](https://github.com/kylejeanlewis)\
 [@mat-fox](https://github.com/mat-fox)\
-[@Quijanove](https://github.com/Quijanove)
+[@Quijanove](https://github.com/Quijanove)\
+[@AniketChitre](https://github.com/AniketChitre)
 
 
 ## How to Contribute
