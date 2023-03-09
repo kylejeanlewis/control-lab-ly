@@ -489,6 +489,50 @@ class TriContinent(Pump):
     
     # Compound actions
     @_compound_action
+    def aspirate(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:int = None):
+        steps = min(int(volume/self.resolution), self.step_limit-self.position)
+        volume = steps * self.resolution
+        self.queue([
+            self.setStartSpeed(start_speed),
+            self.setTopSpeed(top_speed),
+            self.setSpeedRamp(1),
+            self.setValve('I'),
+            self.moveBy(steps)
+        ])
+        message = self.action_message
+        print(f"Aspirating {volume}uL {self.name}...")
+        self.run()
+        return message
+    
+    @_compound_action
+    def cycle(self, cycles:int, channel:int = None):
+        return self.prime(cycles=cycles, channel=channel)
+    
+    @_compound_action
+    def dispense(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:int = None):
+        steps = min(int(volume/self.resolution), self.step_limit)
+        volume = steps * self.resolution
+        self.queue([
+            self.setStartSpeed(start_speed),
+            self.setTopSpeed(top_speed),
+            self.setSpeedRamp(1)
+        ])
+        if self.position <= steps:
+            self.queue([self.fill()])
+        self.queue([
+            self.setValve('O'),
+            self.moveBy(-abs(steps))
+        ])
+        message = self.action_message
+        print(f"Dispensing {volume}uL {self.name}...")
+        self.run()
+        return message
+    
+    @_compound_action
+    def rinse(self, cycles:int, channel:int = None):
+        return self.prime(cycles=cycles, channel=channel)
+    
+    @_compound_action
     def dose(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:int = None):
         """
         Supply a dose of liquid
@@ -510,10 +554,7 @@ class TriContinent(Pump):
             self.setSpeedRamp(1)
         ])
         if self.position < 0.75*self.step_limit:
-            self.queue([
-                self.setValve('I'),
-                self.moveTo(self.step_limit)
-            ])
+            self.queue([self.fill()])
         self.queue([
             self.setValve('O'),
             self.moveBy(-abs(steps))
@@ -541,10 +582,8 @@ class TriContinent(Pump):
             self.setTopSpeed(200),
             self.setSpeedRamp(1),
             self.loop(cycles,
-                self.setValve('I'),
-                self.moveTo(self.step_limit),
-                self.setValve('O'),
-                self.moveTo(0)
+                self.fill(),
+                self.empty()
             )
         ])
         message = self.action_message
