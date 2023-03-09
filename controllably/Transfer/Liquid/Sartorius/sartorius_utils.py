@@ -781,12 +781,12 @@ class Sartorius(LiquidHandler):
         tip_on = self._flags.get('tip_on')
         return tip_on
     
-    def move(self, axis:str, value:int, channel=None):
+    def move(self, direction:str, value:int, channel=None):
         """
         Move plunger either up or down
 
         Args:
-            axis (str): desired direction of plunger (up / down)
+            direction (str): desired direction of plunger (up / down)
             value (int): number of steps to move plunger by
             channel (int, optional): channel to move. Defaults to None.
         Raises:
@@ -798,9 +798,9 @@ class Sartorius(LiquidHandler):
         """
         if value < 0:
             raise Exception("Please input non-negative value")
-        if axis.lower() in ['up','u']:
+        if direction.lower() in ['up','u']:
             return self.moveBy(value)
-        elif axis.lower() in ['down','d']:
+        elif direction.lower() in ['down','d']:
             return self.moveBy(-value)
         else:
             raise Exception("Please select either 'up' or 'down'")
