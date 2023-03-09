@@ -19,7 +19,8 @@ import serial # pip install pyserial
 print(f"Import: OK <{__name__}>")
 
 COLUMNS = ['Time', 'Set', 'Hot', 'Cold', 'Power']
-POWER_THRESHOLD = 10
+POWER_THRESHOLD = 20
+STABILIZE_TIME_S = 10
 TEMPERATURE_TOLERANCE = 1.5
 
 class Peltier(object):
@@ -78,12 +79,13 @@ class Peltier(object):
         self._power = None
         
         self._precision = 3
+        self._stabilize_time = None
         self._tolerance = tolerance
         self._threads = {}
         
         self.buffer_df = pd.DataFrame(columns=COLUMNS)
         
-        self.verbose = False
+        self.verbose = True
         self.port = ''
         self._baudrate = None
         self._timeout = None
@@ -135,6 +137,8 @@ class Peltier(object):
             self.device = device
             print(f"Connection opened to {port}")
             self.setFlag('connected', True)
+            time.sleep(1)
+            print(self.getTemperatures())
             # self.toggleFeedbackLoop(on=True)
         except Exception as e:
             print(f"Could not connect to {port}")
@@ -151,6 +155,7 @@ class Peltier(object):
             if self._flags['pause_feedback']:
                 continue
             self.getTemperatures()
+            time.sleep(0.1)
         print('Stop listening...')
         return
 
@@ -168,7 +173,7 @@ class Peltier(object):
         except Exception as e:
             if self.verbose:
                 print(e)
-        print(response)
+        # print(response)
         return response
     
     def _shutdown(self):
@@ -217,11 +222,18 @@ class Peltier(object):
             values = [float(v) for v in response.split(';')]
             self._set_point, self._temperature, self._cold_point, self._power = values
             ready = (abs(self._set_point - self._temperature)<=TEMPERATURE_TOLERANCE)
-            if self.isReady():
+            if not ready:
                 pass
-            elif ready and self._power <= POWER_THRESHOLD:
+            elif not self._stabilize_time:
+                self._stabilize_time = time.time()
+                print(response)
+            elif self._flags['temperature_reached']:
+                pass
+            elif (self._power <= POWER_THRESHOLD) or (time.time()-self._stabilize_time >= STABILIZE_TIME_S):
+                print(response)
                 self.setFlag('temperature_reached', True)
                 print(f"Temperature of {self._set_point}°C reached!")
+            
             if self._flags.get('record', False):
                 values = [now] + values
                 row = {k:v for k,v in zip(COLUMNS, values)}
@@ -278,6 +290,7 @@ class Peltier(object):
         """
         Clears data in buffer and set the temperature to room temperature (i.e. 25°C)
         """
+        self.toggleRecord(False)
         self.clearCache()
         self.setTemperature(25)
         return
@@ -301,13 +314,16 @@ class Peltier(object):
             `set_point` (int): target temperature in degree Celsius
         """
         self.setFlag('pause_feedback', True)
-        self.setFlag('temperature_reached', False)
-        time.sleep(0.1)
+        time.sleep(0.5)
         try:
             self.device.write(bytes(f"{set_point}\n", 'utf-8'))
+            while self._set_point != float(set_point):
+                self.getTemperatures()
         except AttributeError:
             pass
         print(f"New set temperature at {set_point}°C")
+        self._stabilize_time = None
+        self.setFlag('temperature_reached', False)
         self.setFlag('pause_feedback', False)
         return
     
