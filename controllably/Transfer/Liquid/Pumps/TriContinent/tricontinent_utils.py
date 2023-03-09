@@ -529,10 +529,6 @@ class TriContinent(Pump):
         return message
     
     @_compound_action
-    def rinse(self, cycles:int, channel:int = None):
-        return self.prime(cycles=cycles, channel=channel)
-    
-    @_compound_action
     def dose(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:int = None):
         """
         Supply a dose of liquid
@@ -590,6 +586,10 @@ class TriContinent(Pump):
         self.run()
         print(f"Priming of pump {self.channel} complete")
         return message
+    
+    @_compound_action
+    def rinse(self, cycles:int, channel:int = None):
+        return self.prime(cycles=cycles, channel=channel)
 
 
 class TriContinentEnsemble(Pump):
@@ -624,6 +624,7 @@ class TriContinentEnsemble(Pump):
     def loop(cycles, *args):
         return TriContinent.loop(cycles, *args)
     
+    # Single actions
     def empty(self, channel:int = None):
         return self.channels.get(channel, self.current_channel).empty()
     def fill(self, channel:int = None):
@@ -658,7 +659,16 @@ class TriContinentEnsemble(Pump):
         return self.channels.get(channel, self.current_channel).stop()
     
     # Compound actions
-    def dose(self, volume, channel:int = None):
-        return self.channels.get(channel, self.current_channel).dose(volume=volume)
+    def aspirate(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:int = None):
+        return self.channels.get(channel, self.current_channel).aspirate(volume=volume, start_speed=start_speed, top_speed=top_speed)
+    def cycle(self, cycles:int, channel:int = None):
+        return self.channels.get(channel, self.current_channel).cycle(cycles=cycles)
+    def dispense(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:int = None):
+        return self.channels.get(channel, self.current_channel).dispense(volume=volume, start_speed=start_speed, top_speed=top_speed)
+    def dose(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:int = None):
+        return self.channels.get(channel, self.current_channel).dose(volume=volume, start_speed=start_speed, top_speed=top_speed)
     def prime(self, cycles:int, channel:int = None):
         return self.channels.get(channel, self.current_channel).prime(cycles=cycles)
+    def rinse(self, cycles:int, channel:int = None):
+        return self.channels.get(channel, self.current_channel).rinse(cycles=cycles)
+    
