@@ -15,8 +15,8 @@ import time
 # Third party imports
 
 # Local application imports
-from ....misc import Helper
-from .pump_utils import Pump
+from .....misc import Helper
+from ..pump_utils import Pump
 from .tricontinent_lib import ErrorCode, StatusCode
 from .tricontinent_lib import ERRORS, STATUSES
 print(f"Import: OK <{__name__}>")
