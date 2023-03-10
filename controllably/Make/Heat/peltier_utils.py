@@ -19,16 +19,51 @@ import serial # pip install pyserial
 print(f"Import: OK <{__name__}>")
 
 COLUMNS = ['Time', 'Set', 'Hot', 'Cold', 'Power']
-TEMPERATURE_TOLERANCE = 1
+POWER_THRESHOLD = 20
+STABILIZE_TIME_S = 10
+TEMPERATURE_TOLERANCE = 1.5
 
 class Peltier(object):
     """
-    Peltier object
+    A Peltier device generates heat to provide local temperature control of the sample.
 
+    ### Constructor
     Args:
-        port (str): com port address
+        `port` (str): com port address
+        `tolerance` (float, optional): temperature tolerance to determine if device has reached target temperature. Defaults to `TEMPERATURE_TOLERANCE` (i.e. 1.5).
+        
+    ### Attributes:
+    - `buffer_df` (pandas.DataFrame): data output from device
+    - `device` (serial.Serial): serial connection to device
+    - `port` (str): com port address
+    - `precision` (int): number of decimal places to display current temperature
+    - `temperature` (float): current temperature of device
+    - `tolerance` (float): temperature tolerance
+    - `verbose` (bool): verbosity of class
+    
+    ### Methods:
+    - `clearCache`: clears and remove data in buffer
+    - `connect`: connects to the device using the existing port, baudrate and timeout values
+    - `getTemperatures`: reads from the device the set temperature, hot temperature, cold temperature, and the power level
+    - `holdTemperature`: holds the device temperature at target temperature for specified duration
+    - `isBusy`: checks whether the device is busy
+    - `isConnected`: checks whether the device is connected
+    - `isReady`: checks whether the device has reached the set temperature
+    - `reset`: clears data in buffer and set the temperature to room temperature (i.e. 25°C)
+    - `setFlag`: set value of flag
+    - `setTemperature`: change the set temperature
+    - `toggleFeedbackLoop`: toggle the feedback loop thread on or off
+    - `toggleRecord`: toggle the data recording on or off
     """
-    def __init__(self, port:str, **kwargs):
+    
+    def __init__(self, port:str, tolerance:float = TEMPERATURE_TOLERANCE):
+        """
+        Construct the Peltier object
+
+        Args:
+            `port` (str): com port address
+            `tolerance` (float, optional): temperature tolerance to determine if device has reached target temperature. Defaults to `TEMPERATURE_TOLERANCE` (i.e. 1.5).
+        """
         self.device = None
         self._flags = {
             'busy': False,
@@ -44,11 +79,13 @@ class Peltier(object):
         self._power = None
         
         self._precision = 3
+        self._stabilize_time = None
+        self._tolerance = tolerance
         self._threads = {}
         
         self.buffer_df = pd.DataFrame(columns=COLUMNS)
         
-        self.verbose = False
+        self.verbose = True
         self.port = ''
         self._baudrate = None
         self._timeout = None
@@ -56,32 +93,40 @@ class Peltier(object):
         return
     
     @property
+    def precision(self):
+        return self._precision
+    @precision.setter
+    def precision(self, value:int):
+        self._precision = abs(value)
+        return
+    
+    @property
     def temperature(self):
         return round(self._temperature, self._precision)
     
     @property
-    def precision(self):
-        return 10**(-self._precision)
-    @precision.setter
-    def precision(self, value:int):
-        self._precision = value
+    def tolerance(self):
+        return f"+- {self._tolerance} °C"
+    @tolerance.setter
+    def tolerance(self, value:float):
+        self._tolerance = abs(value)
         return
     
     def __delete__(self):
         self._shutdown()
         return
     
-    def _connect(self, port:str, baudrate=115200, timeout=1):
+    def _connect(self, port:str, baudrate:int = 115200, timeout:int = 1):
         """
         Connect to machine control unit
 
         Args:
-            port (str): com port address
-            baudrate (int): baudrate. Defaults to 9600.
-            timeout (int, optional): timeout in seconds. Defaults to None.
+            `port` (str): com port address
+            `baudrate` (int, optional): baudrate. Defaults to 115200.
+            `timeout` (int, optional): timeout in seconds. Defaults to 1.
             
         Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
+            `serial.Serial`: serial connection to machine control unit if connection is successful, else `None`
         """
         self.port = port
         self._baudrate = baudrate
@@ -92,6 +137,8 @@ class Peltier(object):
             self.device = device
             print(f"Connection opened to {port}")
             self.setFlag('connected', True)
+            time.sleep(1)
+            print(self.getTemperatures())
             # self.toggleFeedbackLoop(on=True)
         except Exception as e:
             print(f"Could not connect to {port}")
@@ -101,22 +148,23 @@ class Peltier(object):
     
     def _loop_feedback(self):
         """
-        Feedback loop to constantly check status and liquid level
+        Feedback loop to constantly read values from device
         """
         print('Listening...')
         while self._flags['get_feedback']:
             if self._flags['pause_feedback']:
                 continue
             self.getTemperatures()
+            time.sleep(0.1)
         print('Stop listening...')
         return
 
     def _read(self):
         """
-        Read response from device
+        Read values from the device
 
         Returns:
-            str: response string
+            `str`: response string
         """
         response = ''
         try:
@@ -125,11 +173,12 @@ class Peltier(object):
         except Exception as e:
             if self.verbose:
                 print(e)
+        # print(response)
         return response
     
     def _shutdown(self):
         """
-        Close serial connection and shutdown
+        Close serial connection and shutdown feedback loop
         """
         self.toggleFeedbackLoop(on=False)
         self.device.close()
@@ -143,7 +192,7 @@ class Peltier(object):
     
     def clearCache(self):
         """
-        Clear dataframe.
+        Clear data from buffer
         """
         self.setFlag('pause_feedback', True)
         time.sleep(0.1)
@@ -156,16 +205,16 @@ class Peltier(object):
         Reconnect to device using existing port and baudrate
         
         Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
+            `serial.Serial`: serial connection to machine control unit if connection is successful, else `None`
         """
         return self._connect(self.port, self._baudrate, self._timeout)
     
     def getTemperatures(self):
         """
-        Get the temperatures from device
+        Reads from the device the set temperature, hot temperature, cold temperature, and the power level
         
         Returns:
-            str: device response
+            `str`: response from device output
         """
         response = self._read()
         now = datetime.now()
@@ -173,7 +222,18 @@ class Peltier(object):
             values = [float(v) for v in response.split(';')]
             self._set_point, self._temperature, self._cold_point, self._power = values
             ready = (abs(self._set_point - self._temperature)<=TEMPERATURE_TOLERANCE)
-            self.setFlag('temperature_reached', ready)
+            if not ready:
+                pass
+            elif not self._stabilize_time:
+                self._stabilize_time = time.time()
+                print(response)
+            elif self._flags['temperature_reached']:
+                pass
+            elif (self._power <= POWER_THRESHOLD) or (time.time()-self._stabilize_time >= STABILIZE_TIME_S):
+                print(response)
+                self.setFlag('temperature_reached', True)
+                print(f"Temperature of {self._set_point}°C reached!")
+            
             if self._flags.get('record', False):
                 values = [now] + values
                 row = {k:v for k,v in zip(COLUMNS, values)}
@@ -181,66 +241,103 @@ class Peltier(object):
         except ValueError:
             pass
         return response
+    
+    def holdTemperature(self, temperature:float, time_s:float):
+        """
+        Hold the device temperature at target temperature for specified duration
 
+        Args:
+            `temperature` (float): temperature in degree Celsius
+            `time_s` (float): duration in seconds
+        """
+        self.setTemperature(temperature)
+        print(f"Holding at {self._set_point}°C for {time_s} seconds")
+        time.sleep(time_s)
+        print(f"End of temperature hold")
+        return
+    
     def isBusy(self):
         """
-        Checks whether the pipette is busy
+        Check whether the device is busy
         
         Returns:
-            bool: whether the pipette is busy
+            `bool`: whether the device is busy
         """
         return self._flags['busy']
     
     def isConnected(self):
         """
-        Check whether pipette is connected
+        Check whether the device is connected
 
         Returns:
-            bool: whether pipette is connected
+            `bool`: whether the device is connected
         """
         return self._flags['connected']
     
+    def isReady(self):
+        """
+        Check whether target temperature has been reached
+
+        Returns:
+            `bool`: whether target temperature has been reached
+        """
+        return self._flags['temperature_reached']
+    
     def reset(self):
         """
-        Reset baseline and clear buffer
+        Clears data in buffer and set the temperature to room temperature (i.e. 25°C)
         """
-        self.baseline = 0
+        self.toggleRecord(False)
         self.clearCache()
+        self.setTemperature(set_point=25, blocking=False)
         return
 
     def setFlag(self, name:str, value:bool):
         """
-        Set a flag truth value
+        Set a flag's truth value
 
         Args:
-            name (str): label
-            value (bool): flag value
+            `name` (str): label
+            `value` (bool): flag value
         """
         self._flags[name] = value
         return
     
-    def setTemperature(self, set_point:int):
+    def setTemperature(self, set_point:int, blocking:bool = True):
         """
-        Set Peltier temperature
+        Set temperature of the device
 
         Args:
-            set_point (int): temperature in degree Celsius
+            `set_point` (int): target temperature in degree Celsius
         """
         self.setFlag('pause_feedback', True)
-        time.sleep(0.1)
+        time.sleep(0.5)
         try:
             self.device.write(bytes(f"{set_point}\n", 'utf-8'))
+            while self._set_point != float(set_point):
+                self.getTemperatures()
         except AttributeError:
             pass
+        print(f"New set temperature at {set_point}°C")
+        
+        self._stabilize_time = None
+        self.setFlag('temperature_reached', False)
         self.setFlag('pause_feedback', False)
+        print(f"Waiting for temperature to reach {self._set_point}°C")
+        while not self.isReady():
+            if not self._flags['get_feedback']:
+                self.getTemperatures()
+            time.sleep(0.1)
+            if not blocking:
+                break
         return
     
     def toggleFeedbackLoop(self, on:bool):
         """
-        Toggle between start and stopping feedback loop
+        Toggle between starting and stopping feedback loop
 
         Args:
-            on (bool): whether to listen to feedback
+            `on` (bool): whether to have loop to continuously read from device
         """
         self.setFlag('get_feedback', on)
         if on:
@@ -255,10 +352,10 @@ class Peltier(object):
     
     def toggleRecord(self, on:bool):
         """
-        Toggle between start and stopping temperature records
+        Toggle between starting and stopping temperature recording
 
         Args:
-            on (bool): whether to start recording
+            `on` (bool): whether to start recording temperature
         """
         self.setFlag('record', on)
         self.setFlag('get_feedback', on)

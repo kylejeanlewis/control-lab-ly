@@ -7,6 +7,7 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from datetime import datetime
 import pandas as pd
 import time
 
@@ -122,10 +123,13 @@ class DMA(Program):
             high_frequency=self.parameters.get('high_frequency', FREQUENCIES[-1])
         )
         
-        input("Please load sample. Press 'Enter' to proceed")
+        if self.parameters.get('load_sample_pause', True):
+            input("Please load sample. Press 'Enter' to proceed")
         device.toggleClamp(True)
         for i in range(repeat):
+            print(f"Start run {i+1} at {datetime.now()}")
             device.start(sample_thickness=self.parameters.get('sample_thickness', 1E-3))
+            print(f"End run {i+1} at {datetime.now()}")
             time.sleep(1)
             df = device.readAll()
             df['run'] = i+1
