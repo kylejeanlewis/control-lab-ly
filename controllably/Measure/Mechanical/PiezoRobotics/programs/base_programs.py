@@ -123,7 +123,8 @@ class DMA(Program):
             high_frequency=self.parameters.get('high_frequency', FREQUENCIES[-1])
         )
         
-        input("Please load sample. Press 'Enter' to proceed")
+        if self.parameters.get('load_sample_pause', True):
+            input("Please load sample. Press 'Enter' to proceed")
         device.toggleClamp(True)
         for i in range(repeat):
             print(f"Start run {i+1} at {datetime.now()}")
