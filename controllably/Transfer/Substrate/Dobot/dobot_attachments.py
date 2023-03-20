@@ -12,7 +12,7 @@ import time
 from typing import Protocol
 
 # Local application imports
-from ...misc import Helper
+from ....misc import Helper
 print(f"Import: OK <{__name__}>")
 
 class DobotGripper(ABC):
@@ -25,6 +25,10 @@ class DobotGripper(ABC):
     dashboard = None
     implement_offset = (0,0,0)
     def __init__(self, dashboard):
+        self._set_dashboard(dashboard=dashboard)
+        return
+    
+    def _set_dashboard(self, dashboard) -> None:
         self.dashboard = dashboard
         return
     
@@ -45,8 +49,8 @@ class TwoJawGrip(DobotGripper):
         dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
     """
     implement_offset = (0,0,-95)
-    def __init__(self, dashboard):
-        self.dashboard = dashboard
+    def __init__(self, dashboard) -> None:
+        super().__init__(dashboard=dashboard)
         return
 
     def drop(self) -> bool:
@@ -88,8 +92,8 @@ class VacuumGrip(DobotGripper):
         dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
     """
     implement_offset = (0,0,-60)
-    def __init__(self, dashboard):
-        self.dashboard = dashboard
+    def __init__(self, dashboard) -> None:
+        super().__init__(dashboard=dashboard)
         return
 
     def drop(self) -> bool:
