@@ -7,26 +7,37 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from abc import ABC, abstractmethod
 import time
+from typing import Protocol
 
 # Local application imports
 from ...misc import Helper
 print(f"Import: OK <{__name__}>")
 
-class Attachment(object):
+class DobotGripper(ABC):
     """
     Dobot first part implement attachments
 
     Args:
         dashboard (any): Dashboard object
     """
+    dashboard = None
     implement_offset = (0,0,0)
     def __init__(self, dashboard):
         self.dashboard = dashboard
         return
     
+    @abstractmethod
+    def drop(self) -> bool:
+        pass
     
-class TwoJawGrip(Attachment):
+    @abstractmethod
+    def grab(self) -> bool:
+        pass
+    
+    
+class TwoJawGrip(DobotGripper):
     """
     TwoJawGrip class
     
@@ -35,10 +46,10 @@ class TwoJawGrip(Attachment):
     """
     implement_offset = (0,0,-95)
     def __init__(self, dashboard):
-        super().__init__(dashboard)
+        self.dashboard = dashboard
         return
 
-    def drop(self):
+    def drop(self) -> bool:
         """
         Open gripper, let go of object
         
@@ -53,7 +64,7 @@ class TwoJawGrip(Attachment):
             return False
         return True
     
-    def grab(self):
+    def grab(self) -> bool:
         """
         Close gripper, pick object up
         
@@ -69,7 +80,7 @@ class TwoJawGrip(Attachment):
         return True
 
 
-class VacuumGrip(Attachment):
+class VacuumGrip(DobotGripper):
     """
     VacuumGrip class
 
@@ -78,10 +89,10 @@ class VacuumGrip(Attachment):
     """
     implement_offset = (0,0,-60)
     def __init__(self, dashboard):
-        super().__init__(dashboard)
+        self.dashboard = dashboard
         return
 
-    def drop(self):
+    def drop(self) -> bool:
         """
         Let go of object
         
@@ -91,7 +102,7 @@ class VacuumGrip(Attachment):
         print('Tried to drop...')
         return self.push(0.5)
     
-    def grab(self):
+    def grab(self) -> bool:
         """
         Pick up object
         
@@ -101,7 +112,7 @@ class VacuumGrip(Attachment):
         print('Tried to grab...')
         return self.pull(3)
     
-    def pull(self, duration=None):
+    def pull(self, duration=None) -> bool:
         """
         Inhale air
 
@@ -120,7 +131,7 @@ class VacuumGrip(Attachment):
             return False
         return True
     
-    def push(self, duration=None):
+    def push(self, duration=None) -> bool:
         """
         Expel air
 
@@ -142,7 +153,7 @@ class VacuumGrip(Attachment):
             return False
         return True
     
-    def stop(self):
+    def stop(self) -> bool:
         """
         Stop airflow
         
