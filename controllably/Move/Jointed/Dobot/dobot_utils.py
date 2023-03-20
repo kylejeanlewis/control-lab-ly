@@ -13,9 +13,9 @@ import time
 
 # Local application imports
 from ....misc import HELPER
+from ....Transfer.Substrate import dobot_attachments as attachments
 from ..jointed_utils import RobotArm
 from .dobot_api import dobot_api_dashboard, dobot_api_feedback
-from . import dobot_attachments as attachments
 print(f"Import: OK <{__name__}>")
 
 CONNECTION_TIMEOUT = 20

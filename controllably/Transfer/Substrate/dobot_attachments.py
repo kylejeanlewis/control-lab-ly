@@ -10,7 +10,7 @@ Notes / actionables:
 import time
 
 # Local application imports
-from ....misc import Helper
+from ...misc import Helper
 print(f"Import: OK <{__name__}>")
 
 class Attachment(object):
@@ -20,9 +20,9 @@ class Attachment(object):
     Args:
         dashboard (any): Dashboard object
     """
+    implement_offset = (0,0,0)
     def __init__(self, dashboard):
         self.dashboard = dashboard
-        self.implement_offset = (0,0,0)
         return
     
     
@@ -33,9 +33,9 @@ class TwoJawGrip(Attachment):
     Args:
         dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
     """
+    implement_offset = (0,0,-95)
     def __init__(self, dashboard):
         super().__init__(dashboard)
-        self.implement_offset = (0,0,-95)
         return
 
     def drop(self):
@@ -76,9 +76,9 @@ class VacuumGrip(Attachment):
     Args:
         dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
     """
+    implement_offset = (0,0,-60)
     def __init__(self, dashboard):
         super().__init__(dashboard)
-        self.implement_offset = (0,0,-60)
         return
 
     def drop(self):
