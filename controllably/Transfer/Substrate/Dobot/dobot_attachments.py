@@ -7,38 +7,52 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from abc import ABC, abstractmethod
 import time
 
 # Local application imports
 from ....misc import Helper
 print(f"Import: OK <{__name__}>")
 
-class Attachment(object):
+class DobotGripper(ABC):
     """
     Dobot first part implement attachments
 
     Args:
         dashboard (any): Dashboard object
     """
+    dashboard = None
+    implement_offset = (0,0,0)
     def __init__(self, dashboard):
-        self.dashboard = dashboard
-        self.implement_offset = (0,0,0)
+        self._set_dashboard(dashboard=dashboard)
         return
     
+    def _set_dashboard(self, dashboard) -> None:
+        self.dashboard = dashboard
+        return
     
-class TwoJawGrip(Attachment):
+    @abstractmethod
+    def drop(self) -> bool:
+        pass
+    
+    @abstractmethod
+    def grab(self) -> bool:
+        pass
+    
+    
+class TwoJawGrip(DobotGripper):
     """
     TwoJawGrip class
     
     Args:
         dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
     """
-    def __init__(self, dashboard):
-        super().__init__(dashboard)
-        self.implement_offset = (0,0,-95)
+    implement_offset = (0,0,-95)
+    def __init__(self, dashboard=None) -> None:
+        super().__init__(dashboard=dashboard)
         return
 
-    def drop(self):
+    def drop(self) -> bool:
         """
         Open gripper, let go of object
         
@@ -53,7 +67,7 @@ class TwoJawGrip(Attachment):
             return False
         return True
     
-    def grab(self):
+    def grab(self) -> bool:
         """
         Close gripper, pick object up
         
@@ -69,19 +83,19 @@ class TwoJawGrip(Attachment):
         return True
 
 
-class VacuumGrip(Attachment):
+class VacuumGrip(DobotGripper):
     """
     VacuumGrip class
 
     Args:
         dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
     """
-    def __init__(self, dashboard):
-        super().__init__(dashboard)
-        self.implement_offset = (0,0,-60)
+    implement_offset = (0,0,-60)
+    def __init__(self, dashboard=None) -> None:
+        super().__init__(dashboard=dashboard)
         return
 
-    def drop(self):
+    def drop(self) -> bool:
         """
         Let go of object
         
@@ -91,7 +105,7 @@ class VacuumGrip(Attachment):
         print('Tried to drop...')
         return self.push(0.5)
     
-    def grab(self):
+    def grab(self) -> bool:
         """
         Pick up object
         
@@ -101,7 +115,7 @@ class VacuumGrip(Attachment):
         print('Tried to grab...')
         return self.pull(3)
     
-    def pull(self, duration=None):
+    def pull(self, duration=None) -> bool:
         """
         Inhale air
 
@@ -120,7 +134,7 @@ class VacuumGrip(Attachment):
             return False
         return True
     
-    def push(self, duration=None):
+    def push(self, duration=None) -> bool:
         """
         Expel air
 
@@ -142,7 +156,7 @@ class VacuumGrip(Attachment):
             return False
         return True
     
-    def stop(self):
+    def stop(self) -> bool:
         """
         Stop airflow
         
