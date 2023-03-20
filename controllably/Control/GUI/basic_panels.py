@@ -9,6 +9,7 @@ Notes / actionables:
 # Standard library imports
 import numpy as np
 import time
+from typing import Protocol, Callable
 
 # Third party imports
 import PySimpleGUI as sg # pip install PySimpleGUI
@@ -17,6 +18,17 @@ import PySimpleGUI as sg # pip install PySimpleGUI
 from ...misc import Helper
 from .gui_utils import Panel, WIDTH, HEIGHT, THEME, TYPEFACE, FONT_SIZES
 print(f"Import: OK <{__name__}>")
+
+class Measurer(Protocol):
+    available_programs: list
+    possible_inputs: list
+    program_details: dict
+    def loadProgram(self, *args, **kwargs):
+        ...
+    def measure(self, *args, **kwargs):
+        ...
+    def reset(self, *args, **kwargs):
+        ...
 
 class MeasurerPanel(Panel):
     """
@@ -30,8 +42,8 @@ class MeasurerPanel(Panel):
         font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
         group (str, optional): name of group. Defaults to 'measurer'.
     """
-    def __init__(self, measurer, name='MEASURE', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group='measurer'):
-        super().__init__(name=name, theme=theme, typeface=typeface, font_sizes=font_sizes, group=group)
+    def __init__(self, measurer:Measurer, name='MEASURE', group='measurer', **kwargs):
+        super().__init__(name=name, group=group, **kwargs)
         self.current_program = ''
         self.measurer = measurer
         return
@@ -184,6 +196,29 @@ class MeasurerPanel(Panel):
         return updates
 
 
+class Mover(Protocol):
+    attachment: Callable
+    heights: dict
+    home_coordinates: tuple
+    max_actions: int
+    possible_attachments: list
+    def _transform_out(self, *args, **kwargs):
+        ...
+    def getToolPosition(self, *args, **kwargs):
+        ...
+    def home(self, *args, **kwargs):
+        ...
+    def move(self, *args, **kwargs):
+        ...
+    def moveTo(self, *args, **kwargs):
+        ...
+    def reset(self, *args, **kwargs):
+        ...
+    def rotateTo(self, *args, **kwargs):
+        ...
+    def toggleAttachment(self, *args, **kwargs):
+        ...
+        
 class MoverPanel(Panel):
     """
     Mover Panel class
@@ -195,11 +230,11 @@ class MoverPanel(Panel):
         typeface (str, optional): name of typeface. Defaults to TYPEFACE.
         font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
         group (str, optional): name of group. Defaults to 'mover'.
-        axes (list, optional): list of degrees of freedom/axes. Defaults to ['X','Y','Z','a','b','c'].
+        axes (list, optional): list of degrees of freedom/axes. Defaults to 'XYZabc'.
     """
-    def __init__(self, mover, name='MOVE', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group='mover', axes=['X','Y','Z','a','b','c']):
-        super().__init__(name=name, theme=theme, typeface=typeface, font_sizes=font_sizes, group=group)
-        self.axes = axes
+    def __init__(self, mover:Mover, name='MOVE', group='mover', axes='XYZabc', **kwargs):
+        super().__init__(name=name, group=group, **kwargs)
+        self.axes = [*axes]
         self.buttons = {}
         self.current_attachment = ''
         self.attachment_methods = []
@@ -236,7 +271,7 @@ class MoverPanel(Panel):
             if self.mover.attachment is not None:
                 show_buttons = True
                 self.current_attachment = self.mover.attachment.__class__.__name__
-                self.attachment_methods = Helper.get_method_names(self.mover.attachment)
+                self.attachment_methods = [method for method in Helper.get_method_names(self.mover.attachment) if not method.startswith('_')]
                 alt_texts = [l.title() for l in self.attachment_methods]
                 self.methods_fn_key_map = {f'-{self.name}-{k}-':v for k,v in zip(button_labels, alt_texts)}
         buttons = self.getButtons(button_labels, (5,2), self.name, font, texts=alt_texts)
@@ -416,8 +451,9 @@ class MoverPanel(Panel):
                     self.attachment_methods = []
                     update_part = self.toggleButtons(False)
                 else:
-                    self.mover.toggleAttachment(True, selected_attachment)
-                    self.attachment_methods = Helper.get_method_names(self.mover.attachment)
+                    selected_attachment_class = Helper.get_class(f"Transfer.Substrate.Dobot.{selected_attachment}")     ### FIXME: hard-coded
+                    self.mover.toggleAttachment(True, selected_attachment_class)
+                    self.attachment_methods = [method for method in Helper.get_method_names(self.mover.attachment) if not method.startswith('_')]
                     fn_buttons = [l.title() for l in self.attachment_methods]
                     update_part = self.toggleButtons(True, fn_buttons)
                 updates.update(update_part)
