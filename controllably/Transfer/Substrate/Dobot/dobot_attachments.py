@@ -9,7 +9,6 @@ Notes / actionables:
 # Standard library imports
 from abc import ABC, abstractmethod
 import time
-from typing import Protocol
 
 # Local application imports
 from ....misc import Helper
@@ -49,7 +48,7 @@ class TwoJawGrip(DobotGripper):
         dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
     """
     implement_offset = (0,0,-95)
-    def __init__(self, dashboard) -> None:
+    def __init__(self, dashboard=None) -> None:
         super().__init__(dashboard=dashboard)
         return
 
@@ -92,7 +91,7 @@ class VacuumGrip(DobotGripper):
         dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
     """
     implement_offset = (0,0,-60)
-    def __init__(self, dashboard) -> None:
+    def __init__(self, dashboard=None) -> None:
         super().__init__(dashboard=dashboard)
         return
 
