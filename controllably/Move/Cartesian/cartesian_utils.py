@@ -245,3 +245,20 @@ class Gantry(Mover):
         """
         return self.moveTo(coordinates, to_safe_height=True, jump_height=jump_height, tool_offset=tool_offset, **kwargs)
     
+    def setSpeed(self, speed: int):
+        """
+        Setting the Global speed rate.
+
+        Args:
+            speed (int): rate value (value range: 1~100)
+        """
+        try:
+            speed = int(speed)
+            print(f'Speed: {speed}')
+            self._speed_fraction = (speed/self._speed)
+            self.device.write(bytes(f"M220 S{int(100*self._speed_fraction)}\n", 'utf-8'))
+        except (AttributeError, OSError):
+            if self.verbose:
+                print("Not connected!")
+        return
+    
