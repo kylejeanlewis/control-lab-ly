@@ -10,10 +10,10 @@ Notes / actionables:
 import math
 import numpy as np
 import time
+from typing import Protocol
 
 # Local application imports
 from ....misc import HELPER
-from ....Transfer.Substrate import dobot_attachments as attachments
 from ..jointed_utils import RobotArm
 from .dobot_api import dobot_api_dashboard, dobot_api_feedback
 print(f"Import: OK <{__name__}>")
@@ -22,12 +22,17 @@ CONNECTION_TIMEOUT = 20
 SCALE = True
 MOVE_TIME_BUFFER_S = 0.5
 
+class DobotAttachment(Protocol):
+    def _set_dashboard(self, dashboard) -> None:
+        ...
+
 class Dobot(RobotArm):
     """
     Dobot class.
     
     Args:
         ip_address (str): IP address of arm
+        attachment (str, optional): Dobot attachment. Defaults to None.
 
     Kwargs:
         home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,0,0).
@@ -39,9 +44,9 @@ class Dobot(RobotArm):
         verbose (bool, optional): whether to print outputs. Defaults to False.
         safe_height (float, optional): safe height. Defaults to None.
     """
-    possible_attachments = attachments.ATTACHMENT_NAMES
-    max_actions = max( [len(m) for m in attachments.METHODS] )
-    def __init__(self, ip_address:str, **kwargs):
+    possible_attachments = ['TwoJawGrip', 'VacuumGrip']     ### FIXME: hard-coded
+    max_actions = 5                                         ### FIXME: hard-coded
+    def __init__(self, ip_address:str, attachment:str = None, **kwargs):
         super().__init__(**kwargs)
         self.ip_address = ip_address
         self.attachment = None
@@ -50,6 +55,9 @@ class Dobot(RobotArm):
         
         self.setFlag('retract', True)
         self._connect(ip_address)
+        if attachment is not None:
+            attachment_class = HELPER.get_class(attachment)
+            self.toggleAttachment(True, attachment_class)
         pass
     
     @property
@@ -358,44 +366,20 @@ class Dobot(RobotArm):
                 print("Not connected to arm!")
         return
     
-    def toggleAttachment(self, on:bool, name='', attachment_type=None, attachment_module=attachments):
+    def toggleAttachment(self, on:bool, attachment_class:DobotAttachment = None):
         """
         Add an attachment that interfaces with the Dobot's Digital Output (DO)
 
         Args:
             on (bool): whether to add attachment, False if removing attachment
-            name (str, optional): name of attachment type in attachment_module. Defaults to None.
-            attachment_type (any, optional): attachment to load. Defaults to None.
-            attachment_module (module, optional): module containing relevant attachments. Defaults to None.
-        
-        Raises:
-            Exception: Provide a module containing relevant attachments
-            Exception: Select a valid attachment name
-            Exception: Input at least one of 'name' or 'attachment_type'
-            Exception: Input only one of 'name' or 'attachment_type'
+            attachment_class (any, optional): attachment to load. Defaults to None.
         """
         if on: # Add attachment
-            if name is None and attachment_type is not None:
-                pass
-            elif name is not None and attachment_type is None:
-                if attachment_module is None:
-                    raise Exception(f"Please provide a module containing relevant attachments")
-                if name not in attachment_module.ATTACHMENT_NAMES:
-                    raise Exception(f"Please select a program name from: {', '.join(attachment_module.ATTACHMENT_NAMES)}")
-                attachment_type = getattr(attachment_module, name)
-            elif name is None and attachment_type is None:
-                if len(attachment_module.ATTACHMENTS) > 1:
-                    raise Exception("Please input at least one of 'name' or 'attachment_type'")
-                attachment_type = attachment_module.ATTACHMENTS[0]
-            else:
-                raise Exception("Please input only one of 'name' or 'attachment_type'")
-            
-            # input("Please secure tool attachment")
             print("Please secure tool attachment")
-            self.attachment = attachment_type(self.dashboard)
+            self.attachment = attachment_class()
+            self.attachment._set_dashboard(self.dashboard)
             self.setImplementOffset(self.attachment.implement_offset)
         else: # Remove attachment
-            # input("Please remove tool attachment")
             print("Please remove tool attachment")
             self.attachment = None
             self.setImplementOffset((0,0,0))
@@ -430,6 +414,7 @@ class MG400(Dobot):
         home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,300,0).
         
     Kwargs:
+        attachment (str, optional): Dobot attachment. Defaults to None.
         home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
         orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
         translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to (0,0,0).
@@ -519,6 +504,7 @@ class M1Pro(Dobot):
         home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,300,100).
         
     Kwargs:
+        attachment (str, optional): Dobot attachment. Defaults to None.
         home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
         orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
         translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to (0,0,0).
