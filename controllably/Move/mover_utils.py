@@ -7,6 +7,7 @@ Notes / actionables:
 - 
 """
 # Standard library imports
+from abc import ABC, abstractmethod
 import math
 import numpy as np
 
@@ -14,7 +15,7 @@ import numpy as np
 from ..misc import Deck, HELPER
 print(f"Import: OK <{__name__}>")
 
-class Mover(object):
+class Mover(ABC):
     """
     General mover class
 
@@ -309,7 +310,8 @@ class Mover(object):
             tuple, tuple: x,y,z coordinates; a,b,c angles
         """
         return self.getUserPosition()
-   
+    
+    @abstractmethod
     def home(self):
         """
         Home the mover
@@ -432,6 +434,7 @@ class Mover(object):
         self.orientation = orientation
         return True
     
+    @abstractmethod
     def reset(self):
         """
         Clear any errors and enable robot
@@ -534,6 +537,7 @@ class Mover(object):
             self.home()
         return
     
+    @abstractmethod
     def setSpeed(self, speed:int):
         """
         Setting the movement speed rate.
