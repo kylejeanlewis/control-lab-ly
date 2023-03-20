@@ -57,12 +57,12 @@ class Helper(object):
         return main_folder
     
     @staticmethod
-    def get_class(module, dot_notation:str):
+    def get_class(dot_notation:str):
         """
         Retrieve the relevant class from the sub-package
 
         Args:
-            module (module): sub-package
+            module (str): sub-package name
             dot_notation (str): dot notation of class / module / package
 
         Returns:
@@ -70,7 +70,7 @@ class Helper(object):
         """
         print('\n')
         top_package = __name__.split('.')[0]
-        import_path = f'{top_package}.{module}.{dot_notation}'
+        import_path = f'{top_package}.{dot_notation}'
         package = importlib.import_module('.'.join(import_path.split('.')[:-1]))
         _class = getattr(package, import_path.split('.')[-1])
         return _class
@@ -307,7 +307,8 @@ class Helper(object):
             _module = details.get('module')
             if _module is None:
                 continue
-            _class = cls.get_class(_module, details.get('class', ''))
+            dot_notation = [_module, details.get('class', '')]
+            _class = cls.get_class('.'.join(dot_notation))
             settings = details.get('settings', {})
             components[name] = _class(**settings)
         return components
