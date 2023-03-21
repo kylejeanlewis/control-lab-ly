@@ -7,10 +7,12 @@ Notes / actionables:
 - 
 """
 # Standard library imports
+from abc import ABC, abstractmethod
 from datetime import datetime
 import numpy as np
 import pandas as pd
 from threading import Thread
+from typing import Protocol
 # from multiprocessing import Process
 
 # Third party imports
@@ -19,10 +21,13 @@ import cv2 # pip install opencv-python
 # Local application imports
 from ..misc import Helper
 from .image_utils import Image
-from .Classifiers import Classifier
 print(f"Import: OK <{__name__}>")
 
-class Camera(object):
+class Classifier(Protocol):
+    def detect(self,*args, **kwargs):
+        ...
+
+class Camera(ABC):
     """
     Camera object
 
@@ -55,6 +60,7 @@ class Camera(object):
         self.close()
         return
     
+    @abstractmethod
     def _connect(self):
         """
         Connect to the imaging device
