@@ -15,7 +15,7 @@ from typing import Protocol, Callable
 import PySimpleGUI as sg # pip install PySimpleGUI
 
 # Local application imports
-from ...misc import Helper
+from ...misc import Factory, Helper
 from .gui_utils import Panel, WIDTH, HEIGHT, THEME, TYPEFACE, FONT_SIZES
 print(f"Import: OK <{__name__}>")
 
@@ -451,7 +451,7 @@ class MoverPanel(Panel):
                     self.attachment_methods = []
                     update_part = self.toggleButtons(False)
                 else:
-                    selected_attachment_class = Helper.get_class(f"Transfer.Substrate.Dobot.{selected_attachment}")     ### FIXME: hard-coded
+                    selected_attachment_class = Factory.get_class(f"Transfer.Substrate.Dobot.{selected_attachment}")     ### FIXME: hard-coded
                     self.mover.toggleAttachment(True, selected_attachment_class)
                     self.attachment_methods = [method for method in Helper.get_method_names(self.mover.attachment) if not method.startswith('_')]
                     fn_buttons = [l.title() for l in self.attachment_methods]
