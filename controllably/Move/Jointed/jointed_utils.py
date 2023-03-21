@@ -11,7 +11,7 @@ import numpy as np
 
 # Local application imports
 from ...misc import HELPER
-from ..mover_utils import Mover
+from ..move_utils import Mover
 print(f"Import: OK <{__name__}>")
 
 class RobotArm(Mover):

@@ -15,7 +15,7 @@ import serial # pip install pyserial
 
 # Local application imports
 from ...misc import HELPER
-from ..mover_utils import Mover
+from ..move_utils import Mover
 print(f"Import: OK <{__name__}>")
 
 MAX_SPEED = 250 # [mm/s]
