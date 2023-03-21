@@ -19,7 +19,8 @@ class Logger:
     """
     Logger class with miscellaneous methods
     """
-    def __init__(self):
+    def __init__(self, name:str):
+        self.name = name
         self.all_logs = []
         self.logs = {}
         pass
@@ -77,5 +78,5 @@ class Logger:
                     f.write(line + '\n')
         return
 
-LOGGER = Logger() 
+LOGGER = Logger('main') 
 """NOTE: importing LOGGER gives the same instance of the 'Logger' class wherever you import it"""
