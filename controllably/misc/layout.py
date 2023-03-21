@@ -12,10 +12,10 @@ Notes / actionables:
 import numpy as np
 
 # Local application imports
-from .misc_utils import Helper
+from . import helper
 print(f"Import: OK <{__name__}>")
 
-class Well(object):
+class Well:
     """
     Well object
 
@@ -136,7 +136,7 @@ class Well(object):
         return tuple(map(sum, zip(self.top, offset)))
 
 
-class Labware(object):
+class Labware:
     """
     Labware object
 
@@ -147,7 +147,7 @@ class Labware(object):
         package (str, optional): name of package to look in. Defaults to None.
     """
     def __init__(self, slot:str, bottom_left_coordinates:tuple, labware_file:str, package:str = None):
-        self.details = Helper.read_json(json_file=labware_file, package=package)
+        self.details = helper.read_json(json_file=labware_file, package=package)
         self.name = self.details.get('metadata',{}).get('displayName', '')
         self.reference_point = bottom_left_coordinates
         self.slot = slot
@@ -282,7 +282,7 @@ class Labware(object):
         return
 
 
-class Deck(object):
+class Deck:
     """
     Deck object
 
@@ -407,7 +407,7 @@ class Deck(object):
         if layout_file is None and layout_dict is None:
             return
         elif layout_file is not None:
-            self.details = Helper.read_json(json_file=layout_file, package=package)
+            self.details = helper.read_json(json_file=layout_file, package=package)
         else:
             self.details = layout_dict
         slots = self.details.get('slots', {})
