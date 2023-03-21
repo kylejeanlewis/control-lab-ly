@@ -11,7 +11,7 @@ Notes / actionables:
 # Third party imports
 
 # Local application imports
-from ..misc import Deck, Helper
+from ..misc import Factory, Layout
 print(f"Import: OK <{__name__}>")
 
 class CompoundSetup(object):
@@ -27,9 +27,9 @@ class CompoundSetup(object):
     """
     def __init__(self, config:str = None, layout:str = None, component_config:dict = None, layout_dict:dict = None, ignore_connections:bool = False, **kwargs):
         self.components = {}
-        self.deck = Deck()
+        self.deck = Layout.Deck()
         self.positions = {}
-        self._config = Helper.get_plans(config) if config is not None else component_config
+        self._config = Factory.get_plans(config) if config is not None else component_config
         self._flags = {
             'at_rest': False
         }
@@ -45,7 +45,7 @@ class CompoundSetup(object):
             diagnostic (bool, optional): whether to run diagnostic to check equipment. Defaults to True.
             ignore_connections (bool, optional): whether to ignore connections and run methods. Defaults to False.
         """
-        self.components = Helper.load_components(self._config)
+        self.components = Factory.load_components(self._config)
         self.labelPositions(self._config.get('labelled_positions', {}))
 
         if diagnostic:
