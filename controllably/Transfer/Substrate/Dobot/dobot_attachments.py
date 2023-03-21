@@ -21,9 +21,9 @@ class DobotGripper(ABC):
     Args:
         dashboard (any): Dashboard object
     """
-    dashboard = None
     implement_offset = (0,0,0)
     def __init__(self, dashboard):
+        self.dashboard = None
         self._set_dashboard(dashboard=dashboard)
         return
     
