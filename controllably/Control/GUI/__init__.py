@@ -1,2 +1,4 @@
 from .gui_utils import Panel, CompoundPanel
-from .basic_panels import MeasurerPanel, MoverPanel, ViewerPanel, LoaderPanel
+from .measurer_panel import MeasurerPanel
+from .mover_panel import MoverPanel
+from .viewer_panel import ViewerPanel
