@@ -15,7 +15,7 @@ import cv2 # pip install opencv-python
 # Local application imports
 print(f"Import: OK <{__name__}>")
 
-class Image(object):
+class Image:
     """
     Image class with image manipulation methods
 
