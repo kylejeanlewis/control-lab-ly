@@ -7,7 +7,7 @@ Notes / actionables:
 -
 """
 # Local application imports
-from ...misc import HELPER
+from ...misc import Helper
 from .cartesian_utils import Gantry
 print(f"Import: OK <{__name__}>")
 
@@ -71,7 +71,7 @@ class Ender(Gantry):
             return False
         return True
 
-    @HELPER.safety_measures
+    @Helper.safety_measures
     def home(self):
         """
         Homing cycle for Ender platform

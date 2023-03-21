@@ -10,7 +10,7 @@ Notes / actionables:
 import numpy as np
 
 # Local application imports
-from ...misc import HELPER
+from ...misc import Helper
 from ..move_utils import Mover
 print(f"Import: OK <{__name__}>")
 
@@ -126,7 +126,7 @@ class RobotArm(Mover):
             return False
         return self.moveCoordTo(coordinates, orientation)
     
-    @HELPER.safety_measures
+    @Helper.safety_measures
     def moveCoordBy(self, vector=None, angles=None):
         """
         Relative Cartesian movement and tool orientation, using robot coordinates.
@@ -140,7 +140,7 @@ class RobotArm(Mover):
         """
         return True
 
-    @HELPER.safety_measures
+    @Helper.safety_measures
     def moveCoordTo(self, coordinates=None, orientation=None):
         """
         Absolute Cartesian movement and tool orientation, using robot coordinates.
@@ -155,7 +155,7 @@ class RobotArm(Mover):
         """
         return True
 
-    @HELPER.safety_measures
+    @Helper.safety_measures
     def moveJointBy(self, relative_angles):
         """
         Relative joint movement.
@@ -173,7 +173,7 @@ class RobotArm(Mover):
             raise Exception('Length of input needs to be 6')
         return True
 
-    @HELPER.safety_measures
+    @Helper.safety_measures
     def moveJointTo(self, absolute_angles):
         """
         Absolute joint movement.
@@ -191,7 +191,7 @@ class RobotArm(Mover):
             raise Exception('Length of input needs to be 6')
         return True
     
-    @HELPER.safety_measures
+    @Helper.safety_measures
     def retractArm(self, target=None):
         """
         Tuck in arm, rotate about base, then extend again.
