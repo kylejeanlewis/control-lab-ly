@@ -7,16 +7,19 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from __future__ import annotations
 from threading import Thread
 import time
+from typing import Optional
 
 # Third party imports
-import serial # pip install pyserial
+import serial   # pip install pyserial
 
 # Local application imports
+from ..make_utils import Maker
 print(f"Import: OK <{__name__}>")
 
-class LED(object):
+class LED:
     """
     LED class represents a LED unit
 
@@ -29,9 +32,7 @@ class LED(object):
         self._end_time = time.time()
         self._power = 0
         
-        self._flags = {
-            'power_update': False
-        }
+        self._flags = {'power_update': False}
         pass
     
     @property
@@ -41,20 +42,23 @@ class LED(object):
     def power(self, value:int):
         if type(value) == int and (0 <= value <= 255):
             self._power = value
-            self.setFlag('power_update', True)
+            self.setFlag(power_update=True)
         else:
             print('Please input an integer between 0 and 255.')
         return
     
-    def setFlag(self, name:str, value:bool):
+    def setFlag(self, **kwargs):
         """
-        Set a flag truth value
+        Set a flag's truth value
 
         Args:
-            name (str): label
-            value (bool): flag value
+            `name` (str): label
+            `value` (bool): flag value
         """
-        self._flags[name] = value
+        if not all([type(v)==bool for v in kwargs.values()]):
+            raise ValueError("Ensure all assigned flag values are boolean.")
+        for key, value in kwargs.items():
+            self._flags[key] = value
         return
     
     def setPower(self, value:int, time_s:int = 0):
@@ -71,7 +75,7 @@ class LED(object):
         return
     
 
-class LEDArray(object):
+class LEDArray(Maker):
     """
     UVLed class contains methods to control an LED array
 
@@ -80,102 +84,28 @@ class LEDArray(object):
         channels (list, optional): list of channels. Defaults to [0].
         verbose (bool, optional): whether to print outputs. Defaults to False.
     """
-    def __init__(self, port:str, channels:list = [0], verbose:bool = False):
+    
+    _default_flags = {
+        'busy': False,
+        'connected': False,
+        'execute_now': False,
+        'timing_loop': False
+    }
+    
+    def __init__(self, port:str, channels:list[int] = [0], **kwargs):
+        super().__init__(**kwargs)
         self.channels = {chn: LED(chn) for chn in channels}
-        
-        self.device = None
-        self._flags = {
-            'execute_now': False,
-            'timing_loop': False
-        }
         self._threads = {}
         self._timed_channels = []
         
-        self.verbose = verbose
-        self.port = None
-        self._baudrate = None
-        self._timeout = None
         self._connect(port)
         return
     
-    def _connect(self, port:str, baudrate=9600, timeout=1):
-        """
-        Connect to serial port
-
-        Args:
-            port (str): com port address
-            baudrate (int): baudrate
-            timeout (int, optional): timeout in seconds. Defaults to None.
-            
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
-        """
-        self.port = port
-        self._baudrate = baudrate
-        self._timeout = timeout
-        device = None
-        try:
-            device = serial.Serial(port, baudrate, timeout=timeout)
-            time.sleep(5)   # Wait for grbl to initialize
-            device.flushInput()
-            self.turnOff()
-            print(f"Connection opened to {port}")
-        except Exception as e:
-            if self.verbose:
-                print(f"Could not connect to {port}")
-                print(e)
-        self.device = device
-        return self.device
-    
-    def _loop_count_time(self):
-        """
-        Loop for counting time and flagging channels
-        """
-        self.setFlag('timing_loop', True)
-        busy = self.isBusy()
-        timed_channels = self._timed_channels
-        last_round = False
-        while busy:
-            finished_channels = list(set(timed_channels) - set(self._timed_channels))
-            timed_channels = self._timed_channels
-            if len(finished_channels):
-                for c in finished_channels:
-                    self.turnOff(c)
-            self._update_power()
-            time.sleep(0.01)
-            if last_round:
-                break
-            if not self.isBusy():
-                last_round = True
-        self.setFlag('timing_loop', False)
-        self._timed_channels = []
+    def disconnect(self):
+        self.device.close()
         return
     
-    def _update_power(self):
-        """
-        Update power levels by sending message to device
-
-        Returns:
-            str: message string
-        """
-        if not any([chn._flags['power_update'] for chn in self.channels.values()]):
-            return ''
-        message = f"{';'.join([str(v) for v in self.getPower()])}\n"
-        try:
-            self.device.write(bytes(message, 'utf-8'))
-        except AttributeError:
-            pass
-        now = time.time()
-        for chn in self.channels.values():
-            if chn._flags['power_update']:
-                chn._end_time = now + chn._duration
-                chn._duration = 0
-                chn.setFlag('power_update', False)
-        if self.verbose:
-            print(message)
-        return message
-    
-    def getPower(self, channel:int = None):
+    def getPower(self, channel:Optional[int] = None) -> list[int]:
         """
         Get power levels of channels
 
@@ -192,7 +122,7 @@ class LEDArray(object):
             power = [self.channels[channel].power]
         return power
     
-    def getTimedChannels(self):
+    def getTimedChannels(self) -> list[int]:
         """
         Get channels that are still timed
 
@@ -203,7 +133,7 @@ class LEDArray(object):
         self._timed_channels = [chn.channel for chn in self.channels.values() if chn._end_time>now]
         return self._timed_channels
     
-    def isBusy(self):
+    def isBusy(self) -> bool:
         """
         Check whether LED array is still busy
 
@@ -214,30 +144,7 @@ class LEDArray(object):
         busy = busy | any([chn._duration for chn in self.channels.values()])
         return busy
     
-    def isConnected(self):
-        """
-        Checks whether the LED array is connected
-
-        Returns:
-            bool: whether the spinner is connected
-        """
-        if self.device is None:
-            print(f"{self.__class__} ({self.port}) not connected.")
-            return False
-        return True
-    
-    def setFlag(self, name:str, value:bool):
-        """
-        Set a flag truth value
-
-        Args:
-            name (str): label
-            value (bool): flag value
-        """
-        self._flags[name] = value
-        return
-    
-    def setPower(self, value:int, time_s:int = 0, channel:int =None):
+    def setPower(self, value:int, time_s:int = 0, channel:Optional[int] = None):
         """
         Set the power value(s) for channel(s)
 
@@ -259,13 +166,13 @@ class LEDArray(object):
         Start timing the illumination steps
         """
         if not self._flags['timing_loop']:
-            thread = Thread(target=self._loop_count_time)
+            thread = Thread(target=self._loop_timer)
             thread.start()
             self._threads['timing_loop'] = thread
             print("Timing...")
         return
     
-    def turnOff(self, channel:int = None):
+    def turnOff(self, channel:Optional[int] = None):
         """
         Turn off the LED corresponding to the channel(s)
 
@@ -275,3 +182,90 @@ class LEDArray(object):
         print(f"Turning off LED {channel}")
         self.setPower(0, channel=channel)
         return
+
+    # Protected methods
+    def _connect(self, port:str, baudrate:int = 9600, timeout:int = 1):
+        """
+        Connect to machine control unit
+
+        Args:
+            `port` (str): com port address
+            `baudrate` (int, optional): baudrate. Defaults to 115200.
+            `timeout` (int, optional): timeout in seconds. Defaults to 1.
+            
+        Returns:
+            `serial.Serial`: serial connection to machine control unit if connection is successful, else `None`
+        """
+        self.connection_details = {
+            'port': port,
+            'baudrate': baudrate,
+            'timeout': timeout
+        }
+        device = None
+        try:
+            device = serial.Serial(port, baudrate, timeout=timeout)
+            time.sleep(5)   # Wait for grbl to initialize
+            device.flushInput()
+            self.turnOff()
+            print(f"Connection opened to {port}")
+            self.setFlag(connected=True)
+        except Exception as e:
+            print(f"Could not connect to {port}")
+            if self.verbose:
+                print(e)
+        self.device = device
+        return
+        
+    def _loop_timer(self):
+        """
+        Loop for counting time and flagging channels
+        """
+        self.setFlag(timing_loop=True)
+        busy = self.isBusy()
+        timed_channels = self._timed_channels
+        last_round = False
+        while busy:
+            finished_channels = list(set(timed_channels) - set(self._timed_channels))
+            timed_channels = self._timed_channels
+            if len(finished_channels):
+                for c in finished_channels:
+                    self.turnOff(c)
+            self._update_power()
+            time.sleep(0.01)
+            if last_round:
+                break
+            if not self.isBusy():
+                last_round = True
+        self.setFlag(timing_loop=False)
+        self._timed_channels = []
+        return
+    
+    def _shutdown(self):
+        for thread in self._threads.values():
+            thread.join()
+        return super()._shutdown()
+    
+    def _update_power(self) -> str:
+        """
+        Update power levels by sending message to device
+
+        Returns:
+            str: message string
+        """
+        if not any([chn._flags['power_update'] for chn in self.channels.values()]):
+            return ''
+        message = f"{';'.join([str(v) for v in self.getPower()])}\n"
+        try:
+            self.device.write(bytes(message, 'utf-8'))
+        except AttributeError:
+            pass
+        now = time.time()
+        for chn in self.channels.values():
+            if chn._flags['power_update']:
+                chn._end_time = now + chn._duration
+                chn._duration = 0
+                chn.setFlag(power_update=False)
+        if self.verbose:
+            print(message)
+        return message
+    

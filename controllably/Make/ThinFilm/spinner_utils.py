@@ -9,17 +9,19 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from __future__ import annotations
 from threading import Thread
 import time
 
 # Third party imports
-import serial # pip install pyserial
+import serial   # pip install pyserial
 
 # Local application imports
 from ...misc import Helper
+from ..make_utils import Maker
 print(f"Import: OK <{__name__}>")
 
-class Spinner(object):
+class Spinner(Maker):
     """
     Spinner class contains methods to control the spin coater unit
 
@@ -29,50 +31,105 @@ class Spinner(object):
         position (tuple, optional): x,y,z position of spinner. Defaults to (0,0,0).
         verbose (bool, optional): whether to print outputs. Defaults to False.
     """
-    def __init__(self, port:str, order=0, position=(0,0,0), verbose=False, **kwargs):
+    
+    _default_flags = {
+        'busy': False,
+        'connected': False
+    }
+    
+    def __init__(
+        self, 
+        port: str, 
+        order: int = 0, 
+        position: tuple[float] = (0,0,0), 
+        **kwargs
+    ):
+        super().__init__(**kwargs)
         self.order = order
         self.position = tuple(position)
         self.speed = 0
         
-        self.device = None
-        self._flags = {
-            'busy': False
-        }
-        
-        self.verbose = verbose
-        self.port = None
-        self._baudrate = None
-        self._timeout = None
         self._connect(port)
         return
     
-    def _connect(self, port:str, baudrate=9600, timeout=1):
+    def disconnect(self):
+        self.device.close()
+        return
+    
+    def execute(self, soak_time:int = 0, spin_speed:int = 2000, spin_time:int = 1, **kwargs):
         """
-        Connect to serial port
+        Executes the soak and spin steps
 
         Args:
-            port (str): com port address
-            baudrate (int): baudrate
-            timeout (int, optional): timeout in seconds. Defaults to None.
+            soak_time (int, optional): soak time. Defaults to 0.
+            spin_speed (int, optional): spin speed. Defaults to 2000.
+            spin_time (int, optional): spin time. Defaults to 1.
+            channel (int, optional): channel index. Defaults to None.
+        """
+        self.setFlag(busy=True)
+        self.soak(soak_time)
+        self.spin(spin_speed, spin_time)
+        self.setFlag(busy=False)
+        return
+
+    def soak(self, seconds:int, **kwargs):
+        """
+        Executes the soak step
+
+        Args:
+            seconds (int): soak time
+            channel (int, optional): channel index. Defaults to None.
+        """
+        self.speed = 0
+        if seconds:
+            time.sleep(seconds)
+        return
+
+    def spin(self, speed:int, seconds:int, **kwargs):
+        """
+        Executes the spin step
+
+        Args:
+            speed (int): spin speed
+            seconds (int): spin time
+            channel (int, optional): channel index. Defaults to None.
+        """
+        self.speed = speed
+        self._run_spin_step(speed, seconds)
+        self.speed = 0
+        return
+
+    # Protected methods
+    def _connect(self, port:str, baudrate:int = 9600, timeout:int = 1):
+        """
+        Connect to machine control unit
+
+        Args:
+            `port` (str): com port address
+            `baudrate` (int, optional): baudrate. Defaults to 115200.
+            `timeout` (int, optional): timeout in seconds. Defaults to 1.
             
         Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
+            `serial.Serial`: serial connection to machine control unit if connection is successful, else `None`
         """
-        self.port = port
-        self._baudrate = baudrate
-        self._timeout = timeout
+        self.connection_details = {
+            'port': port,
+            'baudrate': baudrate,
+            'timeout': timeout
+        }
         device = None
         try:
-            device = serial.Serial(port, 9600, timeout=1)
+            device = serial.Serial(port, baudrate, timeout=timeout)
             time.sleep(2)   # Wait for grbl to initialize
             device.flushInput()
             print(f"Connection opened to {port}")
+            self.setFlag(connected=True)
         except Exception as e:
+            print(f"Could not connect to {port}")
             if self.verbose:
-                print(f"Could not connect to {port}")
                 print(e)
         self.device = device
-        return self.device
+        return
     
     def _diagnostic(self):
         """
@@ -118,72 +175,11 @@ class Spinner(object):
                 break
         return
 
-    def execute(self, soak_time=0, spin_speed=2000, spin_time=1, channel=None):
-        """
-        Executes the soak and spin steps
-
-        Args:
-            soak_time (int, optional): soak time. Defaults to 0.
-            spin_speed (int, optional): spin speed. Defaults to 2000.
-            spin_time (int, optional): spin time. Defaults to 1.
-            channel (int, optional): channel index. Defaults to None.
-        """
-        self._flags['busy'] = True
-        self.soak(soak_time)
-        self.spin(spin_speed, spin_time)
-        self._flags['busy'] = False
-        return
+    def _shutdown(self):
+        return super()._shutdown()
     
-    def isBusy(self):
-        """
-        Checks whether the spinner is busy
 
-        Returns:
-            bool: whether the spinner is busy
-        """
-        return self._flags['busy']
-    
-    def isConnected(self):
-        """
-        Checks whether the spinner is connected
-
-        Returns:
-            bool: whether the spinner is connected
-        """
-        if self.device is None:
-            print(f"{self.__class__} ({self.port}) not connected.")
-            return False
-        return True
-
-    def soak(self, seconds:int, channel=None):
-        """
-        Executes the soak step
-
-        Args:
-            seconds (int): soak time
-            channel (int, optional): channel index. Defaults to None.
-        """
-        self.speed = 0
-        if seconds:
-            time.sleep(seconds)
-        return
-
-    def spin(self, speed:int, seconds:int, channel=None):
-        """
-        Executes the spin step
-
-        Args:
-            speed (int): spin speed
-            seconds (int): spin time
-            channel (int, optional): channel index. Defaults to None.
-        """
-        self.speed = speed
-        self._run_spin_step(speed, seconds)
-        self.speed = 0
-        return
-
-
-class SpinnerAssembly(object):
+class SpinnerAssembly(Maker):
     """
     Spinner assembly with multiple spinners
 
@@ -192,17 +188,29 @@ class SpinnerAssembly(object):
         channels (list, optional): list of int channel indices. Defaults to [].
         positions (list, optional): list of tuples of x,y,z spinner positions. Defaults to [].
     """
-    def __init__(self, ports=[], channels=[], positions=[]):
-        properties = Helper.zip_inputs('channel', port=ports, channel=channels, position=positions)
-        self.channels = {key: Spinner(**value) for key,value in properties.items()}
-        return
     
-    def _diagnostic(self):
-        """
-        Run diagnostic on tool
-        """
-        for _,spinner in self.channels.items():
-            spinner._diagnostic()
+    _default_flags = {
+        'busy': False,
+        'connected': False
+    }
+    
+    def __init__(
+        self, 
+        ports:list[str], 
+        channels:list[int], 
+        positions:list[tuple[float]], 
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.channels = {}
+        self._threads = {}
+        
+        self._connect(port=ports, channel=channels, position=positions)
+        return
+
+    def disconnect(self):
+        for channel in self.channels.values():
+            channel.disconnect()
         return
         
     def execute(self, soak_time:int, spin_speed:int, spin_time:int, channel:int):
@@ -215,25 +223,28 @@ class SpinnerAssembly(object):
             spin_time (int): spin time
             channel (int): channel index
         """
-        return self.channels[channel].execute(soak_time, spin_speed, spin_time)
+        thread = Thread(target=self.channels[channel].execute, args=(soak_time, spin_speed, spin_time))
+        thread.start()
+        self._threads[f'channel_{channel}_execute'] = thread
+        return
     
-    def isBusy(self):
+    def isBusy(self) -> bool:
         """
         Check whether any of the spinners are still busy
 
         Returns:
             bool: whether any of the spinners are busy
         """
-        return any([spinner.isBusy() for spinner in self.channels.values()])
+        return any([channel.isBusy() for channel in self.channels.values()])
     
-    def isConnected(self):
+    def isConnected(self) -> bool:
         """
         Check whether all spinners are connected
 
         Returns:
             bool: whether all spinners are connected
         """
-        return all([spinner.isConnected() for spinner in self.channels.values()])
+        return all([channel.isConnected() for channel in self.channels.values()])
     
     def soak(self, seconds:int, channel:int):
         """
@@ -243,7 +254,10 @@ class SpinnerAssembly(object):
             seconds (int): soak time
             channel (int): channel index
         """
-        return self.channels[channel].soak(seconds)
+        thread = Thread(target=self.channels[channel].soak, args=(seconds,))
+        thread.start()
+        self._threads[f'channel_{channel}_soak'] = thread
+        return
     
     def spin(self, speed:int, seconds:int, channel:int):
         """
@@ -254,4 +268,27 @@ class SpinnerAssembly(object):
             seconds (int): spin time
             channel (int): channel index
         """
-        return self.channels[channel].spin(speed, seconds)
+        thread = Thread(target=self.channels[channel].spin, args=(speed, seconds))
+        thread.start()
+        self._threads[f'channel_{channel}_spin'] = thread
+        return
+
+    # Protected methods
+    def _connect(self, **kwargs):
+        properties = Helper.zip_inputs('channel', **kwargs)
+        self.channels = {key: Spinner(**value) for key,value in properties.items()}
+        return
+    
+    def _diagnostic(self):
+        """
+        Run diagnostic on tool
+        """
+        for channel in self.channels.values():
+            channel._diagnostic()
+        return
+    
+    def _shutdown(self):
+        for thread in self._threads.values():
+            thread.join()
+        return super()._shutdown()
+    
