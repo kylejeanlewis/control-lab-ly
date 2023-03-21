@@ -8,12 +8,24 @@ Notes / actionables:
 """
 # Standard library imports
 import pandas as pd
+from typing import Protocol
 
 # Local application imports
-from ...Analyse.Data import Types
+from ..measure_utils import Measurer
 print(f"Import: OK <{__name__}>")
 
-class Electrical(object):
+class Data(Protocol):
+    def plot(self, *args, **kwargs):
+        ...
+
+class Program(Protocol):
+    data_df: pd.DataFrame
+    def getDetails(self, *args, **kwargs):
+        ...
+    def run(self, *args, **kwargs):
+        ...
+
+class Electrical(Measurer):
     """
     Electrical measurer class.
     """
@@ -149,58 +161,25 @@ class Electrical(object):
             return False
         return True
     
-    def loadDataType(self, name=None, datatype=None):
+    def loadDataType(self, datatype:Data):
         """
         Load a custom datatype to analyse and plot data
 
         Args:
-            name (str, optional): name of custom datatype in Analyse.Data.Types submodule. Defaults to None.
-            datatype (any, optional): custom datatype to load. Defaults to None.
-
-        Raises:
-            Exception: Select a valid custom datatype name
-            Exception: Input only one of 'name' or 'datatype'
+            datatype (Callable): custom datatype to load
         """
-        if name is None and datatype is not None:
-            self.datatype = datatype
-        elif name is not None and datatype is None:
-            if name not in Types.TYPE_NAMES:
-                raise Exception(f"Please select a valid custom datatype from: {', '.join(Types.TYPE_NAMES)}")   # FIXME: remove dependency on "Types"
-            self.datatype = getattr(Types, name)
-        else:
-            raise Exception("Please input only one of 'name' or 'datatype'")
+        self.datatype = datatype
         print(f"Loaded datatype: {self.datatype.__name__}")
         return
     
-    def loadProgram(self, name=None, program_type=None, program_module=None):
+    def loadProgram(self, program_type:Program):
         """
         Load a program for device to run and its parameters
 
         Args:
-            name (str, optional): name of program type in program_module. Defaults to None.
-            program_type (any, optional): program to load. Defaults to None.
-            program_module (module, optional): module containing relevant programs. Defaults to None.
-
-        Raises:
-            Exception: Provide a module containing relevant programs
-            Exception: Select a valid program name
-            Exception: Input at least one of 'name' or 'program_type'
-            Exception: Input only one of 'name' or 'program_type'
+            program_type (Callable): program to load
         """
-        if name is None and program_type is not None:
-            self.program_type = program_type
-        elif name is not None and program_type is None:
-            if program_module is None:
-                raise Exception(f"Please provide a module containing relevant programs")
-            if name not in program_module.PROGRAM_NAMES:
-                raise Exception(f"Please select a program name from: {', '.join(program_module.PROGRAM_NAMES)}")
-            self.program_type = getattr(program_module, name)
-        elif name is None and program_type is None:
-            if len(program_module.PROGRAMS) > 1:
-                raise Exception("Please input at least one of 'name' or 'program_type'")
-            self.program_type = program_module.PROGRAMS[0]
-        else:
-            raise Exception("Please input only one of 'name' or 'program_type'")
+        self.program_type = program_type
         print(f"Loaded program: {self.program_type.__name__}")
         self._get_program_details()
         self.measure.__func__.__doc__ = self._measure_method_docstring + self.program_details['short_doc']
@@ -218,10 +197,7 @@ class Electrical(object):
             Exception: Load a program first
         """
         if self.program_type is None:
-            try: 
-                self.loadProgram()
-            except Exception:
-                raise Exception('Load a program first.')
+            raise Exception('Load a program first.')
         self.setFlag('busy', True)
         print("Measuring...")
         self.clearCache()
