@@ -70,7 +70,7 @@ class Electrical(object):
         if self.program is None:
             print("Please load a program first.")
             return False
-        self.buffer_df = pd.DataFrame() # Retrieve data from program here
+        self.buffer_df = self.program.data_df
         if len(self.buffer_df) == 0:
             print("No data found.")
             return False

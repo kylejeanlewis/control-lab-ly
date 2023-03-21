@@ -46,23 +46,6 @@ class Keithley(Electrical):
         self._ip_address = ip_address
         self.device = KeithleyDevice(ip_address=ip_address, name=name)
         return self.device
-
-    def _extract_data(self):
-        """
-        Extract data output from device, through the program object
-        
-        Returns:
-            bool: whether the data extraction from program is successful
-        """
-        if self.program is None:
-            print("Please load a program first.")
-            return False
-        self.buffer_df = self.program.data_df
-        if len(self.buffer_df) == 0:
-            print("No data found.")
-            return False
-        self.setFlag('read', True)
-        return True
         
     def connect(self):
         """
