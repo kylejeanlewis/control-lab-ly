@@ -11,7 +11,7 @@ import math
 import numpy as np
 
 # Local application imports
-from ..misc import Deck, HELPER
+from ..misc import Layout, Helper
 print(f"Import: OK <{__name__}>")
 
 class Mover(object):
@@ -40,7 +40,7 @@ class Mover(object):
         self._speed = 1
         self._speed_fraction = 1
         
-        self.deck = Deck()
+        self.deck = Layout.Deck()
 
         self.verbose = False
         self._flags = {}
@@ -405,7 +405,7 @@ class Mover(object):
         new_orientation = np.round( user_position[1] + np.array(angles) , 2)
         return self.moveTo(coordinates=new_coordinates, orientation=new_orientation, tool_offset=False, **kwargs)
     
-    @HELPER.safety_measures
+    @Helper.safety_measures
     def moveTo(self, coordinates=None, orientation=None, tool_offset=True, **kwargs):
         """
         Move robot to specified coordinates and orientation
