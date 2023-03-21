@@ -14,8 +14,9 @@ from shutil import copytree
 # Third party imports
 
 # Local application imports
-from .helper import Helper, HELPER
 from . import decorators
+from . import factory
+from . import helper
 print(f"Import: OK <{__name__}>")
 
 here = str(Path(__file__).parent.absolute()).replace('\\', '/')
@@ -31,7 +32,7 @@ def create_configs():
     if not os.path.exists(dst):
         print("Creating configs folder...\n")
         copytree(src=src, dst=dst)
-        node_id = Helper.get_node()
+        node_id = helper.get_node()
         print(f"Current machine id: {node_id}")
     return
 
@@ -72,8 +73,8 @@ def load_setup(config_file:str, registry_file:str = None):
     Returns:
         dict: dictionary of loaded devices
     """
-    config = Helper.get_plans(config_file=config_file, registry_file=registry_file)
-    setup = Helper.load_components(config=config)
+    config = factory.get_plans(config_file=config_file, registry_file=registry_file)
+    setup = factory.load_components(config=config)
     shortcuts = config.get('SHORTCUTS',{})
     
     for key,value in shortcuts.items():
@@ -100,7 +101,7 @@ def load_deck(device, layout_file:str, get_absolute_filepath:bool = True):
     Returns:
         object: device with deck loaded
     """
-    layout_dict = Helper.read_json(layout_file)
+    layout_dict = helper.read_json(layout_file)
     if get_absolute_filepath:
         get_repo_name = True
         root = ''
@@ -126,6 +127,6 @@ def set_safety(safety_level:str = None, safety_countdown:int = 3):
         safety_mode = 'pause'
     elif safety_level == 'low':
         safety_mode = 'wait'
-    HELPER.safety_mode = safety_mode
-    HELPER.safety_countdown = safety_countdown
+    helper.safety_mode = safety_mode
+    helper.safety_countdown = safety_countdown
     return
