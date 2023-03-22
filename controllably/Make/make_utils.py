@@ -19,7 +19,7 @@ class Maker(ABC):
     def __init__(self, **kwargs):
         self.connection_details = {}
         self.device = None
-        self._flags = self._default_flags.copy()
+        self.flags = self._default_flags.copy()
         self.verbose = kwargs.get('verbose', False)
         return
     
@@ -59,7 +59,7 @@ class Maker(ABC):
         Returns:
             `bool`: whether the device is busy
         """
-        return self._flags.get('busy', False)
+        return self.flags.get('busy', False)
     
     def isConnected(self) -> bool:
         """
@@ -68,12 +68,12 @@ class Maker(ABC):
         Returns:
             `bool`: whether the device is connected
         """
-        if not self._flags.get('connected', False):
+        if not self.flags.get('connected', False):
             print(f"{self.__class__} is not connected.")
-        return self._flags.get('connected', False)
+        return self.flags.get('connected', False)
     
     def resetFlags(self):
-        self._flags = self._default_flags.copy()
+        self.flags = self._default_flags.copy()
         return
     
     def setFlag(self, **kwargs):
@@ -87,6 +87,6 @@ class Maker(ABC):
         if not all([type(v)==bool for v in kwargs.values()]):
             raise ValueError("Ensure all assigned flag values are boolean.")
         for key, value in kwargs.items():
-            self._flags[key] = value
+            self.flags[key] = value
         return
     

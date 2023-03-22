@@ -32,7 +32,7 @@ class LED:
         self._end_time = time.time()
         self._power = 0
         
-        self._flags = {'power_update': False}
+        self.flags = {'power_update': False}
         pass
     
     @property
@@ -58,7 +58,7 @@ class LED:
         if not all([type(v)==bool for v in kwargs.values()]):
             raise ValueError("Ensure all assigned flag values are boolean.")
         for key, value in kwargs.items():
-            self._flags[key] = value
+            self.flags[key] = value
         return
     
     def setPower(self, value:int, time_s:int = 0):
@@ -170,7 +170,7 @@ class LEDArray(Maker):
         """
         Start timing the illumination steps
         """
-        if not self._flags['timing_loop']:
+        if not self.flags['timing_loop']:
             thread = Thread(target=self._loop_timer)
             thread.start()
             self._threads['timing_loop'] = thread
@@ -252,7 +252,7 @@ class LEDArray(Maker):
         Returns:
             str: message string
         """
-        if not any([chn._flags['power_update'] for chn in self.channels.values()]):
+        if not any([chn.flags['power_update'] for chn in self.channels.values()]):
             return ''
         message = f"{';'.join([str(v) for v in self.getPower()])}\n"
         try:
@@ -261,7 +261,7 @@ class LEDArray(Maker):
             pass
         now = time.time()
         for chn in self.channels.values():
-            if chn._flags['power_update']:
+            if chn.flags['power_update']:
                 chn._end_time = now + chn._duration
                 chn._duration = 0
                 chn.setFlag(power_update=False)

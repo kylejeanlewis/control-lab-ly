@@ -133,14 +133,14 @@ class Peltier(Maker):
             elif not self._stabilize_time:
                 self._stabilize_time = time.time()
                 print(response)
-            elif self._flags['temperature_reached']:
+            elif self.flags['temperature_reached']:
                 pass
             elif (self._power <= self.power_threshold) or (time.time()-self._stabilize_time >= self.stabilize_buffer_time):
                 print(response)
                 self.setFlag(temperature_reached=True)
                 print(f"Temperature of {self.set_point}°C reached!")
             
-            if self._flags['record']:
+            if self.flags['record']:
                 values = [now] + values
                 row = {k:v for k,v in zip(self._columns, values)}
                 self.buffer_df = self.buffer_df.append(row, ignore_index=True)
@@ -169,7 +169,7 @@ class Peltier(Maker):
         Returns:
             `bool`: whether target temperature has been reached
         """
-        return self._flags['temperature_reached']
+        return self.flags['temperature_reached']
     
     def reset(self):
         """
@@ -201,7 +201,7 @@ class Peltier(Maker):
         self.setFlag(temperature_reached=False, pause_feedback=False)
         print(f"Waiting for temperature to reach {self.set_point}°C")
         while not self.isReady():
-            if not self._flags['get_feedback']:
+            if not self.flags['get_feedback']:
                 self.getTemperatures()
             time.sleep(0.1)
             if not blocking:
@@ -283,8 +283,8 @@ class Peltier(Maker):
         Feedback loop to constantly read values from device
         """
         print('Listening...')
-        while self._flags['get_feedback']:
-            if self._flags['pause_feedback']:
+        while self.flags['get_feedback']:
+            if self.flags['pause_feedback']:
                 continue
             self.getTemperatures()
             time.sleep(0.1)
