@@ -208,6 +208,14 @@ class Peltier(Maker):
                 break
         return
     
+    def shutdown(self):
+        """
+        Close serial connection and shutdown feedback loop
+        """
+        for thread in self._threads.values():
+            thread.join()
+        return super().shutdown()
+
     def toggleFeedbackLoop(self, on:bool):
         """
         Toggle between starting and stopping feedback loop
@@ -237,7 +245,7 @@ class Peltier(Maker):
         self.toggleFeedbackLoop(on=on)
         return
 
-    # Protected methods
+    # Protected method(s)
     def _connect(self, port:str, baudrate:int = 115200, timeout:int = 1):
         """
         Connect to machine control unit
@@ -301,10 +309,3 @@ class Peltier(Maker):
                 print(e)
         return response
     
-    def _shutdown(self):
-        """
-        Close serial connection and shutdown feedback loop
-        """
-        for thread in self._threads.values():
-            thread.join()
-        return super()._shutdown()

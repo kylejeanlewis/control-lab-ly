@@ -71,6 +71,9 @@ class Spinner(Maker):
         self.spin(spin_speed, spin_time)
         self.setFlag(busy=False)
         return
+    
+    def shutdown(self):
+        return super().shutdown()
 
     def soak(self, seconds:int, **kwargs):
         """
@@ -99,7 +102,7 @@ class Spinner(Maker):
         self.speed = 0
         return
 
-    # Protected methods
+    # Protected method(s)
     def _connect(self, port:str, baudrate:int = 9600, timeout:int = 1):
         """
         Connect to machine control unit
@@ -175,9 +178,6 @@ class Spinner(Maker):
                 break
         return
 
-    def _shutdown(self):
-        return super()._shutdown()
-    
 
 class SpinnerAssembly(Maker):
     """
@@ -246,6 +246,11 @@ class SpinnerAssembly(Maker):
         """
         return all([channel.isConnected() for channel in self.channels.values()])
     
+    def shutdown(self):
+        for thread in self._threads.values():
+            thread.join()
+        return super().shutdown()
+    
     def soak(self, seconds:int, channel:int):
         """
         Executes the soak step
@@ -273,7 +278,7 @@ class SpinnerAssembly(Maker):
         self._threads[f'channel_{channel}_spin'] = thread
         return
 
-    # Protected methods
+    # Protected method(s)
     def _connect(self, **kwargs):
         properties = Helper.zip_inputs('channel', **kwargs)
         self.channels = {key: Spinner(**value) for key,value in properties.items()}
@@ -286,9 +291,4 @@ class SpinnerAssembly(Maker):
         for channel in self.channels.values():
             channel._diagnostic()
         return
-    
-    def _shutdown(self):
-        for thread in self._threads.values():
-            thread.join()
-        return super()._shutdown()
     

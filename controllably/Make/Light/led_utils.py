@@ -161,6 +161,11 @@ class LEDArray(Maker):
         self.startTiming()
         return
     
+    def shutdown(self):
+        for thread in self._threads.values():
+            thread.join()
+        return super().shutdown()
+    
     def startTiming(self):
         """
         Start timing the illumination steps
@@ -183,7 +188,7 @@ class LEDArray(Maker):
         self.setPower(0, channel=channel)
         return
 
-    # Protected methods
+    # Protected method(s)
     def _connect(self, port:str, baudrate:int = 9600, timeout:int = 1):
         """
         Connect to machine control unit
@@ -239,11 +244,6 @@ class LEDArray(Maker):
         self.setFlag(timing_loop=False)
         self._timed_channels = []
         return
-    
-    def _shutdown(self):
-        for thread in self._threads.values():
-            thread.join()
-        return super()._shutdown()
     
     def _update_power(self) -> str:
         """

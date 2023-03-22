@@ -24,23 +24,23 @@ class Maker(ABC):
         return
     
     def __del__(self):
-        self._shutdown()
+        self.shutdown()
     
     @abstractmethod
     def disconnect(self):
         ...
         
     @abstractmethod
+    def shutdown(self):
+        self.disconnect()
+        self.resetFlags()
+        return
+        
+    @abstractmethod
     def _connect(self, *args, **kwargs):
         """Connect to machine control unit"""
         self.connection_details = {}
         self.device = None
-        return
-    
-    @abstractmethod
-    def _shutdown(self):
-        self.disconnect()
-        self.resetFlags()
         return
     
     def connect(self):
