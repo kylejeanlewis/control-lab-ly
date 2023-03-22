@@ -7,6 +7,7 @@ Notes / actionables:
 - 
 """
 # Standard library imports
+from __future__ import annotations
 import time
 from typing import Protocol
 
@@ -35,13 +36,20 @@ class ViewerPanel(Panel):
         font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
         group (str, optional): name of group. Defaults to 'viewer'.
     """
-    def __init__(self, viewer:Viewer, name='VIEW', group='viewer', **kwargs):
+    def __init__(
+        self, 
+        viewer:Viewer, 
+        name='VIEW', 
+        group='viewer', 
+        **kwargs
+    ):
         super().__init__(name=name, group=group, **kwargs)
         self.viewer = viewer
+        
         self.display_box = self._mangle('-IMAGE-')
+        self._last_read_time = time.time()
         
         self.flags['update_display'] = True
-        self._last_read_time = time.time()
         return
     
     def close(self):
@@ -49,9 +57,9 @@ class ViewerPanel(Panel):
         Close window
         """
         self.viewer.close()
-        return
+        return super().close()
         
-    def getLayout(self, title_font_level=1, **kwargs):
+    def getLayout(self, title_font_level=1, **kwargs) -> sg.Column:
         """
         Get layout object
 
@@ -70,7 +78,7 @@ class ViewerPanel(Panel):
         layout = sg.Column(layout, vertical_alignment='top')
         return layout
     
-    def listenEvents(self, event, values):
+    def listenEvents(self, event:str, values:dict[str, str]) -> dict[str, dict]:
         """
         Listen to events and act on values
 

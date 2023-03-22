@@ -7,14 +7,15 @@ Notes / actionables:
 - 
 """
 # Standard library imports
+from __future__ import annotations
 import numpy as np
-from typing import Protocol, Callable
+from typing import Callable, Optional, Protocol, Union
 
 # Third party imports
 import PySimpleGUI as sg # pip install PySimpleGUI
 
 # Local application imports
-from ...misc import Helper
+from ...misc import Factory, Helper
 from .gui_utils import Panel
 print(f"Import: OK <{__name__}>")
 
@@ -54,57 +55,33 @@ class MoverPanel(Panel):
         group (str, optional): name of group. Defaults to 'mover'.
         axes (list, optional): list of degrees of freedom/axes. Defaults to 'XYZabc'.
     """
-    def __init__(self, mover:Mover, name='MOVE', group='mover', axes='XYZabc', **kwargs):
+    def __init__(
+        self, 
+        mover: Mover, 
+        name: str = 'MOVE', 
+        group: str = 'mover', 
+        axes: Union[list, str] = 'XYZabc', 
+        **kwargs
+    ):
         super().__init__(name=name, group=group, **kwargs)
+        self.mover = mover
+        
         self.axes = [*axes]
         self.buttons = {}
         self.current_attachment = ''
         self.attachment_methods = []
         self.methods_fn_key_map = {}
-        self.mover = mover
+        
         self.flags['update_position'] = True
         return
     
-    def getFunctionButtons(self, font):
+    def close(self):
         """
-        Get function buttons for attachment
-
-        Args:
-            font (tuple): tuple of typeface and font size
-
-        Returns:
-            column: column of labelled buttons if there is an attachment, else placeholder buttons
+        Close window
         """
-        show_section = False
-        show_buttons = False
-        alt_texts = []
-        fn_layout = []
-        button_labels = [f'FN{i+1}' for i in range(max(self.mover.max_actions,5))]  # Placeholder buttons
-        if 'attachment' in dir(self.mover):
-            show_section = True
-            default_value = self.mover.attachment.__class__.__name__ if self.mover.attachment is not None else 'None'
-            dropdown = sg.Combo(
-                values=self.mover.possible_attachments+['None'], default_value=default_value,
-                size=(20, 1), key=self._mangle('-ATTACH-'), enable_events=True, readonly=True
-            )
-            dropdown_column = sg.Column([[dropdown]], justification='center')
-            fn_layout.append([dropdown_column])
-            fn_layout.append([self.pad()])
-            if self.mover.attachment is not None:
-                show_buttons = True
-                self.current_attachment = self.mover.attachment.__class__.__name__
-                self.attachment_methods = [method for method in Helper.get_method_names(self.mover.attachment) if not method.startswith('_')]
-                alt_texts = [l.title() for l in self.attachment_methods]
-                self.methods_fn_key_map = {f'-{self.name}-{k}-':v for k,v in zip(button_labels, alt_texts)}
-        buttons = self.getButtons(button_labels, (5,2), self.name, font, texts=alt_texts)
-        buttons = [sg.pin(button) for button in buttons]
-        buttons_column = sg.Column([buttons], justification='center', visible=show_buttons, key=self._mangle('-FN-BUTTONS-'))
-        fn_layout.append([buttons_column])
-        
-        column = sg.Column(fn_layout, justification='center', visible=show_section)
-        return column
-        
-    def getLayout(self, title_font_level=1, **kwargs):
+        return super().close()
+       
+    def getLayout(self, title_font_level=1, **kwargs) -> sg.Column:
         """
         Get layout object
 
@@ -170,7 +147,7 @@ class MoverPanel(Panel):
             elements[axis] = self.getButtons(labels[axis], (5,2), self.name, font, specials=specials)
         
         # Generate function buttons
-        function_buttons = self.getFunctionButtons(font=font)
+        function_buttons = self._get_function_buttons(font=font)
         
         layout = [
             [layout],
@@ -195,7 +172,7 @@ class MoverPanel(Panel):
         layout = sg.Column(layout, vertical_alignment='top')
         return layout
     
-    def listenEvents(self, event, values):
+    def listenEvents(self, event:str, values:dict[str, str]) -> dict[str, dict]:
         """
         Listen to events and act on values
 
@@ -271,13 +248,13 @@ class MoverPanel(Panel):
                     selected_attachment = ''
                     self.mover.toggleAttachment(False)
                     self.attachment_methods = []
-                    update_part = self.toggleButtons(False)
+                    update_part = self._toggle_buttons(False)
                 else:
-                    selected_attachment_class = Helper.get_class(f"Transfer.Substrate.Dobot.{selected_attachment}")     ### FIXME: hard-coded
+                    selected_attachment_class = Factory.get_class(f"Transfer.Substrate.Dobot.{selected_attachment}")     ### FIXME: hard-coded
                     self.mover.toggleAttachment(True, selected_attachment_class)
                     self.attachment_methods = [method for method in Helper.get_method_names(self.mover.attachment) if not method.startswith('_')]
                     fn_buttons = [l.title() for l in self.attachment_methods]
-                    update_part = self.toggleButtons(True, fn_buttons)
+                    update_part = self._toggle_buttons(True, fn_buttons)
                 updates.update(update_part)
             self.current_attachment = selected_attachment
         
@@ -290,7 +267,47 @@ class MoverPanel(Panel):
         self.flags['update_position'] = False
         return updates
     
-    def toggleButtons(self, on=True, active_buttons=[]):
+    # Protected method(s)
+    def _get_function_buttons(self, font:tuple[str, int]) -> sg.Column:
+        """
+        Get function buttons for attachment
+
+        Args:
+            font (tuple): tuple of typeface and font size
+
+        Returns:
+            column: column of labelled buttons if there is an attachment, else placeholder buttons
+        """
+        show_section = False
+        show_buttons = False
+        alt_texts = []
+        fn_layout = []
+        button_labels = [f'FN{i+1}' for i in range(max(self.mover.max_actions,5))]  # Placeholder buttons
+        if 'attachment' in dir(self.mover):
+            show_section = True
+            default_value = self.mover.attachment.__class__.__name__ if self.mover.attachment is not None else 'None'
+            dropdown = sg.Combo(
+                values=self.mover.possible_attachments+['None'], default_value=default_value,
+                size=(20, 1), key=self._mangle('-ATTACH-'), enable_events=True, readonly=True
+            )
+            dropdown_column = sg.Column([[dropdown]], justification='center')
+            fn_layout.append([dropdown_column])
+            fn_layout.append([self.pad()])
+            if self.mover.attachment is not None:
+                show_buttons = True
+                self.current_attachment = self.mover.attachment.__class__.__name__
+                self.attachment_methods = [method for method in Helper.get_method_names(self.mover.attachment) if not method.startswith('_')]
+                alt_texts = [l.title() for l in self.attachment_methods]
+                self.methods_fn_key_map = {f'-{self.name}-{k}-':v for k,v in zip(button_labels, alt_texts)}
+        buttons = self.getButtons(button_labels, (5,2), self.name, font, texts=alt_texts)
+        buttons = [sg.pin(button) for button in buttons]
+        buttons_column = sg.Column([buttons], justification='center', visible=show_buttons, key=self._mangle('-FN-BUTTONS-'))
+        fn_layout.append([buttons_column])
+        
+        column = sg.Column(fn_layout, justification='center', visible=show_section)
+        return column
+     
+    def _toggle_buttons(self, on:bool, active_buttons:Optional[list[str]] = None) -> dict[str, dict]:
         """
         Toggle between shown the function buttons for attachment
 
@@ -306,6 +323,8 @@ class MoverPanel(Panel):
         # Hide all buttons
         if not on:
             updates[self._mangle('-FN-BUTTONS-')] = dict(visible=False)
+            return updates
+        if active_buttons is None:
             return updates
         
         # Show buttons and change labels
