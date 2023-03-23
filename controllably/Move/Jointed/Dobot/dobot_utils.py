@@ -403,247 +403,52 @@ class Dobot(RobotArm):
             del self._temporary_tool_offset
         return
 
-
-class MG400(Dobot):
-    """
-    MG400 class.
-
-    Args:
-        ip_address (str, optional): IP address of arm. Defaults to '192.168.2.8'.
-        retract (bool, optional): whether to tuck arm before each movement. Defaults to True.
-        home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,300,0).
-        
-    Kwargs:
-        attachment (str, optional): Dobot attachment. Defaults to None.
-        home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
-        orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
-        translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to (0,0,0).
-        implement_offset (tuple, optional): implement offset vector pointing from end of effector to tool tip. Defaults to (0,0,0).
-        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
-        verbose (bool, optional): whether to print outputs. Defaults to False.
-        safe_height (float, optional): safe height. Defaults to None.
-    """
-    def __init__(self, ip_address='192.168.2.8', retract=True, home_coordinates=(0,300,0), **kwargs):
-        super().__init__(ip_address=ip_address, home_coordinates=home_coordinates, **kwargs)
-        self._speed = 100
-        self._speed_angular = 300
-        self.home()
-        
-        self.setFlag('retract', retract)
-        self.setHeight('safe', 75)
-        return
-    
-    def isFeasible(self, coordinates, transform=False, tool_offset=False):
+    # Protected method(s)
+    def _connect(self, ip_address:str, timeout:int = 10):
         """
-        Checks if specified coordinates is a feasible position for robot to access.
+        Connect to robot hardware
 
         Args:
-            coordinates (tuple): x,y,z coordinates
-            transform (bool, optional): whether to transform the coordinates. Defaults to False.
-            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
-
-        Returns:
-            bool: whether coordinates is a feasible position
-        """
-        if transform:
-            coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
-        x,y,z = coordinates
-        j1 = round(math.degrees(math.atan(x/(y + 1E-6))), 3)
-        if y < 0:
-            j1 += (180 * math.copysign(1, x))
-        if abs(j1) > 160:
-            return False
-        if not (-150 < z < 230):
-            return False
-        if self.deck.is_excluded(coordinates=self._transform_out(coordinates, tool_offset=True)):
-            return False
-        return True
-    
-    def retractArm(self, target=None):
-        """
-        Tuck in arm, rotate about base, then extend again.
-
-        Args:
-            target (tuple, optional): x,y,z coordinates of destination. Defaults to None.
-        
-        Returns:
-            bool: whether movement is successful
-        """
-        return_values= []
-        safe_radius = 225
-        safe_height = self.heights.get('safe', 75)
-        x,y,_ = self.coordinates
-        if any((x,y)):
-            w = ( (safe_radius**2)/(x**2 + y**2) )**0.5
-            x,y = (x*w,y*w)
-        else:
-            x,y = (0,safe_radius)
-        ret = self.moveCoordTo((x,y,safe_height), self.orientation)
-        return_values.append(ret)
-
-        if target is not None and len(target) == 3:
-            x1,y1,_ = target
-            if any((x1,y1)):
-                w1 = ( (safe_radius**2)/(x1**2 + y1**2) )**0.5
-                x1,y1 = (x1*w1,y1*w1)
-            else:
-                x1,y1 = (0,safe_radius)
-            ret = self.moveCoordTo((x1,y1,75), self.orientation)
-            return_values.append(ret)
-        return all(return_values)
-
-
-class M1Pro(Dobot):
-    """
-    M1 Pro class.
-    
-    Args:
-        ip_address (str, optional): IP address of arm. Defaults to '192.168.2.21'.
-        retract (bool, optional): whether to tuck arm before each movement. Defaults to False.
-        handedness (str, optional): handedness of robot (i.e. left or right). Defaults to 'left'.
-        home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,300,100).
-        
-    Kwargs:
-        attachment (str, optional): Dobot attachment. Defaults to None.
-        home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
-        orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
-        translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to (0,0,0).
-        implement_offset (tuple, optional): implement offset vector pointing from end of effector to tool tip. Defaults to (0,0,0).
-        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
-        verbose (bool, optional): whether to print outputs. Defaults to False.
-        safe_height (float, optional): safe height. Defaults to None.
-    """
-    def __init__(self, ip_address='192.168.2.21', handedness='right', home_coordinates=(0,300,100), **kwargs):
-        super().__init__(ip_address=ip_address, home_coordinates=home_coordinates, **kwargs)
-        self._speed = 100
-        self._speed_angular = 180
-        self.home()
-        
-        self.setFlag('right_handed', None)
-        self.setHandedness(handedness)
-        return
-    
-    def home(self, tool_offset=False):
-        """
-        Return the robot to home
-
-        Args:
-            tool_offset (bool, optional): whether to consider the offset of the tooltip. Defaults to False.
-        
-        Returns:
-            bool: whether movement is successful
-        """
-        return super().home(tool_offset)
-    
-    def isFeasible(self, coordinates, transform=False, tool_offset=False):
-        """
-        Checks if specified coordinates is a feasible position for robot to access.
-
-        Args:
-            coordinates (tuple): x,y,z coordinates
-            transform (bool, optional): whether to transform the coordinates. Defaults to False.
-            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
-
-        Returns:
-            bool: whether coordinates is a feasible position
-        """
-        if transform:
-            coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
-        x,y,z = coordinates
-        
-        if not (5 < z < 245):
-            return False
-        if x >= 0:
-            r = (x**2 + y**2)**0.5
-            if not (153 <= r <= 400):
-                return False
-        elif abs(y) < 230/2:
-            return False
-        elif (x**2 + (abs(y)-200)**2)**0.5 > 200:
-            return False
-        
-        # Space constraints
-        # if x > 344: # front edge
-        #     return False
-        # if x < 76 and abs(y) < 150: # elevated structure
-        #     return False
-        if self.deck.is_excluded(coordinates=self._transform_out(coordinates, tool_offset=True)):
-            return False
-                
-        # x=4, y=3
-        grad = abs(y/(x+1E-6))
-        if grad > 0.75 or x < 0:
-            hand = 'right' if y>0 else 'left'
-            self.setHandedness(hand, stretch=True)
-        return True
-    
-    def moveCoordBy(self, vector=None, angles=None):
-        """
-        Relative Cartesian movement and tool orientation, using robot coordinates.
-
-        Args:
-            vector (tuple, optional): x,y,z displacement vector. Defaults to None.
-            angles (tuple, optional): a,b,c rotation angles in degrees. Defaults to None.
-        """
-        if vector is None:
-            vector = (0,0,0)
-        if angles is None:
-            angles = (0,0,0)
-        coordinates, orientation = self.position
-        new_coordinates = np.array(coordinates) + np.array(vector)
-        new_orientation = np.array(orientation) + np.array(angles)
-        return self.moveCoordTo(new_coordinates, new_orientation)
-
-    def setHandedness(self, hand, stretch=False):
-        """
-        Set handedness of robot arm
-
-        Args:
-            hand (str): handedness
-            stretch (bool, optional): whether to stretch the arm. Defaults to False.
-
-        Raises:
-            Exception: The parameter 'hand' has to be either 'left' or 'right'
-        """
-        set_hand = False
-        handedness = None
-        if self._flags.get('right_handed', None) is not None:
-            handedness = 'right' if self._flags['right_handed'] else 'left'
-        if hand not in ['left','l','L','right','r','R']:
-            raise Exception("Please select between 'left' or 'right'")
-        if hand in ['left','l','L'] and handedness != 'left': #0
-            try:
-                self.dashboard.SetArmOrientation(0,1,1,1)
-                time.sleep(2)
-            except (AttributeError, OSError):
-                if self.verbose:
-                    print("Not connected to arm!")
-            finally:
-                self.setFlag('right_handed', False)
-                set_hand = True
-        elif hand in ['right','r','R'] and handedness != 'right': #1
-            try:
-                self.dashboard.SetArmOrientation(1,1,1,1)
-                time.sleep(2)
-            except (AttributeError, OSError):
-                if self.verbose:
-                    print("Not connected to arm!")
-            finally:
-                self.setFlag('right_handed', True)
-                set_hand = True
-        if set_hand and stretch:
-            self.stretchArm()
-            time.sleep(1)
-        return
+            ip_address (str): IP address of robot
+            timeout (int, optional): duration to wait before timeout
             
-    def stretchArm(self):
-        """
-        Stretch arm to switch handedness
-        
         Returns:
-            bool: whether movement is successful
+            dict: dictionary of dashboard and feedback objects
         """
-        _,y,z = self.coordinates
-        y = 240 * math.copysign(1, y)
-        return self.moveCoordTo(coordinates=(320,y,z))
-    
+        self.connection_details = {
+            'ip_address': ip_address,
+            'timeout': timeout
+        }
+        self.device = Device(None,None)
+        try:
+            start_time = time.time()
+            dashboard = dobot_api_dashboard(ip_address, 29999)
+            if time.time() - start_time > timeout:
+                raise Exception(f"Unable to connect to arm at {ip_address}")
+            
+            start_time = time.time()
+            feedback = dobot_api_feedback(ip_address, 30003)
+            if time.time() - start_time > timeout:
+                raise Exception(f"Unable to connect to arm at {ip_address}")
+        except Exception as e:
+            print(e)
+        else:
+            self.device = Device(dashboard, feedback)
+            self.reset()
+            self.dashboard.User(0)
+            self.dashboard.Tool(0)
+            self.setSpeed(speed=100)
+            self.setFlag(connected=True)
+        return
+
+    def _freeze(self):
+        """
+        Halt and disable robot
+        """
+        try:
+            self.dashboard.ResetRobot()
+            self.dashboard.DisableRobot()
+        except (AttributeError, OSError):
+            if self.verbose:
+                print("Not connected to arm.")
+        return
