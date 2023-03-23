@@ -6,55 +6,40 @@ Created: Tue 2022/11/01 17:13:35
 Notes / actionables:
 - 
 """
+# Standard library imports
+from __future__ import annotations
+from abc import ABC, abstractmethod
+from collections import namedtuple
+import numpy as np
+from typing import Optional
+
 # Local application imports
 print(f"Import: OK <{__name__}>")
 
-PRE_WET_CYCLES = 1
+PRE_FILL_CYCLES = 1
 
-class LiquidHandler(object):
+Speed = namedtuple('Speed', ['up','down'])
+
+class LiquidHandler(ABC):
     """
     Liquid handler class
 
     Args:
         **kwargs: catch-all for stray inputs
     """
-    def __init__(self, **kwargs):
+    def __init__(self, verbose:bool = False, **kwargs):
         self.capacity = 0
         self.channel = 0
-        self.offset = (0,0,0)
         self.reagent = ''
+        self.speed = Speed(0,0)
         self.volume = 0
         
-        self._speed_in = 0
-        self._speed_out = 0
-        self.verbose = kwargs.get('verbose', False)
-        self._flags = {}
-        return
-    
-    @property
-    def speed(self):
-        speed = {
-            'in': self._speed_in,
-            'out': self._speed_out
-        }
-        return speed
-    @speed.setter
-    def speed(self, value:int, direction:str):
-        if direction == 'in':
-            self._speed_in = value
-        elif direction == 'out':
-            self._speed_out = value
-        else:
-            raise Exception("Please select either 'in' or 'out' for direction parameter")
-        return
-    
-    def _diagnostic(self):
-        """
-        Run diagnostic on tool
-        """
-        self.pullback()
+        self._offset = (0,0,0)
+        self.flags = {}
+        self.verbose = verbose
         return
 
+    @abstractmethod
     def aspirate(self, volume, speed=None, wait=0, reagent='', pause=False, channel=None):
         """
         Aspirate desired volume of reagent into channel
@@ -67,8 +52,8 @@ class LiquidHandler(object):
             pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
             channel (int, optional): channel to aspirate. Defaults to None.
         """
-        return
     
+    @abstractmethod
     def blowout(self, channel=None):
         """
         Blowout liquid from tip
@@ -76,8 +61,57 @@ class LiquidHandler(object):
         Args:
             channel (int, optional): channel to pullback. Defaults to None.
         """
-        return
 
+    @abstractmethod
+    def dispense(self, volume, speed=None, wait=0, force_dispense=False, pause=False, channel=None):
+        """
+        Dispense desired volume of reagent from channel
+
+        Args:
+            volume (int, or float): volume to be dispensed
+            speed (int, optional): speed to dispense. Defaults to None.
+            wait (int, optional): wait time between steps in seconds. Defaults to 0.
+            force_dispense (bool, optional): whether to continue dispensing even if insufficient volume in channel. Defaults to False.
+            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
+            channel (int, optional): channel to dispense. Defaults to None.
+        """
+
+    @abstractmethod
+    def pullback(self, channel=None):
+        """
+        Pullback liquid from tip
+
+        Args:
+            channel (int, optional): channel to pullback. Defaults to None.
+        """
+
+    # Properties
+    @property
+    def offset(self) -> np.ndarray:
+        return np.array(self._offset)
+    @offset.setter
+    def offset(self, value:tuple[float]):
+        if len(value) != 3:
+            raise Exception('Please input x,y,z offset')
+        self._offset = tuple(value)
+        return
+    
+    @property
+    def speed_up(self) -> int:
+        return self.speed.up
+    @speed_up.setter
+    def speed_up(self, value:int):
+        self.speed = Speed(int(value), self.speed_down)
+        return
+    
+    @property
+    def speed_down(self) -> int:
+        return self.speed.down
+    @speed_down.setter
+    def speed_down(self, value:int):
+        self.speed = Speed(self.speed_up, int(value))
+        return
+    
     def cycle(self, volume, speed=None, wait=0, reagent='', cycles=1, channel=None):
         """
         Cycle the channel with aspirate and dispense
@@ -95,20 +129,6 @@ class LiquidHandler(object):
             self.dispense(volume=volume, speed=speed, wait=wait, force_dispense=True, channel=channel)
         return
 
-    def dispense(self, volume, speed=None, wait=0, force_dispense=False, pause=False, channel=None):
-        """
-        Dispense desired volume of reagent from channel
-
-        Args:
-            volume (int, or float): volume to be dispensed
-            speed (int, optional): speed to dispense. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            force_dispense (bool, optional): whether to continue dispensing even if insufficient volume in channel. Defaults to False.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            channel (int, optional): channel to dispense. Defaults to None.
-        """
-        return
-
     def empty(self, speed=None, wait=0, pause=False, channel=None):
         """
         Empty the channel of its contents
@@ -123,7 +143,7 @@ class LiquidHandler(object):
         self.blowout(channel=channel)
         return
     
-    def fill(self, speed=None, wait=0, reagent='', pause=False, pre_wet=True, channel=None):
+    def fill(self, speed=None, wait=0, reagent='', pause=False, cycles=PRE_FILL_CYCLES, channel=None):
         """
         Fill the channel with reagent to its capacity
 
@@ -132,23 +152,14 @@ class LiquidHandler(object):
             wait (int, optional): wait time between steps in seconds. Defaults to 0.
             reagent (str, optional): name of reagent. Defaults to ''.
             pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            pre_wet (bool, optional): whether to pre-wet the channel. Defaults to True.
+            cycles (bool, optional): whether to pre-wet the channel. Defaults to True.
             channel (int, optional): channel to fill. Defaults to None.
         """
         volume = self.capacity - self.volume
-        if pre_wet:
-            self.cycle(volume=volume, speed=speed, wait=wait, reagent=reagent, cycles=PRE_WET_CYCLES, channel=channel)
+        if cycles:
+            self.cycle(volume=volume, speed=speed, wait=wait, reagent=reagent, cycles=cycles, channel=channel)
         self.aspirate(volume=volume, speed=speed, wait=wait, reagent=reagent, pause=pause, channel=channel)
         self.pullback(channel=channel)
-        return
-
-    def pullback(self, channel=None):
-        """
-        Pullback liquid from tip
-
-        Args:
-            channel (int, optional): channel to pullback. Defaults to None.
-        """
         return
     
     def rinse(self, volume, speed=None, wait=0, reagent='', cycles=3, channel=None):
@@ -165,13 +176,24 @@ class LiquidHandler(object):
         """
         return self.cycle(volume=volume, speed=speed, wait=wait, reagent=reagent, cycles=cycles, channel=channel)
     
-    def setFlag(self, name:str, value:bool):
+    def setFlag(self, **kwargs):
         """
-        Set a flag truth value
+        Set a flag's truth value
 
         Args:
-            name (str): label
-            value (bool): flag value
+            `name` (str): label
+            `value` (bool): flag value
         """
-        self._flags[name] = value
+        if not all([type(v)==bool for v in kwargs.values()]):
+            raise ValueError("Ensure all assigned flag values are boolean.")
+        for key, value in kwargs.items():
+            self.flags[key] = value
+        return
+
+    # Protected method(s)
+    def _diagnostic(self):
+        """
+        Run diagnostic on tool
+        """
+        self.pullback()
         return
