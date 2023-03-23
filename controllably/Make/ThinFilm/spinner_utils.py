@@ -37,8 +37,7 @@ class Spinner(Maker):
         'connected': False
     }
     
-    def __init__(
-        self, 
+    def __init__(self, 
         port: str, 
         order: int = 0, 
         position: tuple[float] = (0,0,0), 
@@ -50,10 +49,6 @@ class Spinner(Maker):
         self.speed = 0
         
         self._connect(port)
-        return
-    
-    def disconnect(self):
-        self.device.close()
         return
     
     def execute(self, soak_time:int = 0, spin_speed:int = 2000, spin_time:int = 1, **kwargs):
@@ -123,14 +118,15 @@ class Spinner(Maker):
         device = None
         try:
             device = serial.Serial(port, baudrate, timeout=timeout)
-            time.sleep(2)   # Wait for grbl to initialize
-            device.flushInput()
-            print(f"Connection opened to {port}")
-            self.setFlag(connected=True)
         except Exception as e:
             print(f"Could not connect to {port}")
             if self.verbose:
                 print(e)
+        else:
+            time.sleep(2)   # Wait for grbl to initialize
+            device.flushInput()
+            print(f"Connection opened to {port}")
+            self.setFlag(connected=True)
         self.device = device
         return
     
@@ -194,8 +190,7 @@ class SpinnerAssembly(Maker):
         'connected': False
     }
     
-    def __init__(
-        self, 
+    def __init__(self, 
         ports:list[str], 
         channels:list[int], 
         positions:list[tuple[float]], 
@@ -211,7 +206,7 @@ class SpinnerAssembly(Maker):
     def disconnect(self):
         for channel in self.channels.values():
             channel.disconnect()
-        return
+        return super().disconnect() 
         
     def execute(self, soak_time:int, spin_speed:int, spin_time:int, channel:int):
         """
