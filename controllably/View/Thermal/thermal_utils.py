@@ -7,7 +7,8 @@ Notes / actionables:
 - 
 """
 # Standard library imports
-import pkgutil
+from __future__ import annotations
+import numpy as np
 
 # Local application imports
 from ..view_utils import Camera
@@ -24,28 +25,32 @@ class Thermal(Camera):
         cam_size (tuple, optional): width and height of image. Defaults to (640,480).
         rotation (int, optional): rotation of camera feed. Defaults to 0.
     """
-    def __init__(self, ip_address:str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.ip_address = ip_address
-        self.rotation = 180
-        self._connect()
-        
-        img_bytes = pkgutil.get_data(__name__, 'placeholders/infrared_camera.png')
-        self._set_placeholder(img_bytes=img_bytes)
+    _package = __name__
+    _placeholder_filename = 'placeholders/infrared_camera.png'
+    def __init__(self, ip_address:str, rotation:int = 180, **kwargs):
+        super().__init__(rotation=rotation, **kwargs)
+        self._connect(ip_address)
         return
     
-    def _connect(self):
+    # Properties
+    @property
+    def ip_address(self):
+        return self.connection_details.get('ip_address', '')
+    
+    # Protected method(s)
+    def _connect(self, ip_address:str, **kwargs):
         """
         Connect to the imaging device
         """
-        self.device = Ax8ThermalCamera(self.ip_address, verbose=True)
+        self.connection_details['ip_address'] = ip_address
+        self.device = Ax8ThermalCamera(ip_address, verbose=True)
         # if self.device.modbus.is_open:
         if True:
             self.feed = self.device.video.stream
-            self._flags['isConnected'] = True
+            self.setFlag(connected=True)
         return
     
-    def _read(self):
+    def _read(self) -> tuple[bool, np.ndarray]:
         """
         Read camera feed
 
@@ -58,7 +63,10 @@ class Thermal(Camera):
         """
         Release the camera feed
         """
-        self.feed.stop()
-        self.feed.stream.release()
+        try:
+            self.feed.stop()
+            self.feed.stream.release()
+        except AttributeError:
+            pass
         return
     
