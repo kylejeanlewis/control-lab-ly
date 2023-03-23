@@ -7,14 +7,17 @@ Notes / actionables:
 - 
 """
 # Standard library imports
+from __future__ import annotations
+from abc import ABC, abstractmethod
 import math
 import numpy as np
+from typing import Optional
 
 # Local application imports
-from ..misc import Layout, Helper
+from ..misc import Layout
 print(f"Import: OK <{__name__}>")
 
-class Mover(object):
+class Mover(ABC):
     """
     General mover class
 
@@ -27,34 +30,159 @@ class Mover(object):
         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
         verbose (bool, optional): whether to print outputs. Defaults to False.
     """
-    max_actions = 0
-    def __init__(self, **kwargs):
-        self._coordinates = (0,0,0)
-        self._orientation = (0,0,0)
-        self._home_coordinates = (0,0,0)
-        self._home_orientation = (0,0,0)
-        self._orientate_matrix = np.identity(3)
-        self._translate_vector = (0,0,0)
-        self._implement_offset = (0,0,0)
-        self._scale = 1
-        self._speed = 1
-        self._speed_fraction = 1
+    # max_actions = 0
+    _default_flags: dict[str, bool] = {}
+    _default_heights: dict[str, float] = {}
+    def __init__(self, 
+        coordinates: tuple[float] = (0,0,0),
+        deck: Layout.Deck = Layout.Deck(),
+        home_coordinates: tuple[float] = (0,0,0),
+        home_orientation: tuple[float] = (0,0,0),
+        implement_offset: tuple[float] = (0,0,0),
+        orientate_matrix: np.ndarray = np.identity(3),
+        orientation: tuple[float] = (0,0,0),
+        scale: float = 1,
+        speed_max: float = 1,
+        speed_fraction: float = 1,
+        translate_vector: tuple[float] = (0,0,0),
+        **kwargs
+    ):
+        self.deck = deck
+        self._coordinates = coordinates
+        self._orientation = orientation
+        self._home_coordinates = home_coordinates
+        self._home_orientation = home_orientation
+        self._orientate_matrix = orientate_matrix
+        self._translate_vector = translate_vector
+        self._implement_offset = implement_offset
+        self._scale = scale
+        self._speed_max = speed_max
+        self._speed_fraction = speed_fraction
         
-        self.deck = Layout.Deck()
+        self.connection_details = {}
+        self.device = None
+        self.flags = self._default_flags.copy()
+        self.heights = self._default_heights.copy()
+        self.verbose = kwargs.pop('verbose', False)
+        return
+    
+    def __del__(self):
+        self.shutdown()
+        return
+    
+    @abstractmethod
+    def disconnect(self):
+        self.setFlag(connected=False)
+        return
+        
+    @abstractmethod
+    def home(self) -> bool:
+        ...
 
-        self.verbose = False
-        self._flags = {}
-        self.heights = {}
+    @abstractmethod
+    def isFeasible(self, 
+        coordinates: tuple[float], 
+        transform_in: bool = False, 
+        tool_offset: bool = False, 
+        **kwargs
+    ) -> bool:
+        """
+        Checks if specified coordinates is a feasible position for robot to access
+
+        Args:
+            coordinates (tuple): x,y,z coordinates
+            transform (bool, optional): whether to transform the coordinates. Defaults to False.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
+
+        Returns:
+            bool: whether coordinates is a feasible position
+        """
+        return not self.deck.is_excluded(self._transform_out(coordinates, tool_offset=True))
+    
+    @abstractmethod
+    def moveBy(self, 
+        vector: tuple[float] = (0,0,0), 
+        angles: tuple[float] = (0,0,0), 
+        **kwargs
+    ) -> bool:
+        """
+        Move robot by specified vector and angles
+
+        Args:
+            vector (tuple, optional): x,y,z vector to move in. Defaults to None.
+            angles (tuple, optional): a,b,c angles to move in. Defaults to None.
+
+        Returns:
+            bool: whether movement is successful
+        """
+        vector = np.array(vector)
+        angles = np.array(angles)
+        user_position = self.getUserPosition()
+        new_coordinates = np.round( user_position[0] + np.array(vector) , 2)
+        new_orientation = np.round( user_position[1] + np.array(angles) , 2)
+        return self.moveTo(coordinates=new_coordinates, orientation=new_orientation, tool_offset=False, **kwargs)
+ 
+    @abstractmethod
+    def moveTo(self, 
+        coordinates: Optional[tuple[float]] = None, 
+        orientation: Optional[tuple[float]] = None, 
+        tool_offset: Optional[tuple[float]] = None, 
+        **kwargs
+    ) -> bool:
+        """
+        Move robot to specified coordinates and orientation
+
+        Args:
+            coordinates (tuple, optional): x,y,z coordinates to move to. Defaults to None.
+            orientation (tuple, optional): a,b,c orientation to move to. Defaults to None.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
+
+        Returns:
+            bool: whether movement is successful
+        """
+        if coordinates is None:
+            coordinates = self.getToolPosition() if tool_offset else self.getUserPosition()
+        if orientation is None:
+            orientation = self.orientation
+        coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
+        coordinates = np.array(coordinates)
+        orientation = np.array(orientation)
         
-        self.setConfigSettings(kwargs)
-        return
+        if not self.isFeasible(coordinates):
+            return False
+        self.coordinates = coordinates
+        self.orientation = orientation
+        return True
+ 
+    @abstractmethod
+    def reset(self):
+        """Clear any errors and enable robot"""
     
-    def __delete__(self):
-        self._shutdown()
-        return
+    @abstractmethod
+    def setSpeed(self, speed:int) -> bool:
+        """
+        Setting the movement speed rate.
+
+        Args:
+            speed (int): rate value (value range: 1~100)
+        """
     
+    @abstractmethod
+    def shutdown(self):
+        self.disconnect()
+        self.resetFlags()
+        return
+ 
+    @abstractmethod
+    def _connect(self, *args, **kwargs):
+        """Connect to machine control unit"""
+        self.connection_details = {}
+        self.device = None
+        return
+ 
+    # Properties
     @property
-    def coordinates(self):
+    def coordinates(self) -> np.ndarray:
         return np.array(self._coordinates)
     @coordinates.setter
     def coordinates(self, value):
@@ -64,17 +192,7 @@ class Mover(object):
         return
     
     @property
-    def orientation(self):
-        return np.array(self._orientation)
-    @orientation.setter
-    def orientation(self, value):
-        if len(value) != 3:
-            raise Exception('Please input a,b,c angles')
-        self._orientation = tuple(value)
-        return
-       
-    @property
-    def home_coordinates(self):
+    def home_coordinates(self) -> np.ndarray:
         return np.array(self._home_coordinates)
     @home_coordinates.setter
     def home_coordinates(self, value):
@@ -84,7 +202,7 @@ class Mover(object):
         return
     
     @property
-    def home_orientation(self):
+    def home_orientation(self) -> np.ndarray:
         return np.array(self._home_orientation)
     @home_orientation.setter
     def home_orientation(self, value):
@@ -92,29 +210,9 @@ class Mover(object):
             raise Exception('Please input a,b,c angles')
         self._home_orientation = tuple(value)
         return
-    
+
     @property
-    def orientate_matrix(self):
-        return self._orientate_matrix
-    @orientate_matrix.setter
-    def orientate_matrix(self, value):
-        if len(value) != 3 or any([len(row)!=3 for row in value]):
-            raise Exception('Please input 3x3 matrix')
-        self._orientate_matrix = np.array(value)
-        return
-    
-    @property
-    def translate_vector(self):
-        return np.array(self._translate_vector)
-    @translate_vector.setter
-    def translate_vector(self, value):
-        if len(value) != 3:
-            raise Exception('Please input x,y,z vector')
-        self._translate_vector = tuple(value)
-        return
-    
-    @property
-    def implement_offset(self):
+    def implement_offset(self) -> np.ndarray:
         return np.array(self._implement_offset)
     @implement_offset.setter
     def implement_offset(self, value):
@@ -124,11 +222,31 @@ class Mover(object):
         return
     
     @property
-    def position(self):
+    def orientate_matrix(self) -> np.ndarray:
+        return self._orientate_matrix
+    @orientate_matrix.setter
+    def orientate_matrix(self, value):
+        if len(value) != 3 or any([len(row)!=3 for row in value]):
+            raise Exception('Please input 3x3 matrix')
+        self._orientate_matrix = np.array(value)
+        return
+    
+    @property
+    def orientation(self) -> np.ndarray:
+        return np.array(self._orientation)
+    @orientation.setter
+    def orientation(self, value):
+        if len(value) != 3:
+            raise Exception('Please input a,b,c angles')
+        self._orientation = tuple(value)
+        return
+    
+    @property
+    def position(self) -> tuple(np.ndarray, np.ndarray):
         return self.coordinates, self.orientation
     
     @property
-    def scale(self):
+    def scale(self) -> float:
         return self._scale
     @scale.setter
     def scale(self, value):
@@ -138,82 +256,41 @@ class Mover(object):
         return
     
     @property
-    def speed(self):
-        print(f'Speed fraction: {self._speed_fraction}')
-        return self._speed * self._speed_fraction
-    
-    def _diagnostic(self):
-        """
-        Run diagnostic on tool
-        """
-        self.home()
+    def speed(self) -> float:
+        if self.verbose:
+            print(f'Max speed: {self._speed_max}')
+            print(f'Speed fraction: {self._speed_fraction}')
+        return self._speed_max * self._speed_fraction
+ 
+    @property
+    def translate_vector(self) -> np.ndarray:
+        return np.array(self._translate_vector)
+    @translate_vector.setter
+    def translate_vector(self, value):
+        if len(value) != 3:
+            raise Exception('Please input x,y,z vector')
+        self._translate_vector = tuple(value)
         return
     
-    def _shutdown(self):
-        """
-        Close serial connection and shutdown
-        """
-        return
+    @property
+    def tool_position(self) -> tuple(np.ndarray, np.ndarray):
+        return self._transform_out(coordinates=self.coordinates, tool_offset=True), self.orientation
     
-    def _transform_in(self, coordinates=None, vector=None, stretch=False, tool_offset=False):
-        """
-        Order of transformations (scale, rotate, translate).
-
-        Args:
-            coordinates (tuple, optional): position coordinates. Defaults to None.
-            vector (tuple, optional): vector. Defaults to None.
-            stretch (bool, optional): whether to scale. Defaults to True.
-            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
-
-        Raises:
-            Exception: Only one of 'coordinates' or 'vector' can be passed
-            
-        Returns:
-            tuple: converted robot vector
-        """
-        to_be_transformed = None
-        if coordinates is None and vector is not None:
-            translate = np.zeros(3)
-            to_be_transformed = vector
-        elif coordinates is not None and vector is None:
-            translate = (-1*self.translate_vector)
-            translate = translate - self.implement_offset if tool_offset else translate
-            to_be_transformed = coordinates
-        else:
-            raise Exception("Input only either 'coordinates' or 'vector'.")
-        scale = (1/self.scale) if stretch else 1
-        return tuple( translate + np.matmul(self.orientate_matrix.T, scale * np.array(to_be_transformed)) )
-
-    def _transform_out(self, coordinates=None, vector=None, stretch=False, tool_offset=False):
-        """
-        Order of transformations (translate, rotate, scale).
-
-        Args:
-            coordinates (tuple, optional): position coordinates. Defaults to None.
-            vector (tuple, optional): vector. Defaults to None.
-            stretch (bool, optional): whether to scale. Defaults to True.
-            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
-
-        Raises:
-            Exception: Only one of 'coordinates' or 'vector' can be passed
-            
-        Returns:
-            tuple: converted workspace vector
-        """
-        to_be_transformed = None
-        if coordinates is None and vector is not None:
-            translate = np.zeros(3)
-            to_be_transformed = vector
-        elif coordinates is not None and vector is None:
-            translate = self.translate_vector
-            translate = translate + self.implement_offset if tool_offset else translate
-            to_be_transformed = coordinates
-        else:
-            raise Exception("Input only either 'coordinates' or 'vector'.")
-        scale = self.scale if stretch else 1
-        return tuple( scale * np.matmul(self.orientate_matrix, translate + np.array(to_be_transformed)) )
-
-    def calibrate(self, external_pt1:np.ndarray, internal_pt1:np.ndarray, external_pt2:np.ndarray, internal_pt2:np.ndarray):
+    @property
+    def user_position(self) -> tuple(np.ndarray, np.ndarray):
+        return self._transform_out(coordinates=self.coordinates, tool_offset=False), self.orientation
+    
+    @property
+    def workspace_position(self) -> tuple(np.ndarray, np.ndarray):
+        """Alias for `user_position`"""
+        return self.user_position
+ 
+    def calibrate(self, 
+        external_pt1: np.ndarray, 
+        internal_pt1: np.ndarray, 
+        external_pt2: np.ndarray, 
+        internal_pt2: np.ndarray
+    ):
         """
         Calibrate internal and external coordinate systems.
 
@@ -252,7 +329,10 @@ class Mover(object):
         print(f'Scale factor: {self.scale}\n')
         return
     
-    def getConfigSettings(self, attributes:list):
+    def connect(self):
+        return self._connect(**self.connection_details)
+    
+    def getConfigSettings(self, attributes:list[str]) -> dict:
         """
         Read the robot configuration settings
         
@@ -272,65 +352,27 @@ class Mover(object):
                 settings[k] = {"array": v.tolist()}
         return {"class": _class, "settings": settings}
 
-    def getPosition(self):
+    def isBusy(self) -> bool:
         """
-        Get robot coordinates and orientation.
+        Check whether the device is busy
         
         Returns:
-            tuple, tuple: x,y,z coordinates; a,b,c angles
+            `bool`: whether the device is busy
         """
-        return self.position
+        return self.flags.get('busy', False)
     
-    def getToolPosition(self):
+    def isConnected(self) -> bool:
         """
-        Retrieve coordinates of tool tip/end of implement.
+        Check whether the device is connected
 
         Returns:
-            tuple, tuple: x,y,z coordinates; a,b,c angles
+            `bool`: whether the device is connected
         """
-        coordinates, orientation = self.getPosition()
-        return self._transform_out(coordinates=coordinates, tool_offset=True), orientation
-    
-    def getUserPosition(self):
-        """
-        Retrieve user-defined workspace coordinates.
-
-        Returns:
-            tuple, tuple: x,y,z coordinates; a,b,c angles
-        """
-        coordinates, orientation = self.getPosition()
-        return self._transform_out(coordinates=coordinates, tool_offset=False), orientation
-    
-    def getWorkspacePosition(self):
-        """
-        Alias for getUserPosition
-
-        Returns:
-            tuple, tuple: x,y,z coordinates; a,b,c angles
-        """
-        return self.getUserPosition()
-   
-    def home(self):
-        """
-        Home the mover
-        """
-        return True
-    
-    def isFeasible(self, coordinates, transform=False, tool_offset=False, **kwargs):
-        """
-        Checks if specified coordinates is a feasible position for robot to access
-
-        Args:
-            coordinates (tuple): x,y,z coordinates
-            transform (bool, optional): whether to transform the coordinates. Defaults to False.
-            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
-
-        Returns:
-            bool: whether coordinates is a feasible position
-        """
-        return not self.deck.is_excluded(self._transform_out(coordinates, tool_offset=True))
-    
-    def loadDeck(self, layout:str = None, layout_dict:dict = None):
+        if not self.flags.get('connected', False):
+            print(f"{self.__class__} is not connected. Details: {self.connection_details}")
+        return self.flags.get('connected', False)
+ 
+    def loadDeck(self, layout_file:Optional[str] = None, layout_dict:Optional[dict] = None):
         """
         Load the deck layout from JSON file
         
@@ -338,10 +380,10 @@ class Mover(object):
             layout (str, optional): filename of layout .json file. Defaults to None.
             layout_dict (dict, optional): dictionary of layout. Defaults to None.
         """
-        self.deck.load_layout(layout, layout_dict)
+        self.deck.load_layout(layout_file=layout_file, layout_dict=layout_dict)
         return
     
-    def move(self, axis:str, value, speed_fraction=1, **kwargs):
+    def move(self, axis:str, value:float, speed:Optional[float] = None, **kwargs) -> bool:
         """
         Move robot along axis by specified value
 
@@ -354,11 +396,7 @@ class Mover(object):
             bool: whether movement is successful
         """
         success = False
-        speed_change = False
-        if 0 < speed_fraction < 1:
-            speed_change = True
-            speed = self.speed
-            self.setSpeed(int(max(1, speed_fraction*100)))      # change speed here
+        speed_change, prevailing_speed = self.setSpeed(speed)
         axis = axis.lower()
         movement_L = {
             'x':0, 'y':0, 'z':0,
@@ -380,65 +418,21 @@ class Mover(object):
             angles = angles1 + angles2
             success = self.moveBy(angles=angles, **kwargs)
         if speed_change:
-            self.setSpeed(speed)                           # change speed back here
+            self.setSpeed(prevailing_speed)                           # change speed back here
         return success
-    
-    def moveBy(self, vector=None, angles=None, **kwargs):
-        """
-        Move robot by specified vector and angles
-
-        Args:
-            vector (tuple, optional): x,y,z vector to move in. Defaults to None.
-            angles (tuple, optional): a,b,c angles to move in. Defaults to None.
-
-        Returns:
-            bool: whether movement is successful
-        """
-        if vector is None:
-            vector = (0,0,0)
-        if angles is None:
-            angles = (0,0,0)
-        vector = np.array(vector)
-        angles = np.array(angles)
-        user_position = self.getUserPosition()
-        new_coordinates = np.round( user_position[0] + np.array(vector) , 2)
-        new_orientation = np.round( user_position[1] + np.array(angles) , 2)
-        return self.moveTo(coordinates=new_coordinates, orientation=new_orientation, tool_offset=False, **kwargs)
-    
-    @Helper.safety_measures
-    def moveTo(self, coordinates=None, orientation=None, tool_offset=True, **kwargs):
-        """
-        Move robot to specified coordinates and orientation
-
-        Args:
-            coordinates (tuple, optional): x,y,z coordinates to move to. Defaults to None.
-            orientation (tuple, optional): a,b,c orientation to move to. Defaults to None.
-            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
-
-        Returns:
-            bool: whether movement is successful
-        """
-        if coordinates is None:
-            coordinates = self.getToolPosition() if tool_offset else self.getUserPosition()
-        if orientation is None:
-            orientation = self.orientation
-        coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
-        coordinates = np.array(coordinates)
-        orientation = np.array(orientation)
-        
-        if not self.isFeasible(coordinates):
-            return False
-        self.coordinates = coordinates
-        self.orientation = orientation
-        return True
-    
-    def reset(self):
-        """
-        Clear any errors and enable robot
-        """
+              
+    def resetFlags(self):
+        self.flags = self._default_flags.copy()
         return
     
-    def safeMoveTo(self, coordinates=None, orientation=None, tool_offset=True, ascent_speed_fraction=1, descent_speed_fraction=1, **kwargs):
+    def safeMoveTo(self, 
+        coordinates: Optional[tuple[float]] = None, 
+        orientation: Optional[tuple[float]] = None, 
+        tool_offset: Optional[tuple[float]] = None, 
+        ascent_speed: Optional[float] = None, 
+        descent_speed: Optional[float] = None, 
+        **kwargs
+    ) -> bool:
         """
         Safe version of moveTo by moving in Z-axis first
 
@@ -451,6 +445,7 @@ class Mover(object):
         Returns:
             bool: whether movement is successful
         """
+        success = []
         if coordinates is None:
             coordinates = self.getToolPosition() if tool_offset else self.getUserPosition()
         if orientation is None:
@@ -458,52 +453,43 @@ class Mover(object):
         coordinates = np.array(coordinates)
         orientation = np.array(orientation)
         
-        speed = self.speed
-        self.move('z', max(0, self.home_coordinates[2]-self.coordinates[2]), speed_fraction=ascent_speed_fraction)
+        ret = self.move('z', max(0, self.home_coordinates[2]-self.coordinates[2]), speed=ascent_speed)
+        success.append(ret)
         
         intermediate_position = self.getToolPosition() if tool_offset else self.getUserPosition()
-        self.moveTo(
+        ret = self.moveTo(
             coordinates=list(coordinates[:2])+[float(intermediate_position[0][2])], 
             orientation=orientation, 
             tool_offset=tool_offset
         )
+        success.append(ret)
         
-        if 0 < descent_speed_fraction < 1:
-            self.setSpeed(int(max(1, descent_speed_fraction*100)))      # change speed here
-        self.moveTo(
+        speed_change, prevailing_speed = self.setSpeed(descent_speed)      # change speed here
+        ret = self.moveTo(
             coordinates=coordinates,
             orientation=orientation, 
             tool_offset=tool_offset
         )
-        self.setSpeed(speed)                                            # change speed back here
-        return
-    
-    def setConfigSettings(self, config:dict):
-        """
-        Set configuration settings.
+        success.append(ret)
+        if speed_change:
+            self.setSpeed(prevailing_speed)                                # change speed back here
+        return all(success)
         
-        Args:
-            config (dict): dictionary of attribute names and values
+    def setFlag(self, **kwargs):
         """
-        for k,v in config.items():
-            if k in dir(self):
-                self.__setattr__(k,v)
-            else:
-                print(f"'{k}' is not an attribute of {self.__class__}")
-        return
-    
-    def setFlag(self, name:str, value:bool):
-        """
-        Set a flag truth value
+        Set a flag's truth value
 
         Args:
-            name (str): label
-            value (bool): flag value
+            `name` (str): label
+            `value` (bool): flag value
         """
-        self._flags[name] = value
+        if not all([type(v)==bool for v in kwargs.values()]):
+            raise ValueError("Ensure all assigned flag values are boolean.")
+        for key, value in kwargs.items():
+            self.flags[key] = value
         return
     
-    def setHeight(self, name:str, value, overwrite=False):
+    def setHeight(self, overwrite:bool = False, **kwargs):
         """
         Set predefined height
 
@@ -515,13 +501,20 @@ class Mover(object):
         Raises:
             Exception: Height with the same name has already been defined
         """
-        if name not in self.heights.keys() or overwrite:
-            self.heights[name] = value
-        else:
-            raise Exception(f"The height '{name}' has already been defined at: {self.heights[name]}")
+        if not all([type(v)==float for v in kwargs.values()]):
+            raise ValueError("Ensure all assigned height values are floating point numbers.")
+        for key, value in kwargs.items():
+            if key not in self.heights or overwrite:
+                self.heights[key] = value
+            elif not overwrite:
+                print(f"Previously saved height '{key}': {self.heights[key]}\n")
+                print(f"New height received: {value}")
+                if input('Overwrite? [y/n]').lower() == 'n':
+                    continue
+                self.heights[key] = value
         return
     
-    def setImplementOffset(self, implement_offset, home=True):
+    def setImplementOffset(self, implement_offset: tuple[float], home:bool = True):
         """
         Set offset of implement, then home
 
@@ -534,26 +527,12 @@ class Mover(object):
             self.home()
         return
     
-    def setSpeed(self, speed:int):
-        """
-        Setting the movement speed rate.
-
-        Args:
-            speed (int): rate value (value range: 1~100)
-        """
-        return True
-
-    def switchFlag(self, name:str):
-        """
-        Switch a flag truth value
-
-        Args:
-            name (str): label
-        """
-        self._flags[name] = not self._flags[name]
-        return
-    
-    def updatePosition(self, coordinates=None, orientation=None, vector=(0,0,0), angles=(0,0,0)):
+    def updatePosition(self, 
+        coordinates: Optional[tuple[float]] = None, 
+        orientation: Optional[tuple[float]] = None, 
+        vector: tuple = (0,0,0), 
+        angles: tuple = (0,0,0)
+    ):
         """
         Update to current position
 
@@ -566,12 +545,131 @@ class Mover(object):
         if coordinates is not None:
             self.coordinates = coordinates
         else:
-            self.coordinates = np.array(self.coordinates) + np.array(vector)
+            self.coordinates = self.coordinates + np.array(vector)
             
         if orientation is not None:
             self.orientation = orientation
         else:
-            self.orientation = np.array(self.orientation) + np.array(angles)
+            self.orientation = self.orientation + np.array(angles)
         
         print(f'{self.coordinates}, {self.orientation}')
         return
+
+    # Protected method(s)
+    def _diagnostic(self):
+        """
+        Run diagnostic on tool
+        """
+        self.home()
+        return
+
+    def _transform_in(self, 
+        coordinates: Optional[tuple] = None, 
+        vector: Optional[tuple] = None, 
+        stretch: bool = False, 
+        tool_offset: bool = False
+    ) -> tuple[float]:
+        """
+        Order of transformations (scale, rotate, translate).
+
+        Args:
+            coordinates (tuple, optional): position coordinates. Defaults to None.
+            vector (tuple, optional): vector. Defaults to None.
+            stretch (bool, optional): whether to scale. Defaults to True.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
+
+        Raises:
+            Exception: Only one of 'coordinates' or 'vector' can be passed
+            
+        Returns:
+            tuple: converted robot vector
+        """
+        to_be_transformed = None
+        if coordinates is None and vector is not None:
+            translate = np.zeros(3)
+            to_be_transformed = vector
+        elif coordinates is not None and vector is None:
+            translate = (-1*self.translate_vector)
+            translate = translate - self.implement_offset if tool_offset else translate
+            to_be_transformed = coordinates
+        else:
+            raise Exception("Input only either 'coordinates' or 'vector'.")
+        scale = (1/self.scale) if stretch else 1
+        return tuple( translate + np.matmul(self.orientate_matrix.T, scale * np.array(to_be_transformed)) )
+
+    def _transform_out(self, 
+        coordinates: Optional[tuple] = None, 
+        vector: Optional[tuple] = None, 
+        stretch: bool = False, 
+        tool_offset: bool = False
+    ) -> tuple[float]:
+        """
+        Order of transformations (translate, rotate, scale).
+
+        Args:
+            coordinates (tuple, optional): position coordinates. Defaults to None.
+            vector (tuple, optional): vector. Defaults to None.
+            stretch (bool, optional): whether to scale. Defaults to True.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
+
+        Raises:
+            Exception: Only one of 'coordinates' or 'vector' can be passed
+            
+        Returns:
+            tuple: converted workspace vector
+        """
+        to_be_transformed = None
+        if coordinates is None and vector is not None:
+            translate = np.zeros(3)
+            to_be_transformed = vector
+        elif coordinates is not None and vector is None:
+            translate = self.translate_vector
+            translate = translate + self.implement_offset if tool_offset else translate
+            to_be_transformed = coordinates
+        else:
+            raise Exception("Input only either 'coordinates' or 'vector'.")
+        scale = self.scale if stretch else 1
+        return tuple( scale * np.matmul(self.orientate_matrix, translate + np.array(to_be_transformed)) )
+
+
+    ### NOTE: DEPRECATE
+    def getPosition(self):
+        """
+        Get robot coordinates and orientation.
+        
+        Returns:
+            tuple, tuple: x,y,z coordinates; a,b,c angles
+        """
+        print("`getPosition()` to be deprecated. Use `position` attribute instead.")
+        return self.position
+    
+    def getToolPosition(self):
+        """
+        Retrieve coordinates of tool tip/end of implement.
+
+        Returns:
+            tuple, tuple: x,y,z coordinates; a,b,c angles
+        """
+        print("`getToolPosition()` to be deprecated. Use `tool_position` attribute instead.")
+        return self.tool_position
+    
+    def getUserPosition(self):
+        """
+        Retrieve user-defined workspace coordinates.
+
+        Returns:
+            tuple, tuple: x,y,z coordinates; a,b,c angles
+        """
+        print("`getUserPosition()` to be deprecated. Use `user_position` attribute instead.")
+        return self.user_position
+    
+    def getWorkspacePosition(self):
+        """
+        Alias for getUserPosition
+
+        Returns:
+            tuple, tuple: x,y,z coordinates; a,b,c angles
+        """
+        print("`getWorkspacePosition()` to be deprecated. Use `workspace_position` attribute instead.")
+        return self.workspace_position
+  

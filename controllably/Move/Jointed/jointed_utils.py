@@ -7,10 +7,12 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from __future__ import annotations
+from abc import abstractmethod
 import numpy as np
+from typing import Optional
 
 # Local application imports
-from ...misc import Helper
 from ..move_utils import Mover
 print(f"Import: OK <{__name__}>")
 
@@ -30,23 +32,104 @@ class RobotArm(Mover):
         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
         verbose (bool, optional): whether to print outputs. Defaults to False.
     """
-    def __init__(self, safe_height=None, **kwargs):
+    def __init__(self, safe_height:Optional[float] = None, retract:bool = False, **kwargs):
         super().__init__(**kwargs)
-        self.device = None
-        self._speed_angular = 1
-        self.setFlag('retract', False)
+        self._speed_angular_max = 1
         
+        self.setFlag(retract=retract)
         if safe_height is not None:
             self.setHeight('safe', safe_height)
         # else:
         #     self.setHeight('safe', self.home_coordinates[2])
         return
     
-    @property
-    def speed_angular(self):
-        return self._speed_angular * self._speed_fraction
+    @abstractmethod
+    def moveCoordBy(self, 
+        vector: tuple[float] = (0,0,0), 
+        angles: tuple[float] = (0,0,0)
+    ) -> bool:
+        """
+        Relative Cartesian movement and tool orientation, using robot coordinates.
+
+        Args:
+            vector (tuple, optional): x,y,z displacement vector. Defaults to None.
+            angles (tuple, optional): a,b,c rotation angles in degrees. Defaults to None.
+        
+        Returns:
+            bool: whether movement is successful
+        """
+
+    @abstractmethod
+    def moveCoordTo(self, 
+        coordinates: Optional[tuple[float]] = None, 
+        orientation: Optional[tuple[float]] = None
+    ) -> bool:
+        """
+        Absolute Cartesian movement and tool orientation, using robot coordinates.
+
+        Args:
+            coordinates (tuple, optional): x,y,z position vector. Defaults to None.
+            orientation (tuple, optional): a,b,c orientation angles in degrees. Defaults to None.
+        
+        Returns:
+            bool: whether movement is successful
+        """
+
+    @abstractmethod
+    def moveJointBy(self, relative_angles: tuple[float]) -> bool:
+        """
+        Relative joint movement.
+
+        Args:
+            relative_angles (tuple): j1~j6 rotation angles in degrees
+        
+        Raises:
+            Exception: Input has to be length 6
+        
+        Returns:
+            bool: whether movement is successful
+        """
+        if len(relative_angles) == 6:
+            raise ValueError('Length of input needs to be 6.')
+
+    @abstractmethod
+    def moveJointTo(self, absolute_angles: tuple[float]) -> bool:
+        """
+        Absolute joint movement.
+
+        Args:
+            absolute_angles (tuple): j1~j6 orientation angles in degrees
+        
+        Raises:
+            Exception: Input has to be length 6
+        
+        Returns:
+            bool: whether movement is successful
+        """
+        if len(absolute_angles) != 6:
+            raise ValueError('Length of input needs to be 6.')
     
-    def home(self, tool_offset=True):
+    @abstractmethod
+    def retractArm(self, target: Optional[tuple[float]] = None) -> bool:
+        """
+        Tuck in arm, rotate about base, then extend again.
+
+        Args:
+            target (tuple, optional): x,y,z coordinates of destination. Defaults to None.
+        
+        Returns:
+            bool: whether movement is successful
+        """
+  
+    # Properties
+    @property
+    def speed_angular(self) -> float:
+        if self.verbose:
+            print(f'Max speed: {self._speed_max}')
+            print(f'Speed fraction: {self._speed_fraction}')
+        return self._speed_angular_max * self._speed_fraction
+    
+    def home(self, safe:bool = True, tool_offset:bool = True) -> bool:
         """
         Return the robot to home
 
@@ -56,22 +139,30 @@ class RobotArm(Mover):
         Returns:
             bool: whether movement is successful
         """
-        return_values= []
+        success= []
+        ret = False
+        coordinates = self.home_coordinates - self.implement_offset if tool_offset else self.home_coordinates
+        
         # Tuck arm in to avoid collision
-        if self._flags['retract']:
-            ret = self.retractArm(self.home_coordinates)
-            return_values.append(ret)
+        if self.flags.get('retract', False):
+            ret = self.retractArm(coordinates)
+            success.append(ret)
         
         # Go to home position
-        coordinates = self.home_coordinates - self.implement_offset if tool_offset else self.home_coordinates
-        # coordinates = self._transform_out(coordinates=coordinates, tool_offset=tool_offset)
-        # ret = self.safeMoveTo(coordinates=coordinates, orientation=self.home_orientation)
-        ret = self.moveCoordTo(coordinates, self.home_orientation)
-        return_values.append(ret)
+        if safe:
+            coordinates = self._transform_out(coordinates=coordinates, tool_offset=tool_offset)
+            ret = self.safeMoveTo(coordinates=coordinates, orientation=self.home_orientation)
+        else:
+            ret = self.moveCoordTo(coordinates, self.home_orientation)
+        success.append(ret)
         print("Homed")
-        return all(return_values)
+        return all(success)
     
-    def moveBy(self, vector=None, angles=None, **kwargs):
+    def moveBy(self, 
+        vector: tuple[float] = (0,0,0), 
+        angles: tuple[float] = (0,0,0), 
+        **kwargs
+    ) -> bool:
         """
         Move robot by specified vector and angles
 
@@ -82,10 +173,6 @@ class RobotArm(Mover):
         Returns:
             bool: whether movement is successful
         """
-        if vector is None:
-            vector = (0,0,0)
-        if angles is None:
-            angles = (0,0,0)
         vector = self._transform_in(vector=vector)
         vector = np.array(vector)
         angles = np.array(angles)
@@ -96,7 +183,13 @@ class RobotArm(Mover):
             return False
         return self.moveCoordBy(vector, angles)
 
-    def moveTo(self, coordinates=None, orientation=None, tool_offset=True, retract=False, **kwargs):
+    def moveTo(self, 
+        coordinates: Optional[tuple[float]] = None, 
+        orientation: Optional[tuple[float]] = None, 
+        tool_offset: Optional[tuple[float]] = None, 
+        retract: bool = False, 
+        **kwargs
+    ) -> bool:
         """
         Absolute Cartesian movement, using workspace coordinates.
 
@@ -117,7 +210,7 @@ class RobotArm(Mover):
         coordinates = np.array(coordinates)
         orientation = np.array(orientation)
         
-        if self._flags['retract'] and retract:
+        if self.flags['retract'] and retract:
             self.retractArm(coordinates)
         
         if len(orientation) != 3:
@@ -126,85 +219,7 @@ class RobotArm(Mover):
             return False
         return self.moveCoordTo(coordinates, orientation)
     
-    @Helper.safety_measures
-    def moveCoordBy(self, vector=None, angles=None):
-        """
-        Relative Cartesian movement and tool orientation, using robot coordinates.
-
-        Args:
-            vector (tuple, optional): x,y,z displacement vector. Defaults to None.
-            angles (tuple, optional): a,b,c rotation angles in degrees. Defaults to None.
-        
-        Returns:
-            bool: whether movement is successful
-        """
-        return True
-
-    @Helper.safety_measures
-    def moveCoordTo(self, coordinates=None, orientation=None):
-        """
-        Absolute Cartesian movement and tool orientation, using robot coordinates.
-
-        Args:
-            coordinates (tuple, optional): x,y,z position vector. Defaults to None.
-            orientation (tuple, optional): a,b,c orientation angles in degrees. Defaults to None.
-            tool_offset (bool, optional): whether to consider implement offset. Defaults to True.
-        
-        Returns:
-            bool: whether movement is successful
-        """
-        return True
-
-    @Helper.safety_measures
-    def moveJointBy(self, relative_angles):
-        """
-        Relative joint movement.
-
-        Args:
-            relative_angles (tuple): j1~j6 rotation angles in degrees
-        
-        Raises:
-            Exception: Input has to be length 6
-        
-        Returns:
-            bool: whether movement is successful
-        """
-        if len(relative_angles) != 6:
-            raise Exception('Length of input needs to be 6')
-        return True
-
-    @Helper.safety_measures
-    def moveJointTo(self, absolute_angles):
-        """
-        Absolute joint movement.
-
-        Args:
-            absolute_angles (tuple): j1~j6 orientation angles in degrees
-        
-        Raises:
-            Exception: Input has to be length 6
-        
-        Returns:
-            bool: whether movement is successful
-        """
-        if len(absolute_angles) != 6:
-            raise Exception('Length of input needs to be 6')
-        return True
-    
-    @Helper.safety_measures
-    def retractArm(self, target=None):
-        """
-        Tuck in arm, rotate about base, then extend again.
-
-        Args:
-            target (tuple, optional): x,y,z coordinates of destination. Defaults to None.
-        
-        Returns:
-            bool: whether movement is successful
-        """
-        return True
-    
-    def rotateBy(self, angles):
+    def rotateBy(self, angles: tuple[float]) -> bool:
         """
         Relative effector rotation.
 
@@ -217,14 +232,15 @@ class RobotArm(Mover):
         Returns:
             bool: whether movement is successful
         """
-        if len(angles) != 3:
-            raise Exception('Length of input needs to be 3')
-        angles = tuple(angles)
         if not any(angles):
             return True
-        return self.moveJointBy((0,0,0,*angles))
+        if len(angles) == 3:
+            return self.moveJointBy((0,0,0,*angles))
+        if len(angles) != 6:
+            return self.moveJointBy(angles)
+        raise ValueError('Length of input needs to be 3 or 6.')
 
-    def rotateTo(self, orientation):
+    def rotateTo(self, orientation: tuple[float]) -> bool:
         """
         Absolute effector rotation.
 
@@ -237,7 +253,10 @@ class RobotArm(Mover):
         Returns:
             bool: whether movement is successful
         """
-        if len(orientation) != 3:
-            raise Exception('Length of input needs to be 3')
-        angles = np.array(orientation) - np.array(self.orientation)
-        return self.rotateBy(angles)
+        if not any(orientation):
+            return True
+        if len(orientation) == 3:
+            return self.moveJointTo((0,0,0,*orientation))
+        if len(orientation) != 6:
+            return self.moveJointTo(orientation)
+        raise ValueError('Length of input needs to be 3 or 6.')

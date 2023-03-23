@@ -7,7 +7,9 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from __future__ import annotations
 import time
+from typing import Optional
 
 # Local application imports
 from ...misc import Helper
@@ -33,12 +35,27 @@ class Primitiv(Gantry):
         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
         verbose (bool, optional): whether to print outputs. Defaults to False.
     """
-    def __init__(self, port:str, limits=[(-410,-290,-120), (0,0,0)], safe_height=-80, **kwargs):
+    def __init__(self, 
+        port: str, 
+        limits: tuple[tuple[float]] = ((-410,-290,-120), (0,0,0)), 
+        safe_height: float = -80, 
+        **kwargs
+    ):
         super().__init__(port=port, limits=limits, safe_height=safe_height, **kwargs)
-        self.selected_position = ''
         return
     
-    def _connect(self, port:str, baudrate=115200, timeout=None):
+    @Helper.safety_measures
+    def home(self) -> bool:
+        """
+        Homing cycle for Primitiv platform
+        """
+        self._query("$H\n")
+        self.coordinates = self.home_coordinates
+        print("Homed")
+        return True
+
+    # Protected method(s)
+    def _connect(self, port:str, baudrate:int = 115200, timeout:Optional[int] = None):
         """
         Connect to machine control unit
 
@@ -50,34 +67,16 @@ class Primitiv(Gantry):
         Returns:
             serial.Serial: serial connection to machine control unit if connection is successful, else None
         """
-        self.port = port
-        self._baudrate = baudrate
-        self._timeout = timeout
-        device = super()._connect(self.port, self._baudrate, self._timeout)
+        super()._connect(port, baudrate, timeout)
         try:
-            device.close()
-            device.open()
-
+            self.device.close()
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        else:
+            self.device.open()
             # Start grbl 
-            device.write(bytes("\r\n\r\n", 'utf-8'))
+            self._write(bytes("\r\n\r\n", 'utf-8'))
             time.sleep(2)
-            device.flushInput()
-        except Exception as e:
-            if self.verbose:
-                print(e)
-        return device
-    
-    @Helper.safety_measures
-    def home(self):
-        """
-        Homing cycle for Primitiv platform
-        """
-        try:
-            self.device.write(bytes("$H\n", 'utf-8'))
-            print(self.device.readline())
-        except Exception as e:
-            if self.verbose:
-                print(e)
-        
-        self.coordinates = (0,0,0)
+            self.device.flushInput()
         return

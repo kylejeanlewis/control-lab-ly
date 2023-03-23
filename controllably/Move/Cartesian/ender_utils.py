@@ -6,6 +6,9 @@ Created: Tue 2022/11/01 17:13:35
 Notes / actionables:
 -
 """
+# Standard library imports
+from __future__ import annotations
+
 # Local application imports
 from ...misc import Helper
 from .cartesian_utils import Gantry
@@ -30,28 +33,17 @@ class Ender(Gantry):
         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
         verbose (bool, optional): whether to print outputs. Defaults to False.
     """
-    def __init__(self, port:str, limits=[(0,0,0), (240,235,210)], safe_height=30, **kwargs):
+    def __init__(self, 
+        port: str, 
+        limits: tuple[tuple[float]] = ((0,0,0), (240,235,210)), 
+        safe_height: float = 30, 
+        **kwargs
+    ):
         super().__init__(port=port, limits=limits, safe_height=safe_height, **kwargs)
+        self.home_coordinates = (0,0,self.heights['safe'])
         return
-    
-    def _connect(self, port:str, baudrate=115200, timeout=None):
-        """
-        Connect to machine control unit
 
-        Args:
-            port (str): com port address
-            baudrate (int): baudrate. Defaults to 115200.
-            timeout (int, optional): timeout in seconds. Defaults to None.
-            
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
-        """
-        self.port = port
-        self._baudrate = baudrate
-        self._timeout = timeout
-        return super()._connect(self.port, self._baudrate, self._timeout)
-
-    def heat(self, bed_temperature):
+    def heat(self, bed_temperature: float) -> bool:
         """
         Heat bed to temperature
 
@@ -72,35 +64,20 @@ class Ender(Gantry):
         return True
 
     @Helper.safety_measures
-    def home(self):
+    def home(self) -> bool:
         """
         Homing cycle for Ender platform
         """
-        try:
-            self.device.write(bytes("G90\n", 'utf-8'))
-            print(self.device.readline())
-            self.device.write(bytes(f"G0 Z{self.heights['safe']}\n", 'utf-8'))
-            print(self.device.readline())
-            self.device.write(bytes("G90\n", 'utf-8'))
-            print(self.device.readline())
+        self._query("G90\n")
+        self._query(f"G0 Z{self.heights['safe']}\n")
+        self._query("G90\n")
+        self._query("G28\n")
 
-            self.device.write(bytes("G28\n", 'utf-8'))
-
-            self.device.write(bytes("G90\n", 'utf-8'))
-            print(self.device.readline())
-            self.device.write(bytes(f"G0 Z{self.heights['safe']}\n", 'utf-8'))
-            print(self.device.readline())
-            self.device.write(bytes("G90\n", 'utf-8'))
-            print(self.device.readline())
-        except Exception as e:
-            if self.verbose:
-                print(e)
+        self._query("G90\n")
+        self._query(f"G0 Z{self.heights['safe']}\n")
+        self._query("G90\n")
+        self._query("G1 F10000\n")
         
-        self.coordinates = (0,0,self.heights['safe'])
-        try:
-            self.device.write(bytes("G1 F10000\n", 'utf-8'))
-            print(self.device.readline())
-        except Exception as e:
-            if self.verbose:
-                print(e)
-        return
+        self.coordinates = self.home_coordinates
+        print("Homed")
+        return True

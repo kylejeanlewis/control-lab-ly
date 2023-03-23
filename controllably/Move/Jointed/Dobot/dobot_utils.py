@@ -7,10 +7,11 @@ Notes / actionables:
 - 
 """
 # Standard library imports
-import math
+from __future__ import annotations
+from collections import namedtuple
 import numpy as np
 import time
-from typing import Protocol
+from typing import Optional, Protocol
 
 # Local application imports
 from ....misc import Factory, Helper
@@ -18,11 +19,12 @@ from ..jointed_utils import RobotArm
 from .dobot_api import dobot_api_dashboard, dobot_api_feedback
 print(f"Import: OK <{__name__}>")
 
-CONNECTION_TIMEOUT = 20
-SCALE = True
 MOVE_TIME_BUFFER_S = 0.5
 
+Device = namedtuple('Device', ['dashboard', 'feedback'])
+
 class DobotAttachment(Protocol):
+    implement_offset: tuple
     def _set_dashboard(self, dashboard) -> None:
         ...
 
@@ -46,101 +48,36 @@ class Dobot(RobotArm):
     """
     possible_attachments = ['TwoJawGrip', 'VacuumGrip']     ### FIXME: hard-coded
     max_actions = 5                                         ### FIXME: hard-coded
-    def __init__(self, ip_address:str, attachment:str = None, **kwargs):
+    def __init__(self, ip_address:str, attachment_name:str = None, **kwargs):
         super().__init__(**kwargs)
-        self.ip_address = ip_address
         self.attachment = None
+        self._speed_max = 100
         
-        self._speed = 100
-        
-        self.setFlag('retract', True)
         self._connect(ip_address)
-        if attachment is not None:
-            attachment_class = Factory.get_class(attachment)
+        if attachment_name is not None:
+            attachment_class = Factory.get_class(attachment_name)
             self.toggleAttachment(True, attachment_class)
         pass
     
+    # Properties
     @property
     def dashboard(self):
-        if type(self.device) != dict:
-            return None
-        return self.device.get('dashboard')
-    @dashboard.setter
-    def dashboard(self, value):
-        if type(self.device) != dict:
-            self.device = {}
-        self.device['dashboard'] = value
-        return
+        return self.device.dashboard
     
     @property
     def feedback(self):
-        if type(self.device) != dict:
-            return None
-        return self.device.get('feedback')
-    @feedback.setter
-    def feedback(self, value):
-        if type(self.device) != dict:
-            self.device = {}
-        self.device['feedback'] = value
-        return
+        return self.device.feedback
     
-    def _connect(self, ip_address:str, timeout=CONNECTION_TIMEOUT):
-        """
-        Connect to robot hardware
-
-        Args:
-            ip_address (str): IP address of robot
-            timeout (int, optional): duration to wait before timeout
-            
-        Returns:
-            dict: dictionary of dashboard and feedback objects
-        """
-        self.device = {
-            'dashboard': None,
-            'feedback': None
-        }
-        try:
-            start_time = time.time()
-            dashboard = dobot_api_dashboard(ip_address, 29999)
-            if time.time() - start_time > timeout:
-                self.device is None
-                raise Exception(f"Unable to connect to arm at {ip_address}")
-            
-            start_time = time.time()
-            feedback = dobot_api_feedback(ip_address, 30003)
-            if time.time() - start_time > timeout:
-                self.device is None
-                raise Exception(f"Unable to connect to arm at {ip_address}")
-
-            self.device['dashboard'] = dashboard
-            self.device['feedback'] = feedback
-            self.reset()
-            self.dashboard.User(0)
-            self.dashboard.Tool(0)
-            self.setSpeed(speed=100)
-        except Exception as e:
-            print(e)
-        return self.device
-
-    def _freeze(self):
-        """
-        Halt and disable robot
-        """
-        try:
-            self.dashboard.ResetRobot()
-            self.dashboard.DisableRobot()
-        except (AttributeError, OSError):
-            if self.verbose:
-                print("Not connected to arm!")
-        return
-      
-    def _shutdown(self):
-        """Halt robot and close connections."""
-        self._freeze()
-        self.disconnect()
-        return
-
-    def calibrate(self, external_pt1:np.ndarray, internal_pt1:np.ndarray, external_pt2:np.ndarray, internal_pt2:np.ndarray):
+    @property
+    def ip_address(self):
+        return self.connection_details.get('ip_address', '')
+    
+    def calibrate(self, 
+        external_pt1:np.ndarray, 
+        internal_pt1:np.ndarray, 
+        external_pt2:np.ndarray, 
+        internal_pt2:np.ndarray
+    ):
         """
         Calibrate internal and external coordinate systems, then verify points.
 
@@ -160,15 +97,6 @@ class Dobot(RobotArm):
         self.home()
         return
     
-    def connect(self):
-        """
-        Reconnect to robot using existing IP address
-        
-        Returns:
-            dict: dictionary of dashboard and feedback objects
-        """
-        return self._connect(self.ip_address)
-    
     def disconnect(self):
         """
         Disconnect serial connection to robot
@@ -176,17 +104,17 @@ class Dobot(RobotArm):
         Returns:
             None: None is successfully disconnected, else dict
         """
+        self.reset()
         try:
             self.dashboard.close()
             self.feedback.close()
         except (AttributeError, OSError):
             if self.verbose:
-                print("Not connected to arm!")
-
-        self.device = None
-        return self.device
+                print("Not connected to arm.")
+        self.setFlag(connected=False)
+        return
     
-    def getConfigSettings(self):
+    def getConfigSettings(self, attributes:Optional[list[str]] = None) -> dict:
         """
         Read the robot configuration settings
         
@@ -201,23 +129,14 @@ class Dobot(RobotArm):
             "translate_vector", 
             "implement_offset",
             "scale"
-        ]
+        ] if attributes is None else attributes
         return super().getConfigSettings(attributes)
 
-    def isConnected(self):
-        """
-        Check whether machine control unit is connected
-
-        Returns:
-            bool: whether machine control unit is connected
-        """
-        if self.device is None:
-            print(f"{self.__class__} ({self.ip_address}) not connected.")
-            return False
-        return True
-
     @Helper.safety_measures
-    def moveCoordBy(self, vector=None, angles=None):
+    def moveCoordBy(self, 
+        vector: tuple[float] = (0,0,0), 
+        angles: tuple[float] = (0,0,0)
+    ) -> bool:
         """
         Relative Cartesian movement and tool orientation, using robot coordinates.
 
@@ -225,28 +144,28 @@ class Dobot(RobotArm):
             vector (tuple, optional): x,y,z displacement vector. Defaults to None.
             angles (tuple, optional): a,b,c rotation angles in degrees. Defaults to None.
         """
-        if vector is None:
-            vector = (0,0,0)
-        if angles is None:
-            angles = (0,0,0)
         vector = tuple(vector)
         angles = tuple(angles)
         try:
             self.feedback.RelMovL(*vector)
             self.rotateBy(angles)
-            move_time = max(abs(np.array(vector)) / self.speed) + max(abs(np.array(angles)) / self.speed_angular) +MOVE_TIME_BUFFER_S
-            print(f'Move time: {move_time}s ({self._speed_fraction})')
-            time.sleep(move_time)
         except (AttributeError, OSError):
             if self.verbose:
-                print("Not connected to arm!")
+                print("Not connected to arm.")
             self.updatePosition(vector=vector, angles=angles)
             return False
+        else:
+            move_time = max(abs(np.array(vector))/self.speed) + max(abs(np.array(angles))/self.speed_angular)
+            print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
+            time.sleep(move_time+MOVE_TIME_BUFFER_S)
         self.updatePosition(vector=vector, angles=angles)
         return True
 
     @Helper.safety_measures
-    def moveCoordTo(self, coordinates=None, orientation=None):
+    def moveCoordTo(self, 
+        coordinates: Optional[tuple[float]] = None, 
+        orientation: Optional[tuple[float]] = None
+    ) -> bool:
         """
         Absolute Cartesian movement and tool orientation, using robot coordinates.
 
@@ -255,10 +174,8 @@ class Dobot(RobotArm):
             orientation (tuple, optional): a,b,c orientation angles in degrees. Defaults to None.
             tool_offset (bool, optional): whether to consider implement offset. Defaults to True.
         """
-        if coordinates is None:
-            coordinates = self.coordinates
-        if orientation is None:
-            orientation = self.orientation
+        coordinates = self.coordinates if coordinates is None else coordinates
+        orientation = self.orientation if orientation is None else orientation
         coordinates = tuple(coordinates)
         orientation = tuple(orientation)
         if len(orientation) == 1 and orientation[0] == 0:
@@ -269,22 +186,23 @@ class Dobot(RobotArm):
         
         try:
             self.feedback.MovJ(*coordinates, *orientation)
+        except (AttributeError, OSError):
+            if self.verbose:
+                print("Not connected to arm.")
+            self.updatePosition(coordinates=coordinates, orientation=orientation)
+            return False
+        else:
             position = self.position
             distances = abs(position[0] - np.array(coordinates))
             rotations = abs(position[1] - np.array(orientation))
-            move_time = max([max(distances / self.speed),  max(rotations / self.speed_angular)]) +MOVE_TIME_BUFFER_S
-            print(f'Move time: {move_time}s ({self._speed_fraction})')
-            time.sleep(move_time)
-        except (AttributeError, OSError):
-            if self.verbose:
-                print("Not connected to arm!")
-            self.updatePosition(coordinates=coordinates, orientation=orientation)
-            return False
+            move_time = max([max(distances/self.speed),  max(rotations/self.speed_angular)])
+            print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
+            time.sleep(move_time+MOVE_TIME_BUFFER_S)
         self.updatePosition(coordinates=coordinates, orientation=orientation)
         return True
 
     @Helper.safety_measures
-    def moveJointBy(self, relative_angles):
+    def moveJointBy(self, relative_angles: tuple[float]) -> bool:
         """
         Relative joint movement
 
@@ -295,23 +213,23 @@ class Dobot(RobotArm):
             Exception: Input has to be length 6
         """
         if len(relative_angles) != 6:
-            raise Exception('Length of input needs to be 6')
-        relative_angles = tuple(relative_angles)
+            raise ValueError('Length of input needs to be 6.')
         try:
             self.feedback.RelMovJ(*relative_angles)
-            move_time = max(abs(np.array(relative_angles)) / self.speed_angular) +MOVE_TIME_BUFFER_S
-            print(f'Move time: {move_time}s ({self._speed_fraction})')
-            time.sleep(move_time)
         except (AttributeError, OSError):
             if self.verbose:
-                print("Not connected to arm!")
+                print("Not connected to arm.")
             self.updatePosition(angles=relative_angles[3:])
             return False
+        else:
+            move_time = max(abs(np.array(relative_angles)) / self.speed_angular)
+            print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
+            time.sleep(move_time+MOVE_TIME_BUFFER_S)
         self.updatePosition(angles=relative_angles[3:])
         return True
 
     @Helper.safety_measures
-    def moveJointTo(self, absolute_angles):
+    def moveJointTo(self, absolute_angles: tuple[float]) -> bool:
         """
         Absolute joint movement
 
@@ -322,18 +240,18 @@ class Dobot(RobotArm):
             Exception: Input has to be length 6
         """
         if len(absolute_angles) != 6:
-            raise Exception('Length of input needs to be 6')
-        absolute_angles = tuple(absolute_angles)
+            raise ValueError('Length of input needs to be 6.')
         try:
             self.feedback.JointMovJ(*absolute_angles)
-            move_time = max(abs(np.array(absolute_angles)) / self.speed_angular) +MOVE_TIME_BUFFER_S
-            print(f'Move time: {move_time}s ({self._speed_fraction})')
-            time.sleep(move_time)
         except (AttributeError, OSError):
             if self.verbose:
-                print("Not connected to arm!")
+                print("Not connected to arm.")
             self.updatePosition(orientation=absolute_angles[3:])
             return False
+        else:
+            move_time = max(abs(np.array(absolute_angles)) / self.speed_angular)
+            print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
+            time.sleep(move_time+MOVE_TIME_BUFFER_S)
         self.updatePosition(orientation=absolute_angles[3:])
         return True
 
@@ -346,27 +264,38 @@ class Dobot(RobotArm):
             self.dashboard.EnableRobot()
         except (AttributeError, OSError):
             if self.verbose:
-                print("Not connected to arm!")
+                print("Not connected to arm.")
         return
 
-    def setSpeed(self, speed:int):
+    def retractArm(self, target: Optional[tuple[float]] = None) -> bool:
+        return super().retractArm(target)
+    
+    def setSpeed(self, speed:float) -> tuple[bool, float]:
         """
         Setting the Global speed rate.
 
         Args:
             speed (int): rate value (value range: 1~100)
         """
+        speed_fraction = speed/self._speed_max
+        if speed_fraction == self._speed_fraction:
+            return False, self.speed
+        prevailing_speed = self.speed.copy()
         try:
-            speed = int(speed)
-            print(f'Speed: {speed}')
-            self.dashboard.SpeedFactor(speed)
-            self._speed_fraction = (speed/self._speed)
+            self.dashboard.SpeedFactor(int(max(1, speed_fraction*100)))
         except (AttributeError, OSError):
             if self.verbose:
-                print("Not connected to arm!")
-        return
+                print("Not connected to arm.")
+            return False, self.speed
+        self._speed_fraction = speed_fraction
+        return True, prevailing_speed
     
-    def toggleAttachment(self, on:bool, attachment_class:DobotAttachment = None):
+    def shutdown(self):
+        """Halt robot and close connections."""
+        self._freeze()
+        return super().shutdown()
+    
+    def toggleAttachment(self, on:bool, attachment_class:Optional[DobotAttachment] = None):
         """
         Add an attachment that interfaces with the Dobot's Digital Output (DO)
 
@@ -375,17 +304,17 @@ class Dobot(RobotArm):
             attachment_class (any, optional): attachment to load. Defaults to None.
         """
         if on: # Add attachment
-            print("Please secure tool attachment")
+            print("Please secure tool attachment.")
             self.attachment = attachment_class()
             self.attachment._set_dashboard(self.dashboard)
             self.setImplementOffset(self.attachment.implement_offset)
         else: # Remove attachment
-            print("Please remove tool attachment")
+            print("Please remove tool attachment.")
             self.attachment = None
             self.setImplementOffset((0,0,0))
         return
     
-    def toggleCalibration(self, on:bool, tip_length=21):
+    def toggleCalibration(self, on:bool, tip_length:float):
         """
         Enter into calibration mode, with a sharp point implement for alignment.
 
@@ -394,11 +323,11 @@ class Dobot(RobotArm):
             tip_length (int, optional): length of sharp point alignment implement. Defaults to 21.
         """
         if on: # Enter calibration mode
-            tip_length = int(input(f"Please swap to calibration tip and enter tip length in mm (Default: {tip_length}mm)") or str(tip_length))
+            input(f"Please swap to calibration tip.")
             self._temporary_tool_offset = self.implement_offset
             self.setImplementOffset((0,0,-tip_length))
         else: # Exit calibration mode
-            input("Please swap back to original tool")
+            input("Please swap back to original tool.")
             self.setImplementOffset(self._temporary_tool_offset)
             del self._temporary_tool_offset
         return

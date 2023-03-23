@@ -7,8 +7,10 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from __future__ import annotations
 import numpy as np
 import time
+from typing import Optional
 
 # Third party imports
 import serial # pip install pyserial
@@ -17,8 +19,6 @@ import serial # pip install pyserial
 from ...misc import Helper
 from ..move_utils import Mover
 print(f"Import: OK <{__name__}>")
-
-MAX_SPEED = 250 # [mm/s]
     
 class Gantry(Mover):
     """
@@ -39,77 +39,40 @@ class Gantry(Mover):
         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
         verbose (bool, optional): whether to print outputs. Defaults to False.
     """
-    def __init__(self, port:str, limits=[(0, 0, 0), (0, 0, 0)], safe_height=None, max_speed=MAX_SPEED, **kwargs):
+    def __init__(self, 
+        port: str, 
+        limits: tuple[tuple[float]] = ((0, 0, 0), (0, 0, 0)), 
+        safe_height: Optional[float] = None, 
+        max_speed: float = 250, # [mm/s]
+        **kwargs
+    ):
         super().__init__(**kwargs)
-        self._limits = [(0, 0, 0), (0, 0, 0)]
+        self._limits = ((0, 0, 0), (0, 0, 0))
         
-        self.device = None
         self.limits = limits
-        self._speed = max_speed
-        
-        self.port = ''
-        self._baudrate = None
-        self._timeout = None
-        
+        self._speed_max = max_speed
         if safe_height is not None:
-            self.setHeight('safe', safe_height)
+            self.setHeight(safe=safe_height)
+        
         self._connect(port)
         self.home()
         return
     
+    # Properties
     @property
     def limits(self):
         return np.array(self._limits)
     @limits.setter
     def limits(self, value:list):
         if len(value) != 2 or any([len(row)!=3 for row in value]):
-            raise Exception('Please input a list of [lower_xyz_limit, upper_xyz_limit]')
+            raise Exception('Please input a sequence of (lower_xyz_limit, upper_xyz_limit)')
         self._limits = ( tuple(value[0]), tuple(value[1]) )
         return
     
-    def _connect(self, port:str, baudrate:int, timeout=None):
-        """
-        Connect to machine control unit
+    @property
+    def port(self):
+        return self.connection_details.get('port', '')
 
-        Args:
-            port (str): com port address
-            baudrate (int): baudrate
-            timeout (int, optional): timeout in seconds. Defaults to None.
-            
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
-        """
-        self.port = port
-        self._baudrate = baudrate
-        self._timeout = timeout
-        device = None
-        try:
-            device = serial.Serial(port, baudrate, timeout=timeout)
-            print(f"Connection opened to {port}")
-        except Exception as e:
-            if self.verbose:
-                print(f"Could not connect to {port}")
-                print(e)
-        self.device = device
-        return self.device
-    
-    def _shutdown(self):
-        """
-        Close serial connection and shutdown
-        """
-        self.home()
-        self.disconnect()
-        return
-
-    def connect(self):
-        """
-        Reconnect to robot using existing port and baudrate
-        
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
-        """
-        return self._connect(self.port, self._baudrate, self._timeout)
-    
     def disconnect(self):
         """
         Disconnect serial connection to robot
@@ -122,22 +85,15 @@ class Gantry(Mover):
         except Exception as e:
             if self.verbose:
                 print(e)
-        self.device = None
+        self.setFlag(connected=False)
         return self.device
-
-    def isConnected(self):
-        """
-        Check whether machine control unit is connected
-
-        Returns:
-            bool: whether machine control unit is connected
-        """
-        if self.device is None:
-            print(f"{self.__class__} ({self.port}) not connected.")
-            return False
-        return True
     
-    def isFeasible(self, coordinates, transform=False, tool_offset=False, **kwargs):
+    def isFeasible(self, 
+        coordinates: tuple[float], 
+        transform_in: bool = False, 
+        tool_offset: bool = False, 
+        **kwargs
+    ) -> bool:
         """
         Checks if specified coordinates is a feasible position for robot to access
 
@@ -149,19 +105,17 @@ class Gantry(Mover):
         Returns:
             bool: whether coordinates is a feasible position
         """
-        if transform:
+        if transform_in:
             coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
         coordinates = np.array(coordinates)
         l_bound, u_bound = self.limits
         
         if all(np.greater_equal(coordinates, l_bound)) and all(np.less_equal(coordinates, u_bound)):
-            if self.deck.is_excluded(coordinates=self._transform_out(coordinates, tool_offset=True)):
-                return False
-            return True
+            return not self.deck.is_excluded(self._transform_out(coordinates, tool_offset=True))
         print(f"Range limits reached! {self.limits}")
         return False
 
-    def moveBy(self, vector, to_safe_height=False, **kwargs):
+    def moveBy(self, vector:tuple[float], **kwargs) -> bool:
         """
         Move robot by specified vector
 
@@ -172,10 +126,10 @@ class Gantry(Mover):
         Returns:
             bool: whether movement is successful
         """
-        return super().moveBy(vector=vector, to_safe_height=to_safe_height)
+        return super().moveBy(vector=vector)
     
     @Helper.safety_measures
-    def moveTo(self, coordinates, to_safe_height=True, jump_height=None, tool_offset=True, **kwargs):
+    def moveTo(self, coordinates, tool_offset=True, **kwargs) -> bool:
         """
         Move robot to specified coordinates and orientation
 
@@ -188,60 +142,136 @@ class Gantry(Mover):
         Returns:
             bool: whether movement is successful
         """
-        coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
-        coordinates = np.array(coordinates)
+        coordinates = np.array(self._transform_in(coordinates=coordinates, tool_offset=tool_offset))
         if not self.isFeasible(coordinates):
-            return
-        
-        # Retreat to safe height first
-        if jump_height is None:
-            jump_height = self.heights['safe']
-        if to_safe_height and self.coordinates[2] < jump_height:
-            try:
-                self.device.write(bytes("G90\n", 'utf-8'))
-                print(self.device.readline())
-                self.device.write(bytes(f"G0 Z{jump_height}\n", 'utf-8'))
-                print(self.device.readline())
-                self.device.write(bytes("G90\n", 'utf-8'))
-                print(self.device.readline())
-            except Exception as e:
-                if self.verbose:
-                    print(e)
-            self.coordinates = (*self.coordinates[0:2], jump_height)
-        
-        z_first = True if self.coordinates[2]<coordinates[2] else False
+            return False
+            
+        z_first = True if (self.coordinates[2] < coordinates[2]) else False
         positionXY = f'X{coordinates[0]}Y{coordinates[1]}'
         position_Z = f'Z{coordinates[2]}'
         moves = [position_Z, positionXY] if z_first else [positionXY, position_Z]
-        try:
-            self.device.write(bytes("G90\n", 'utf-8'))
-            print(self.device.readline())
-            for move in moves:
-                self.device.write(bytes(f"G0 {move}\n", 'utf-8'))
-                print(self.device.readline())
-            self.device.write(bytes("G90\n", 'utf-8'))
-            print(self.device.readline())
-        except Exception as e:
-            if self.verbose:
-                print(e)
+        
+        self._query("G90\n")
+        for move in moves:
+            self._query(f"G0 {move}\n")
+        self._query("G90\n")
+        
         distances = abs(self.coordinates - coordinates)
         times = distances / self.speed
         move_time = max(times[:2]) + times[2]
         time.sleep(move_time)
         self.updatePosition(coordinates=coordinates)
-        return
+        return True
     
-    def safeMoveTo(self, coordinates, jump_height=None, tool_offset=True, **kwargs):
+    # def safeMoveTo(self, coordinates, jump_height=None, tool_offset=True, **kwargs) -> bool:
+    #     """
+    #     Safe version of moveTo
+
+    #     Args:
+    #         coordinates (tuple): x,y,z coordinates to move to. Defaults to None.
+    #         jump_height (int, or float): height value to jump to. Defaults to None.
+    #         tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
+            
+    #     Returns:
+    #         bool: whether movement is successful
+    #     """
+    #     coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
+    #     coordinates = np.array(coordinates)
+    #     if not self.isFeasible(coordinates):
+    #         return False
+        
+    #     # Retreat to safe height first
+    #     if jump_height is None:
+    #         jump_height = self.heights['safe']
+    #     if self.coordinates[2] < jump_height:
+    #         try:
+    #             self._query("G90\n")
+    #             self._query(f"G0 Z{jump_height}\n")
+    #             self._query("G90\n")
+    #         except Exception as e:
+    #             if self.verbose:
+    #                 print(e)
+    #         self.coordinates = (*self.coordinates[0:2], jump_height)
+    
+    #     z_first = True if self.coordinates[2]<coordinates[2] else False
+    #     positionXY = f'X{coordinates[0]}Y{coordinates[1]}'
+    #     position_Z = f'Z{coordinates[2]}'
+    #     moves = [position_Z, positionXY] if z_first else [positionXY, position_Z]
+    #     try:
+    #         self._query("G90\n")
+    #         for move in moves:
+    #             self._query(f"G0 {move}\n")
+    #         self._query("G90\n")
+    #     except Exception as e:
+    #         if self.verbose:
+    #             print(e)
+    #     distances = abs(self.coordinates - coordinates)
+    #     times = distances / self.speed
+    #     move_time = max(times[:2]) + times[2]
+    #     time.sleep(move_time)
+    #     self.updatePosition(coordinates=coordinates)
+    #     return True
+    
+    def reset(self):
+        return super().reset()
+    
+    def setSpeed(self, speed: int):
+        # NOTE: waiting for PR #48
+        return super().setSpeed(speed)
+    
+    def shutdown(self):
         """
-        Safe version of moveTo
+        Close serial connection and shutdown
+        """
+        # self.home()
+        return super().shutdown()
+    
+    # Protected method(s)
+    def _connect(self, port:str, baudrate:int, timeout:int = None):
+        """
+        Connect to machine control unit
 
         Args:
-            coordinates (tuple): x,y,z coordinates to move to. Defaults to None.
-            jump_height (int, or float): height value to jump to. Defaults to None.
-            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
+            port (str): com port address
+            baudrate (int): baudrate
+            timeout (int, optional): timeout in seconds. Defaults to None.
             
         Returns:
-            bool: whether movement is successful
+            serial.Serial: serial connection to machine control unit if connection is successful, else None
         """
-        return self.moveTo(coordinates, to_safe_height=True, jump_height=jump_height, tool_offset=tool_offset, **kwargs)
-    
+        self.connection_details = {
+            'port': port,
+            'baudrate': baudrate,
+            'timeout': timeout
+        }
+        device = None
+        try:
+            device = serial.Serial(port, baudrate, timeout=timeout)
+        except Exception as e:
+            print(f"Could not connect to {port}")
+            if self.verbose:
+                print(e)
+        else:
+            print(f"Connection opened to {port}")
+        self.device = device
+        return
+
+    def _query(self, message:str) -> str:
+        response = ''
+        self._write(message)
+        try:
+            response = self.device.readline()
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        else:
+            print(response)
+        return response
+
+    def _write(self, message:str):
+        try:
+            self.device.write(bytes(message, 'utf-8'))
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        return
