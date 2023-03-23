@@ -7,37 +7,38 @@ Notes / actionables:
 -
 """
 # Standard library imports
-from abc import ABC, abstractmethod
+from __future__ import annotations
+import numpy as np
 import time
+from typing import Callable, Optional
 
 # Local application imports
 from ....misc import Helper
+from ..substrate_utils import Gripper
 print(f"Import: OK <{__name__}>")
 
-class DobotGripper(ABC):
+class DobotGripper(Gripper):
     """
     Dobot first part implement attachments
 
     Args:
         dashboard (any): Dashboard object
     """
-    implement_offset = (0,0,0)
-    def __init__(self, dashboard):
+    _implement_offset: tuple[float] = (0,0,0)
+    def __init__(self, dashboard:Callable):
         self.dashboard = None
         self._set_dashboard(dashboard=dashboard)
         return
     
-    def _set_dashboard(self, dashboard) -> None:
+    # Properties
+    @property
+    def implement_offset(self) -> np.ndarray:
+        return np.array(self._implement_offset)
+    
+    #Protected method(s)
+    def _set_dashboard(self, dashboard:Callable):
         self.dashboard = dashboard
         return
-    
-    @abstractmethod
-    def drop(self) -> bool:
-        pass
-    
-    @abstractmethod
-    def grab(self) -> bool:
-        pass
     
     
 class TwoJawGrip(DobotGripper):
@@ -47,8 +48,8 @@ class TwoJawGrip(DobotGripper):
     Args:
         dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
     """
-    implement_offset = (0,0,-95)
-    def __init__(self, dashboard=None) -> None:
+    _implement_offset = (0,0,-95)
+    def __init__(self, dashboard:Callable):
         super().__init__(dashboard=dashboard)
         return
 
@@ -63,7 +64,7 @@ class TwoJawGrip(DobotGripper):
             self.dashboard.DOExecute(1,1)
         except (AttributeError, OSError):
             print('Tried to drop...')
-            print("Not connected to arm!")
+            print("Not connected to arm.")
             return False
         return True
     
@@ -78,7 +79,7 @@ class TwoJawGrip(DobotGripper):
             self.dashboard.DOExecute(1,0)
         except (AttributeError, OSError):
             print('Tried to grab...')
-            print("Not connected to arm!")
+            print("Not connected to arm.")
             return False
         return True
 
@@ -90,8 +91,8 @@ class VacuumGrip(DobotGripper):
     Args:
         dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
     """
-    implement_offset = (0,0,-60)
-    def __init__(self, dashboard=None) -> None:
+    _implement_offset = (0,0,-60)
+    def __init__(self, dashboard:Callable):
         super().__init__(dashboard=dashboard)
         return
 
@@ -115,7 +116,7 @@ class VacuumGrip(DobotGripper):
         print('Tried to grab...')
         return self.pull(3)
     
-    def pull(self, duration=None) -> bool:
+    def pull(self, duration:Optional[int] = None) -> bool:
         """
         Inhale air
 
@@ -124,17 +125,18 @@ class VacuumGrip(DobotGripper):
         """
         try:
             self.dashboard.DOExecute(1,1)
+        except (AttributeError, OSError):
+            print('Tried to pull...')
+            print("Not connected to arm.")
+            return False
+        else:
             if duration is not None:
                 time.sleep(duration)
                 self.dashboard.DOExecute(1,0)
                 time.sleep(1)
-        except (AttributeError, OSError):
-            print('Tried to pull...')
-            print("Not connected to arm!")
-            return False
         return True
     
-    def push(self, duration=None) -> bool:
+    def push(self, duration:Optional[int] = None) -> bool:
         """
         Expel air
 
@@ -146,14 +148,15 @@ class VacuumGrip(DobotGripper):
         """
         try:
             self.dashboard.DOExecute(2,1)
+        except (AttributeError, OSError):
+            print('Tried to push...')
+            print("Not connected to arm.")
+            return False
+        else:
             if duration is not None:
                 time.sleep(duration)
                 self.dashboard.DOExecute(2,0)
                 time.sleep(1)
-        except (AttributeError, OSError):
-            print('Tried to push...')
-            print("Not connected to arm!")
-            return False
         return True
     
     def stop(self) -> bool:
@@ -169,7 +172,7 @@ class VacuumGrip(DobotGripper):
             time.sleep(1)
         except (AttributeError, OSError):
             print('Tried to stop...')
-            print("Not connected to arm!")
+            print("Not connected to arm.")
             return False
         return True
 
