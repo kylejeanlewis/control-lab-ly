@@ -7,6 +7,7 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from __future__ import annotations
 from abc import ABC, abstractmethod
 
 # Third party imports
@@ -15,20 +16,16 @@ from abc import ABC, abstractmethod
 print(f"Import: OK <{__name__}>")
 
 class Maker(ABC):
-    _default_flags = {}
+    _default_flags: dict[str, bool] = {}
     def __init__(self, **kwargs):
         self.connection_details = {}
         self.device = None
         self.flags = self._default_flags.copy()
-        self.verbose = kwargs.get('verbose', False)
+        self.verbose = kwargs.pop('verbose', False)
         return
     
     def __del__(self):
         self.shutdown()
-    
-    @abstractmethod
-    def disconnect(self):
-        ...
         
     @abstractmethod
     def shutdown(self):
@@ -51,6 +48,15 @@ class Maker(ABC):
             `serial.Serial`: serial connection to machine control unit if connection is successful, else `None`
         """
         return self._connect(**self.connection_details)
+    
+    def disconnect(self):
+        try:
+            self.device.close()
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        self.setFlag(connected=False)
+        return
     
     def isBusy(self) -> bool:
         """
