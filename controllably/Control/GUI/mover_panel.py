@@ -74,7 +74,7 @@ class MoverPanel(Panel):
         self.flags['update_position'] = True
         return
        
-    def getLayout(self, title_font_level=1, **kwargs) -> sg.Column:
+    def getLayout(self, title_font_level:int = 1, **kwargs) -> sg.Column:
         """
         Get layout object
 

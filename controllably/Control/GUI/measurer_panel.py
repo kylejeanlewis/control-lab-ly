@@ -52,7 +52,7 @@ class MeasurerPanel(Panel):
         self.current_program = ''
         return
     
-    def getLayout(self, title_font_level=0, **kwargs) -> sg.Column:
+    def getLayout(self, title_font_level:int = 0, **kwargs) -> sg.Column:
         """
         Get layout object
 

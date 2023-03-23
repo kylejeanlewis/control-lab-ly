@@ -58,7 +58,7 @@ class ViewerPanel(Panel):
         self.viewer.close()
         return super().close()
         
-    def getLayout(self, title_font_level=1, **kwargs) -> sg.Column:
+    def getLayout(self, title_font_level:int = 1, **kwargs) -> sg.Column:
         """
         Get layout object
 
