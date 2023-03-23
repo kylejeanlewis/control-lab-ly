@@ -36,8 +36,7 @@ class ViewerPanel(Panel):
         font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
         group (str, optional): name of group. Defaults to 'viewer'.
     """
-    def __init__(
-        self, 
+    def __init__(self, 
         viewer:Viewer, 
         name='VIEW', 
         group='viewer', 
