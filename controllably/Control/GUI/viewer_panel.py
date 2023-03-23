@@ -19,9 +19,9 @@ from .gui_utils import Panel
 print(f"Import: OK <{__name__}>")
 
 class Viewer(Protocol):
-    def close(self, *args, **kwargs):
-        ...
     def getImage(self, *args, **kwargs):
+        ...
+    def shutdown(self, *args, **kwargs):
         ...
 
 class ViewerPanel(Panel):
@@ -55,7 +55,7 @@ class ViewerPanel(Panel):
         """
         Close window
         """
-        self.viewer.close()
+        self.viewer.shutdown()
         return super().close()
         
     def getLayout(self, title_font_level:int = 1, **kwargs) -> sg.Column:
