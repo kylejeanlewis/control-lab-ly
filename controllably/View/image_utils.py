@@ -7,10 +7,12 @@ Notes / actionables:
 - 
 """
 # Standard library imports
+from __future__ import annotations
 import numpy as np
+from typing import Optional
 
 # Third party imports
-import cv2 # pip install opencv-python
+import cv2              # pip install opencv-python
 
 # Local application imports
 print(f"Import: OK <{__name__}>")
@@ -22,11 +24,11 @@ class Image:
     Args:
         frame (array): image frame
     """
-    def __init__(self, frame):
+    def __init__(self, frame:np.ndarray):
         self.frame = frame
         pass
     
-    def addText(self, text:str, position, inplace=False):
+    def addText(self, text:str, position:tuple[int], inplace:bool = False) -> Optional[Image]:
         """
         Add text to the image
 
@@ -39,13 +41,13 @@ class Image:
             Image, or None: Image object, or None (if inplace=True)
         """
         frame = self.frame
-        cv2.putText(frame, text, position, cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255), 1)
+        frame = cv2.putText(frame, text, position, cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255), 1)
         if inplace:
             self.frame = frame
             return
         return Image(frame)
     
-    def annotate(self, index:int, dimensions:tuple, inplace=False):
+    def annotate(self, index:int, dimensions:tuple[int], inplace:bool = False) -> Optional[Image]:
         """
         Annotate the image to label identified targets
 
@@ -67,7 +69,7 @@ class Image:
             return
         return Image(frame)
     
-    def blur(self, blur_kernel=3, inplace=False):
+    def blur(self, blur_kernel:int = 3, inplace:bool = False) -> Optional[Image]:
         """
         Blur the image
 
@@ -84,7 +86,7 @@ class Image:
             return
         return Image(frame)
     
-    def convertToRGB(self, inplace=False):
+    def convertToRGB(self, inplace:bool = False) -> Optional[Image]:
         """
         Turn image to RGB
 
@@ -100,19 +102,19 @@ class Image:
             return
         return Image(frame)
     
-    def convolve(self, inplace=False):
-        """
-        Perform convolution on image
+    # def convolve(self, inplace:bool = False) -> Optional[Image]:
+    #     """
+    #     Perform convolution on image
 
-        Args:
-            inplace (bool, optional): whether to perform action in place. Defaults to False.
+    #     Args:
+    #         inplace (bool, optional): whether to perform action in place. Defaults to False.
 
-        Returns:
-            Image, or None: Image object, or None (if inplace=True)
-        """
-        return
+    #     Returns:
+    #         Image, or None: Image object, or None (if inplace=True)
+    #     """
+    #     return
     
-    def crosshair(self, inplace=False):
+    def crosshair(self, inplace:bool = False) -> Optional[Image]:
         """
         Add crosshair in the middle of image
 
@@ -132,7 +134,7 @@ class Image:
             return
         return Image(frame)
     
-    def encode(self, extension='.png'):
+    def encode(self, extension:str = '.png'):
         """
         Encode the frame into bytes
 
@@ -144,7 +146,7 @@ class Image:
         """
         return cv2.imencode(extension, self.frame)[1].tobytes()
     
-    def grayscale(self, inplace=False):
+    def grayscale(self, inplace:bool = False) -> Optional[Image]:
         """
         Turn image to grayscale
 
@@ -160,7 +162,7 @@ class Image:
             return
         return Image(frame)
     
-    def process(self, alpha, beta, blur_kernel=3, inplace=False):
+    def process(self, alpha:float, beta:float, blur_kernel:int = 3, inplace:bool = False) -> Optional[Image]:
         """
         Process the image
 
@@ -182,7 +184,7 @@ class Image:
             return
         return Image(frame)
     
-    def removeNoise(self, open_iter=0, close_iter=0, inplace=False):
+    def removeNoise(self, open_iter:int = 0, close_iter:int = 0, inplace:bool = False) -> Optional[Image]:
         """
         Remove noise from image
 
@@ -204,7 +206,7 @@ class Image:
             return
         return Image(frame)
     
-    def resize(self, size, inplace=False):
+    def resize(self, size:tuple[int], inplace:bool = False) -> Optional[Image]:
         """
         Resize the image
 
@@ -221,7 +223,7 @@ class Image:
             return
         return Image(frame)
     
-    def rotate(self, angle:int, inplace=False):
+    def rotate(self, angle:int, inplace:bool = False) -> Optional[Image]:
         """
         Rotate a 2D array of multiples of 90 degrees, clockwise
 
@@ -245,7 +247,7 @@ class Image:
             return
         return Image(frame)
 
-    def save(self, filename):
+    def save(self, filename:str):
         """
         Save image to file
 
