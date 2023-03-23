@@ -27,7 +27,7 @@ class Spinner(Maker):
 
     Args:
         port (str): com port address
-        order (int, optional): channel order. Defaults to 0.
+        channel (int, optional): channel. Defaults to 0.
         position (tuple, optional): x,y,z position of spinner. Defaults to (0,0,0).
         verbose (bool, optional): whether to print outputs. Defaults to False.
     """
@@ -39,12 +39,12 @@ class Spinner(Maker):
     
     def __init__(self, 
         port: str, 
-        order: int = 0, 
+        channel: int = 0, 
         position: tuple[float] = (0,0,0), 
         **kwargs
     ):
         super().__init__(**kwargs)
-        self.order = order
+        self.channel = channel
         self.position = tuple(position)
         self.speed = 0
         
@@ -134,7 +134,7 @@ class Spinner(Maker):
         """
         Run diagnostic on tool
         """
-        thread = Thread(target=self.execute, name=f'maker_diag_{self.order}')
+        thread = Thread(target=self.execute, name=f'maker_diag_{self.channel}')
         thread.start()
         time.sleep(1)
         return
