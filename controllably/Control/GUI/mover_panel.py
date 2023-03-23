@@ -55,8 +55,7 @@ class MoverPanel(Panel):
         group (str, optional): name of group. Defaults to 'mover'.
         axes (list, optional): list of degrees of freedom/axes. Defaults to 'XYZabc'.
     """
-    def __init__(
-        self, 
+    def __init__(self, 
         mover: Mover, 
         name: str = 'MOVE', 
         group: str = 'mover', 
@@ -74,12 +73,6 @@ class MoverPanel(Panel):
         
         self.flags['update_position'] = True
         return
-    
-    def close(self):
-        """
-        Close window
-        """
-        return super().close()
        
     def getLayout(self, title_font_level=1, **kwargs) -> sg.Column:
         """

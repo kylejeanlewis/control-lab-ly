@@ -41,8 +41,7 @@ class MeasurerPanel(Panel):
         font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
         group (str, optional): name of group. Defaults to 'measurer'.
     """
-    def __init__(
-        self, 
+    def __init__(self, 
         measurer: Measurer, 
         name: str = 'MEASURE', 
         group: str = 'measurer', 
@@ -52,12 +51,6 @@ class MeasurerPanel(Panel):
         self.measurer = measurer
         self.current_program = ''
         return
-    
-    def close(self):
-        """
-        Close window
-        """
-        return super().close()
     
     def getLayout(self, title_font_level=0, **kwargs) -> sg.Column:
         """

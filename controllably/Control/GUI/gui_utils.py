@@ -28,8 +28,8 @@ class Panel(ABC):
     font_sizes: list[int]
     theme: str
     typeface: str
-    def __init__(
-        self, 
+    _default_flags: dict[str, bool] = {}
+    def __init__(self, 
         name: str = '', 
         group: Optional[str] = None,
         font_sizes: list[int] = list(FONT_SIZES),
@@ -60,15 +60,6 @@ class Panel(ABC):
     
     def __del__(self):
         self.close()
-    
-    @abstractmethod
-    def close(self):
-        """
-        Close window
-        """
-        if self.window is not None:
-            self.window.close()
-        return
     
     @abstractmethod
     def getLayout(self, title:str = 'Panel', title_font_level:int = 0, **kwargs) -> sg.Column:
@@ -268,6 +259,16 @@ class Panel(ABC):
         sg.theme(cls.theme)
         sg.set_options(font=font, element_padding=element_padding, **kwargs)
         return
+    
+    def close(self):
+        """
+        Close window
+        """
+        try:
+            self.window.close()
+        except AttributeError:
+            pass
+        return
 
     def getWindow(self, title:str = 'Application', **kwargs) -> sg.Window:
         """
@@ -302,6 +303,20 @@ class Panel(ABC):
             self._loop_gui()
         finally:
             self.close()
+        return
+    
+    def setFlag(self, **kwargs):
+        """
+        Set a flag's truth value
+
+        Args:
+            `name` (str): label
+            `value` (bool): flag value
+        """
+        if not all([type(v)==bool for v in kwargs.values()]):
+            raise ValueError("Ensure all assigned flag values are boolean.")
+        for key, value in kwargs.items():
+            self.flags[key] = value
         return
 
     # Protected method(s)
@@ -346,8 +361,7 @@ class CompoundPanel(Panel):
         font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
         group (str, optional): name of group. Defaults to None.
     """
-    def __init__(
-        self, 
+    def __init__(self, 
         ensemble: dict[str, Panel],
         group: Optional[str] = None,
         **kwargs
