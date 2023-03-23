@@ -11,7 +11,6 @@ from __future__ import annotations
 import math
 import numpy as np
 import time
-from typing import Optional
 
 # Local application imports
 from .dobot_utils import Dobot
