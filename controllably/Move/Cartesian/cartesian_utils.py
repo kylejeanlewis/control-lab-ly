@@ -253,6 +253,7 @@ class Gantry(Mover):
                 print(e)
         else:
             print(f"Connection opened to {port}")
+            self.setFlag(connected=True)
         self.device = device
         return
 

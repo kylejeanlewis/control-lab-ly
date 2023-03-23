@@ -178,6 +178,7 @@ class Mover(ABC):
         """Connect to machine control unit"""
         self.connection_details = {}
         self.device = None
+        self.setFlag(connected=True)
         return
  
     # Properties

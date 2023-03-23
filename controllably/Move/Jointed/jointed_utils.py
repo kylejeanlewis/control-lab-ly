@@ -38,7 +38,7 @@ class RobotArm(Mover):
         
         self.setFlag(retract=retract)
         if safe_height is not None:
-            self.setHeight('safe', safe_height)
+            self.setHeight(safe=safe_height)
         # else:
         #     self.setHeight('safe', self.home_coordinates[2])
         return
