@@ -7,12 +7,14 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from __future__ import annotations
 from datetime import datetime
 import json
 import os
 import pandas as pd
 import pkgutil
 import time
+from typing import Callable, Optional
 import uuid
 
 # Third party imports
@@ -24,9 +26,11 @@ from . import decorators
 print(f"Import: OK <{__name__}>")
 
 safety_countdown = 3
+"""Safety countdown before executing move, in seconds"""
 safety_mode = None
+"""Safety level (`'high'`, `'low'`, `None`)"""
 
-def create_folder(parent_folder:str = None, child_folder:str = None):
+def create_folder(parent_folder:Optional[str] = None, child_folder:Optional[str] = None) -> str:
     """
     Check and create folder if it does not exist
 
@@ -42,7 +46,7 @@ def create_folder(parent_folder:str = None, child_folder:str = None):
         os.makedirs(folder)
     return main_folder
     
-def get_method_names(obj):
+def get_method_names(obj:Callable) -> list[str]:
     """
     Get the names of the methods in object (class/instance)
 
@@ -62,7 +66,7 @@ def get_method_names(obj):
             method_list.append(attribute)
     return method_list
 
-def get_node():
+def get_node() -> str:
     """
     Display the machine's unique identifier
 
@@ -71,7 +75,7 @@ def get_node():
     """
     return str(uuid.getnode())
 
-def get_ports():
+def get_ports() -> list[str]:
     """
     Get available ports
 
@@ -88,7 +92,7 @@ def get_ports():
         return ['']
     return com_ports
 
-def is_overrun(start_time:float, timeout:float):
+def is_overrun(start_time:float, timeout:float) -> bool:
     """
     Check whether the process has timed out
 
@@ -103,7 +107,7 @@ def is_overrun(start_time:float, timeout:float):
         return True
     return False
 
-def pretty_print_duration(total_time:float):
+def pretty_print_duration(total_time:float) -> str:
     """
     Display time duration (s) as HH:MM:SS text
 
@@ -117,7 +121,7 @@ def pretty_print_duration(total_time:float):
     h, m = divmod(m, 60)
     return f'{int(h)}hr {int(m)}min {int(s):02}sec'
 
-def read_json(json_file:str, package:str = None):
+def read_json(json_file:str, package:Optional[str] = None) -> dict:
     """
     Read JSON file
 
@@ -135,7 +139,7 @@ def read_json(json_file:str, package:str = None):
             jsn = file.read()
     return json.loads(jsn)
 
-def read_yaml(yaml_file:str, package:str = None):
+def read_yaml(yaml_file:str, package:Optional[str] = None) -> dict:
     """
     Read YAML file
 
@@ -156,7 +160,7 @@ def read_yaml(yaml_file:str, package:str = None):
 def safety_measures(func):
     return decorators.safety_measures(mode=safety_mode, countdown=safety_countdown)(func=func)
 
-def zip_inputs(primary_keyword:str, **kwargs):
+def zip_inputs(primary_keyword:str, **kwargs) -> dict:
     """
     Checks and zips multiple keyword arguments of lists into dictionary
 
@@ -186,7 +190,7 @@ def zip_inputs(primary_keyword:str, **kwargs):
 
 
 ### NOTE: DEPRECATE
-def display_ports():
+def display_ports() -> list[str]:
     """
     Get available ports
 

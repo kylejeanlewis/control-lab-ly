@@ -9,6 +9,7 @@ Notes / actionables:
 # Standard library imports
 import os
 import time
+from typing import Optional
 
 # Third party imports
 
@@ -26,7 +27,7 @@ class Logger:
         pass
     
     # Instance methods
-    def log_now(self, message:str, group=None):
+    def log_now(self, message:str, group:Optional[str] = None) -> str:
         """
         Add log with timestamp
 
@@ -53,7 +54,7 @@ class Logger:
         self.logs = {}
         return
 
-    def save_logs(self, groups=[], folder=''):
+    def save_logs(self, groups:list = [], folder:str = ''):
         """
         Write logs into txt files
 

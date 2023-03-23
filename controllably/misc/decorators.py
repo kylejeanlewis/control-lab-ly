@@ -9,20 +9,21 @@ Notes / actionables:
 # Standard library imports
 from collections import namedtuple
 import time
+from typing import Callable, Optional
 
 # Third party imports
 
 # Local application imports
 print(f"Import: OK <{__name__}>")
 
-def named_tuple_from_dict(func):
+def named_tuple_from_dict(func:Callable) -> Callable:
     """
     Wrapper for creating named tuple from dictionary
 
     Args:
         func (Callable): function to be wrapped
     """
-    def wrapper(*args, **kwargs):
+    def wrapper(*args, **kwargs) -> tuple:
         setup_dict = func(*args, **kwargs)
         field_list = []
         object_list = []
@@ -35,7 +36,7 @@ def named_tuple_from_dict(func):
         return Setup(*object_list)
     return wrapper
 
-def safety_measures(mode=None, countdown=3):
+def safety_measures(mode:Optional[str] = None, countdown:int = 3) -> Callable:
     """
     Wrapper for creating safe move functions
 
@@ -43,8 +44,8 @@ def safety_measures(mode=None, countdown=3):
         func (Callable): function to be wrapped
         mode (str, optional): mode for implementing safety measure. Defaults to None.
     """
-    def inner(func):
-        def wrapper(*args, **kwargs):
+    def inner(func:Callable):
+        def wrapper(*args, **kwargs) -> Callable:
             str_method = repr(func).split(' ')[1]
             str_args = ','.join([repr(a) for a in args[1:]])
             str_kwargs = ','.join([f'{k}={v}' for k,v in kwargs.items()])

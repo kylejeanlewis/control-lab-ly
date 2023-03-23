@@ -60,7 +60,7 @@ class Gantry(Mover):
     
     # Properties
     @property
-    def limits(self):
+    def limits(self) -> np.ndarray:
         return np.array(self._limits)
     @limits.setter
     def limits(self, value:list):
@@ -70,7 +70,7 @@ class Gantry(Mover):
         return
     
     @property
-    def port(self):
+    def port(self) -> str:
         return self.connection_details.get('port', '')
 
     def disconnect(self):

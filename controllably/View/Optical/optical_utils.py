@@ -36,7 +36,7 @@ class Optical(Camera):
     
     # Properties
     @property
-    def cam_index(self):
+    def cam_index(self) -> str:
         return self.connection_details.get('cam_index', '')
     
     def setResolution(self, size:tuple[int] = (10000,10000)):

@@ -9,7 +9,9 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from __future__ import annotations
 import numpy as np
+from typing import Optional, Union
 
 # Local application imports
 from . import helper
@@ -24,28 +26,34 @@ class Well:
         name (str): name of well
         details (dict): details of well
     """
-    def __init__(self, labware_info:dict, name:str, details:dict):
+    def __init__(self, 
+        labware_info: dict, 
+        name: str, 
+        details: dict[str, Union[float, tuple[float]]]
+    ):
         self.details = details  # depth,totalLiquidVolume,shape,diameter,x,y,z
-        self.labware_info = labware_info
         self.name = name
-        self.reference_point = self.labware_info.get('reference_point', (0,0,0))
+        self.reference_point = labware_info.get('reference_point', (0,0,0))
+        
+        self._labware_name = labware_info.get('name','')
+        self._labware_slot = labware_info.get('slot','')
         pass
     
     def __repr__(self) -> str:
-        return f"{self.name} in {self.labware_info.get('name','')} at Slot {self.labware_info.get('slot','')}" 
+        return f"{self.name} in {self._labware_name} at Slot {self._labware_slot}" 
     
     @property
-    def center(self):
+    def center(self) -> np.ndarray:
         """
         Center of well bottom
 
         Returns:
             tuple: coordinates for center of well bottom
         """
-        return tuple(map(sum, zip(self.reference_point, self.offset)))
+        return np.array(self.reference_point) + self.offset
     
     @property
-    def depth(self):
+    def depth(self) -> float:
         """
         Depth of well
 
@@ -55,7 +63,7 @@ class Well:
         return self.details.get('depth', 0)
     
     @property
-    def offset(self):
+    def offset(self) -> np.ndarray:
         """
         Well offset from labware reference point
 
@@ -65,10 +73,10 @@ class Well:
         x = self.details.get('x', 0)
         y = self.details.get('y', 0)
         z = self.details.get('z', 0)
-        return x,y,z
+        return np.array((x,y,z))
     
     @property
-    def bottom(self):
+    def bottom(self) -> np.ndarray:
         """
         Bottom of well
 
@@ -78,7 +86,7 @@ class Well:
         return self.center
     
     @property
-    def middle(self):
+    def middle(self) -> np.ndarray:
         """
         Middle of well
 
@@ -86,10 +94,10 @@ class Well:
             tuple: coordinates for middle of well
         """
         depth = self.details.get('depth', 0)
-        return tuple(map(sum, zip(self.center, (0,0,depth/2))))
+        return self.center + np.array((0,0,depth/2))
     
     @property
-    def top(self):
+    def top(self) -> np.ndarray:
         """
         Top of well
 
@@ -97,9 +105,9 @@ class Well:
             tuple: coordinates for top of well
         """
         depth = self.details.get('depth', 0)
-        return tuple(map(sum, zip(self.center, (0,0,depth))))
+        return self.center + np.array((0,0,depth))
     
-    def from_bottom(self, offset:tuple):
+    def from_bottom(self, offset:tuple[float]) -> np.ndarray:
         """
         Offset from bottom of well
 
@@ -109,9 +117,9 @@ class Well:
         Returns:
             tuple: bottom of well with offset
         """
-        return tuple(map(sum, zip(self.bottom, offset)))
+        return self.bottom + np.array(offset)
     
-    def from_middle(self, offset:tuple):
+    def from_middle(self, offset:tuple[float]) -> np.ndarray:
         """
         Offset from middle of well
 
@@ -121,9 +129,9 @@ class Well:
         Returns:
             tuple: middle of well with offset
         """
-        return tuple(map(sum, zip(self.middle, offset)))
+        return self.middle + np.array(offset)
     
-    def from_top(self, offset:tuple):
+    def from_top(self, offset:tuple[float]) -> np.ndarray:
         """
         Offset from top of well
 
@@ -133,7 +141,7 @@ class Well:
         Returns:
             tuple: top of well with offset
         """
-        return tuple(map(sum, zip(self.top, offset)))
+        return self.top + np.array(offset)
 
 
 class Labware:
@@ -146,10 +154,15 @@ class Labware:
         labware_file (str): JSON filepath for labware
         package (str, optional): name of package to look in. Defaults to None.
     """
-    def __init__(self, slot:str, bottom_left_coordinates:tuple, labware_file:str, package:str = None):
+    def __init__(self, 
+        slot: str, 
+        bottom_left_coordinates: tuple[float], 
+        labware_file: str, 
+        package: Optional[str] = None
+    ):
         self.details = helper.read_json(json_file=labware_file, package=package)
         self.name = self.details.get('metadata',{}).get('displayName', '')
-        self.reference_point = bottom_left_coordinates
+        self.reference_point = np.array(bottom_left_coordinates)
         self.slot = slot
         self._wells = {}
         self.load_wells()
@@ -159,7 +172,7 @@ class Labware:
         return f"{self.name} at Slot {self.slot}" 
     
     @property
-    def info(self):
+    def info(self) -> dict[str, Union[str, tuple[float]]]:
         """
         Summary of labware info
 
@@ -169,7 +182,7 @@ class Labware:
         return {'name':self.name, 'reference_point':self.reference_point, 'slot':self.slot}
     
     @property
-    def center(self):
+    def center(self) -> np.ndarray:
         """
         Center of labware
 
@@ -180,10 +193,10 @@ class Labware:
         x = dimensions.get('xDimension', 0)
         y = dimensions.get('yDimension', 0)
         z = dimensions.get('zDimension', 0)
-        return tuple(map(sum, zip(self.reference_point, (x/2,y/2,z))))
+        return self.reference_point, np.array((x/2,y/2,z))
     
     @property
-    def columns(self):
+    def columns(self) -> dict[str, int]:
         """
         Labware columns
 
@@ -194,7 +207,7 @@ class Labware:
         return {str(c+1): columns_list[c] for c in range(len(columns_list))}
     
     @property
-    def columns_list(self):
+    def columns_list(self) -> list[list[int]]:
         """
         Labware columns as list
 
@@ -204,7 +217,7 @@ class Labware:
         return self.details.get('ordering', [[]])
     
     @property
-    def dimensions(self):
+    def dimensions(self) -> np.ndarray:
         """
         Size of labware
 
@@ -215,10 +228,10 @@ class Labware:
         x = dimensions.get('xDimension', 0)
         y = dimensions.get('yDimension', 0)
         z = dimensions.get('zDimension', 0)
-        return x,y,z
+        return np.array((x,y,z))
     
     @property
-    def rows(self):
+    def rows(self) -> dict[str, int]:
         """
         Labware rows
 
@@ -230,7 +243,7 @@ class Labware:
         return {w[0]: rows_list[r] for r,w in enumerate(first_column)}
     
     @property
-    def rows_list(self):
+    def rows_list(self) -> list[list[int]]:
         """
         Labware rows as list
 
@@ -241,7 +254,7 @@ class Labware:
         return [list(z) for z in zip(*columns)]
        
     @property
-    def wells(self):
+    def wells(self) -> dict[str, Well]:
         """
         Labware wells
 
@@ -251,7 +264,7 @@ class Labware:
         return self._wells
     
     @property
-    def wells_list(self):
+    def wells_list(self) -> list[Well]:
         """
         Labware wells as list
 
@@ -260,7 +273,10 @@ class Labware:
         """
         return [self._wells[well] for well in self.details.get('wells',{})]
 
-    def get_well(self, name:str):
+    def at(self, name:str) -> Well:
+        return self.get_well(name=name)
+    
+    def get_well(self, name:str) -> Well:
         """
         Get well using name
 
@@ -290,7 +306,7 @@ class Deck:
         layout_file (str, optional): JSON filepath of deck layout. Defaults to None.
         package (str, optional): name of package to look in. Defaults to None.
     """
-    def __init__(self, layout_file:str = None, package:str = None):
+    def __init__(self, layout_file:Optional[str] = None, package:Optional[str] = None):
         self.details = {}
         self._slots = {}
         self.names = {}
@@ -304,7 +320,7 @@ class Deck:
         return f"Deck with labwares:{labware_string}" 
     
     @property
-    def slots(self):
+    def slots(self) -> dict[str, Labware]:
         """
         Loaded Labware in slots
 
@@ -313,7 +329,7 @@ class Deck:
         """
         return self._slots
     
-    def at(self, slot):
+    def at(self, slot:Union[int, str]) -> Optional[Labware]:
         """
         Alias for Deck.get_slot, with mixed input
 
@@ -330,7 +346,7 @@ class Deck:
         print("Input a valid index or name of Labware in slot.")
         return
     
-    def get_slot(self, index:int = None, name:str = None):
+    def get_slot(self, index:Optional[int] = None, name:Optional[str] = None) -> Optional[Labware]:
         """
         Get labware in slot using index or name
 
@@ -350,7 +366,7 @@ class Deck:
             index = self.names.get(name)
         return self._slots.get(str(index))
     
-    def is_excluded(self, coordinates:tuple):
+    def is_excluded(self, coordinates:tuple[float]) -> bool:
         """
         Determine whether the coordinates are in an excluded region.
 
@@ -374,7 +390,13 @@ class Deck:
                 return True
         return False
     
-    def load_labware(self, slot:int, labware_file:str, package:str = None, name:str = None, exclusion_height:float = None):
+    def load_labware(self, 
+        slot: int, 
+        labware_file: str, 
+        package: Optional[str] = None, 
+        name: Optional[str] = None, 
+        exclusion_height: Optional[float] = None
+    ):
         """
         Load Labware into slot
 
@@ -386,7 +408,7 @@ class Deck:
         """
         if name:
             self.names[name] = slot
-        bottom_left_coordinates = tuple(self.details.get('reference_points',{}).get(str(slot), [0,0,0]))
+        bottom_left_coordinates = tuple( self.details.get('reference_points',{}).get(str(slot),(0,0,0)) )
         labware = Labware(slot=str(slot), bottom_left_coordinates=bottom_left_coordinates, labware_file=labware_file, package=package)
         self._slots[str(slot)] = labware
         if exclusion_height is not None:
@@ -394,7 +416,13 @@ class Deck:
             self.exclusion_zones[str(slot)] = (bottom_left_coordinates, top_right_coordinates)
         return
     
-    def load_layout(self, layout_file:str = None, layout_dict:dict = None, package:str = None, labware_package:str = None):
+    def load_layout(
+        self, 
+        layout_file: Optional[str] = None, 
+        layout_dict: Optional[dict] = None, 
+        package: Optional[str] = None, 
+        labware_package: Optional[str] = None
+    ):
         """
         Load deck layout
 
@@ -404,13 +432,13 @@ class Deck:
             package (str, optional): name of package to look in. Defaults to None.
             labware_package (str, optional): name of package to look in for labware file. Defaults to None.
         """
-        if layout_file is None and layout_dict is None:
-            print("Please input either `layout_file` or `layout_dict`")
-            return
+        if (layout_file is None) == (layout_dict is None):
+            raise Exception("Please input either `layout_file` or `layout_dict`")
         elif layout_file is not None:
             self.details = helper.read_json(json_file=layout_file, package=package)
         else:
             self.details = layout_dict
+        
         slots = self.details.get('slots', {})
         for slot in sorted(list(slots)):
             info = slots[slot]
@@ -421,7 +449,7 @@ class Deck:
             self.load_labware(slot=slot, name=name, exclusion_height=exclusion_height, labware_file=labware_file, package=labware_package)
         return
 
-    def remove_labware(self, index:int = None, name:str = None):
+    def remove_labware(self, index:Optional[int] = None, name:Optional[str] = None):
         """
         Remove labware in slot using index or name
 

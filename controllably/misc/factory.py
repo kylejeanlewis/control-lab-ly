@@ -9,7 +9,7 @@ Notes / actionables:
 # Standard library imports
 import importlib
 import numpy as np
-from typing import Callable
+from typing import Callable, Optional
 
 # Third party imports
 import yaml # pip install pyyaml
@@ -18,9 +18,9 @@ import yaml # pip install pyyaml
 from . import helper
 print(f"Import: OK <{__name__}>")
 
-packages = {}
+# packages = {}
 
-def get_class(dot_notation:str):
+def get_class(dot_notation:str) -> Callable:
     """
     Retrieve the relevant class from the sub-package
 
@@ -38,7 +38,7 @@ def get_class(dot_notation:str):
     _class = getattr(package, import_path.split('.')[-1])
     return _class
 
-def get_details(configs:dict, addresses:dict = {}):
+def get_details(configs:dict, addresses:dict = {}) -> dict:
     """
     Decode dictionary of configuration details to get np.ndarrays and tuples
 
@@ -67,7 +67,7 @@ def get_details(configs:dict, addresses:dict = {}):
         configs[name] = details
     return configs
 
-def get_machine_addresses(registry:dict):
+def get_machine_addresses(registry:dict) -> dict:
     """
     Get the appropriate addresses for current machine
 
@@ -85,7 +85,7 @@ def get_machine_addresses(registry:dict):
         raise Exception(f"Machine not yet registered. (Current machine id: {node_id})")
     return addresses
 
-def get_plans(config_file:str, registry_file:str = None, package:str = None):
+def get_plans(config_file:str, registry_file:Optional[str] = None, package:Optional[str] = None) -> dict:
     """
     Read configuration file (yaml) and get details
 
@@ -103,7 +103,7 @@ def get_plans(config_file:str, registry_file:str = None, package:str = None):
     configs = get_details(configs, addresses=addresses)
     return configs
 
-def load_components(config:dict):
+def load_components(config:dict) -> dict:
     """
     Load components of compound tools
 
@@ -124,12 +124,12 @@ def load_components(config:dict):
         components[name] = _class(**settings)
     return components
 
-def register(_class:Callable, dot_notation:str):
-    nesting = dot_notation.split('.')
-    package = packages
-    for nest in nesting:
-        if nest not in package:
-            package[nest] = {}
-        package = package.get(nest, {})
-    print(packages)
-    return
+# def register(_class:Callable, dot_notation:str):
+#     nesting = dot_notation.split('.')
+#     package = packages
+#     for nest in nesting:
+#         if nest not in package:
+#             package[nest] = {}
+#         package = package.get(nest, {})
+#     print(packages)
+#     return

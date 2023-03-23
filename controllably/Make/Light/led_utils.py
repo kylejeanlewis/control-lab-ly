@@ -37,7 +37,7 @@ class LED:
     
     # Properties
     @property
-    def power(self):
+    def power(self) -> int:
         return self._power
     @power.setter
     def power(self, value:int):

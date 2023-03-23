@@ -10,6 +10,7 @@ Notes / actionables:
 import os
 from pathlib import Path
 from shutil import copytree
+from typing import Callable, Optional
 
 # Third party imports
 
@@ -20,6 +21,7 @@ from . import helper
 print(f"Import: OK <{__name__}>")
 
 here = str(Path(__file__).parent.absolute()).replace('\\', '/')
+"""Path to this current file"""
 
 # Core functions
 def create_configs():
@@ -36,7 +38,7 @@ def create_configs():
         print(f"Current machine id: {node_id}")
     return
 
-def create_setup(setup_name:str = None):
+def create_setup(setup_name:Optional[str] = None):
     """
     Create new setup folder
 
@@ -62,7 +64,7 @@ def create_setup(setup_name:str = None):
     return
 
 @decorators.named_tuple_from_dict
-def load_setup(config_file:str, registry_file:str = None):
+def load_setup(config_file:str, registry_file:Optional[str] = None) -> dict:
     """
     Load and initialise setup
 
@@ -89,7 +91,7 @@ def load_setup(config_file:str, registry_file:str = None):
         setup[key] = tool.components.get(child)
     return setup
 
-def load_deck(device, layout_file:str, get_absolute_filepath:bool = True):
+def load_deck(device:Callable, layout_file:str, get_absolute_filepath:bool = True) -> Callable:
     """
     Load the deck information from layout file
 
@@ -114,7 +116,7 @@ def load_deck(device, layout_file:str, get_absolute_filepath:bool = True):
     device.loadDeck(layout_dict=layout_dict)
     return device
 
-def set_safety(safety_level:str = None, safety_countdown:int = 3):
+def set_safety(safety_level:Optional[str] = None, safety_countdown:int = 3):
     """
     Set safety level of session
 

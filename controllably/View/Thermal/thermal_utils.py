@@ -34,7 +34,7 @@ class Thermal(Camera):
     
     # Properties
     @property
-    def ip_address(self):
+    def ip_address(self) -> str:
         return self.connection_details.get('ip_address', '')
     
     # Protected method(s)

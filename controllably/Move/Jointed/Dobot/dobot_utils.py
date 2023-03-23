@@ -61,15 +61,15 @@ class Dobot(RobotArm):
     
     # Properties
     @property
-    def dashboard(self):
+    def dashboard(self) -> dobot_api_dashboard:
         return self.device.dashboard
     
     @property
-    def feedback(self):
+    def feedback(self) -> dobot_api_feedback:
         return self.device.feedback
     
     @property
-    def ip_address(self):
+    def ip_address(self) -> str:
         return self.connection_details.get('ip_address', '')
     
     def calibrate(self, 
