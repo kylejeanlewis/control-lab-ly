@@ -66,8 +66,7 @@ class Peltier(Maker):
         'temperature_reached': False
     }
     
-    def __init__(
-        self, 
+    def __init__(self, 
         port: str, 
         columns: list = COLUMNS,
         power_threshold: float = POWER_THRESHOLD,
@@ -111,10 +110,6 @@ class Peltier(Maker):
         self.setFlag(pause_feedback=False)
         return
     
-    def disconnect(self):
-        self.device.close()
-        return
-    
     def getTemperatures(self) -> str:
         """
         Reads from the device the set temperature, hot temperature, cold temperature, and the power level
@@ -127,6 +122,9 @@ class Peltier(Maker):
         try:
             values = [float(v) for v in response.split(';')]
             self.set_point, self.temperature, self._cold_point, self._power = values
+        except ValueError:
+            pass
+        else:
             ready = (abs(self.set_point - self.temperature)<=self.tolerance)
             if not ready:
                 pass
@@ -139,13 +137,10 @@ class Peltier(Maker):
                 print(response)
                 self.setFlag(temperature_reached=True)
                 print(f"Temperature of {self.set_point}°C reached!")
-            
             if self.flags['record']:
                 values = [now] + values
                 row = {k:v for k,v in zip(self._columns, values)}
                 self.buffer_df = self.buffer_df.append(row, ignore_index=True)
-        except ValueError:
-            pass
         return response
     
     def holdTemperature(self, temperature:float, time_s:float):
@@ -191,10 +186,11 @@ class Peltier(Maker):
         time.sleep(0.5)
         try:
             self.device.write(bytes(f"{set_point}\n", 'utf-8'))
-            while self.set_point != float(set_point):
-                self.getTemperatures()
         except AttributeError:
             pass
+        else:
+            while self.set_point != float(set_point):
+                self.getTemperatures()
         print(f"New set temperature at {set_point}°C")
         
         self._stabilize_time = None
@@ -266,15 +262,16 @@ class Peltier(Maker):
         device = None
         try:
             device = serial.Serial(port, baudrate, timeout=timeout)
+        except Exception as e:
+            print(f"Could not connect to {port}")
+            if self.verbose:
+                print(e)
+        else:
             print(f"Connection opened to {port}")
             self.setFlag(connected=True)
             time.sleep(1)
             print(self.getTemperatures())
             # self.toggleFeedbackLoop(on=True)
-        except Exception as e:
-            print(f"Could not connect to {port}")
-            if self.verbose:
-                print(e)
         self.device = device
         return
     
@@ -301,11 +298,12 @@ class Peltier(Maker):
         response = ''
         try:
             response = self.device.readline()
-            response = response.decode('utf-8').strip()
-            if self.verbose:
-                print(response)
         except Exception as e:
             if self.verbose:
                 print(e)
+        else:
+            response = response.decode('utf-8').strip()
+            if self.verbose:
+                print(response)
         return response
     
