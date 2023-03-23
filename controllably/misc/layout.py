@@ -405,6 +405,7 @@ class Deck:
             labware_package (str, optional): name of package to look in for labware file. Defaults to None.
         """
         if layout_file is None and layout_dict is None:
+            print("Please input either `layout_file` or `layout_dict`")
             return
         elif layout_file is not None:
             self.details = helper.read_json(json_file=layout_file, package=package)

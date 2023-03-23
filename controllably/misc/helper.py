@@ -185,7 +185,7 @@ def zip_inputs(primary_keyword:str, **kwargs):
     return kwargs_df.to_dict('index')
 
 
-# NOTE: DEPRECATE
+### NOTE: DEPRECATE
 def display_ports():
     """
     Get available ports
@@ -193,5 +193,5 @@ def display_ports():
     Returns:
         list: list of connected serial ports
     """
-    print("'display_ports' method to be deprecated. Use 'get_ports' instead.")
+    print("'display_ports()' method to be deprecated. Use 'get_ports()' method instead.")
     return get_ports()
