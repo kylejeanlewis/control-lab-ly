@@ -35,6 +35,7 @@ class LED:
         self.flags = {'power_update': False}
         pass
     
+    # Properties
     @property
     def power(self):
         return self._power
@@ -99,10 +100,6 @@ class LEDArray(Maker):
         self._timed_channels = []
         
         self._connect(port)
-        return
-    
-    def disconnect(self):
-        self.device.close()
         return
     
     def getPower(self, channel:Optional[int] = None) -> list[int]:
@@ -209,15 +206,16 @@ class LEDArray(Maker):
         device = None
         try:
             device = serial.Serial(port, baudrate, timeout=timeout)
+        except Exception as e:
+            print(f"Could not connect to {port}")
+            if self.verbose:
+                print(e)
+        else:
             time.sleep(5)   # Wait for grbl to initialize
             device.flushInput()
             self.turnOff()
             print(f"Connection opened to {port}")
             self.setFlag(connected=True)
-        except Exception as e:
-            print(f"Could not connect to {port}")
-            if self.verbose:
-                print(e)
         self.device = device
         return
         
