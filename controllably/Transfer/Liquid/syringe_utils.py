@@ -22,11 +22,15 @@ from .syringe_lib import Syringe
 print(f"Import: OK <{__name__}>")
 
 class Pump(Protocol):
+    def aspirate(self, *args, **kwargs):
+        ...
+    def blowout(self, *args, **kwargs):
+        ...
     def connect(self, *args, **kwargs):
         ...
-    def push(self, *args, **kwargs):
+    def dispense(self, *args, **kwargs):
         ...
-    def setFlag(self, **kwargs):
+    def pullback(self, *args, **kwargs):
         ...
 
 class SyringeAssembly(LiquidHandler):
@@ -79,7 +83,7 @@ class SyringeAssembly(LiquidHandler):
     
     # Decorators
     def _multi_channel(func:Callable):
-        def wrapper(self:SyringeAssembly, *args, **kwargs):
+        def wrapper(self, *args, **kwargs):
             success = []
             channels = []
             
@@ -95,7 +99,7 @@ class SyringeAssembly(LiquidHandler):
                 if channel not in self.syringes:
                     print(f"Channel {channel} not found.")
                     continue
-                ret = func(channel=channel, *args, **kwargs)
+                ret = func(self, channel=channel, *args, **kwargs)
                 success.append(ret)
             return all(success)
         return wrapper
@@ -129,15 +133,16 @@ class SyringeAssembly(LiquidHandler):
         if not volume:
             return False
         
-        print(f'Aspirating {volume} uL')
-        self.pump.setFlag(busy=True)
-        speed = -abs(self.speed.up) if speed is None else -abs(speed)
+        print(f"Syringe {channel}")
+        print(f'Aspirating {volume} uL...')
+        speed = abs(self.speed.up) if speed is None else abs(speed) # NOTE: used to be -ve
         t_aspirate = (volume / speed)
         try:
             t_aspirate *= eval(f"syringe.calibration.{self._last_action}.aspirate")
         except AttributeError:
             pass
         print(t_aspirate)
+        self.pump.aspirate(speed=speed, pump_time=t_aspirate, channel=channel)
         self.pullback(channel=channel)
         self.last_action = 'aspirate'
         
@@ -147,7 +152,6 @@ class SyringeAssembly(LiquidHandler):
             syringe.reagent = reagent
         if pause:
             input("Press 'Enter' to proceed.")
-        self.pump.setFlag(busy=False)
         return True
 
     def blowout(self, channel: Optional[Union[int, tuple[int]]] = None, **kwargs) -> bool:
@@ -157,7 +161,7 @@ class SyringeAssembly(LiquidHandler):
         Args:
             channel (int, optional): channel to blowout. Defaults to None.
         """
-        return super().blowout()
+        return self.pump.blowout(channel=channel)
     
     def connect(self):
         """
@@ -197,14 +201,13 @@ class SyringeAssembly(LiquidHandler):
             Exception: Select a valid key
         """
         syringe = self.syringes[channel]
-        if force_dispense:
-            volume = min(volume, syringe.volume)
-        elif volume > syringe.volume:
+        if not force_dispense and volume > syringe.volume:
             print('Required dispense volume is greater than volume in tip')
             return False
+        volume = min(volume, syringe.volume)
         
-        print(f'Dispensing {volume} uL')
-        self.pump.setFlag(busy=True)
+        print(f"Syringe {channel}")
+        print(f'Dispensing {volume} uL...')
         speed = abs(self.speed.down) if speed is None else abs(speed)
         t_dispense = (volume / speed)
         try:
@@ -212,6 +215,7 @@ class SyringeAssembly(LiquidHandler):
         except AttributeError:
             pass
         print(t_dispense)
+        self.pump.dispense(speed=speed, pump_time=t_dispense, channel=channel)
         self.pullback(channel=channel)
         self.last_action = 'dispense'
         
@@ -221,7 +225,6 @@ class SyringeAssembly(LiquidHandler):
             self.blowout(channel=channel)
         if pause:
             input("Press 'Enter' to proceed.")
-        self.pump.setFlag(busy=False)
         return True
  
     @_multi_channel
@@ -247,7 +250,12 @@ class SyringeAssembly(LiquidHandler):
         Returns:
             dict: dictionary of (channel, return value)
         """
-        return super().empty(speed=speed, wait=wait, pause=pause, channel=channel)
+        syringe = self.syringes[channel]
+        _capacity = self.capacity
+        self.capacity = syringe.capacity
+        success = super().empty(speed=speed, wait=wait, pause=pause, channel=channel)
+        self.capacity = _capacity
+        return success
 
     @_multi_channel
     def fill(self, 
@@ -276,7 +284,12 @@ class SyringeAssembly(LiquidHandler):
         Returns:
             dict: dictionary of (channel, return value)
         """
-        return super().fill(speed=speed, wait=wait, pause=pause, cycles=cycles, reagent=reagent, channel=channel)
+        syringe = self.syringes[channel]
+        _capacity = self.capacity
+        self.capacity = syringe.capacity
+        success = super().fill(speed=speed, wait=wait, pause=pause, cycles=cycles, reagent=reagent, channel=channel)
+        self.capacity = _capacity
+        return success
 
     def isBusy(self):
         """
@@ -308,10 +321,7 @@ class SyringeAssembly(LiquidHandler):
             channel (int, optional): channel to pullback
         """
         syringe = self.syringes[channel]
-        self.pump.setFlag(busy=True)
-        self.pump.push(speed=-300, push_time=0, pullback_time=syringe.pullback_time, channel=channel)
-        self.pump.setFlag(busy=False)
-        return True
+        return self.pump.pullback(speed=300, pump_time=syringe.pullback_time, channel=channel)
     
     @_multi_channel
     def rinse(self, 
@@ -338,7 +348,12 @@ class SyringeAssembly(LiquidHandler):
         Returns:
             dict: dictionary of (channel, return value)
         """
-        return super().rinse(speed=speed, wait=wait, cycles=cycles, channel=channel)
+        syringe = self.syringes[channel]
+        _capacity = self.capacity
+        self.capacity = syringe.capacity
+        success = super().rinse(speed=speed, wait=wait, cycles=cycles, channel=channel)
+        self.capacity = _capacity
+        return success
     
     def updateChannel(self, channel:int, **kwargs):
         """
