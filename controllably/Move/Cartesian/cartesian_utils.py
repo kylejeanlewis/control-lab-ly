@@ -222,11 +222,12 @@ class Gantry(Mover):
 
     def _write(self, message:str):
         try:
-            self.device.write(bytes(message, 'utf-8'))
+            self.device.write(message.encode('utf-8'))
         except Exception as e:
             if self.verbose:
                 print(e)
-        return
+            return False
+        return True
 
     # def safeMoveTo(self, coordinates, jump_height=None, tool_offset=True, **kwargs) -> bool:
     #     """

@@ -76,7 +76,7 @@ class Primitiv(Gantry):
         else:
             self.device.open()
             # Start grbl 
-            self._write(bytes("\r\n\r\n", 'utf-8'))
+            self._write("\r\n\r\n")
             time.sleep(2)
             self.device.flushInput()
         return
