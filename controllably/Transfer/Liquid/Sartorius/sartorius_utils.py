@@ -314,18 +314,18 @@ class Sartorius(LiquidHandler):
         print('Stop listening...')
         return
     
-    def _query(self, string:str, timeout_s=READ_TIMEOUT_S, resume_feedback=False):
+    def _query(self, message:str, timeout_s=READ_TIMEOUT_S, resume_feedback=False):
         """
         Send query and wait for response
 
         Args:
-            string (str): message string
+            message (str): message string
             timeout_s (int, optional): duration to wait before timeout. Defaults to READ_TIMEOUT_S.
 
         Returns:
             str: message readout
         """
-        message_code = string[:2]
+        message_code = message[:2]
         if message_code not in STATUS_QUERIES:
             if self._flags['get_feedback'] and not self._flags['pause_feedback']:
                 self.setFlag('pause_feedback', True)
@@ -335,7 +335,7 @@ class Sartorius(LiquidHandler):
                 self.getStatus()
         
         start_time = time.time()
-        message_code = self._write(string)
+        self._write(message)
         response = ''
         while not self._is_expected_reply(message_code, response):
             if time.time() - start_time > timeout_s:
@@ -405,26 +405,26 @@ class Sartorius(LiquidHandler):
         }
         return
     
-    def _write(self, string:str):
+    def _write(self, message:str):
         """
         Sends message to device
 
         Args:
-            string (str): <message code><value>
+            message (str): <message code><value>
 
         Returns:
             str: two-character message code
         """
-        message_code = string[:2]
-        fstring = f'{self.channel}{string}º\r' # message template: <PRE><ADR><CODE><DATA><LRC><POST>
-        bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
+        fstring = f'{self.channel}{message}º\r' # message template: <PRE><ADR><CODE><DATA><LRC><POST>
+        # bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
         try:
             # Typical timeout wait is 400ms
-            self.device.write(bstring)
+            self.device.write(fstring.encode('utf-8'))
         except Exception as e:
             if self.verbose:
                 print(e)
-        return message_code
+            return False
+        return True
     
     def addAirGap(self, steps:int = None, channel=None):
         """
@@ -530,8 +530,8 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """
-        string = f'RB{self.home_position}' if home else f'RB'
-        response = self._query(string)
+        message = f'RB{self.home_position}' if home else f'RB'
+        response = self._query(message)
         time.sleep(1)
         return response
     
@@ -640,8 +640,8 @@ class Sartorius(LiquidHandler):
             str: device response
         """
         self.reagent = ''
-        string = f'RE{self.home_position}' if home else f'RE'
-        response = self._query(string)
+        message = f'RE{self.home_position}' if home else f'RE'
+        response = self._query(message)
         time.sleep(1)
         return response
     
