@@ -77,6 +77,10 @@ class Camera(ABC):
         """
         Connect to the imaging device
         """
+        self.connection_details = {}
+        self.device = None
+        self.setFlag(connected=True)
+        return
    
     @abstractmethod
     def _read(self) -> tuple[bool, np.ndarray]:
@@ -168,6 +172,33 @@ class Camera(ABC):
             print(f"{self.__class__} is not connected.")
         return self.flags.get('connected', False)
     
+    def resetFlags(self):
+        self.flags = self._default_flags.copy()
+        return
+    
+    def setFlag(self, **kwargs):
+        """
+        Set a flag's truth value
+
+        Args:
+            `name` (str): label
+            `value` (bool): flag value
+        """
+        if not all([type(v)==bool for v in kwargs.values()]):
+            raise ValueError("Ensure all assigned flag values are boolean.")
+        for key, value in kwargs.items():
+            self.flags[key] = value
+        return
+    
+    def shutdown(self):
+        """
+        Close the camera
+        """
+        self.disconnect()
+        cv2.destroyAllWindows()
+        self.resetFlags()
+        return
+    
     def toggleRecord(self, on:bool, folder:str = '', timeout:Optional[int] = None):
         """
         Toggle record
@@ -190,29 +221,6 @@ class Camera(ABC):
             self._threads['record_loop'] = thread
         else:
             self._threads['record_loop'].join()
-        return
- 
-    def setFlag(self, **kwargs):
-        """
-        Set a flag's truth value
-
-        Args:
-            `name` (str): label
-            `value` (bool): flag value
-        """
-        if not all([type(v)==bool for v in kwargs.values()]):
-            raise ValueError("Ensure all assigned flag values are boolean.")
-        for key, value in kwargs.items():
-            self.flags[key] = value
-        return
-    
-    def shutdown(self):
-        """
-        Close the camera
-        """
-        self._release()
-        cv2.destroyAllWindows()
-        self.setFlag(connected=False)
         return
  
     # Image handling
