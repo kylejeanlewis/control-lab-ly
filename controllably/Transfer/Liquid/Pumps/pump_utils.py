@@ -15,90 +15,73 @@ import time
 import serial # pip install pyserial
 
 # Local application imports
+from ..liquid_utils import LiquidHandler
 print(f"Import: OK <{__name__}>")
 
-class Pump(object):
-    def __init__(self, port:str, verbose=False):
-        self.device = None
-        self._flags = {
-            'busy': False
-        }
-        
-        self.verbose = verbose
-        self.port = ''
-        self._baudrate = None
-        self._timeout = None
-        self._connect(port)
+class Pump(LiquidHandler):
+    def __init__(self, port:str, **kwargs):
+        super().__init__(**kwargs)
+        self._connect(port, **kwargs)
         return
     
-    def _connect(self, port:str, baudrate=9600, timeout=1):
+    def disconnect(self):
+        """
+        Disconnect serial connection to robot
+        
+        Returns:
+            None: None is successfully disconnected, else serial.Serial
+        """
+        try:
+            self.device.close()
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        self.setFlag(connected=False)
+        return self.device
+     
+    # Protected method(s)
+    def _connect(self, port:str, baudrate:int = 9600, timeout:int = 1, **kwargs):
         """
         Connect to machine control unit
 
         Args:
-            port (str): com port address
-            baudrate (int): baudrate. Defaults to 9600.
-            timeout (int, optional): timeout in seconds. Defaults to None.
+            `port` (str): com port address
+            `baudrate` (int, optional): baudrate. Defaults to 9600.
+            `timeout` (int, optional): timeout in seconds. Defaults to 1.
             
         Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
+            `serial.Serial`: serial connection to machine control unit if connection is successful, else `None`
         """
-        if not port:
+        self.connection_details = {
+            'port': port,
+            'baudrate': baudrate,
+            'timeout': timeout
+        }
+        
+        if device in kwargs:
+            self.device = kwargs['device']
             return
-        self.port = port
-        self._baudrate = baudrate
-        self._timeout = timeout
+        
         device = None
         try:
-            device = serial.Serial(port, self._baudrate, timeout=self._timeout)
+            device = serial.Serial(port, baudrate, timeout=timeout)
+        except Exception as e:
+            print(f"Could not connect to {port}")
+            if self.verbose:
+                print(e)
+        else:
             time.sleep(2)   # Wait for grbl to initialize
             device.flushInput()
             print(f"Connection opened to {port}")
-        except Exception as e:
-            if self.verbose:
-                print(f"Could not connect to {port}")
-                print(e)
+            self.setFlag(connected=True)
         self.device = device
-        return self.device
-    
-    def connect(self):
-        """
-        Reconnect to device using existing port and baudrate
-        
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
-        """
-        return self._connect(self.port, self._baudrate, self._timeout)
-    
-    def isBusy(self):
-        """
-        Checks whether the pump is busy
-        
-        Returns:
-            bool: whether the pump is busy
-        """
-        return self._flags['busy']
-    
-    def isConnected(self):
-        """
-        Check whether machine control unit is connected
-
-        Returns:
-            bool: whether machine control unit is connected
-        """
-        if self.device == None:
-            print(f"{self.__class__} ({self.port}) not connected.")
-            return False
-        return True
-    
-    def setFlag(self, name:str, value:bool):
-        """
-        Set a flag truth value
-
-        Args:
-            name (str): label
-            value (bool): flag value
-        """
-        self._flags[name] = value
         return
     
+    def _write(self, message:str) -> bool:
+        try:
+            self.device.write(message.encode('utf-8'))
+        except Exception as e:
+            if self.verbose:
+                print(e)
+            return False
+        return True
