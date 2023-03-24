@@ -75,6 +75,7 @@ class LiquidHandler(ABC):
         Args:
             channel (int, optional): channel to pullback. Defaults to None.
         """
+        return False
 
     @abstractmethod
     def disconnect(self):
@@ -111,6 +112,7 @@ class LiquidHandler(ABC):
         Args:
             channel (int, optional): channel to pullback. Defaults to None.
         """
+        return False
 
     @abstractmethod
     def _connect(self):
