@@ -15,9 +15,17 @@ import time
 import serial # pip install pyserial
 
 # Local application imports
+from .pump_utils import Pump
 print(f"Import: OK <{__name__}>")
 
-class Pump(object):
+class Peristaltic(Pump):
+    """
+    Peristaltic pump object
+
+    Args:
+        port (str): com port address
+        verbose (bool, optional): whether to print output. Defaults to False.
+    """
     def __init__(self, port:str, verbose=False):
         self.device = None
         self._flags = {
@@ -43,8 +51,6 @@ class Pump(object):
         Returns:
             serial.Serial: serial connection to machine control unit if connection is successful, else None
         """
-        if not port:
-            return
         self.port = port
         self._baudrate = baudrate
         self._timeout = timeout
@@ -60,6 +66,32 @@ class Pump(object):
                 print(e)
         self.device = device
         return self.device
+    
+    def _run_pump(self, speed:int):
+        """
+        Relay instructions to pump
+        
+        Args:
+            speed (int): speed of pump of rotation
+        """
+        try:
+            self.device.write(bytes(f"{speed}\n", 'utf-8'))
+        except AttributeError:
+            pass
+        return
+        
+    def _run_solenoid(self, state:int):
+        """
+        Relay instructions to valve.
+        
+        Args:
+            state (int): open or close valve channel (-1~-8 open valve; 1~8 close valve; 9 close all valves)
+        """
+        try:
+            self.device.write(bytes(f"{state}\n", 'utf-8'))
+        except AttributeError:
+            pass
+        return
     
     def connect(self):
         """
@@ -90,6 +122,44 @@ class Pump(object):
             print(f"{self.__class__} ({self.port}) not connected.")
             return False
         return True
+
+    def push(self, speed:int, push_time, pullback_time, channel:int):
+        """
+        Dispense (aspirate) liquid from (into) syringe
+        
+        Args:
+            speed (int): speed of pump of rotation (<0 aspirate; >0 dispense)
+            push_time (int, or float): time to achieve desired volume
+            pullback_time (int, or float): time to pullback the peristaltic pump
+            channel (int): valve channel
+        """
+        run_time = pullback_time + push_time
+        interval = 0.1
+        
+        start_time = time.time()
+        self._run_solenoid(-channel) # open channel
+        self._run_pump(speed)
+        
+        while(True):
+            time.sleep(0.001)
+            if (interval <= time.time() - start_time):
+                interval += 0.1
+            if (run_time <= time.time() - start_time):
+                break
+        
+        start_time = time.time()
+        self._run_solenoid(-channel) # open channel
+        self._run_pump(-abs(speed))
+
+        while(True):
+            time.sleep(0.001)
+            if (interval <= time.time() - start_time):
+                interval += 0.1
+            if (pullback_time <= time.time() - start_time):
+                self._run_pump(10)
+                self._run_solenoid(channel) # close channel
+                break
+        return
     
     def setFlag(self, name:str, value:bool):
         """
@@ -101,4 +171,3 @@ class Pump(object):
         """
         self._flags[name] = value
         return
-    
