@@ -55,6 +55,9 @@ class Syringe:
     pullback_time: float = 2
     _calibration: SyringeCalibration = CALIBRATION
     
+    def __repr__(self) -> str:
+        return f"Syringe {self.channel} (capacity={self.capacity}, volume={self.volume}, reagent={self.reagent}, offset={self._offset})"
+    
     # Properties
     @property
     def calibration(self):
