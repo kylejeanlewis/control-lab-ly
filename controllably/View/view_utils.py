@@ -40,6 +40,11 @@ class Camera(ABC):
         cam_size (tuple, optional): width and height of image. Defaults to (640,480).
         rotation (int, optional): rotation of camera feed. Defaults to 0.
     """
+    _default_flags: dict[str, bool] = {
+        'connected': False,
+        'pause_record': False,
+        'record': False
+    }
     _package: str
     _placeholder_filename: str
     def __init__(self, 
@@ -58,11 +63,7 @@ class Camera(ABC):
         self.record_timeout = None
         self.rotation = rotation
         
-        self.flags = {
-            'connected': False,
-            'pause_record': False,
-            'record': False
-        }
+        self.flags = self._default_flags.copy() 
         self._threads = {}
         self._set_placeholder()
         pass

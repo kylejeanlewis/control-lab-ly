@@ -31,7 +31,7 @@ class Mover(ABC):
         verbose (bool, optional): whether to print outputs. Defaults to False.
     """
     # max_actions = 0
-    _default_flags: dict[str, bool] = {}
+    _default_flags: dict[str, bool] = {'busy': False, 'connected': False}
     _default_heights: dict[str, float] = {}
     def __init__(self, 
         coordinates: tuple[float] = (0,0,0),

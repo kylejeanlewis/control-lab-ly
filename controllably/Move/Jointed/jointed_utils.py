@@ -32,6 +32,11 @@ class RobotArm(Mover):
         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
         verbose (bool, optional): whether to print outputs. Defaults to False.
     """
+    _default_flags = {
+        'busy': False,
+        'connected': False,
+        'retract': False
+    }
     def __init__(self, safe_height:Optional[float] = None, retract:bool = False, **kwargs):
         super().__init__(**kwargs)
         self._speed_angular_max = 1

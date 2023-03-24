@@ -36,6 +36,12 @@ class M1Pro(Dobot):
         verbose (bool, optional): whether to print outputs. Defaults to False.
         safe_height (float, optional): safe height. Defaults to None.
     """
+    _default_flags = {
+        'busy': False,
+        'connected': False,
+        'retract': False, 
+        'right_handed': None
+    }
     def __init__(self, 
         ip_address: str = '192.168.2.21', 
         right_handed: bool = True, 
