@@ -36,6 +36,18 @@ class Thermal(Camera):
     @property
     def ip_address(self) -> str:
         return self.connection_details.get('ip_address', '')
+
+    def disconnect(self):
+        """
+        Release the camera feed
+        """
+        try:
+            self.feed.stop()
+            self.feed.stream.release()
+        except AttributeError:
+            pass
+        self.setFlag(connected=False)
+        return
     
     # Protected method(s)
     def _connect(self, ip_address:str, **kwargs):
@@ -59,14 +71,5 @@ class Thermal(Camera):
         """
         return True, self.feed.read()
     
-    def _release(self):
-        """
-        Release the camera feed
-        """
-        try:
-            self.feed.stop()
-            self.feed.stream.release()
-        except AttributeError:
-            pass
-        return
+
     

@@ -88,10 +88,11 @@ class Camera(ABC):
         """
     
     @abstractmethod
-    def _release(self):
+    def disconnect(self):
         """
         Release the camera feed
         """
+        self.setFlag(connected=False)
     
     def annotateAll(self, 
         df:pd.DataFrame, 

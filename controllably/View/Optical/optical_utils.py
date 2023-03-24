@@ -39,6 +39,17 @@ class Optical(Camera):
     def cam_index(self) -> str:
         return self.connection_details.get('cam_index', '')
     
+    def disconnect(self):
+        """
+        Release the camera feed
+        """
+        try:
+            self.feed.release()
+        except AttributeError:
+            pass
+        self.setFlag(connected=False)
+        return
+    
     def setResolution(self, size:tuple[int] = (10000,10000)):
         """
         Set resolution of camera feed
@@ -72,14 +83,4 @@ class Optical(Camera):
             bool, array: True if frame is obtained; array of frame
         """
         return self.feed.read()
-    
-    def _release(self):
-        """
-        Release the camera feed
-        """
-        try:
-            self.feed.release()
-        except AttributeError:
-            pass
-        return
     
