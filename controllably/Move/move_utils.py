@@ -45,6 +45,7 @@ class Mover(ABC):
         speed_max: float = 1,
         speed_fraction: float = 1,
         translate_vector: tuple[float] = (0,0,0),
+        verbose: bool = False,
         **kwargs
     ):
         self.deck = deck
@@ -63,7 +64,7 @@ class Mover(ABC):
         self.device = None
         self.flags = self._default_flags.copy()
         self.heights = self._default_heights.copy()
-        self.verbose = kwargs.pop('verbose', False)
+        self.verbose = verbose
         return
     
     def __del__(self):

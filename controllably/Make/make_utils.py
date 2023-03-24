@@ -17,11 +17,11 @@ print(f"Import: OK <{__name__}>")
 
 class Maker(ABC):
     _default_flags: dict[str, bool] = {}
-    def __init__(self, **kwargs):
+    def __init__(self, verbose:bool = False, **kwargs):
         self.connection_details = {}
         self.device = None
         self.flags = self._default_flags.copy()
-        self.verbose = kwargs.pop('verbose', False)
+        self.verbose = verbose
         return
     
     def __del__(self):
@@ -38,6 +38,7 @@ class Maker(ABC):
         """Connect to machine control unit"""
         self.connection_details = {}
         self.device = None
+        self.setFlag(connected=True)
         return
     
     def connect(self):
