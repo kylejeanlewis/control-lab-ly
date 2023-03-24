@@ -30,7 +30,3 @@ class ErrorCode(Enum):
 class StatusCode(Enum):
     Busy    = ['@','A','B','C','D','E','F','G','H','I','J','K','O']
     Idle    = ['`','a','b','c','d','e','f','g','h','i','j','k','o']
-
-ERRORS          = [error.name for error in ErrorCode]
-STATUSES        = [status.value for status in StatusCode]
-STATUSES        = [item for sublist in STATUSES for item in sublist]
