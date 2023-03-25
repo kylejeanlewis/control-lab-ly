@@ -37,7 +37,7 @@ class Pump(LiquidHandler):
             if self.verbose:
                 print(e)
         self.setFlag(connected=False)
-        return self.device
+        return
      
     # Protected method(s)
     def _connect(self, port:str, baudrate:int = 9600, timeout:int = 1):
