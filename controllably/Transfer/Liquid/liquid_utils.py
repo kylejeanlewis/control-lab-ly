@@ -36,7 +36,7 @@ class LiquidHandler(ABC):
         self.channel = 0
         self.reagent = ''
         self.speed = Speed(0,0)
-        self.volume = 0
+        self._volume = 0
         self._offset = (0,0,0)
         
         self.connection_details = {}
@@ -130,6 +130,14 @@ class LiquidHandler(ABC):
         if len(value) != 3:
             raise Exception('Please input x,y,z offset')
         self._offset = tuple(value)
+        return
+    
+    @property
+    def volume(self) -> float:
+        return self._volume
+    @volume.setter
+    def volume(self, value:float):
+        self._volume = value
         return
     
     def connect(self):
