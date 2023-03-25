@@ -29,8 +29,8 @@ class ErrorCode(Enum):
     er15    = 'Command overflow'
 
 class StatusCode(Enum):
-    Busy    = ['@','A','B','C','D','E','F','G','H','I','J','K','O']
-    Idle    = ['`','a','b','c','d','e','f','g','h','i','j','k','o']
+    Busy    = ('@','A','B','C','D','E','F','G','H','I','J','K','O')
+    Idle    = ('`','a','b','c','d','e','f','g','h','i','j','k','o')
 
 @dataclass
 class TriContinentPump:
@@ -47,7 +47,7 @@ class TriContinentPump:
     init_status: bool = field(default=False, init=False)
     
     position: int = field(default=0, init=False)
-    status: str = field(default='', init=False)
+    _status_code: str = field(default='', init=False)
     action_message: str = field(default='', init=False)
     
     def __post_init__(self):
@@ -57,7 +57,17 @@ class TriContinentPump:
             self.name = f"Pump {self.channel}"
         return
     
-    # Properties 
+    # Properties
+    @property
+    def status(self) -> str:
+        return ErrorCode[self._status_code].value
+    @status.setter
+    def status(self, value:str):
+        if value not in ErrorCode._member_names_:
+            raise ValueError("Please provide a valid error code.")
+        self._status_code = value
+        return
+    
     @property
     def volume(self) -> float:
         return self.position/self.step_limit * self.capacity
