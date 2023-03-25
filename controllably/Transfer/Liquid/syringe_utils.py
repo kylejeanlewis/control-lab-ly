@@ -57,7 +57,7 @@ class SyringeAssembly(LiquidHandler):
     ):
         super().__init__(**kwargs)
         self.device = pump
-        self.channels = self._get_syringes(capacities=capacities, channels=channels, offsets=offsets)
+        self.channels = self._get_syringes(capacity=capacities, channel=channels, offset=offsets)
         self.speed = speed
         self._last_action = 'first'
         return
@@ -220,7 +220,7 @@ class SyringeAssembly(LiquidHandler):
         self.last_action = 'dispense'
         
         time.sleep(wait)
-        syringe.volume = max(self.volume - volume, 0)
+        syringe.volume = max(syringe.volume - volume, 0)
         if syringe.volume == 0 and blowout:
             self.blowout(channel=channel)
         if pause:
@@ -371,10 +371,6 @@ class SyringeAssembly(LiquidHandler):
         return self.pump.connect()
     
     @staticmethod
-    def _get_syringes(
-        capacities: tuple[float], 
-        channels: tuple[int],
-        offsets: tuple[tuple[float]]
-    ) -> dict[int, Syringe]:
-        properties = Helper.zip_inputs(primary_keyword='channel', capacity=capacities, channel=channels, _offset=offsets)
+    def _get_syringes(**kwargs) -> dict[int, Syringe]:
+        properties = Helper.zip_inputs(primary_keyword='channel', **kwargs)
         return {key: Syringe(**value) for key,value in properties.items()}
