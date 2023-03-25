@@ -13,8 +13,10 @@ import time
 
 # Local application imports
 from ..piezorobotics_device import PiezoRoboticsDevice
-from ..piezorobotics_lib import FREQUENCIES
+from ..piezorobotics_lib import FrequencyCode
 print(f"Import: OK <{__name__}>")
+
+FREQUENCIES = tuple([frequency.value for frequency in FrequencyCode])
 
 class Program(object):
     """
