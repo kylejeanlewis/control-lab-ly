@@ -20,9 +20,6 @@ from ..make_utils import Maker
 print(f"Import: OK <{__name__}>")
 
 COLUMNS = ('Time', 'Set', 'Hot', 'Cold', 'Power')
-POWER_THRESHOLD = 20
-STABILIZE_TIME_S = 10
-TEMPERATURE_TOLERANCE = 1.5
 
 class Peltier(Maker):
     """
@@ -69,9 +66,9 @@ class Peltier(Maker):
     def __init__(self, 
         port: str, 
         columns: list = COLUMNS,
-        power_threshold: float = POWER_THRESHOLD,
-        stabilize_buffer_time: float = STABILIZE_TIME_S, 
-        tolerance: float = TEMPERATURE_TOLERANCE, 
+        power_threshold: float = 20,
+        stabilize_buffer_time: float = 10, 
+        tolerance: float = 1.5, 
         **kwargs
     ):
         """
