@@ -104,6 +104,7 @@ class SyringeAssembly(LiquidHandler):
             return all(success)
         return wrapper
     
+    # Public methods
     @_multi_channel
     def aspirate(self, 
         volume: float, 
@@ -142,7 +143,7 @@ class SyringeAssembly(LiquidHandler):
         except AttributeError:
             pass
         print(t_aspirate)
-        self.pump.aspirate(speed=speed, pump_time=t_aspirate, channel=channel)
+        self.pump.aspirate(volume=volume, speed=speed, pump_time=t_aspirate, channel=channel)
         self.pullback(channel=channel)
         self.last_action = 'aspirate'
         
@@ -215,7 +216,7 @@ class SyringeAssembly(LiquidHandler):
         except AttributeError:
             pass
         print(t_dispense)
-        self.pump.dispense(speed=speed, pump_time=t_dispense, channel=channel)
+        self.pump.dispense(volume=volume, speed=speed, pump_time=t_dispense, channel=channel)
         self.pullback(channel=channel)
         self.last_action = 'dispense'
         
