@@ -232,8 +232,9 @@ class TriContinent(Pump):
         self.setCurrentChannel(channel=channel)
         response = self._query('Q')
         _status_code = response[2] if len(response) else ''
-        if self.device is not None and _status_code not in (StatusCode.Busy + StatusCode.Idle):
-            raise RuntimeError(f"Unable to get status from Pump: {self.name}")
+        if self.device is not None:
+            if _status_code not in StatusCode.Busy and _status_code not in StatusCode.Idle:
+                raise RuntimeError(f"Unable to get status from Pump: {self.name}")
     
         if _status_code in StatusCode.Busy.value:
             self.setFlag(busy=True)
@@ -252,9 +253,8 @@ class TriContinent(Pump):
             print(ErrorCode[code].value)
             if index in [1,7,9,10]:
                 raise ConnectionError(f"Please reinitialize: Pump {self.channel}.")
-        status = ErrorCode[code].value
-        self.current_pump.status = status
-        return status
+        self.current_pump.status = code
+        return ErrorCode[code].value
  
     @_single_action
     def initialise(self, output_right:bool = None, channel:Optional[int] = None) -> str:
@@ -340,7 +340,7 @@ class TriContinent(Pump):
         """
         self.position += steps
         self.current_pump.position = self.position
-        message = f"P{abs(steps)}" if steps >0 else f"D{abs(steps)}"
+        message = f"P{abs(steps)}" if steps > 0 else f"D{abs(steps)}"
         return message
     
     @_single_action
@@ -584,7 +584,7 @@ class TriContinent(Pump):
         properties = Helper.zip_inputs(primary_keyword='channel', **kwargs)
         return {key: TriContinentPump(**value) for key,value in properties.items()}
     
-    def _is_expected_reply(self, response:str, message:Optional[str] = None) -> bool:
+    def _is_expected_reply(self, response:str, message:Optional[str] = None, **kwargs) -> bool:
         """
         Check whether the response is an expected reply
 
@@ -640,6 +640,8 @@ class TriContinent(Pump):
         try:
             response = self.device.read_until().decode('utf-8')
             response = response.split('\x03')[0]
+        except AttributeError:
+            pass
         except Exception as e:
             if self.verbose:
                 print(e)
@@ -656,13 +658,16 @@ class TriContinent(Pump):
         Returns:
             str: two-character message code
         """
+        if self.verbose:
+            print(message)
         fstring = f'/{self.channel}{message}\r' # message template: <PRE><ADR><STRING><POST>
         try:
             # Typical timeout wait is 2s
             self.device.write(fstring.encode('utf-8'))
+        except AttributeError:
+            pass
         except Exception as e:
             if self.verbose:
-                print(fstring)
                 print(e)
             return False
         return True
