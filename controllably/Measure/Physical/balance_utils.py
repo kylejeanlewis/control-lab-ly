@@ -16,136 +16,49 @@ import time
 import serial # pip install pyserial
 
 # Local application imports
+from ..measure_utils import Measurer
 print(f"Import: OK <{__name__}>")
 
-CALIBRATION_FACTOR = 6.862879436681862 # factor by which to divide output reading by to get mass in mg
+CALIBRATION_FACTOR = 6.862879436681862 # Empirical: factor by which to divide output reading by to get mass in mg
 COLUMNS = ['Time', 'Value', 'Factor', 'Baseline', 'Mass']
 
-class MassBalance(object):
+class MassBalance(Measurer):
     """
     Mass Balance object
 
     Args:
         port (str): com port address
     """
+    _default_flags = {
+        'busy': False,
+        'connected': False,
+        'get_feedback': False,
+        'pause_feedback': False,
+        'record': False
+    }
     def __init__(self, port:str, calibration_factor:float = CALIBRATION_FACTOR, **kwargs):
-        self.device = None
         self.baseline = 0
-        self.calibration_factor = calibration_factor
-        self._flags = {
-            'busy': False,
-            'connected': False,
-            'get_feedback': False,
-            'pause_feedback': False,
-            'record': False
-        }
-        self._mass = 0
-        self._precision = 3
-        self._threads = {}
-        
         self.buffer_df = pd.DataFrame(columns=COLUMNS)
-        
-        self.verbose = False
-        self.port = ''
-        self._baudrate = None
-        self._timeout = None
+        self.calibration_factor = calibration_factor
+        self.precision = 3
+        self._mass = 0
+        self._threads = {}
         self._connect(port)
         return
     
+    # Properties
     @property
-    def mass(self):
-        return round(self._mass, self._precision)
-    
-    @property
-    def precision(self):
-        return 10**(-self._precision)
-    @precision.setter
-    def precision(self, value:int):
-        self._precision = value
-        return
-    
-    def __delete__(self):
-        self._shutdown()
-        return
-    
-    def _connect(self, port:str, baudrate=115200, timeout=1):
-        """
-        Connect to machine control unit
-
-        Args:
-            port (str): com port address
-            baudrate (int): baudrate. Defaults to 9600.
-            timeout (int, optional): timeout in seconds. Defaults to None.
-            
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
-        """
-        self.port = port
-        self._baudrate = baudrate
-        self._timeout = timeout
-        device = None
-        try:
-            device = serial.Serial(port, self._baudrate, timeout=self._timeout)
-            self.device = device
-            print(f"Connection opened to {port}")
-            self.setFlag('connected', True)
-            # self.toggleFeedbackLoop(on=True)
-        except Exception as e:
-            print(f"Could not connect to {port}")
-            if self.verbose:
-                print(e)
-        return self.device
-    
-    def _loop_feedback(self):
-        """
-        Feedback loop to constantly check status and liquid level
-        """
-        print('Listening...')
-        while self._flags['get_feedback']:
-            if self._flags['pause_feedback']:
-                continue
-            self.getMass()
-        print('Stop listening...')
-        return
-
-    def _read(self):
-        """
-        Read response from device
-
-        Returns:
-            str: response string
-        """
-        response = ''
-        try:
-            response = self.device.readline()
-            response = response.decode('utf-8').strip()
-        except Exception as e:
-            if self.verbose:
-                print(e)
-        return response
-    
-    def _shutdown(self):
-        """
-        Close serial connection and shutdown
-        """
-        self.toggleFeedbackLoop(on=False)
-        self.device.close()
-        self._flags = {
-            'busy': False,
-            'connected': False,
-            'get_feedback': False,
-            'pause_feedback':False
-        }
-        return
-    
+    def mass(self) -> float:
+        return round(self._mass, self.precision)
+   
     def clearCache(self):
         """
         Clear dataframe.
         """
-        self.setFlag('pause_feedback', True)
+        self.setFlag(pause_feedback=True)
         time.sleep(0.1)
         self.buffer_df = pd.DataFrame(columns=COLUMNS)
-        self.setFlag('pause_feedback', False)
+        self.setFlag(pause_feedback=False)
         return
     
     def connect(self):
@@ -155,9 +68,18 @@ class MassBalance(object):
         Returns:
             serial.Serial: serial connection to machine control unit if connection is successful, else None
         """
-        return self._connect(self.port, self._baudrate, self._timeout)
+        return self._connect(**self.connection_details)
     
-    def getMass(self):
+    def disconnect(self):
+        try:
+            self.device.close()
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        self.setFlag(connected=False)
+        return
+    
+    def getMass(self) -> str:
         """
         Get the mass by measuring force response
         
@@ -168,8 +90,11 @@ class MassBalance(object):
         now = datetime.now()
         try:
             value = int(response)
+        except ValueError:
+            pass
+        else:
             self._mass = (value - self.baseline) / self.calibration_factor
-            if self._flags.get('record', False):
+            if self.flags['record']:
                 values = [
                     now, 
                     value, 
@@ -179,28 +104,8 @@ class MassBalance(object):
                 ]
                 row = {k:v for k,v in zip(COLUMNS, values)}
                 self.buffer_df = self.buffer_df.append(row, ignore_index=True)
-        except ValueError:
-            pass
         return response
-
-    def isBusy(self):
-        """
-        Checks whether the pipette is busy
-        
-        Returns:
-            bool: whether the pipette is busy
-        """
-        return self._flags['busy']
-    
-    def isConnected(self):
-        """
-        Check whether pipette is connected
-
-        Returns:
-            bool: whether pipette is connected
-        """
-        return self._flags['connected']
-    
+  
     def reset(self):
         """
         Reset baseline and clear buffer
@@ -208,18 +113,16 @@ class MassBalance(object):
         self.baseline = 0
         self.clearCache()
         return
-
-    def setFlag(self, name:str, value:bool):
-        """
-        Set a flag truth value
-
-        Args:
-            name (str): label
-            value (bool): flag value
-        """
-        self._flags[name] = value
-        return
     
+    def shutdown(self):
+        """
+        Close serial connection and shutdown
+        """
+        self.toggleFeedbackLoop(on=False)
+        self.disconnect()
+        self.resetFlags()
+        return
+ 
     def tare(self):
         """
         Alias for zero
@@ -233,7 +136,7 @@ class MassBalance(object):
         Args:
             on (bool): whether to listen to feedback
         """
-        self.setFlag('get_feedback', on)
+        self.setFlag(get_feedback=on)
         if on:
             if 'feedback_loop' in self._threads:
                 self._threads['feedback_loop'].join()
@@ -251,20 +154,18 @@ class MassBalance(object):
         Args:
             on (bool): whether to start recording
         """
-        self.setFlag('record', on)
-        self.setFlag('get_feedback', on)
-        self.setFlag('pause_feedback', False)
+        self.setFlag(record=on, get_feedback=on, pause_feedback=False)
         self.toggleFeedbackLoop(on=on)
         return
 
-    def zero(self, wait=5):
+    def zero(self, wait:int = 5):
         """
         Set current reading as baseline (i.e. zero mass)
         
         Args:
             wait (int, optional): duration to wait while zeroing (seconds). Defaults to 5.
         """
-        temp_record_state = self._flags.get('record', False)
+        temp_record_state = self.flags['record']
         temp_buffer_df = self.buffer_df.copy()
         self.reset()
         self.toggleRecord(True)
@@ -277,3 +178,68 @@ class MassBalance(object):
         print("Zeroing complete.")
         self.toggleRecord(temp_record_state)
         return
+
+    # Protected method(s)
+    def _connect(self, port:str, baudrate:int = 115200, timeout:int = 1):
+        """
+        Connect to machine control unit
+
+        Args:
+            port (str): com port address
+            baudrate (int): baudrate. Defaults to 9600.
+            timeout (int, optional): timeout in seconds. Defaults to None.
+            
+        Returns:
+            serial.Serial: serial connection to machine control unit if connection is successful, else None
+        """
+        self.connection_details = {
+            'port': port,
+            'baudrate': baudrate,
+            'timeout': timeout
+        }
+        device = None
+        try:
+            device = serial.Serial(port, baudrate, timeout=timeout)
+        except Exception as e:
+            print(f"Could not connect to {port}")
+            if self.verbose:
+                print(e)
+        else:
+            print(f"Connection opened to {port}")
+            self.setFlag(connected=True)
+            time.sleep(1)
+            self.zero()
+        self.device = device
+        return self.device
+    
+    def _loop_feedback(self):
+        """
+        Feedback loop to constantly check status and liquid level
+        """
+        print('Listening...')
+        while self.flags['get_feedback']:
+            if self.flags['pause_feedback']:
+                continue
+            self.getMass()
+        print('Stop listening...')
+        return
+
+    def _read(self):
+        """
+        Read response from device
+
+        Returns:
+            str: response string
+        """
+        response = ''
+        try:
+            response = self.device.readline()
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        else:
+            response = response.decode('utf-8').strip()
+            if self.verbose:
+                print(response)
+        return response
+ 
