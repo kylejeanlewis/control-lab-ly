@@ -9,81 +9,584 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from __future__ import annotations
 import string
 import time
+from typing import Callable, Optional, Union
 
 # Third party imports
 
 # Local application imports
 from .....misc import Helper
+from ...liquid_utils import Speed
 from ..pump_utils import Pump
-from .tricontinent_lib import ErrorCode, StatusCode
-from .tricontinent_lib import ERRORS, STATUSES
+from .tricontinent_lib import ErrorCode, StatusCode, TriContinentPump
 print(f"Import: OK <{__name__}>")
 
-READ_TIMEOUT_S = 2
-
 class TriContinent(Pump):
-    def __init__(self, port:str, channel:int, model:str, output_direction:str, syringe_volume:int, name:str = '', device=None, verbose=False):
-        if device is None:
-            super().__init__(port, verbose)
-        else:
-            super().__init__('', verbose)
-            self.device = device
-            self.port = port
+    _default_flags = {
+        'busy': False, 
+        'connected': False,
+        'execute_now': True
+    }
+    def __init__(self, 
+        port: str, 
+        channel: Union[int, tuple[int]], 
+        model: Union[str, tuple[str]], 
+        capacity: Union[int, tuple[int]], 
+        output_right: Union[bool, tuple[bool]], 
+        name: Union[str, tuple[str]] = '',
+        **kwargs
+    ):
+        super().__init__(port, **kwargs)
+        self.channels = self._get_pumps(
+            channel = channel,
+            model = model,
+            capacity = capacity,
+            output_right = output_right,
+            name = name
+        )
+        self.current_channel = None
         
-        self.action_message = ''
-        self.channel = channel
-        self.model = model
-        self.name = name
-        self.output_direction = 'right'
-        self.step_limit = int(''.join(filter(str.isdigit, self.model)))
-        self.syringe_volume = syringe_volume
-        self.resolution = self.syringe_volume / self.step_limit
+        self.channel = list(self.channels)[0]
+        self.name = ''
+        self.capacity = 0
+        self.resolution = 1
+        self.step_limit = 1
         
-        self._flags['init_status'] = False
-        self._flags['execute_now'] = True
-        
-        self.initialise(output_direction)
+        self.position = 0
+        for channel in self.channels:
+            self.setCurrentChannel(channel=channel)
+            self.initialise()
+        self.resetChannel()
         return
     
     # Properties
     @property
-    def position(self):
-        response = self._query('?')
-        _position = int(response[3:]) if len(response) else -1
-        return _position
+    def current_pump(self) -> TriContinentPump:
+        return self.current_channel
+
+    @property
+    def pumps(self) -> dict[int, TriContinentPump]:
+        return self.channels
     
     @property
-    def status(self):
+    def status(self) -> str:
+        return self.getStatus()
+    
+    @property
+    def volume(self) -> float:
+        return self.position/self.step_limit * self.capacity
+    
+    # Decorators
+    def _single_action(func: Callable) -> Callable:
+        """
+        Turns a method into a single action that runs only if it is not contained in a compound action
+
+        Args:
+            func (Callable): action method
+        
+        Returns:
+            Callable: wrapped method
+        """
+        def wrapper(self, *args, **kwargs) -> str:
+            channel = kwargs.get('channel')
+            self.setCurrentChannel(channel)
+            message = func(self, *args, **kwargs)
+            if self.flags['execute_now']:
+                return self.run(message)
+            return message
+        return wrapper
+    
+    def _compound_action(func: Callable) -> Callable:
+        """
+        Turns a method into a compound action that suppresses single actions within from running
+
+        Args:
+            func (Callable): action method
+        
+        Returns:
+            Callable: wrapped method
+        """
+        def wrapper(self, *args, **kwargs) -> str:
+            channel = kwargs.get('channel')
+            self.setCurrentChannel(channel)
+            self.setFlag(execute_now=False)
+            message = func(self, *args, **kwargs)
+            self.setFlag(execute_now=True)
+            return message
+        return wrapper
+    
+    @staticmethod
+    def loop(cycles:int, *args) -> str:
+        """
+        Specify how many times to loop the following actions
+
+        Args:
+            cycles (int): number of times to cycle
+
+        Returns:
+            str: message string
+        """
+        return f"g{''.join(args)}G{cycles}"
+    
+    # Single actions
+    @_single_action
+    def empty(self, channel:Optional[int] = None, **kwargs) -> str:
+        """
+        Empty the syringe pump
+
+        Args:
+            channel (int, optional): channel address. Defaults to None.
+
+        Returns:
+            str: message string
+        """
+        self.position = 0
+        self.current_pump.position = self.position
+        return "OA0"
+    
+    @_single_action
+    def fill(self, channel:Optional[int] = None, **kwargs) -> str:
+        """
+        Fill the syringe pump
+
+        Args:
+            channel (int, optional): channel address. Defaults to None.
+
+        Returns:
+            str: message string
+        """
+        self.position = self.step_limit
+        self.current_pump.position = self.position
+        return f"IA{self.step_limit}"
+    
+    @_single_action
+    def initialise(self, output_right:bool = None, channel:Optional[int] = None) -> str:
+        """
+        Empty the syringe pump
+
+        Args:
+            output_right (str, optional): liquid output direction ('left' or 'right'). Defaults to None.
+            channel (int, optional): channel address. Defaults to None.
+
+        Returns:
+            str: message string
+        """
+        output_right = self.current_pump.output_right if output_right is None else output_right
+        message = 'Z' if output_right else 'Y'
+        return message
+    
+    @_single_action
+    def move(self, direction:str, steps:int, channel:Optional[int] = None) -> str:
+        """
+        Move plunger either up or down
+
+        Args:
+            axis (str): desired direction of plunger (up / down)
+            value (int): number of steps to move plunger by
+            channel (int, optional): channel to move. Defaults to None.
+        Raises:
+            Exception: Axis direction either 'up' or 'down'
+
+        Returns:
+            str: message string
+        """
+        steps = abs(steps)
+        message = ''
+        if direction.lower() in ['up','u']:
+            self.position -= steps
+            message =  f"D{steps}"
+        elif direction.lower() in ['down','d']:
+            self.position += steps
+            message =  f"P{steps}"
+        else:
+            raise Exception("Please select either 'up' or 'down'")
+        self.current_pump.position = self.position
+        return message
+        
+    @_single_action
+    def moveBy(self, steps:int, channel:Optional[int] = None) -> str:
+        """
+        Move plunger by specified number of steps
+
+        Args:
+            steps (int): number of steps to move plunger by >0: aspirate/move down; <0 dispense/move up)
+            channel (int, optional): channel to move by. Defaults to None.
+
+        Returns:
+            str: message string
+        """
+        self.position += steps
+        self.current_pump.position = self.position
+        message = f"P{abs(steps)}" if steps >0 else f"D{abs(steps)}"
+        return message
+    
+    @_single_action
+    def moveTo(self, position:int, channel:Optional[int] = None) -> str:
+        """
+        Move plunger to specified position
+
+        Args:
+            position (int): desired plunger position
+            channel (int, optional): channel to move to. Defaults to None.
+
+        Returns:
+            str: message string
+        """
+        self.position = position
+        self.current_pump.position = self.position
+        return f"A{position}"
+    
+    @_single_action
+    def setSpeedRamp(self, ramp:int, channel:Optional[int] = None) -> str:
+        """
+        Set the ramp up between start speed and top speed
+
+        Args:
+            ramp (int): ramp speed
+            channel (int, optional): channel to set. Defaults to None.
+
+        Returns:
+            str: message string
+        """
+        return f"L{ramp}"
+    
+    @_single_action
+    def setStartSpeed(self, speed:int, channel:Optional[int] = None) -> str:
+        """
+        Set the starting speed of the plunger
+
+        Args:
+            speed (int): starting speed of plunger
+            channel (int, optional): channel to set. Defaults to None.
+
+        Returns:
+            str: message string
+        """
+        return f"v{speed}"
+    
+    @_single_action
+    def setTopSpeed(self, speed:int, channel:Optional[int] = None) -> str:
+        """
+        Set the top speed of the plunger
+
+        Args:
+            speed (int): top speed of plunger
+            channel (int, optional): channel to set. Defaults to None.
+
+        Returns:
+            str: message string
+        """
+        self.speed = Speed(speed,speed)
+        return f"V{speed}"
+    
+    @_single_action
+    def setValve(self, 
+        valve: str, 
+        value: Optional[int] = None, 
+        channel: Optional[Union[int, tuple[int]]] = None
+    ) -> str:
+        """
+        Set valve position to one of [I]nput, [O]utput, [B]ypass, [E]xtra
+
+        Args:
+            valve (str): one of the above positions
+            value (int, optional): only for 6-way distribution. Defaults to None.
+            channel (int, optional): channel to set. Defaults to None.
+
+        Raises:
+            Exception: Please select a valid position
+
+        Returns:
+            str: message string
+        """
+        valves = ['I','O','B','E']
+        valve = valve.upper()[0]
+        if valve not in valves:
+            raise Exception(f"Please select a valve position from {', '.join(valves)}")
+        message = valve
+        if value in [1,2,3,4,5,6]:
+            message = f'{valve}{value}'
+        return message
+    
+    @_single_action
+    def wait(self, time_ms:int, channel:Optional[int] = None) -> str:
+        """
+        Wait for a specified amount of time
+
+        Args:
+            time_ms (int): duration in milliseconds
+            channel (int, optional): channel to wait. Defaults to None.
+
+        Returns:
+            str: message string
+        """
+        message = f"M{time_ms}" if time_ms else ""
+        return message
+    
+    # Standard actions
+    def getPosition(self, channel:Optional[int] = None) -> int:
+        self.setCurrentChannel(channel=channel)
+        response = self._query('?')
+        self.position = int(response[3:]) if len(response) else self.position
+        self.current_pump.position = self.position
+        return self.position
+    
+    def getStatus(self, channel:Optional[int] = None) -> str:
+        self.setCurrentChannel(channel=channel)
         response = self._query('Q')
         _status_code = response[2] if len(response) else ''
-        if _status_code not in STATUSES and self.device is not None:
-            raise Exception(f"Unable to get status from pump {self.channel}")
+        if self.device is not None and _status_code not in (StatusCode.Busy + StatusCode.Idle):
+            raise RuntimeError(f"Unable to get status from Pump: {self.name}")
     
-        busy = None
         if _status_code in StatusCode.Busy.value:
-            busy = True
+            self.setFlag(busy=True)
+            self.current_pump.busy = True
         elif _status_code in StatusCode.Idle.value:
-            busy = False
+            self.setFlag(busy=False)
+            self.current_pump.busy = False
+        else:
+            self.setFlag(busy=False)
+            self.current_pump.busy = False
         
-        code = ''
+        code = 'er0'
         if _status_code.isalpha():
             index = 1 + string.ascii_lowercase.index(_status_code.lower())
             code = f"er{index}"
             print(ErrorCode[code].value)
             if index in [1,7,9,10]:
-                raise Exception(f"Please reinitialize pump {self.channel}.")
-        else:
-            code = 'er0'
-        error = ErrorCode[code].value if code in ERRORS else 'Unknown'
-        return busy, error
+                raise ConnectionError(f"Please reinitialize: Pump {self.channel}.")
+        status = ErrorCode[code].value
+        self.current_pump.status = status
+        return status
     
-    @property
-    def volume(self):
-        return self.position/self.step_limit * self.syringe_volume
+    def isBusy(self) -> bool:
+        """
+        Check whether the device is busy
+
+        Raises:
+            Exception: Unable to determine whether the device is busy
+
+        Returns:
+            bool: whether the device is busy
+        """
+        self.getStatus()
+        return super().isBusy()
     
-    def _is_expected_reply(self, message:str, response:str):
+    def queue(self, actions:list[str], channel:Optional[int] = None) -> str:
+        """
+        Queue several commands together before sending to the device
+
+        Args:
+            actions (list, optional): list of actions. Defaults to [].
+            channel (int, optional): channel to set. Defaults to None.
+
+        Returns:
+            str: message string
+        """
+        self.setCurrentChannel(channel=channel)
+        message = ''.join(actions)
+        self.current_pump.action_message = self.current_pump.action_message + message
+        return message
+    
+    def reset(self, channel:Optional[int] = None) -> str:
+        """
+        Reset and initialise the device
+
+        Args:
+            channel (int, optional): channel to reset. Defaults to None.
+        """
+        return self.initialise()
+    
+    def resetChannel(self):
+        self.setCurrentChannel(list(self.channels)[0])
+        return
+    
+    def run(self, message:Optional[str] = None, channel:Optional[int] = None) -> str:
+        """
+        Send the message to the device and run the action
+
+        Args:
+            message (str, optional): message string of commands. Defaults to None.
+            channel (int, optional): channel to run. Defaults to None.
+
+        Returns:
+            str: message string
+        """
+        self.setCurrentChannel(channel=channel)
+        if message is None:
+            message = self.current_pump.action_message
+            self.current_pump.action_message = ''
+        message = f"{message}R"
+        self._query(message)
+        while self.isBusy():
+            time.sleep(0.2)
+        if 'Z' in message or 'Y' in message:
+            self.current_pump.init_status = True
+        self.getPosition()
+        self.getStatus()
+        return message
+    
+    def setCurrentChannel(self, channel:Optional[int] = None) -> TriContinentPump:
+        channel = self.channel if channel not in self.channels else channel
+        self.current_channel = self.channels[channel]
+        pump = self.current_pump
+        
+        self.channel = pump.channel
+        self.name = pump.name
+        self.capacity = pump.capacity
+        self.resolution = pump.resolution
+        self.step_limit = pump.step_limit
+        self.position = pump.position
+        return
+    
+    def stop(self, channel:Optional[int] = None) -> str:
+        """
+        Stops the device immediately, terminating any actions in progress or in queue
+
+        Args:
+            channel (int, optional): channel to stop. Defaults to None.
+
+        Returns:
+            str: message string
+        """
+        return self._query('T')
+    
+    # Compound actions
+    @_compound_action
+    def aspirate(self, 
+        volume: float, 
+        speed: int = 200, 
+        wait: int = 0, 
+        pause: bool = False, 
+        start_speed: int = 50,
+        reagent: Optional[str] = None, 
+        channel: Optional[Union[int, tuple[int]]] = None,
+        **kwargs
+    ) -> str:
+        steps = min(int(volume/self.resolution), self.step_limit-self.position)
+        volume = steps * self.resolution
+        self.queue([
+            self.setStartSpeed(start_speed),
+            self.setTopSpeed(speed),
+            self.setSpeedRamp(1),
+            self.setValve('I'),
+            self.moveBy(steps),
+            self.wait(wait)
+        ], channel=channel)
+        message = self.current_pump.action_message
+        print(f"Pump: {self.name}")
+        print(f"Aspirating {volume}uL...")
+        self.run()
+        if reagent is not None:
+            self.current_pump.reagent = reagent
+        if pause:
+            input("Press 'Enter' to proceed.")
+        return message
+    
+    def blowout(self, channel: Optional[Union[int, tuple[int]]] = None, **kwargs) -> str: # NOTE: no implementation
+        return ''
+    
+    def cycle(self, cycles:int, channel:Optional[int] = None, **kwargs) -> str:
+        message = self.rinse(cycles=cycles, channel=channel, print_message=False)
+        print(f"Cycling complete: {cycles} time(s)")
+        return message
+    
+    @_compound_action
+    def dispense(self, 
+        volume: float, 
+        speed: int = 200, 
+        wait: int = 0, 
+        pause: bool = False, 
+        start_speed: int = 50,
+        blowout: bool = False,
+        force_dispense: bool = False, 
+        channel: Optional[Union[int, tuple[int]]] = None,
+        **kwargs
+    ) -> str:
+        steps = min(int(volume/self.resolution), self.step_limit)
+        volume = steps * self.resolution
+        self.queue([
+            self.setStartSpeed(start_speed),
+            self.setTopSpeed(speed),
+            self.setSpeedRamp(1)
+        ], channel=channel)
+        if self.position <= steps:
+            self.queue([self.fill()], channel=channel)
+        self.queue([
+            self.setValve('O'),
+            self.moveBy(-abs(steps)),
+            self.wait(wait)
+        ], channel=channel)
+        message = self.current_pump.action_message
+        print(f"Pump: {self.name}")
+        print(f"Dispensing {volume}uL...")
+        self.run()
+        if pause:
+            input("Press 'Enter' to proceed.")
+        return message
+    
+    def prime(self, cycles:int = 3, channel:Optional[int] = None) -> str:
+        """
+        Prime the pump by cycling the plunger through its max and min positions
+
+        Args:
+            cycles (int): number of times to cycle
+            channel (int, optional): channel to prime. Defaults to None.
+            
+        Returns:
+            str: message string
+        """
+        message = self.rinse(cycles=cycles, channel=channel, print_message=False)
+        print(f"Priming complete")
+        return message
+    
+    def pullback(self, channel: Optional[Union[int, tuple[int]]] = None, **kwargs) -> bool: # NOTE: no implementation
+        return ''
+        
+    @_compound_action
+    def rinse(self, 
+        speed: int = 200, 
+        wait: int = 0, 
+        cycles: int = 3, 
+        start_speed: int = 50,
+        channel: Optional[Union[int, tuple[int]]] = None,
+        **kwargs
+    ) -> str:
+        self.queue([
+            self.initialise(),
+            self.setStartSpeed(start_speed),
+            self.setTopSpeed(speed),
+            self.setSpeedRamp(1),
+            self.loop(cycles,
+                self.fill(),
+                self.wait(wait),
+                self.empty(),
+                self.wait(wait)
+            )
+        ], channel=channel)
+        message = self.current_pump.action_message
+        print(f"Pump: {self.name}")
+        self.run()
+        if kwargs.get('print_message', True):
+            print(f"Rinsing complete")
+        return message
+
+    # Protected method(s)
+    @staticmethod
+    def _get_pumps(**kwargs) -> dict[int, TriContinentPump]:
+        channel_arg = kwargs.get('channel', 1)
+        n_channel = 1 if type(channel_arg) is int else len(channel_arg)
+        for key, arg in kwargs.items():
+            if type(arg) is not tuple and type(arg) is not list:
+                kwargs[key] = [arg] * n_channel
+            elif len(arg) != n_channel:
+                raise ValueError("Ensure that the length of inputs are the same as the number of channels.")
+        properties = Helper.zip_inputs(primary_keyword='channel', **kwargs)
+        return {key: TriContinentPump(**value) for key,value in properties.items()}
+    
+    def _is_expected_reply(self, response:str, message:Optional[str] = None) -> bool:
         """
         Check whether the response is an expected reply
 
@@ -102,21 +605,22 @@ class TriContinent(Pump):
             return False
         return True
     
-    def _query(self, message_string:str, timeout_s=READ_TIMEOUT_S):
+    def _query(self, message:str, timeout_s:int = 2) -> str:
         """
         Send query and wait for response
 
         Args:
-            message_string (str): message string
-            timeout_s (int, optional): duration to wait before timeout. Defaults to READ_TIMEOUT_S.
+            message (str): message string
+            timeout_s (int, optional): duration to wait before timeout. Defaults to 2.
 
         Returns:
             str: message readout
         """
+        # self.connect()
         start_time = time.time()
-        message = self._write(message_string=message_string)
+        self._write(message)
         response = ''
-        while not self._is_expected_reply(message, response):
+        while not self._is_expected_reply(response):
             if time.time() - start_time > timeout_s:
                 break
             response = self._read()
@@ -124,9 +628,10 @@ class TriContinent(Pump):
                 response = ''
                 break
         # print(time.time() - start_time)
+        # self.disconnect()
         return response
 
-    def _read(self):
+    def _read(self) -> str:
         """
         Read response from device
 
@@ -140,535 +645,126 @@ class TriContinent(Pump):
         except Exception as e:
             if self.verbose:
                 print(e)
-                response = '__break__'
+            response = '__break__'
         return response
     
-    def _write(self, message_string:str):
+    def _write(self, message:str) -> bool:
         """
         Sends message to device
 
         Args:
-            message_string (str): <message code><value>
+            message (str): <message code><value>
 
         Returns:
             str: two-character message code
         """
-        fstring = f'/{self.channel}{message_string}\r' # message template: <PRE><ADR><STRING><POST>
-        bstring = fstring.encode('utf-8')
+        fstring = f'/{self.channel}{message}\r' # message template: <PRE><ADR><STRING><POST>
         try:
             # Typical timeout wait is 2s
-            self.device.write(bstring)
+            self.device.write(fstring.encode('utf-8'))
         except Exception as e:
             if self.verbose:
                 print(fstring)
                 print(e)
-        return fstring
+            return False
+        return True
     
-    # Decorators
-    def _single_action(func):
-        """
-        Turns a method into a single action that runs only if it is not contained in a compound action
 
-        Args:
-            func (Callable): action method
+# class TriContinentEnsemble(Pump):
+#     def __init__(self, 
+#         port: str, 
+#         channels: int, 
+#         models: str, 
+#         capacities: int, 
+#         output_rights: bool, 
+#         names: str = '',
+#         **kwargs
+#     ):
+#         super().__init__(port=port, **kwargs)
+#         self.disconnect()
+#         verbose = kwargs.pop('verbose', False)
+#         self.channels = self._get_pumps(
+#             primary_keyword = 'channel',
+#             port = [port]*len(channels),
+#             channel = channels,
+#             model = models,
+#             capacity = capacities,
+#             output_right = output_rights,
+#             name = names,
+#             device = [self.device]*len(channels),
+#             verbose = [verbose]*len(channels)
+#         )
         
-        Returns:
-            Callable: wrapped method
-        """
-        def wrapper(self, *args, **kwargs):
-            message = func(self, *args, **kwargs)
-            if self._flags.get('execute_now', False):
-                return self.run(message)
-            return message
-        return wrapper
+#         # if len(ports) == 1:
+#         #     super().__init__(ports[0], verbose)
+#         #     properties = Helper.zip_inputs('channel',
+#         #         port=ports*len(channels),
+#         #         channel=channels,
+#         #         model=models,
+#         #         output_right=output_directions,
+#         #         capacity=syringe_volumes,
+#         #         name=names,
+#         #         device=[self.device]*len(channels),
+#         #         verbose=verbose
+#         #     )
+#         # self.channels = {key: TriContinent(**value) for key,value in properties.items()}
+#         self.current_channel = None
+#         return
     
-    def _compound_action(func):
-        """
-        Turns a method into a compound action that suppresses single actions within from running
-
-        Args:
-            func (Callable): action method
-        
-        Returns:
-            Callable: wrapped method
-        """
-        def wrapper(self, *args, **kwargs):
-            self.setFlag('execute_now', False)
-            message = func(self, *args, **kwargs)
-            self.setFlag('execute_now', True)
-            return message
-        return wrapper
+#     @staticmethod
+#     def _get_pumps(primary_keyword:str, **kwargs) -> dict[int, TriContinent]:
+#         properties = Helper.zip_inputs(primary_keyword=primary_keyword, **kwargs)
+#         return {key: TriContinent(**value) for key,value in properties.items()}
     
-    @staticmethod
-    def loop(cycles:int, *args):
-        """
-        Specify how many times to loop the following actions
-
-        Args:
-            cycles (int): number of times to cycle
-
-        Returns:
-            str: message string
-        """
-        return f"g{''.join(args)}G{cycles}"
+#     @staticmethod
+#     def loop(cycles, *args):
+#         return TriContinent.loop(cycles, *args)
     
-    # Single actions
-    @_single_action
-    def empty(self, channel:int = None):
-        """
-        Empty the syringe pump
+#     # Single actions
+#     def empty(self, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).empty()
+#     def fill(self, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).fill()
+#     def initialise(self, output_right:str = None, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).initialise(output_right=output_right)
+#     def moveBy(self, steps:int, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).moveBy(steps=steps)
+#     def moveTo(self, position:int, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).moveTo(position=position)
+#     def setSpeedRamp(self, ramp:int, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).setSpeedRamp(ramp=ramp)
+#     def setStartSpeed(self, speed:int, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).setStartSpeed(speed=speed)
+#     def setTopSpeed(self, speed:int, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).setTopSpeed(speed=speed)
+#     def setValve(self, position:str, value:int = None, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).setValve(position=position, value=value)
+#     def wait(self, time_ms:int, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).wait(time_ms=time_ms)
 
-        Args:
-            channel (int, optional): channel address. Defaults to None.
-
-        Returns:
-            str: message string
-        """
-        message = "OA0"
-        return message
+#     # Standard actions
+#     def isBusy(self):
+#         return any([pump.isBusy() for pump in self.channels.values()])
+#     def queue(self, actions:list = [], channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).queue(actions)
+#     def reset(self, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).reset()
+#     def run(self, message:str = None, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).run(message)
+#     def stop(self, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).stop()
     
-    @_single_action
-    def fill(self, channel:int = None):
-        """
-        Fill the syringe pump
-
-        Args:
-            channel (int, optional): channel address. Defaults to None.
-
-        Returns:
-            str: message string
-        """
-        message = f"IA{self.step_limit}"
-        return message
-    
-    @_single_action
-    def initialise(self, output_direction:str = None, channel:int = None):
-        """
-        Empty the syringe pump
-
-        Args:
-            output_direction (str, optional): liquid output direction ('left' or 'right'). Defaults to None.
-            channel (int, optional): channel address. Defaults to None.
-
-        Returns:
-            str: message string
-        """
-        if output_direction is None:
-            output_direction = self.output_direction
-        else:
-            output_direction = output_direction.upper()[0]
-        if output_direction not in ['L', 'R']:
-            raise Exception("Please input either '[L]eft' or '[R]ight'.")
-        self.output_direction = output_direction
-        message = 'Z' if output_direction == 'R' else 'Y'
-        return message
-    
-    @_single_action
-    def move(self, direction:str, steps:int, channel=None):
-        """
-        Move plunger either up or down
-
-        Args:
-            axis (str): desired direction of plunger (up / down)
-            value (int): number of steps to move plunger by
-            channel (int, optional): channel to move. Defaults to None.
-        Raises:
-            Exception: Axis direction either 'up' or 'down'
-
-        Returns:
-            str: message string
-        """
-        message = ''
-        if direction.lower() in ['up','u']:
-            message =  f"D{abs(steps)}"
-        elif direction.lower() in ['down','d']:
-            message =  f"P{abs(steps)}"
-        else:
-            raise Exception("Please select either 'up' or 'down'")
-        return message
-        
-    @_single_action
-    def moveBy(self, steps:int, channel:int = None):
-        """
-        Move plunger by specified number of steps
-
-        Args:
-            steps (int): number of steps to move plunger by >0: aspirate/move down; <0 dispense/move up)
-            channel (int, optional): channel to move by. Defaults to None.
-
-        Returns:
-            str: message string
-        """
-        message = f"P{abs(steps)}" if steps >0 else f"D{abs(steps)}"
-        return message
-    
-    @_single_action
-    def moveTo(self, position:int, channel:int = None):
-        """
-        Move plunger to specified position
-
-        Args:
-            position (int): desired plunger position
-            channel (int, optional): channel to move to. Defaults to None.
-
-        Returns:
-            str: message string
-        """
-        message = f"A{position}"
-        return message
-    
-    @_single_action
-    def setSpeedRamp(self, ramp:int = 1, channel:int = None):
-        """
-        Set the ramp up between start speed and top speed
-
-        Args:
-            ramp (int): ramp speed
-            channel (int, optional): channel to set. Defaults to None.
-
-        Returns:
-            str: message string
-        """
-        message = f"L{ramp}"
-        return message
-    
-    @_single_action
-    def setStartSpeed(self, speed:int, channel:int = None):
-        """
-        Set the starting speed of the plunger
-
-        Args:
-            speed (int): starting speed of plunger
-            channel (int, optional): channel to set. Defaults to None.
-
-        Returns:
-            str: message string
-        """
-        message = f"v{speed}"
-        return message
-    
-    @_single_action
-    def setTopSpeed(self, speed:int, channel:int = None):
-        """
-        Set the top speed of the plunger
-
-        Args:
-            speed (int): top speed of plunger
-            channel (int, optional): channel to set. Defaults to None.
-
-        Returns:
-            str: message string
-        """
-        message = f"V{speed}"
-        return message
-    
-    @_single_action
-    def setValve(self, position:str, value:int = None, channel:int = None):
-        """
-        Set valve position to one of [I]nput, [O]utput, [B]ypass, [E]xtra
-
-        Args:
-            position (str): one of the above positions
-            value (int, optional): only for 6-way distribution. Defaults to None.
-            channel (int, optional): channel to set. Defaults to None.
-
-        Raises:
-            Exception: Please select a valid position
-
-        Returns:
-            str: message string
-        """
-        positions = ['I','O','B','E']
-        position = position.upper()[0]
-        if position not in positions:
-            raise Exception(f"Please select a position from {', '.join(positions)}")
-        message = position
-        if value in [1,2,3,4,5,6]:
-            message = f'{position}{value}'
-        return message
-    
-    @_single_action
-    def wait(self, time_ms:int, channel:int = None):
-        """
-        Wait for a specified amount of time
-
-        Args:
-            time_ms (int): duration in milliseconds
-            channel (int, optional): channel to wait. Defaults to None.
-
-        Returns:
-            str: message string
-        """
-        message = f"M{time_ms}"
-        return message
-    
-    # Standard actions
-    def isBusy(self):
-        """
-        Check whether the device is busy
-
-        Raises:
-            Exception: Unable to determine whether the device is busy
-
-        Returns:
-            bool: whether the device is busy
-        """
-        busy,_ = self.status
-        if busy is None and self.device is not None:
-            raise Exception('Unable to determine whether the device is busy')
-        return busy
-    
-    def isConnected(self):
-        """
-        Check whether the device is connected
-
-        Returns:
-            bool: whether the device is busy
-        """
-        return (self.device is not None)
-
-    def queue(self, actions:list = [], channel:int = None):
-        """
-        Queue several commands together before sending to the device
-
-        Args:
-            actions (list, optional): list of actions. Defaults to [].
-            channel (int, optional): channel to set. Defaults to None.
-
-        Returns:
-            str: message string
-        """
-        message = ''.join(actions)
-        self.action_message = self.action_message + message
-        return message
-    
-    def reset(self, channel:int = None):
-        """
-        Reset and initialise the device
-
-        Args:
-            channel (int, optional): channel to reset. Defaults to None.
-        """
-        self.initialise()
-        return
-    
-    def run(self, message:str = None, channel:int = None):
-        """
-        Send the message to the device and run the action
-
-        Args:
-            message (str, optional): message string of commands. Defaults to None.
-            channel (int, optional): channel to run. Defaults to None.
-
-        Returns:
-            str: message string
-        """
-        if message is None:
-            message = self.action_message
-            self.action_message = ''
-        message = f"{message}R"
-        self._query(message)
-        while self.isBusy():
-            time.sleep(0.2)
-        if 'Z' in message or 'Y' in message:
-            self.setFlag('init_status', True)
-        return message
-    
-    def stop(self, channel:int = None):
-        """
-        Stops the device immediately, terminating any actions in progress or in queue
-
-        Args:
-            channel (int, optional): channel to stop. Defaults to None.
-
-        Returns:
-            str: message string
-        """
-        response = self._query('T')
-        return response
-    
-    # Compound actions
-    @_compound_action
-    def aspirate(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:int = None):
-        steps = min(int(volume/self.resolution), self.step_limit-self.position)
-        volume = steps * self.resolution
-        self.queue([
-            self.setStartSpeed(start_speed),
-            self.setTopSpeed(top_speed),
-            self.setSpeedRamp(1),
-            self.setValve('I'),
-            self.moveBy(steps)
-        ])
-        message = self.action_message
-        print(f"Aspirating {volume}uL {self.name}...")
-        self.run()
-        return message
-    
-    @_compound_action
-    def cycle(self, cycles:int, channel:int = None):
-        return self.prime(cycles=cycles, channel=channel)
-    
-    @_compound_action
-    def dispense(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:int = None):
-        steps = min(int(volume/self.resolution), self.step_limit)
-        volume = steps * self.resolution
-        self.queue([
-            self.setStartSpeed(start_speed),
-            self.setTopSpeed(top_speed),
-            self.setSpeedRamp(1)
-        ])
-        if self.position <= steps:
-            self.queue([self.fill()])
-        self.queue([
-            self.setValve('O'),
-            self.moveBy(-abs(steps))
-        ])
-        message = self.action_message
-        print(f"Dispensing {volume}uL {self.name}...")
-        self.run()
-        return message
-    
-    @_compound_action
-    def dose(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:int = None):
-        """
-        Supply a dose of liquid
-
-        Args:
-            volume (int): desired volume of liquid
-            start_speed (int, optional): starting speed of the dosing. Defaults to 50.
-            top_speed (int, optional): top speed of the dosing. Defaults to 200.
-            channel (int, optional): channel to does from. Defaults to None.
-            
-        Returns:
-            str: message string
-        """
-        steps = int(volume/self.resolution)
-        volume = steps * self.resolution
-        self.queue([
-            self.setStartSpeed(start_speed),
-            self.setTopSpeed(top_speed),
-            self.setSpeedRamp(1)
-        ])
-        if self.position < 0.75*self.step_limit:
-            self.queue([self.fill()])
-        self.queue([
-            self.setValve('O'),
-            self.moveBy(-abs(steps))
-        ])
-        message = self.action_message
-        self.run()
-        print(f"Dispensing {volume}uL {self.name} is complete")
-        return message
-    
-    @_compound_action
-    def prime(self, cycles:int, channel:int = None):
-        """
-        Prime the pump by cycling the plunger through its max and min positions
-
-        Args:
-            cycles (int): number of times to cycle
-            channel (int, optional): channel to prime. Defaults to None.
-            
-        Returns:
-            str: message string
-        """
-        self.queue([
-            self.initialise(),
-            self.setStartSpeed(50),
-            self.setTopSpeed(200),
-            self.setSpeedRamp(1),
-            self.loop(cycles,
-                self.fill(),
-                self.empty()
-            )
-        ])
-        message = self.action_message
-        self.run()
-        print(f"Priming of pump {self.channel} complete")
-        return message
-    
-    @_compound_action
-    def rinse(self, cycles:int, channel:int = None):
-        return self.prime(cycles=cycles, channel=channel)
-
-
-class TriContinentEnsemble(Pump):
-    def __init__(self, ports:list, channels:list, models:list, output_directions: list, syringe_volumes: list, names: list = [], verbose=True):
-        if len(ports) == 1:
-            super().__init__(ports[0], verbose)
-            properties = Helper.zip_inputs('channel',
-                port=ports*len(channels),
-                channel=channels,
-                model=models,
-                output_direction=output_directions,
-                syringe_volume=syringe_volumes,
-                name=names,
-                device=[self.device]*len(channels),
-                verbose=verbose
-            )
-        else:
-            properties = Helper.zip_inputs('channel',
-                port=ports,
-                channel=channels,
-                model=models,
-                output_direction=output_directions,
-                syringe_volume=syringe_volumes,
-                name=names,
-                verbose=verbose
-            )
-        self.channels = {key: TriContinent(**value) for key,value in properties.items()}
-        self.current_channel = None
-        return
-    
-    @staticmethod
-    def loop(cycles, *args):
-        return TriContinent.loop(cycles, *args)
-    
-    # Single actions
-    def empty(self, channel:int = None):
-        return self.channels.get(channel, self.current_channel).empty()
-    def fill(self, channel:int = None):
-        return self.channels.get(channel, self.current_channel).fill()
-    def initialise(self, output_direction:str = None, channel:int = None):
-        return self.channels.get(channel, self.current_channel).initialise(output_direction=output_direction)
-    def moveBy(self, steps:int, channel:int = None):
-        return self.channels.get(channel, self.current_channel).moveBy(steps=steps)
-    def moveTo(self, position:int, channel:int = None):
-        return self.channels.get(channel, self.current_channel).moveTo(position=position)
-    def setSpeedRamp(self, ramp:int, channel:int = None):
-        return self.channels.get(channel, self.current_channel).setSpeedRamp(ramp=ramp)
-    def setStartSpeed(self, speed:int, channel:int = None):
-        return self.channels.get(channel, self.current_channel).setStartSpeed(speed=speed)
-    def setTopSpeed(self, speed:int, channel:int = None):
-        return self.channels.get(channel, self.current_channel).setTopSpeed(speed=speed)
-    def setValve(self, position:str, value:int = None, channel:int = None):
-        return self.channels.get(channel, self.current_channel).setValve(position=position, value=value)
-    def wait(self, time_ms:int, channel:int = None):
-        return self.channels.get(channel, self.current_channel).wait(time_ms=time_ms)
-
-    # Standard actions
-    def isBusy(self):
-        return any([pump.isBusy() for pump in self.channels.values()])
-    def queue(self, actions:list = [], channel:int = None):
-        return self.channels.get(channel, self.current_channel).queue(actions)
-    def reset(self, channel:int = None):
-        return self.channels.get(channel, self.current_channel).reset()
-    def run(self, message:str = None, channel:int = None):
-        return self.channels.get(channel, self.current_channel).run(message)
-    def stop(self, channel:int = None):
-        return self.channels.get(channel, self.current_channel).stop()
-    
-    # Compound actions
-    def aspirate(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:int = None):
-        return self.channels.get(channel, self.current_channel).aspirate(volume=volume, start_speed=start_speed, top_speed=top_speed)
-    def cycle(self, cycles:int, channel:int = None):
-        return self.channels.get(channel, self.current_channel).cycle(cycles=cycles)
-    def dispense(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:int = None):
-        return self.channels.get(channel, self.current_channel).dispense(volume=volume, start_speed=start_speed, top_speed=top_speed)
-    def dose(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:int = None):
-        return self.channels.get(channel, self.current_channel).dose(volume=volume, start_speed=start_speed, top_speed=top_speed)
-    def prime(self, cycles:int, channel:int = None):
-        return self.channels.get(channel, self.current_channel).prime(cycles=cycles)
-    def rinse(self, cycles:int, channel:int = None):
-        return self.channels.get(channel, self.current_channel).rinse(cycles=cycles)
+#     # Compound actions
+#     def aspirate(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).aspirate(volume=volume, start_speed=start_speed, top_speed=top_speed)
+#     def cycle(self, cycles:int, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).cycle(cycles=cycles)
+#     def dispense(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).dispense(volume=volume, start_speed=start_speed, top_speed=top_speed)
+#     def dose(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).dose(volume=volume, start_speed=start_speed, top_speed=top_speed)
+#     def prime(self, cycles:int, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).prime(cycles=cycles)
+#     def rinse(self, cycles:int, channel:Optional[int] = None):
+#         return self.channels.get(channel, self.current_channel).rinse(cycles=cycles)
     
