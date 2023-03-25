@@ -1,1 +1,1 @@
-from .tricontinent_utils import TriContinent, TriContinentEnsemble
+from .tricontinent_utils import TriContinent
