@@ -7,6 +7,7 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from dataclasses import dataclass, field
 from enum import Enum
 
 # Local application imports
@@ -30,3 +31,33 @@ class ErrorCode(Enum):
 class StatusCode(Enum):
     Busy    = ['@','A','B','C','D','E','F','G','H','I','J','K','O']
     Idle    = ['`','a','b','c','d','e','f','g','h','i','j','k','o']
+
+@dataclass
+class TriContinentPump:
+    channel: int
+    model: str
+    capacity: int
+    output_right: bool
+    name: str = ''
+    reagent: str = ''
+    resolution: float = field(init=False)
+    step_limit: int = field(init=False)
+    
+    busy: bool = field(default=False, init=False)
+    init_status: bool = field(default=False, init=False)
+    
+    position: int = field(default=0, init=False)
+    status: str = field(default='', init=False)
+    action_message: str = field(default='', init=False)
+    
+    def __post_init__(self):
+        self.step_limit = int(''.join(filter(str.isdigit, self.model)))
+        self.resolution = self.capacity / self.step_limit
+        if len(self.name) == 0:
+            self.name = f"Pump {self.channel}"
+        return
+    
+    # Properties 
+    @property
+    def volume(self) -> float:
+        return self.position/self.step_limit * self.capacity
