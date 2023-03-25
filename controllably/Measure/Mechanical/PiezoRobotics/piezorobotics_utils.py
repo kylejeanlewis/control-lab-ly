@@ -26,6 +26,13 @@ class Program(Protocol):
         ...
         
 class PiezoRobotics(Mechanical):
+    _default_flags = {
+        'busy': False,
+        'connected': False,
+        'initialised': False,
+        'measured': False,
+        'read': False
+    }
     """
     PiezoRobotics object
 
@@ -37,10 +44,8 @@ class PiezoRobotics(Mechanical):
     available_programs = base_programs.PROGRAM_NAMES
     possible_inputs = base_programs.INPUTS_SET
     def __init__(self, port:str, channel=1, **kwargs):
-        
+        super().__init__(**kwargs)
         self.channel = 1
-        self.device = None
-        
         self.buffer_df = pd.DataFrame()
         self.data = None
         self.datatype = None
@@ -53,24 +58,12 @@ class PiezoRobotics(Mechanical):
         }
         self._last_used_parameters = {}
         self._measure_method_docstring = self.measure.__doc__
-        
-        self.verbose = True
-        self._flags = {
-            'busy': False,
-            'connected': False,
-            'initialised': False,
-            'measured': False,
-            'read': False
-        }
+
         self.port = ''
         self._connect(port, channel)
         return
     
-    def __delete__(self):
-        self._shutdown()
-        return
-    
-    def _connect(self, port:str, channel=1):
+    def _connect(self, port:str, channel:int = 1):
         """
         Connect to device
 
@@ -115,7 +108,7 @@ class PiezoRobotics(Mechanical):
         self.program_details = self.program_type.getDetails(verbose=self.verbose)
         return
 
-    def _shutdown(self):
+    def shutdown(self):
         """
         Close serial connection and shutdown
         """
@@ -153,9 +146,9 @@ class PiezoRobotics(Mechanical):
         Returns:
             pd.DataFrame: raw dataframe of measurement
         """
-        if not self._flags['read']:
+        if not self.flags['read']:
             self._extract_data()
-        if not self._flags['read']:
+        if not self.flags['read']:
             print("Unable to read data.")
             return self.buffer_df
         if self.datatype is not None:
@@ -169,7 +162,7 @@ class PiezoRobotics(Mechanical):
         Returns:
             bool: whether the device is busy
         """
-        return self._flags['busy']
+        return self.flags['busy']
     
     def isConnected(self):
         """
@@ -178,7 +171,7 @@ class PiezoRobotics(Mechanical):
         Returns:
             bool: whether device is connected
         """
-        return self._flags['connected']
+        return self.flags['connected']
     
     def loadDataType(self, datatype:Data):
         """
@@ -241,7 +234,7 @@ class PiezoRobotics(Mechanical):
         Args:
             plot_type (str, optional): perform the requested plot of the data. Defaults to None.
         """
-        if self._flags['measured'] and self._flags['read']:
+        if self.flags['measured'] and self.flags['read']:
             if self.data is not None:
                 self.data.plot(plot_type)
                 return True
@@ -271,7 +264,7 @@ class PiezoRobotics(Mechanical):
         self.measure.__func__.__doc__ = self._measure_method_docstring
         
         self.verbose = False
-        self._flags = {
+        self.flags = {
             'busy': False,
             'connected': False,
             'initialised': False,
@@ -287,25 +280,14 @@ class PiezoRobotics(Mechanical):
         Args:
             filepath (str): filepath to which data will be saved
         """
-        if not self._flags['read']:
+        if not self.flags['read']:
             self.getData()
         if len(self.buffer_df):
             self.buffer_df.to_csv(filepath)
         else:
             print('No data available to be saved.')
         return
-    
-    def setFlag(self, name:str, value:bool):
-        """
-        Set a flag truth value
-
-        Args:
-            name (str): label
-            value (bool): flag value
-        """
-        self._flags[name] = value
-        return
-    
+       
     def stopClamp(self):
         """
         Stop clamp movement
