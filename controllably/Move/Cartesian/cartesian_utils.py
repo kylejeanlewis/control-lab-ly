@@ -86,7 +86,7 @@ class Gantry(Mover):
             if self.verbose:
                 print(e)
         self.setFlag(connected=False)
-        return self.device
+        return
     
     def isFeasible(self, 
         coordinates: tuple[float], 
@@ -166,8 +166,7 @@ class Gantry(Mover):
     def reset(self):
         return super().reset()
     
-    def setSpeed(self, speed: int):
-        # NOTE: waiting for PR #48
+    def setSpeed(self, speed: int): # NOTE: waiting for PR #48
         return super().setSpeed(speed)
     
     def shutdown(self):
