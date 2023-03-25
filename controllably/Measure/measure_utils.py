@@ -9,6 +9,7 @@ Notes / actionables:
 # Standard library imports
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from typing import Callable
 # Local application imports
 print(f"Import: OK <{__name__}>")
 
@@ -31,12 +32,15 @@ class Measurer(ABC):
     @abstractmethod
     def clearCache(self):
         ...
+    
     @abstractmethod
     def disconnect(self):
         ...
+    
     @abstractmethod
     def reset(self):
         ...
+    
     @abstractmethod
     def shutdown(self):
         ...
@@ -48,6 +52,14 @@ class Measurer(ABC):
         self.device = None
         self.setFlag(connected=True)
         return
+    
+    # Properties
+    @property
+    def instrument(self) -> Callable:
+        return self.device
+    @instrument.setter
+    def instrument(self, device:Callable):
+        self.device = device
     
     def connect(self):
         return self._connect(**self.connection_details)
