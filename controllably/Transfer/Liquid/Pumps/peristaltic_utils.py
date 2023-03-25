@@ -84,8 +84,8 @@ class Peristaltic(Pump):
         push_func = self.turnClockwise if self.flags['output_clockwise'] else self.turnAntiClockwise
         return push_func(speed=speed)
     
-    def stop(self) -> bool:
-        return self._write("10\n")
+    def setCurrentChannel(self, channel:Optional[int] = None) -> bool:
+        return self.setValve(open=True, channel=channel)
     
     def setValve(self, open:bool = False, channel:Optional[int] = None) -> bool:
         """
@@ -102,6 +102,9 @@ class Peristaltic(Pump):
         if state == 0:
             raise ValueError("Please select a channel from 1-8.")
         return self._write(f"{state}\n")
+    
+    def stop(self) -> bool:
+        return self._write("10\n")
     
     def turnAntiClockwise(self, speed:int) -> bool:
         """
