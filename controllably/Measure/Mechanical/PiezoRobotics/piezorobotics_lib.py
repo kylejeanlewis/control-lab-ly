@@ -7,6 +7,8 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from __future__ import annotations
+from dataclasses import dataclass, field
 from enum import Enum
 
 # Local application imports
@@ -82,6 +84,11 @@ class FrequencyCode(Enum):
     FREQ_53 = 99.8
     FREQ_54 = 110.9
 
-COMMANDS    = [command.name for command in CommandCode]
-ERRORS      = [error.name for error in ErrorCode]
-FREQUENCIES = [frequency.value for frequency in FrequencyCode]
+@dataclass
+class Frequency:
+    low: float = FrequencyCode.FREQ_01
+    high: float = FrequencyCode.FREQ_54
+    
+    @property
+    def code(self):
+        return FrequencyCode(self.low).name, FrequencyCode(self.high).name
