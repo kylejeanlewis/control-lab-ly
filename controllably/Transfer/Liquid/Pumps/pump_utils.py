@@ -21,7 +21,7 @@ print(f"Import: OK <{__name__}>")
 class Pump(LiquidHandler):
     def __init__(self, port:str, **kwargs):
         super().__init__(**kwargs)
-        self._connect(port, **kwargs)
+        self._connect(port)
         return
     
     def disconnect(self):
@@ -40,7 +40,7 @@ class Pump(LiquidHandler):
         return self.device
      
     # Protected method(s)
-    def _connect(self, port:str, baudrate:int = 9600, timeout:int = 1, **kwargs):
+    def _connect(self, port:str, baudrate:int = 9600, timeout:int = 1):
         """
         Connect to machine control unit
 
@@ -57,11 +57,6 @@ class Pump(LiquidHandler):
             'baudrate': baudrate,
             'timeout': timeout
         }
-        
-        if device in kwargs:
-            self.device = kwargs['device']
-            return
-        
         device = None
         try:
             device = serial.Serial(port, baudrate, timeout=timeout)
