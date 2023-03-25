@@ -9,37 +9,40 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from __future__ import annotations
 import numpy as np
 from threading import Thread
 import time
+from typing import Optional, Union
 
 # Third party imports
 import serial # pip install pyserial
 
 # Local application imports
-from ..liquid_utils import LiquidHandler
-from .sartorius_lib import ErrorCode, ModelInfo, StatusCode
-from .sartorius_lib import ERRORS, MODELS, STATUSES, STATUS_QUERIES, QUERIES
+from ..liquid_utils import LiquidHandler, Speed
+from .sartorius_lib import ErrorCode, ModelInfo, StatusCode, SpeedParameters, Model
+from .sartorius_lib import STATUS_QUERIES, QUERIES
 print(f"Import: OK <{__name__}>")
 
-DEFAULT_AIRGAP = 10 # number of plunger steps for air gap
-DEFAULT_PULLBACK = 5 # number of plunger steps for pullback
-READ_TIMEOUT_S = 0.3
 STEP_RESOLUTION = 10
-STEP_RESOLUTION_ABS = 2
-TIME_RESOLUTION = 1.03 # minimum drive response time [s]
-TIP_THRESHOLD = 276 # capacitance value above which tip is attached
 
 class Sartorius(LiquidHandler):
-    def __init__(
-        self, 
+    _default_flags = {
+        'busy': False,
+        'conductive_tips': False,
+        'connected': False,
+        'get_feedback': False,
+        'occupied': False,
+        'pause_feedback':False,
+        'tip_on': False
+    }
+    implement_offset = (0,0,-250)
+    def __init__(self, 
         port:str, 
-        channel=1, 
-        offset=(0,0,0), 
-        default_airgap=DEFAULT_AIRGAP,
-        default_pullback=DEFAULT_PULLBACK,
-        time_resolution=TIME_RESOLUTION,
-        tip_threshold=TIP_THRESHOLD,
+        channel: int = 1, 
+        offset: tuple[float] = (0,0,0),
+        response_time: float = 1.03,        # Empirical: minimum drive response time [s]
+        tip_threshold: int = 276,           # Empirical: capacitance value above which tip is attached
         **kwargs
     ):
         """
@@ -53,116 +56,41 @@ class Sartorius(LiquidHandler):
         super().__init__(**kwargs)
         self.channel = channel
         self.offset = offset
-        
-        self.device = None
-        self.home_position = 0
-        self.limits = (0,0)
-        self.implement_offset = (0,0,-250)
-        self.tip_length = 0
-        
-        self.default_airgap = default_airgap
-        self.default_pullback = default_pullback
-        self.time_resolution = time_resolution
+        self.response_time = response_time
         self.tip_threshold = tip_threshold
         
-        self._flags = {
-            'busy': False,
-            'conductive_tips': False,
-            'connected': False,
-            'get_feedback': False,
-            'occupied': False,
-            'pause_feedback':False,
-            'tip_on': False
-        }
-        self._levels = 0
-        self._position = 0
-        self._resolution = 0
-        self._speed_in = 3      # Default speed is setting 3
-        self._speed_out = 3     # Default speed is setting 3
-        self._speed_codes = None
+        self.model_info: Model = None
+        self.limits = (0,0)
+        self.position = 0
+        self.speed_code = Speed(3,3)
+        self.speed_presets = None
+        self.tip_length = 0
+        
+        self._capacitance = 0
         self._status_code = ''
         self._threads = {}
         
-        self.verbose = False
-        self.port = ''
-        self._baudrate = None
-        self._timeout = None
+        print("Any attached pipette tip may drop during initialisation.")
         self._connect(port)
         return
     
     @property
-    def levels(self):
-        response = self._query('DN')
-        try:
-            self._levels = int(response)
-            return self._levels
-        except ValueError:
-            pass
-        return response
+    def capacitance(self) -> int:
+        return self._capacitance
+        
+    @property
+    def home_position(self) -> int:
+        return self.model_info.home_position
     
     @property
-    def position(self):
-        response = self._query('DP')
-        try:
-            self._position = int(response)
-            return self._position
-        except ValueError:
-            pass
-        return response
+    def resolution(self) -> float:
+        return self.model_info.resolution
     
     @property
-    def resolution(self):
-        return self._resolution
+    def status(self) -> str:
+        return self.getStatus()
     
-    @property
-    def speed(self):
-        speed = {
-            'in': self._speed_codes[self._speed_in],
-            'out': self._speed_codes[self._speed_out]
-        }
-        return speed
-    @speed.setter
-    def speed(self, value):
-        """
-        Set the intake or outflow speeds
-
-        Args:
-            value (iterable):
-                speed_code (int): Preset speed code
-                direction (str): 'in' or 'out'
-
-        Raises:
-            Exception: Select a valid speed code
-            Exception: Select a valid direction
-        """
-        speed, direction = value
-        speed_code = [x for x,val in enumerate(np.array(self._speed_codes)-speed) if val >= 0][0]
-        print(f'Speed Code: {speed_code}')
-        if not (0 < speed_code < len(self._speed_codes)):
-            raise Exception(f'Please select a valid speed code from 1 to {len(self._speed_codes)-1}')
-        if direction == 'in':
-            self._speed_in = speed_code
-            self._query(f'SI{speed_code}')
-            self._query('DI')
-        elif direction == 'out':
-            self._speed_out = speed_code
-            self._query(f'SO{speed_code}')
-            self._query('DO')
-        else:
-            raise Exception("Please select either 'in' or 'out' for direction parameter")
-        return
-    
-    @property
-    def status(self):
-        return StatusCode(self._status_code).name
-    @status.setter
-    def status(self, status_code:str):
-        if status_code not in STATUSES:
-            raise Exception(f"Please input a valid status code from: {', '.join(STATUSES)}")
-        self._status_code = status_code
-        return
-    
-    def __cycles__(self):
+    def __cycles__(self) -> Union[int, str]:
         """
         Retrieve total cycle lifetime
 
@@ -172,17 +100,12 @@ class Sartorius(LiquidHandler):
         response = self._query('DX')
         try:
             cycles = int(response)
-            print(f'Total cycles: {cycles}')
-            return cycles
         except ValueError:
-            pass
-        return response
+            return response
+        print(f'Total cycles: {cycles}')
+        return cycles
     
-    def __delete__(self):
-        self._shutdown()
-        return
-    
-    def __model__(self):
+    def __model__(self) -> str:
         """
         Retreive the model of the device
 
@@ -193,23 +116,22 @@ class Sartorius(LiquidHandler):
         print(f'Model: {response}')
         return response
     
-    def __resolution__(self):
+    def __resolution__(self) -> Union[int, str]:
         """
         Retrieve the resolution of the device
 
         Returns:
-            int: volume resolution of device
+            int: volume resolution of device in nL
         """
         response = self._query('DR')
         try:
-            res = int(response)
-            print(f'{res/1000} uL / step')
-            return res
+            resolution = int(response)
         except ValueError:
-            pass
-        return response
+            return response
+        print(f'{resolution/1000} uL / step')
+        return resolution
     
-    def __version__(self):
+    def __version__(self) -> str:
         """
         Retrieve the version of the device
 
@@ -218,215 +140,7 @@ class Sartorius(LiquidHandler):
         """
         return self._query('DV')
 
-    def _calculate_speed_parameters(self, volume:int, speed:int):
-        """
-        Calculates the best parameters for volume and speed
-
-        Args:
-            volume (int): volume to be transferred
-            speed (int): speed at which liquid is transferred
-
-        Returns:
-            dict: dictionary of best parameters
-        """
-        outcomes = {}
-        step_interval_limit = int(volume/self.resolution/STEP_RESOLUTION)
-        for standard in self._speed_codes:
-            if not standard or standard < speed:
-                continue
-            time_interval_limit = int(volume*(1/speed - 1/standard)/self.time_resolution)
-            if not step_interval_limit or not time_interval_limit:
-                continue
-            intervals = max(min(step_interval_limit, time_interval_limit), 1)
-            each_steps = volume/self.resolution/intervals
-            each_delay = volume*(1/speed - 1/standard)/intervals
-            area = 0.5 * (volume**2) * (1/self.resolution) * (1/intervals) * (1/speed - 1/standard)
-            outcomes[area] = {'delay': each_delay, 'intervals': intervals, 'standard': standard, 'step_size': int(each_steps)}
-        if len(outcomes) == 0:
-            print("No feasible speed parameters.")
-            return {}
-        print(f'Best parameters: {outcomes[min(outcomes)]}')
-        return outcomes[min(outcomes)]
-    
-    def _connect(self, port:str, baudrate=9600, timeout=1):
-        """
-        Connect to machine control unit
-
-        Args:
-            port (str): com port address
-            baudrate (int): baudrate. Defaults to 9600.
-            timeout (int, optional): timeout in seconds. Defaults to None.
-            
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
-        """
-        self.port = port
-        self._baudrate = baudrate
-        self._timeout = timeout
-        device = None
-        try:
-            device = serial.Serial(port, self._baudrate, timeout=self._timeout)
-            self.device = device
-            print(f"Connection opened to {port}")
-            self.setFlag('connected', True)
-            
-            self.getInfo()
-            self.reset()
-            self.toggleFeedbackLoop(on=False)
-        except Exception as e:
-            print(f"Could not connect to {port}")
-            if self.verbose:
-                print(e)
-        return self.device
-    
-    def _is_expected_reply(self, message_code:str, response:str):
-        """
-        Check whether the response is an expected reply
-
-        Args:
-            message_code (str): two-character message code
-            response (str): response string from device
-
-        Returns:
-            bool: whether the response is an expected reply
-        """
-        if response in ERRORS:
-            return True
-        if message_code not in QUERIES and response == 'ok':
-            return True
-        if message_code in QUERIES and response[:2] == message_code.lower():
-            reply_code, data = response[:2], response[2:]
-            if self.verbose:
-                print(f'[{reply_code}] {data}')
-            return True
-        return False
-    
-    def _loop_feedback(self):
-        """
-        Feedback loop to constantly check status and liquid level
-        """
-        print('Listening...')
-        while self._flags['get_feedback']:
-            if self._flags['pause_feedback']:
-                continue
-            self.getStatus()
-            self.getLiquidLevel()
-        print('Stop listening...')
-        return
-    
-    def _query(self, message:str, timeout_s=READ_TIMEOUT_S, resume_feedback=False):
-        """
-        Send query and wait for response
-
-        Args:
-            message (str): message string
-            timeout_s (int, optional): duration to wait before timeout. Defaults to READ_TIMEOUT_S.
-
-        Returns:
-            str: message readout
-        """
-        message_code = message[:2]
-        if message_code not in STATUS_QUERIES:
-            if self._flags['get_feedback'] and not self._flags['pause_feedback']:
-                self.setFlag('pause_feedback', True)
-                time.sleep(timeout_s)
-            self.getStatus()
-            while self.isBusy():
-                self.getStatus()
-        
-        start_time = time.time()
-        self._write(message)
-        response = ''
-        while not self._is_expected_reply(message_code, response):
-            if time.time() - start_time > timeout_s:
-                break
-            response = self._read()
-        # print(time.time() - start_time)
-        if message_code in QUERIES:
-            response = response[2:]
-        if message_code not in STATUS_QUERIES and resume_feedback:
-            self.setFlag('pause_feedback', False)
-        return response
-
-    def _read(self):
-        """
-        Read response from device
-
-        Returns:
-            str: response string
-        """
-        response = ''
-        try:
-            response = self.device.readline()
-            if len(response) == 0:
-                response = self.device.readline()
-            response = response[2:-2].decode('utf-8')
-            if response in ERRORS:
-                print(ErrorCode[response].value)
-                return response
-            elif response == 'ok':
-                return response
-        except Exception as e:
-            if self.verbose:
-                print(e)
-        return response
-    
-    def _set_channel(self, new_channel:int):
-        """
-        Set channel id of device
-
-        Args:
-            new_channel (int): new channel id
-
-        Raises:
-            Exception: Address should be between 1~9
-        """
-        if not (0 < new_channel < 10):
-            raise Exception('Please select a valid rLine address from 1 to 9')
-        response = self._query(f'*A{new_channel}')
-        if response == 'ok':
-            self.channel = new_channel
-        return
-    
-    def _shutdown(self):
-        """
-        Close serial connection and shutdown
-        """
-        self.toggleFeedbackLoop(on=False)
-        # self.zero()
-        self.device.close()
-        self._flags = {
-            'busy': False,
-            'connected': False,
-            'get_feedback': False,
-            'occupied': False,
-            'pause_feedback':False,
-            'tip_on': False
-        }
-        return
-    
-    def _write(self, message:str):
-        """
-        Sends message to device
-
-        Args:
-            message (str): <message code><value>
-
-        Returns:
-            str: two-character message code
-        """
-        fstring = f'{self.channel}{message}º\r' # message template: <PRE><ADR><CODE><DATA><LRC><POST>
-        # bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
-        try:
-            # Typical timeout wait is 400ms
-            self.device.write(fstring.encode('utf-8'))
-        except Exception as e:
-            if self.verbose:
-                print(e)
-            return False
-        return True
-    
-    def addAirGap(self, steps:int = None, channel=None):
+    def addAirGap(self, steps:int = 10) -> str:
         """
         Create an air gap between two volumes of liquid in pipette
         
@@ -437,13 +151,18 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """
-        if steps is None:
-            steps = self.default_airgap
         response = self._query(f'RI{steps}')
         time.sleep(1)
         return response
         
-    def aspirate(self, volume, speed=None, wait=0, reagent='', pause=False, channel=None):
+    def aspirate(self, 
+        volume: float, 
+        speed: Optional[float] = None, 
+        wait: int = 0, 
+        pause: bool = False, 
+        reagent: Optional[str] = None,
+        **kwargs
+    ) -> str:
         """
         Aspirate desired volume of reagent into channel
 
@@ -458,68 +177,68 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """ 
-        self.setFlag('pause_feedback', True)
-        self.setFlag('occupied', True)
+        self.setFlag(pause_feedback=True, occupied=True)
         volume = min(volume, self.capacity - self.volume)
         steps = int(volume / self.resolution)
         volume = steps * self.resolution
-        speed_parameters = {}
-        if speed is None:
-            speed = self.speed['in']
-        elif speed in self._speed_codes:
-            self.speed = speed,'in'
-        elif speed not in self._speed_codes:
-            print(volume)
-            print(speed)
-            speed_parameters = self._calculate_speed_parameters(volume=volume, speed=speed)
-            print(speed_parameters)
-            standard = speed_parameters.get('standard')
-            if standard == None:
-                print('Speed not feasible.')
-                return
-            self.speed = standard,'in'
-        
         if volume == 0:
             return ''
-        print(f'Aspirate {volume} uL')
+        print(f'Aspirating {volume} uL...')
         start_aspirate = time.time()
-        if speed not in self._speed_codes:
-            delay = speed_parameters.get('delay', self.time_resolution)
-            step_size = speed_parameters.get('step_size', STEP_RESOLUTION)
-            intervals = speed_parameters.get('intervals', STEP_RESOLUTION)
-            for i in range(intervals):
-                start_time = time.time()
-                step = step_size if (i+1 != intervals) else steps
-                move_time = step*self.resolution / standard
-                response = self._query(f'RI{step}', resume_feedback=False)
-                if response != 'ok':
-                    print("Aspirate failed")
-                    return response
-                steps -= step
-                duration = time.time() - start_time
-                if duration < (delay+move_time):
-                    time.sleep(delay+move_time-duration)
-        else:
+        speed = self.speed.up if speed is None else speed
+        
+        if speed in self.speed_presets:
+            if speed != self.speed.up:
+                self.setSpeed(speed=speed, up=True)
+                self.speed.up = speed
+            start_aspirate = time.time()
             response = self._query(f'RI{steps}')
             move_time = steps*self.resolution / speed
             time.sleep(move_time)
-            if response != 'ok':
-                return response
-        print(f'Aspirate time: {time.time()-start_aspirate}s')
+            # if response != 'ok':
+            #     return response
+            
+        elif speed not in self.speed_presets:
+            print(f"Target: {volume} uL at {speed} uL/s...")
+            speed_parameters = self._calculate_speed_parameters(volume=volume, speed=speed)
+            print(speed_parameters)
+            preset = speed_parameters.preset
+            if preset is None:
+                raise RuntimeError('Target speed not possible.')
+            self.setSpeed(speed=preset, up=True)
+            self.speed.up = speed
+            start_aspirate = time.time()
+            
+            steps_left = steps
+            delay = speed_parameters.delay
+            step_size = speed_parameters.step_size
+            intervals = speed_parameters.intervals
+            for i in range(intervals):
+                start_time = time.time()
+                step = step_size if (i+1 != intervals) else steps_left
+                move_time = step*self.resolution / preset
+                response = self._query(f'RI{step}', resume_feedback=False)
+                # if response != 'ok':
+                #     print("Aspiration failed")
+                #     return response
+                steps_left -= step
+                duration = time.time() - start_time
+                if duration < (delay+move_time):
+                    time.sleep(delay+move_time-duration)
         
         # Update values
-        self.volume += volume
-        if len(reagent) and len(self.reagent) == 0:
-            self.reagent = reagent
-        
+        print(f'Aspiration time: {time.time()-start_aspirate}s')
         time.sleep(wait)
-        self.setFlag('occupied', False)
-        self.setFlag('pause_feedback', False)
+        self.setFlag(occupied=False, pause_feedback=False)
+        self.volume += volume
+        self.position += steps
+        if reagent is not None:
+            self.reagent = reagent
         if pause:
             input("Press 'Enter' to proceed.")
         return response
     
-    def blowout(self, home=True, channel=None):
+    def blowout(self, home:bool = True, **kwargs) -> str:
         """
         Blowout last remaining drop in pipette
 
@@ -530,21 +249,22 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """
-        message = f'RB{self.home_position}' if home else f'RB'
+        message = f'RB{self.home_position}' if home else 'RB'
         response = self._query(message)
+        self.position = self.home_position
         time.sleep(1)
         return response
     
-    def connect(self):
-        """
-        Reconnect to device using existing port and baudrate
-        
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
-        """
-        return self._connect(self.port, self._baudrate, self._timeout)
-    
-    def dispense(self, volume, speed=None, wait=0, force_dispense=False, pause=False, blowout=True, blowout_home=True, channel=None):
+    def dispense(self, 
+        volume: float, 
+        speed: Optional[float] = None, 
+        wait: int = 0, 
+        pause: bool = False, 
+        blowout: bool = False,
+        blowout_home: bool = True,
+        force_dispense: bool = False, 
+        **kwargs
+    ) -> str:
         """
         Dispense desired volume of reagent from channel
 
@@ -564,71 +284,71 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """
-        self.setFlag('pause_feedback', True)
-        self.setFlag('occupied', True)
+        self.setFlag(pause_feedback=True, occupied=True)
         if force_dispense:
             volume = min(volume, self.volume)
         elif volume > self.volume:
             raise Exception('Required dispense volume is greater than volume in tip')
         steps = int(volume / self.resolution)
         volume = steps * self.resolution
-        speed_parameters = {}
-        if speed is None:
-            speed = self.speed['out']
-        elif speed in self._speed_codes:
-            self.speed = speed,'out'
-        elif speed not in self._speed_codes:
-            print(volume)
-            print(speed)
-            speed_parameters = self._calculate_speed_parameters(volume=volume, speed=speed)
-            print(speed_parameters)
-            standard = speed_parameters.get('standard')
-            if standard == None:
-                print('Speed not feasible.')
-                return
-            self.speed = standard,'out'
-        
         if volume == 0:
             return ''
-        print(f'Dispense {volume} uL')
+        print(f'Dispensing {volume} uL...')
         start_dispense = time.time()
-        if speed not in self._speed_codes:
-            delay = speed_parameters.get('delay', self.time_resolution)
-            step_size = speed_parameters.get('step_size', STEP_RESOLUTION)
-            intervals = speed_parameters.get('intervals', STEP_RESOLUTION)
-            for i in range(intervals):
-                start_time = time.time()
-                step = step_size if (i+1 != intervals) else steps
-                move_time = step*self.resolution / standard
-                response = self._query(f'RO{step}', resume_feedback=False)
-                if response != 'ok':
-                    print("Dispense failed")
-                    return response
-                steps -= step
-                duration = time.time() - start_time
-                if duration < (delay+move_time):
-                    time.sleep(delay+move_time-duration)
-        else:
+        speed = self.speed.down if speed is None else speed
+
+        if speed in self.speed_presets:
+            if speed != self.speed.down:
+                self.setSpeed(speed=speed, up=False)
+                self.speed.down = speed
+            start_dispense = time.time()
             response = self._query(f'RO{steps}')
             move_time = steps*self.resolution / speed
             time.sleep(move_time)
-            if response != 'ok':
-                return response
-        print(f'Dispense time: {time.time()-start_dispense}s')
+            # if response != 'ok':
+            #     return response
+            
+        elif speed not in self.speed_presets:
+            print(f"Target: {volume} uL at {speed} uL/s...")
+            speed_parameters = self._calculate_speed_parameters(volume=volume, speed=speed)
+            print(speed_parameters)
+            preset = speed_parameters.preset
+            if preset is None:
+                raise RuntimeError('Target speed not possible.')
+            self.setSpeed(speed=preset, up=False)
+            self.speed.down = speed
+            start_dispense = time.time()
         
+            steps_left = steps
+            delay = speed_parameters.delay
+            step_size = speed_parameters.step_size
+            intervals = speed_parameters.intervals
+            for i in range(intervals):
+                start_time = time.time()
+                step = step_size if (i+1 != intervals) else steps_left
+                move_time = step*self.resolution / preset
+                response = self._query(f'RO{step}', resume_feedback=False)
+                # if response != 'ok':
+                #     print("Dispense failed")
+                #     return response
+                steps_left -= step
+                duration = time.time() - start_time
+                if duration < (delay+move_time):
+                    time.sleep(delay+move_time-duration)
+
         # Update values
-        self.volume = max(self.volume - volume, 0)
-        
+        print(f'Dispense time: {time.time()-start_dispense}s')
         time.sleep(wait)
+        self.setFlag(occupied=False, pause_feedback=False)
+        self.volume = max(self.volume - volume, 0)
+        self.position -= steps
         if self.volume == 0 and blowout:
             self.blowout(home=blowout_home)
-        self.setFlag('occupied', False)
-        self.setFlag('pause_feedback', False)
         if pause:
             input("Press 'Enter' to proceed.")
         return response
     
-    def eject(self, home=True, channel=None):
+    def eject(self, home:bool = True) -> str:
         """
         Eject pipette tip
 
@@ -640,45 +360,16 @@ class Sartorius(LiquidHandler):
             str: device response
         """
         self.reagent = ''
-        message = f'RE{self.home_position}' if home else f'RE'
+        message = f'RE{self.home_position}' if home else 'RE'
         response = self._query(message)
+        self.position = self.home_position if home else 0
         time.sleep(1)
         return response
     
-    def getErrors(self, channel=None):
-        """
-        Get errors from device
-        
-        Args:
-            channel (int, optional): channel to get errors. Defaults to None.
-
-        Returns:
-            str: device response
-        """
-        return self._query('DE')
+    def empty(self, **kwargs):
+        return self.home()
     
-    def getInfo(self):
-        """
-        Get model info
-
-        Raises:
-            Exception: Select a valid model name
-        """
-        model = self.__model__().split('-')[0]
-        if model not in MODELS:
-            print(f'Received: {model}')
-            raise Exception(f"Please select a valid model from: {', '.join(MODELS)}")
-        info = ModelInfo[model].value
-        print(info)
-        
-        self.limits = (info['tip_eject_position'], info['max_position'])
-        self.capacity = info['capacity']
-        self.home_position = info['home_position']
-        self._resolution = info['resolution']
-        self._speed_codes = info['speed_codes']
-        return
-    
-    def getLiquidLevel(self, channel=None):
+    def getCapacitance(self) -> Union[int, str]:
         """
         Get the liquid level by measuring capacitance
         
@@ -690,12 +381,57 @@ class Sartorius(LiquidHandler):
         """
         response = self._query('DN')
         try:
-            self._levels = int(response)
+            capacitance = int(response)
         except ValueError:
-            pass
-        return response
+            return response
+        self._capacitance = capacitance
+        return capacitance
+ 
+    def getErrors(self) -> str:
+        """
+        Get errors from device
+        
+        Args:
+            channel (int, optional): channel to get errors. Defaults to None.
+
+        Returns:
+            str: device response
+        """
+        return self._query('DE')
+    
+    def getInfo(self, model: Optional[str] = None):
+        """
+        Get model info
+
+        Raises:
+            Exception: Select a valid model name
+        """
+        model = self.__model__().split('-')[0] if model is None else model
+        if model not in ModelInfo._member_names_:
+            print(f'Received: {model}')
+            model = 'BRL0'
+            print(f"Defaulting to: {'BRL0'}")
+            print(f"Valid models are: {', '.join(ModelInfo._member_names_)}")
+        info: Model = ModelInfo[model].value
+        print(info)
+        self.model_info = info
+        self.capacity = info.capacity
+        self.limits = (info.tip_eject_position, info.max_position)
+        self.speed_presets = info.preset_speeds
+        self.speed.up = self.speed_presets[self.speed_code.up]
+        self.speed.down = self.speed_presets[self.speed_code.down]
+        return
+    
+    def getPosition(self, **kwargs) -> int:
+        response = self._query('DP')
+        try:
+            position = int(response)
+        except ValueError:
+            return response
+        self.position = position
+        return self.position
       
-    def getStatus(self, channel=None):
+    def getStatus(self, **kwargs) -> str:
         """
         Get the device status
         
@@ -707,21 +443,22 @@ class Sartorius(LiquidHandler):
         """
         response = self._query('DS')
         try:
-            response = int(response)
-        except ValueError as e:
-            if self.verbose:
-                print(e)
+            status = int(response)
+        except ValueError:
             return response
-        if response in ['4','6','8']:
-            self.setFlag('busy', True)
+        if response not in [_status.value for _status in StatusCode]:
+            return response
+        
+        self._status_code = status
+        if status in [4,6,8]:
+            self.setFlag(busy=True)
             if self.verbose:
-                print(StatusCode(response).name)
-        elif response in ['0']:
-            self.setFlag('busy', False)
-        self.status = response
-        return response
+                print(StatusCode(status).name)
+        elif status == 0:
+            self.setFlag(busy=False)
+        return StatusCode(self._status_code).name
     
-    def home(self, channel=None):
+    def home(self) -> str:
         """
         Return plunger to home position
         
@@ -732,28 +469,12 @@ class Sartorius(LiquidHandler):
             str: device response
         """
         response = self._query(f'RP{self.home_position}')
+        self.volume = 0
+        self.position = self.home_position
         time.sleep(1)
         return response
     
-    def isBusy(self):
-        """
-        Checks whether the pipette is busy
-        
-        Returns:
-            bool: whether the pipette is busy
-        """
-        return self._flags['busy']
-    
-    def isConnected(self):
-        """
-        Check whether pipette is connected
-
-        Returns:
-            bool: whether pipette is connected
-        """
-        return self._flags['connected']
-    
-    def isFeasible(self, position:int):
+    def isFeasible(self, position:int) -> bool:
         """
         Checks if specified position is a feasible position for plunger to access
 
@@ -763,27 +484,27 @@ class Sartorius(LiquidHandler):
         Returns:
             bool: whether plunger position is feasible
         """
-        if (self.limits[0] < position < self.limits[1]):
+        if (self.limits[0] <= position <= self.limits[1]):
             return True
         print(f"Range limits reached! {self.limits}")
         return False
     
-    def isTipOn(self):
+    def isTipOn(self) -> bool:
         """
         Checks whether tip is on
         
         Returns:
             bool: whether the tip in on
         """
-        self.getLiquidLevel()
-        print(f'Tip capacitance: {self._levels}')
-        if self._flags['conductive_tips']:
-            tip_on = (self._levels > self.tip_threshold)
-            self.setFlag('tip_on', tip_on)
-        tip_on = self._flags.get('tip_on')
+        self.getCapacitance()
+        print(f'Tip capacitance: {self.capacitance}')
+        if self.flags['conductive_tips']:
+            tip_on = (self.capacitance > self.tip_threshold)
+            self.setFlag(tip_on=tip_on)
+        tip_on = self.flags['tip_on']
         return tip_on
     
-    def move(self, direction:str, value:int, channel=None):
+    def move(self, direction:str, steps:int, **kwargs) -> str:
         """
         Move plunger either up or down
 
@@ -798,16 +519,16 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """
-        if value < 0:
-            raise Exception("Please input non-negative value")
+        steps = abs(steps)
         if direction.lower() in ['up','u']:
-            return self.moveBy(value)
+            steps *= 1
         elif direction.lower() in ['down','d']:
-            return self.moveBy(-value)
+            steps *= -1
         else:
             raise Exception("Please select either 'up' or 'down'")
+        return self.moveBy(steps)
     
-    def moveBy(self, steps:int, channel=None):
+    def moveBy(self, steps:int, **kwargs) -> str:
         """
         Move plunger by specified number of steps
 
@@ -818,14 +539,11 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """
-        response = ''
-        if steps > 0:
-            response = self._query(f'RI{steps}')
-        elif steps < 0:
-            response = self._query(f'RO{-steps}')
-        return response
+        message = f'RI{steps}' if steps > 0 else f'RO{-steps}'
+        self.position += steps
+        return self._query(message)
     
-    def moveTo(self, position:int, channel=None):
+    def moveTo(self, position:int, **kwargs) -> str:
         """
         Move plunger to specified position
 
@@ -836,9 +554,10 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """
+        self.position = position
         return self._query(f'RP{position}')
     
-    def pullback(self, steps:int = None, channel=None):
+    def pullback(self, steps:int = 5, **kwargs) -> str:
         """
         Pullback liquid from tip
         
@@ -849,13 +568,12 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """
-        if steps is None:
-            steps = self.default_pullback
         response = self._query(f'RI{steps}')
+        self.position += steps
         time.sleep(1)
         return response
     
-    def reset(self, channel=None):
+    def reset(self) -> str:
         """
         Zeros and go back to home position
         
@@ -867,19 +585,28 @@ class Sartorius(LiquidHandler):
         """
         self.zero()
         return self.home()
-
-    def setFlag(self, name:str, value:bool):
-        """
-        Set a flag truth value
-
-        Args:
-            name (str): label
-            value (bool): flag value
-        """
-        self._flags[name] = value
-        return
     
-    def toggleFeedbackLoop(self, on:bool, channel=None):
+    def setSpeed(self, speed:int, up:bool, **kwargs) -> str:
+        speed_code = 1 + [x for x,val in enumerate(np.array(self.speed_presets)-speed) if val >= 0][0]
+        print(f'Speed {speed_code}: {self.speed_presets[speed_code-1]} uL/s')
+        direction = 'I' if up else 'O'
+        self._query(f'S{direction}{speed_code}')
+        if up:
+            self.speed_code.up = speed_code
+            # self.speed.up = speed
+        else:
+            self.speed_code.down = speed_code
+            # self.speed.down = speed
+        return self._query(f'D{direction}')
+    
+    def shutdown(self):
+        """
+        Close serial connection and shutdown
+        """
+        self.toggleFeedbackLoop(on=False)
+        return super().shutdown()
+    
+    def toggleFeedbackLoop(self, on:bool):
         """
         Toggle between start and stopping feedback loop
         
@@ -889,8 +616,10 @@ class Sartorius(LiquidHandler):
         Args:
             on (bool): whether to listen to feedback
         """
-        self.setFlag('get_feedback', on)
+        self.setFlag(get_feedback=on)
         if on:
+            if 'feedback_loop' in self._threads:
+                self._threads['feedback_loop'].join()
             thread = Thread(target=self._loop_feedback)
             thread.start()
             self._threads['feedback_loop'] = thread
@@ -899,7 +628,7 @@ class Sartorius(LiquidHandler):
                 self._threads['feedback_loop'].join()
         return
 
-    def zero(self, channel=None):
+    def zero(self) -> str:
         """
         Zero the plunger position
         
@@ -911,5 +640,212 @@ class Sartorius(LiquidHandler):
         """
         self.eject()
         response = self._query('RZ')
+        self.position = 0
         time.sleep(2)
         return response
+
+    # Protected method(s)
+    def _calculate_speed_parameters(self, volume:int, speed:int) -> SpeedParameters:
+        """
+        Calculates the best parameters for volume and speed
+
+        Args:
+            volume (int): volume to be transferred
+            speed (int): speed at which liquid is transferred
+
+        Returns:
+            dict: dictionary of best parameters
+        """
+        outcomes = {}
+        step_interval_limit = int(volume/self.resolution/STEP_RESOLUTION)
+        for preset in self.speed_presets:
+            if preset < speed:
+                # preset is slower than target speed, it will never hit target speed
+                continue
+            time_interval_limit = int(volume*(1/speed - 1/preset)/self.response_time)
+            if not step_interval_limit or not time_interval_limit:
+                continue
+            intervals = max(min(step_interval_limit, time_interval_limit), 1)
+            each_steps = volume/self.resolution/intervals
+            each_delay = volume*(1/speed - 1/preset)/intervals
+            area = 0.5 * (volume**2) * (1/self.resolution) * (1/intervals) * (1/speed - 1/preset)
+            outcomes[area] = SpeedParameters(preset, intervals, int(each_steps), each_delay)
+        if len(outcomes) == 0:
+            print("No feasible speed parameters.")
+            return SpeedParameters(None, STEP_RESOLUTION, STEP_RESOLUTION, self.response_time)
+        print(f'Best parameters: {outcomes[min(outcomes)]}')
+        return outcomes[min(outcomes)]
+    
+    def _connect(self, port:str, baudrate:int = 9600, timeout:int = 1):
+        """
+        Connect to machine control unit
+
+        Args:
+            `port` (str): com port address
+            `baudrate` (int, optional): baudrate. Defaults to 9600.
+            `timeout` (int, optional): timeout in seconds. Defaults to 1.
+            
+        Returns:
+            `serial.Serial`: serial connection to machine control unit if connection is successful, else `None`
+        """
+        self.connection_details = {
+            'port': port,
+            'baudrate': baudrate,
+            'timeout': timeout
+        }
+        device = None
+        try:
+            device = serial.Serial(port, baudrate, timeout=timeout)
+        except Exception as e:
+            print(f"Could not connect to {port}")
+            if self.verbose:
+                print(e)
+        else:
+            time.sleep(2)   # Wait for grbl to initialize
+            device.flushInput()
+            print(f"Connection opened to {port}")
+            self.setFlag(connected=True)
+        self.getInfo()
+        self.reset()
+        self.device = device
+        return
+    
+    def _is_expected_reply(self, response:str, message_code:str, **kwargs) -> bool:
+        """
+        Check whether the response is an expected reply
+
+        Args:
+            message_code (str): two-character message code
+            response (str): response string from device
+
+        Returns:
+            bool: whether the response is an expected reply
+        """
+        if response in ErrorCode._member_names_:
+            return True
+        if message_code not in QUERIES and response == 'ok':
+            return True
+        if message_code in QUERIES and response[:2] == message_code.lower():
+            reply_code, data = response[:2], response[2:]
+            if self.verbose:
+                print(f'[{reply_code}] {data}')
+            return True
+        return False
+
+    def _loop_feedback(self):
+        """
+        Feedback loop to constantly check status and liquid level
+        """
+        print('Listening...')
+        while self.flags['get_feedback']:
+            if self.flags['pause_feedback']:
+                continue
+            self.getStatus()
+            self.getCapacitance()
+        print('Stop listening...')
+        return
+    
+    def _query(self, 
+        message: str, 
+        timeout_s: float = 0.3, 
+        resume_feedback: bool = False
+    ) -> str:
+        """
+        Send query and wait for response
+
+        Args:
+            message (str): message string
+            timeout_s (int, optional): duration to wait before timeout. Defaults to 0.3.
+
+        Returns:
+            str: message readout
+        """
+        message_code = message[:2]
+        if message_code not in STATUS_QUERIES:
+            if self.flags['get_feedback'] and not self.flags['pause_feedback']:
+                self.setFlag(pause_feedback=True)
+                time.sleep(timeout_s)
+            self.getStatus()
+            while self.isBusy():
+                self.getStatus()
+        
+        start_time = time.time()
+        self._write(message)
+        response = ''
+        while not self._is_expected_reply(response, message_code):
+            if time.time() - start_time > timeout_s:
+                break
+            response = self._read()
+        # print(time.time() - start_time)
+        if message_code in QUERIES:
+            response = response[2:]
+        if message_code not in STATUS_QUERIES:
+            self.getPosition()
+            if resume_feedback:
+                self.setFlag(pause_feedback=False)
+        return response
+
+    def _read(self) -> str:
+        """
+        Read response from device
+
+        Returns:
+            str: response string
+        """
+        response = ''
+        try:
+            response = self.device.readline()
+            if len(response) == 0:
+                response = self.device.readline()
+            response = response[2:-2].decode('utf-8')
+        except AttributeError:
+            pass
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        if response in ErrorCode._member_names_:
+            print(ErrorCode[response].value)
+        return response
+    
+    def _set_channel_id(self, new_channel_id:int):
+        """
+        Set channel id of device
+
+        Args:
+            new_channel (int): new channel id
+
+        Raises:
+            Exception: Address should be between 1~9
+        """
+        if not (0 < new_channel_id < 10):
+            raise Exception('Please select a valid rLine address from 1 to 9')
+        response = self._query(f'*A{new_channel_id}')
+        if response == 'ok':
+            self.channel = new_channel_id
+        return
+    
+    def _write(self, message:str) -> bool:
+        """
+        Sends message to device
+
+        Args:
+            message (str): <message code><value>
+
+        Returns:
+            str: two-character message code
+        """
+        if self.verbose:
+            print(message)
+        fstring = f'{self.channel}{message}º\r' # message template: <PRE><ADR><CODE><DATA><LRC><POST>
+        # bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
+        try:
+            # Typical timeout wait is 400ms
+            self.device.write(fstring.encode('utf-8'))
+        except AttributeError:
+            pass
+        except Exception as e:
+            if self.verbose:
+                print(e)
+            return False
+        return True
+    
