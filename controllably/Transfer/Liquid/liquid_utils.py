@@ -45,6 +45,10 @@ class LiquidHandler(ABC):
         self.verbose = verbose
         return
 
+    def __del__(self):
+        self.shutdown()
+        return
+    
     @abstractmethod
     def aspirate(self, 
         volume: float, 
@@ -76,10 +80,6 @@ class LiquidHandler(ABC):
             channel (int, optional): channel to pullback. Defaults to None.
         """
         return False
-
-    @abstractmethod
-    def disconnect(self):
-        ...
     
     @abstractmethod
     def dispense(self, 
@@ -175,7 +175,22 @@ class LiquidHandler(ABC):
             ret2 = self.dispense(volume=volume, speed=speed, wait=wait, pause=False, force_dispense=True, channel=channel)
             success.extend([ret1,ret2])
         return all(success)
-
+    
+    def disconnect(self):
+        """
+        Disconnect serial connection to robot
+        
+        Returns:
+            None: None is successfully disconnected, else serial.Serial
+        """
+        try:
+            self.device.close()
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        self.setFlag(connected=False)
+        return
+    
     def empty(self, 
         speed: Optional[float] = None, 
         wait: int = 0, 
@@ -277,6 +292,11 @@ class LiquidHandler(ABC):
             raise ValueError("Ensure all assigned flag values are boolean.")
         for key, value in kwargs.items():
             self.flags[key] = value
+        return
+
+    def shutdown(self):
+        self.disconnect()
+        self.resetFlags()
         return
 
     # Protected method(s)
