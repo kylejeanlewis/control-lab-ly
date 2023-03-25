@@ -37,6 +37,7 @@ class MassBalance(Measurer):
         'record': False
     }
     def __init__(self, port:str, calibration_factor:float = CALIBRATION_FACTOR, **kwargs):
+        super().__init__(**kwargs)
         self.baseline = 0
         self.buffer_df = pd.DataFrame(columns=COLUMNS)
         self.calibration_factor = calibration_factor
@@ -210,7 +211,7 @@ class MassBalance(Measurer):
             time.sleep(1)
             self.zero()
         self.device = device
-        return self.device
+        return
     
     def _loop_feedback(self):
         """
