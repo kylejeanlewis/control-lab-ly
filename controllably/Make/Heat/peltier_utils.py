@@ -271,7 +271,6 @@ class Peltier(Maker):
             self.setFlag(connected=True)
             time.sleep(1)
             print(self.getTemperatures())
-            # self.toggleFeedbackLoop(on=True)
         self.device = device
         return
     
