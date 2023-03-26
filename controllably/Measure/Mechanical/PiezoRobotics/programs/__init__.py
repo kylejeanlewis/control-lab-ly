@@ -1,1 +1,1 @@
-from .base_programs import DMA
+from .base_programs import DMA, INPUTS_SET, PROGRAM_NAMES

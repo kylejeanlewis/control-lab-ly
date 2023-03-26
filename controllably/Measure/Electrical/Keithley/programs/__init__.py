@@ -1,1 +1,1 @@
-from .base_programs import IV_Scanm, LSV, OCV
+from .base_programs import IV_Scan, LSV, OCV, INPUTS_SET, PROGRAM_NAMES
