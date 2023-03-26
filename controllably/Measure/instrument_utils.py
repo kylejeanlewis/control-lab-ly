@@ -37,10 +37,6 @@ class Instrument(ABC):
         ...
     
     @abstractmethod
-    def shutdown(self):
-        ...
-    
-    @abstractmethod
     def _connect(self, *args, **kwargs):
         """Connect to machine control unit"""
         self.connection_details = {}
@@ -90,10 +86,10 @@ class Instrument(ABC):
         return self.connect()
     
     def query(self, *args, **kwargs):
-        return self.query(*args, **kwargs)
+        return self._query(*args, **kwargs)
         
     def read(self, *args, **kwargs):
-        return self.read(*args, **kwargs)
+        return self._read(*args, **kwargs)
     
     def resetFlags(self):
         self.flags = self._default_flags.copy()
@@ -113,6 +109,11 @@ class Instrument(ABC):
             self.flags[key] = value
         return
   
+    def shutdown(self):
+        self.reset()
+        self.disconnect()
+        return
+    
     def write(self, *args, **kwargs):
-        return self.write(*args, **kwargs)
+        return self._write(*args, **kwargs)
    

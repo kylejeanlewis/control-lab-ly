@@ -143,9 +143,7 @@ class PiezoRoboticsDevice(Instrument):
         Close serial connection and shutdown
         """
         self.toggleClamp(False)
-        self.reset()
-        self.disconnect()
-        return
+        return super().shutdown()
     
     def toggleClamp(self, on:bool = False) -> str:
         """
