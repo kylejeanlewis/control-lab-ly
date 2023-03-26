@@ -86,6 +86,9 @@ class Instrument(ABC):
             print(f"{self.__class__} is not connected. Details: {self.connection_details}")
         return self.flags.get('connected', False)
     
+    def open(self):
+        return self.connect()
+    
     def query(self, *args, **kwargs):
         return self.query(*args, **kwargs)
         
