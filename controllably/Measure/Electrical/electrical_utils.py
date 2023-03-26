@@ -12,7 +12,8 @@ import pandas as pd
 from typing import Optional, Protocol, Union
 
 # Local application imports
-from ..measure_utils import Measurer, ProgramDetails
+from ..measure_utils import Measurer
+from ..program_utils import ProgramDetails
 print(f"Import: OK <{__name__}>")
 
 class Data(Protocol):
@@ -40,6 +41,8 @@ class Electrical(Measurer):
         'stop_measure': False
     }
     model = ''
+    available_programs: tuple[str] = ('',)      # FIXME
+    possible_inputs: tuple[str] = ('',)         # FIXME
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.buffer_df = pd.DataFrame()
@@ -181,7 +184,7 @@ class Electrical(Measurer):
         self.setFlag(read=True)
         return True
     
-    def _get_program_details(self):     # FIXME: program_type.getDetails
+    def _get_program_details(self):
         """
         Get the input fields and defaults
 
