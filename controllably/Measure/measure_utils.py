@@ -9,19 +9,11 @@ Notes / actionables:
 # Standard library imports
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 import pandas as pd
-from typing import Callable, Any
+from typing import Callable
 
 # Local application imports
 print(f"Import: OK <{__name__}>")
-
-@dataclass
-class ProgramDetails:
-    inputs: list[str] = field(default_factory=lambda: [])
-    defaults: dict[str, Any] = field(default_factory=lambda: {})
-    short_doc: str = ''
-    tooltip: str = ''
 
 class Measurer(ABC):
     _default_flags: dict[str, bool] = {'busy': False, 'connected': False}
