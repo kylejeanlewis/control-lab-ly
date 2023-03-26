@@ -1,0 +1,121 @@
+# %% -*- coding: utf-8 -*-
+"""
+Created: Tue 2022/11/02 17:13:35
+@author: Chang Jie
+
+Notes / actionables:
+- validation on copper
+"""
+# Standard library imports
+from __future__ import annotations
+from dataclasses import dataclass, field
+import numpy as np
+from typing import Optional, Union
+
+# Local application imports
+print(f"Import: OK <{__name__}>")
+
+COUNT_UPPER_LIMIT = 300000
+
+def set_function_type(value:str, choices:tuple[str]) -> str:
+    if value is None:
+        return None
+    value = value.lower()
+    for choice in choices:
+        if value in choice.lower():
+            return choice
+    raise ValueError(f"Select a valid function from: {', '.join([c.lower() for c in choices])}")
+
+def set_limit(limit:Union[str, float, None], is_current:bool) -> Union[str, float]:
+    if limit is None:
+        return 'AUTO ON'
+    if type(limit) is str:
+        limit = limit.lower()
+        choices = ('DEFault', 'MAXimum', 'MINimum')
+        for choice in choices:
+            if limit in choice.lower():
+                return choice
+        raise ValueError(f"Select a valid option from: {', '.join([c.lower() for c in choices])}")
+    curr = (10e-9, 100e-9, 1e-6, 10e-6, 100e-6, 1e-3, 10e-3, 100e-3, 1)
+    volt = (20e-3, 200e-3, 2, 20, 200)
+    unit = 'A' if is_current == 'CURRent' else 'V'
+    options = np.array(curr) if is_current == 'CURRent' else np.array(volt)
+    shortlist = options[options >= abs(limit)]
+    if len(shortlist):
+        return shortlist[0]
+    print(f'Input limit beyond -{limit} and {limit} {unit}')
+    print(f'Defaulting to {options[-1]} {unit}')
+    return options[-1]
+    
+
+@dataclass
+class SenseDetails:
+    function_type: Optional[str] = None
+    range_limit: Union[str, float, None] = 'DEFault'
+    four_point: bool = True
+    count: int = 1
+    _choices: tuple[str] = field(default=('CURRent', 'RESistance', 'VOLTage'), init=False)
+    _name: str = field(default='SENSe', init=False)
+    
+    def __post_init__(self):
+        self.function_type = set_function_type(self.function_type, self._choices)
+        self.count = max(1, min(self.count, COUNT_UPPER_LIMIT))
+        self.range_limit = set_limit(self.range_limit, (self.function_type=='CURRent'))
+        return
+    
+    # Properties
+    @property
+    def unit(self) -> str:
+        if self.function_type == 'CURRent':
+            return 'AMP'
+        elif self.function_type == 'VOLTage':
+            return 'VOLT'
+        return ''
+    
+    def get_commands(self):
+        commands = {
+            'RANGe': self.range_limit,
+            'RSENse': self.four_point,
+            'UNIT': self.unit
+        }
+        commands = [f'{self._name}:{self.function_type}:{k} {v}' for k,v in commands]
+        for i,command in enumerate(commands):
+            if 'AUTO' in command:
+                new_command = ':AUTO'.join((command.split(' AUTO')))
+                commands[i] = new_command
+        commands = commands + [f'SENSe:COUNt {self.count}']
+        return commands
+    
+@dataclass
+class SourceDetails:
+    function_type: str = ''
+    range_limit: Union[str, float, None] = None
+    measure_limit: Union[str, float, None] = 'DEFault'
+    _choices: tuple[str] = field(default=('CURRent', 'VOLTage'), init=False)
+    _count: int = field(default=0, init=False)
+    _name: str = field(default='SOURce', init=False)
+    
+    def __post_init__(self):
+        self.function_type = self.set_function_type(self.function_type, self._choices)
+        self.range_limit = set_limit(self.range_limit, (self.function_type=='CURRent'))
+        self.measure_limit = set_limit(self.measure_limit, (self.function_type!='CURRent'))
+        return
+    
+    # Properties
+    @property
+    def measure_type(self) -> str:
+        value = 'VLIMit' if self.function_type == 'CURRent' else 'ILIMit'
+        return value
+    
+    def get_commands(self):
+        commands = {
+            'RANGe': self.range_limit,
+            self.measure_type: self.measure_limit
+        }
+        commands = [f'{self._name}:{self.function_type}:{k} {v}' for k,v in commands]
+        for i,command in enumerate(commands):
+            if 'AUTO' in command:
+                new_command = ':AUTO'.join((command.split(' AUTO')))
+                commands[i] = new_command
+        return commands
+    
