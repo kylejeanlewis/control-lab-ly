@@ -9,9 +9,19 @@ Notes / actionables:
 # Standard library imports
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Callable
+from dataclasses import dataclass, field
+import pandas as pd
+from typing import Callable, Any
+
 # Local application imports
 print(f"Import: OK <{__name__}>")
+
+@dataclass
+class ProgramDetails:
+    inputs: list[str] = field(default_factory=lambda: [])
+    defaults: dict[str, Any] = field(default_factory=lambda: {})
+    short_doc: str = ''
+    tooltip: str = ''
 
 class Measurer(ABC):
     _default_flags: dict[str, bool] = {'busy': False, 'connected': False}
@@ -19,6 +29,7 @@ class Measurer(ABC):
         verbose: bool = False,
         **kwargs
     ):
+        self.buffer_df = pd.DataFrame()
         self.connection_details = {}
         self.device = None
         self.flags = self._default_flags.copy()
@@ -35,14 +46,6 @@ class Measurer(ABC):
     
     @abstractmethod
     def disconnect(self):
-        ...
-    
-    @abstractmethod
-    def reset(self):
-        ...
-    
-    @abstractmethod
-    def shutdown(self):
         ...
     
     @abstractmethod
@@ -84,8 +87,28 @@ class Measurer(ABC):
             print(f"{self.__class__} is not connected. Details: {self.connection_details}")
         return self.flags.get('connected', False)
     
+    def reset(self):
+        self.resetFlags()
+        self.clearCache()
+        return
+    
     def resetFlags(self):
         self.flags = self._default_flags.copy()
+        return
+
+    def saveData(self, filepath:str):
+        """
+        Save dataframe to csv file.
+        
+        Args:
+            filepath (str): filepath to which data will be saved
+        """
+        if not self.flags['read']:
+            self.getData()
+        if len(self.buffer_df):
+            self.buffer_df.to_csv(filepath)
+        else:
+            print('No data available to be saved.')
         return
 
     def setFlag(self, **kwargs):
@@ -100,4 +123,12 @@ class Measurer(ABC):
             raise ValueError("Ensure all assigned flag values are boolean.")
         for key, value in kwargs.items():
             self.flags[key] = value
+        return
+    
+    def shutdown(self):
+        """
+        Close serial connection and shutdown
+        """
+        self.reset()
+        self.disconnect()
         return
