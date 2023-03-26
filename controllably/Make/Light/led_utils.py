@@ -31,7 +31,6 @@ class LED:
         self._duration = 0
         self._end_time = time.time()
         self._power = 0
-        
         self.flags = {'power_update': False}
         pass
     
@@ -98,9 +97,13 @@ class LEDArray(Maker):
         self.channels = {chn: LED(chn) for chn in channels}
         self._threads = {}
         self._timed_channels = []
-        
         self._connect(port)
         return
+    
+    # Properties
+    @property
+    def port(self) -> str:
+        return self.connection_details.get('port', '')
     
     def getPower(self, channel:Optional[int] = None) -> list[int]:
         """

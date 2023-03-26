@@ -74,6 +74,7 @@ class Sartorius(LiquidHandler):
         self._connect(port)
         return
     
+    # Properties
     @property
     def capacitance(self) -> int:
         return self._capacitance
@@ -81,6 +82,10 @@ class Sartorius(LiquidHandler):
     @property
     def home_position(self) -> int:
         return self.model_info.home_position
+    
+    @property
+    def port(self) -> str:
+        return self.connection_details.get('port', '')
     
     @property
     def resolution(self) -> float:

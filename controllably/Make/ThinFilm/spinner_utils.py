@@ -47,9 +47,13 @@ class Spinner(Maker):
         self.channel = channel
         self.position = tuple(position)
         self.speed = 0
-        
         self._connect(port)
         return
+    
+    # Properties
+    @property
+    def port(self) -> str:
+        return self.connection_details.get('port', '')
     
     def execute(self, soak_time:int = 0, spin_speed:int = 2000, spin_time:int = 1, **kwargs):
         """

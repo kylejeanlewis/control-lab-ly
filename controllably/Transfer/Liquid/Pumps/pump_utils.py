@@ -24,6 +24,11 @@ class Pump(LiquidHandler):
         self._connect(port)
         return
     
+    # Properties
+    @property
+    def port(self) -> str:
+        return self.connection_details.get('port', '')
+    
     def disconnect(self):
         """
         Disconnect serial connection to robot
