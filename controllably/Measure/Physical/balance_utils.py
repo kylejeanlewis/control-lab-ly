@@ -34,6 +34,7 @@ class MassBalance(Measurer):
         'connected': False,
         'get_feedback': False,
         'pause_feedback': False,
+        'read': True,
         'record': False
     }
     def __init__(self, port:str, calibration_factor:float = CALIBRATION_FACTOR, **kwargs):
@@ -61,15 +62,6 @@ class MassBalance(Measurer):
         self.buffer_df = pd.DataFrame(columns=COLUMNS)
         self.setFlag(pause_feedback=False)
         return
-    
-    def connect(self):
-        """
-        Reconnect to device using existing port and baudrate
-        
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
-        """
-        return self._connect(**self.connection_details)
     
     def disconnect(self):
         try:
@@ -111,8 +103,8 @@ class MassBalance(Measurer):
         """
         Reset baseline and clear buffer
         """
+        super().reset()
         self.baseline = 0
-        self.clearCache()
         return
     
     def shutdown(self):
@@ -120,9 +112,7 @@ class MassBalance(Measurer):
         Close serial connection and shutdown
         """
         self.toggleFeedbackLoop(on=False)
-        self.disconnect()
-        self.resetFlags()
-        return
+        return super().shutdown()
  
     def tare(self):
         """
