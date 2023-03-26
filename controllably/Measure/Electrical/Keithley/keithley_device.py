@@ -136,6 +136,9 @@ class KeithleyDevice(Instrument):
         self._query(f'SOURce:FUNCtion {self.source.function_type}')
         return self.sendCommands(commands=self.source.get_commands())
     
+    def disconnect(self):       # NOTE: not implemented
+        return super().disconnect()
+    
     def getBufferIndices(self, name:Optional[str] = None) -> tuple[int]:
         """
         Get the start and end buffer indices
@@ -432,42 +435,3 @@ class KeithleyDevice(Instrument):
         if self.verbose and "*WAI" not in command:
             self.getErrors()
         return True
-    
-    
-    ### NOTE: DEPRECATE
-    # def readPacket(self, 
-    #     name: Optional[str] = None, 
-    #     fields: tuple[str] = ('SOURce','READing', 'SEConds'), 
-    #     average: bool = True
-    # ) -> pd.DataFrame:
-    #     """
-    #     Read data on buffer as measurements take place
-
-    #     Args:
-    #         name (str, optional): buffer name. Defaults to None.
-    #         fields (list, optional): fields of interest. Defaults to ['SOURce','READing', 'SEConds'].
-    #         average (bool, optional): whether ot average the data of multiple readings. Defaults to True.
-
-    #     Returns:
-    #         pd.DataFrame: dataframe of measurements
-    #     """
-    #     name = self.active_buffer if name is None else name
-    #     self.fields = fields
-    #     count = int(self.sense.count)
-    #     start,end = self.getBufferIndices(name=name)
-        
-    #     start = max(1, end-count+1)
-    #     if not all([start,end]): # dummy data
-    #         data = [0] * count * len(self.fields)
-    #     else:
-    #         reply = self._query(f'TRACe:DATA? {int(start)},{int(end)},"{name}",{",".join(self.fields)}')
-    #         data = self._parse(reply=reply)
-        
-    #     data = np.reshape(np.array(data), (-1,len(self.fields)))
-    #     df = pd.DataFrame(data, columns=self.fields)
-    #     if average and count > 1:
-    #         avg = df.groupby(np.arange(len(df))//count).mean()
-    #         std = df.groupby(np.arange(len(df))//count).std()
-    #         df = avg.join(std, rsuffix='_std')
-    #     return df
-    
