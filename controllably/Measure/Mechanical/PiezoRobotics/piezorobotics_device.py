@@ -40,7 +40,7 @@ class PiezoRoboticsDevice(Instrument):
         'measured': False,
         'read': False
     }
-    def __init__(self, port:str, channel=1, **kwargs):
+    def __init__(self, port:str, channel:int = 1, **kwargs):
         self.channel = channel
         self._frequency = Frequency()
         self._connect(port)
@@ -270,13 +270,3 @@ class PiezoRoboticsDevice(Instrument):
             return False
         self.setFlag(busy=True)
         return True
-
-
-    ### NOTE: DEPRECATE
-    def stopClamp(self):
-        """
-        Stop clamp movement
-        """
-        # self._query('CLAMP,0')
-        print('Stop clamp function not available.')
-        return
