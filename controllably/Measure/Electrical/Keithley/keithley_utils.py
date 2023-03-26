@@ -9,7 +9,6 @@ Notes / actionables:
 # Local application imports
 from ..electrical_utils import Electrical
 from .keithley_device import KeithleyDevice
-from .programs import base_programs
 print(f"Import: OK <{__name__}>")
 
 class Keithley(Electrical):
@@ -21,18 +20,22 @@ class Keithley(Electrical):
         name (str, optional): nickname for Keithley. Defaults to 'def'.
     """
     model = 'keithley_'
-    available_programs = base_programs.PROGRAM_NAMES
-    possible_inputs = base_programs.INPUTS_SET
-    def __init__(self, ip_address='192.168.1.125', name='def'):
-        self._ip_address = ''
-        super().__init__(ip_address=ip_address, name=name)
+    def __init__(self, ip_address:str = '192.168.1.125', name:str = 'def', **kwargs):
+        super().__init__(**kwargs)
+        self._connect(ip_address=ip_address, name=name)
         return
 
+    # Properties
     @property
-    def ip_address(self):
-        return self._ip_address
+    def ip_address(self) -> str:
+        return self.connection_details.get('ip_address', '')
 
-    def _connect(self, ip_address:str, name:str):
+    def disconnect(self):
+        self.device.close()
+        return
+
+    # Protected method(s)
+    def _connect(self, ip_address:str, name:str = 'def'):
         """
         Connect to device
 
@@ -43,38 +46,10 @@ class Keithley(Electrical):
         Returns:
             KeithleyDevice: object representation
         """
+        self.connection_details = {
+            'ip_address': ip_address,
+            'name': name
+        }
         self._ip_address = ip_address
         self.device = KeithleyDevice(ip_address=ip_address, name=name)
-        return self.device
-        
-    def connect(self):
-        """
-        Establish connection to Keithley.
-
-        Returns:
-            KeithleyDevice: object representation
-        """
-        return self._connect(self.ip_address, self.name)
-    
-    def loadProgram(self, name=None, program_type=None, program_module=base_programs):
-        """
-        Load a program for device to run and its parameters
-
-        Args:
-            name (str, optional): name of program type in program_module. Defaults to None.
-            program_type (any, optional): program to load. Defaults to None.
-            program_module (module, optional): module containing relevant programs. Defaults to Keithley.programs.base_programs.
-
-        Raises:
-            Exception: Provide a module containing relevant programs
-            Exception: Select a valid program name
-            Exception: Input only one of 'name' or 'program_type'
-        """
-        return super().loadProgram(name=name, program_type=program_type, program_module=program_module)
-
-    def reset(self):
-        """
-        Reset the Keithley and clear the program, data, and flags
-        """
-        self.device.reset()
-        return super().reset()
+        return
