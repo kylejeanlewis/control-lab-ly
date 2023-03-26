@@ -8,7 +8,8 @@ Notes / actionables:
 """
 # Standard library imports
 from __future__ import annotations
-from typing import Protocol, Callable
+from dataclasses import dataclass, field
+from typing import Protocol, Callable, Any
 
 # Third party imports
 import PySimpleGUI as sg # pip install PySimpleGUI
@@ -17,10 +18,17 @@ import PySimpleGUI as sg # pip install PySimpleGUI
 from .gui_utils import Panel
 print(f"Import: OK <{__name__}>")
 
+@dataclass
+class ProgramDetails:
+    inputs: list[str] = field(default_factory=lambda: [])
+    defaults: dict[str, Any] = field(default_factory=lambda: {})
+    short_doc: str = ''
+    tooltip: str = ''
+
 class Measurer(Protocol):
-    available_programs: list[str]
-    possible_inputs: list[str]
-    program_details: dict
+    available_programs: tuple[str]      # FIXME
+    possible_inputs: tuple[str]         # FIXME
+    program_details: ProgramDetails
     program_type: Callable
     def loadProgram(self, *args, **kwargs):
         ...
@@ -107,7 +115,7 @@ class MeasurerPanel(Panel):
             selected_program = values[self._mangle('-PROGRAMS-')]       # COMBO
             if selected_program != self.current_program:
                 self.measurer.loadProgram(selected_program)
-                update_part = self._show_inputs(self.measurer.program_details['inputs_and_defaults'])
+                update_part = self._show_inputs(self.measurer.program_details)
                 updates.update(update_part)
             self.current_program = selected_program
         
@@ -116,7 +124,7 @@ class MeasurerPanel(Panel):
             if self.measurer.program_type is not None:
                 print('Start measure')
                 parameters = {}
-                for input_field in self.measurer.program_details['inputs_and_defaults']:
+                for input_field in self.measurer.program_details.inputs:
                     key = self._mangle(f'-{input_field}-VALUE-')
                     if key in values.keys():
                         value = self.parseInput(values[key])
@@ -133,12 +141,12 @@ class MeasurerPanel(Panel):
         
         # 4. Clear input fields
         if event == self._mangle('-Clear-'):
-            update_part = self._show_inputs(self.measurer.program_details['inputs_and_defaults'])
+            update_part = self._show_inputs(self.measurer.program_details)
             updates.update(update_part)
         return updates
     
     # Protected method(s)
-    def _show_inputs(self, active_inputs:dict) -> dict[str, dict]:
+    def _show_inputs(self, program_details: ProgramDetails) -> dict[str, dict]:
         """
         Show the relevant input fields
 
@@ -154,10 +162,10 @@ class MeasurerPanel(Panel):
             key_input = self._mangle(f'-{input_field}-VALUE-')
             updates[f'{key_label}BOX-'] = dict(visible=False)
             updates[f'{key_input}BOX-'] = dict(visible=False)
-            if input_field in active_inputs.keys():
-                updates[key_label] = dict(tooltip=self.measurer.program_details['tooltip'])
-                updates[key_input] = dict(tooltip=self.measurer.program_details['tooltip'], 
-                                          value=active_inputs[input_field])
+            if input_field in program_details.inputs:
+                updates[key_label] = dict(tooltip=program_details.tooltip)
+                updates[key_input] = dict(tooltip=program_details.tooltip, 
+                                          value=program_details.get(input_field,''))
                 updates[f'{key_label}BOX-'] = dict(visible=True)
                 updates[f'{key_input}BOX-'] = dict(visible=True)
         return updates
