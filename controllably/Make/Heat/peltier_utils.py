@@ -93,9 +93,13 @@ class Peltier(Maker):
         self.temperature = None
         self._cold_point = None
         self._power = None
-        
         self._connect(port)
         return
+    
+    # Properties
+    @property
+    def port(self) -> str:
+        return self.connection_details.get('port', '')
     
     def clearCache(self):
         """
