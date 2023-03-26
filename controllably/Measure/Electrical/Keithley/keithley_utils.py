@@ -7,8 +7,10 @@ Notes / actionables:
 - validation on copper
 """
 # Local application imports
+from __future__ import annotations
 from ..electrical_utils import Electrical
 from .keithley_device import KeithleyDevice
+from . import programs
 print(f"Import: OK <{__name__}>")
 
 class Keithley(Electrical):
@@ -20,6 +22,8 @@ class Keithley(Electrical):
         name (str, optional): nickname for Keithley. Defaults to 'def'.
     """
     model = 'keithley_'
+    available_programs: tuple[str] = tuple(programs.PROGRAM_NAMES)      # FIXME
+    possible_inputs: tuple[str] = tuple(programs.INPUTS_SET)            # FIXME
     def __init__(self, ip_address:str = '192.168.1.125', name:str = 'def', **kwargs):
         super().__init__(**kwargs)
         self._connect(ip_address=ip_address, name=name)

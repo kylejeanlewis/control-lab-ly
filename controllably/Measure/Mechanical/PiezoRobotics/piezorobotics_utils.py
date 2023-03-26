@@ -9,6 +9,7 @@ Notes / actionables:
 # Standard library imports
 
 # Local application imports
+from __future__ import annotations
 from ..mechanical_utils import Mechanical
 from .piezorobotics_device import PiezoRoboticsDevice
 from . import programs
@@ -24,6 +25,8 @@ class PiezoRobotics(Mechanical):
     """
     _default_program = programs.DMA
     model = 'piezorobotics_'
+    available_programs: tuple[str] = tuple(programs.PROGRAM_NAMES)      # FIXME
+    possible_inputs: tuple[str] = tuple(programs.INPUTS_SET)            # FIXME
     def __init__(self, port:str, channel=1, **kwargs):
         super().__init__(**kwargs)
         self._connect(port=port, channel=channel)
