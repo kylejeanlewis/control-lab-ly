@@ -7,11 +7,12 @@ Notes / actionables:
 - add multi channel support
 """
 # Standard library imports
+from __future__ import annotations
 import pandas as pd
-from typing import Protocol
+from typing import Optional, Protocol, Union
 
 # Local application imports
-from ..measure_utils import Measurer
+from ..measure_utils import Measurer, ProgramDetails
 print(f"Import: OK <{__name__}>")
 
 class Data(Protocol):
@@ -29,84 +30,29 @@ class Electrical(Measurer):
     """
     Electrical measurer class.
     """
+    _default_datatype: Optional[Data] = None
+    _default_program: Optional[Program] = None
+    _default_flags = {
+        'busy': False,
+        'connected': False,
+        'measured': False,
+        'read': False,
+        'stop_measure': False
+    }
     model = ''
-    available_programs = []
-    possible_inputs = []
     def __init__(self, **kwargs):
-        self.name = kwargs.get('name', 'def')
-        self.device = None
-        
+        super().__init__(**kwargs)
         self.buffer_df = pd.DataFrame()
-        self.data = None
-        self.datatype = None
-        self.program = None
-        self.program_type = None
-        self.program_details = {
-            'inputs_and_defaults': {},
-            'short_doc': '',
-            'tooltip': ''
-        }
-        self._last_used_parameters = {}
+        self.data: Optional[Data] = None
+        self.datatype: Optional[Data] = self._default_datatype
+        self.program: Optional[Program] = None
+        self.program_type: Optional[Program] = self._default_program
+        
+        self.program_details = ProgramDetails()
+        self.recent_parameters = []
         self._measure_method_docstring = self.measure.__doc__
-        
-        self.verbose = False
-        self._flags = {
-            'busy': False,
-            'measured': False,
-            'read': False,
-            'stop_measure': False
-        }
-        self._connect(**kwargs)
         return
-    
-    def __delete__(self):
-        self._shutdown()
-        return
-    
-    def _connect(self, **kwargs):
-        """
-        Connect to device
-            
-        Returns:
-            any: device object
-        """
-        return self.device
-    
-    def _extract_data(self):
-        """
-        Extract data output from device, through the program object
-        
-        Returns:
-            bool: whether the data extraction from program is successful
-        """
-        if self.program is None:
-            print("Please load a program first.")
-            return False
-        self.buffer_df = self.program.data_df
-        if len(self.buffer_df) == 0:
-            print("No data found.")
-            return False
-        self.setFlag('read', True)
-        return True
-    
-    def _get_program_details(self):
-        """
-        Get the input fields and defaults
-
-        Raises:
-            Exception: Load a program first
-        """
-        if self.program_type is None:
-            raise Exception('Load a program first.')
-        self.program_details = self.program_type.getDetails(verbose=self.verbose)
-        return
-        
-    def _shutdown(self):
-        """
-        Close connection and shutdown
-        """
-        return
-    
+          
     def clearCache(self):
         """
         Reset data and flags
@@ -114,78 +60,51 @@ class Electrical(Measurer):
         self.buffer_df = pd.DataFrame()
         self.data = None
         self.program = None
-        self.setFlag('measured', False)
-        self.setFlag('read', False)
-        self.setFlag('stop_measure', False)
+        self.setFlag(measured=False, read=False, stop_measure=False)
         return
-    
-    def connect(self):
-        """
-        Make connection to device.
-        """
-        return self._connect()
-    
-    def getData(self):
+   
+    def getData(self) -> pd.DataFrame:
         """
         Read the data and cast into custom data type for extended functions.
             
         Returns:
             pd.DataFrame: raw dataframe of measurement
         """
-        if not self._flags['read']:
+        if not self.flags['read']:
             self._extract_data()
-        if not self._flags['read']:
+        if not self.flags['read']:
             print("Unable to read data.")
             return self.buffer_df
+        
         if self.datatype is not None:
             self.data = self.datatype(data=self.buffer_df, instrument=self.model)
         return self.buffer_df
-    
-    def isBusy(self):
-        """
-        Checks whether the device is busy
-        
-        Returns:
-            bool: whether the device is busy
-        """
-        return self._flags['busy']
-    
-    def isConnected(self):
-        """
-        Check whether device is connected
 
-        Returns:
-            bool: whether device is connected
-        """
-        if self.device is None:
-            return False
-        return True
-    
-    def loadDataType(self, datatype:Data):
+    def loadDataType(self, datatype:Optional[Data] = None):
         """
         Load a custom datatype to analyse and plot data
 
         Args:
             datatype (Callable): custom datatype to load
         """
-        self.datatype = datatype
+        self.datatype = self._default_datatype if datatype is None else datatype
         print(f"Loaded datatype: {self.datatype.__name__}")
         return
     
-    def loadProgram(self, program_type:Program):
+    def loadProgram(self, program_type:Optional[Program] = None):
         """
         Load a program for device to run and its parameters
 
         Args:
-            program_type (Callable): program to load
+            program_type (Callable, optional): program to load. Defaults to DMA.
         """
-        self.program_type = program_type
+        self.program_type = self._default_program if program_type is None else program_type
         print(f"Loaded program: {self.program_type.__name__}")
         self._get_program_details()
-        self.measure.__func__.__doc__ = self._measure_method_docstring + self.program_details['short_doc']
+        self.measure.__func__.__doc__ = self._measure_method_docstring + self.program_details.short_doc
         return
     
-    def measure(self, parameters={}, channels=[0], **kwargs):
+    def measure(self, parameters: Optional[dict] = None, channel:Union[int, tuple[int]] = 0, **kwargs):
         """
         Performs measurement and tries to plot the data
 
@@ -197,87 +116,80 @@ class Electrical(Measurer):
             Exception: Load a program first
         """
         if self.program_type is None:
-            raise Exception('Load a program first.')
-        self.setFlag('busy', True)
+            self.loadProgram()
+        if self.program_type is None:
+            print('Load a program first.')
+            return
+        
+        self.setFlag(busy=True)
         print("Measuring...")
         self.clearCache()
-        self.program = self.program_type(self.device, parameters, channels=channels, **kwargs)
-        self._last_used_parameters = parameters
+        self.program = self.program_type(self.device, parameters, channels=channel, **kwargs)
+        self.recent_parameters.append(parameters)
         
         # Run test
         self.program.run()
-        self.setFlag('measured', True)
+        self.setFlag(measured=True)
         self.getData()
         self.plot()
-        self.setFlag('busy', False)
+        self.setFlag(busy=False)
         return
     
-    def plot(self, plot_type=None):
+    def plot(self, plot_type:Optional[str] = None) -> bool:
         """
         Plot the measurement data
         
         Args:
             plot_type (str, optional): perform the requested plot of the data. Defaults to None.
         """
-        if self._flags['measured'] and self._flags['read']:
-            if self.data is not None:
-                self.data.plot(plot_type)
-                return True
+        if not self.flags['measured'] or not self.flags['read']:
+            return False
+        if self.data is None:
             print(self.buffer_df.head())
             print(f'{len(self.buffer_df)} row(s) of data')
-        return False
-    
-    def recallParameters(self):
-        """
-        Recall the last used parameters.
-        
-        Returns:
-            dict: keyword parameters 
-        """
-        return self._last_used_parameters
+            return False
+        self.data.plot(plot_type=plot_type)
+        return True
     
     def reset(self):
         """
         Reset the program, data, and flags
         """
-        self.buffer_df = pd.DataFrame()
-        self.data = None
-        self.program = None
-        self.datatype = None
-        self.program_type = None
+        super().reset()
+        self.device.reset()
+        self.datatype = self._default_datatype
+        self.program_type = self._default_program
+        self.recent_parameters = []
         self.measure.__func__.__doc__ = self._measure_method_docstring
-        
-        self.verbose = False
-        self._flags = {
-            'busy': False,
-            'measured': False,
-            'read': False,
-            'stop_measure': False
-        }
         return
     
-    def saveData(self, filepath:str):
+    # Protected method(s)
+    def _extract_data(self) -> bool:
         """
-        Save dataframe to csv file.
+        Extract data output from device.
         
-        Args:
-            filepath (str): filepath to which data will be saved
+        Returns:
+            bool: whether the data extraction is successful
         """
-        if not self._flags['read']:
-            self.getData()
-        if len(self.buffer_df):
-            self.buffer_df.to_csv(filepath)
-        else:
-            print('No data available to be saved.')
-        return
+        if self.program is None:
+            print("Please load a program first.")
+            return False
+        self.buffer_df = self.program.data_df
+        if len(self.buffer_df) == 0:
+            print("No data found.")
+            return False
+        self.setFlag(read=True)
+        return True
     
-    def setFlag(self, name:str, value:bool):
+    def _get_program_details(self):     # FIXME: program_type.getDetails
         """
-        Set a flag truth value
+        Get the input fields and defaults
 
-        Args:
-            name (str): label
-            value (bool): flag value
+        Raises:
+            Exception: Load a program first
         """
-        self._flags[name] = value
+        if self.program_type is None:
+            raise Exception('Load a program first.')
+        self.program_details: ProgramDetails = self.program_type.getDetails(verbose=self.verbose)
         return
+    
