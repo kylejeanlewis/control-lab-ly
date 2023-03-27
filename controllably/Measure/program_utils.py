@@ -10,6 +10,7 @@ Notes / actionables:
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+import inspect
 import pandas as pd
 from typing import Optional, Protocol, Any
 
@@ -58,7 +59,7 @@ class Program(ABC):
         """
     
     @classmethod
-    def getDetails(cls, verbose:bool = True) -> ProgramDetails:
+    def getDetails(cls, verbose:bool = False) -> ProgramDetails:
         """
         Get the input fields and defaults
         
@@ -68,12 +69,12 @@ class Program(ABC):
         Returns:
             dict: dictionary of program details
         """
-        doc = cls.__doc__
+        doc = inspect.getdoc(cls)
         # Extract truncated docstring and parameter listing
         lines = doc.split('\n')
         start, end = 0,0
         for i,line in enumerate(lines):
-            line = line.strip()
+            # line = line.strip()
             if line.startswith('Args:'):
                 start = i
             if line.startswith('==========') and start:
