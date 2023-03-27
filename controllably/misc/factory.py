@@ -28,6 +28,7 @@ class DottableDict(dict):
     def __init__(self, *args, **kwargs):
         dict.__init__(self, *args, **kwargs)
         self.__dict__ = self
+        
     def allowDotting(self, state:bool = True):
         if state:
             self.__dict__ = self
@@ -42,6 +43,21 @@ class ModuleDirectory:
     @property
     def at(self):
         return self._modules
+    
+    def get_class(self, dot_notation:str) -> Callable:
+        name = dot_notation.split('.')[-1]
+        temp = self.get_parent(dot_notation=dot_notation)
+        return temp.get(name)
+    
+    def get_parent(self, dot_notation:str) -> DottableDict:
+        keys = dot_notation.split('.')
+        keys = keys[:-1]
+        temp = self._modules
+        for key in keys:
+            if key == HOME_PACKAGE:
+                continue
+            temp = temp[key]
+        return temp
         
 modules = ModuleDirectory()
 """Holds all `controllably` and user-registered classes and functions"""
@@ -61,7 +77,8 @@ def get_class(dot_notation:str) -> Callable:
     top_package = __name__.split('.')[0]
     import_path = f'{top_package}.{dot_notation}'
     package = importlib.import_module('.'.join(import_path.split('.')[:-1]))
-    _class = getattr(package, import_path.split('.')[-1])
+    # _class = getattr(package, import_path.split('.')[-1])
+    _class = modules.get_class(dot_notation=dot_notation)
     return _class
 
 def get_details(configs:dict, addresses:dict = {}) -> dict:
@@ -193,8 +210,8 @@ def register(new_class: Callable, where:str):
     temp[new_class.__name__] = new_class
     return
 
-def unregister(what:str):
-    keys = what.split('.')
+def unregister(dot_notation:str):
+    keys = dot_notation.split('.')
     keys, name = keys[:-1], keys[-1]
     temp = modules._modules
     for key in keys:
