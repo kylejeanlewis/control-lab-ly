@@ -8,12 +8,13 @@ Notes / actionables:
 """
 # Local application imports
 from __future__ import annotations
-from ..electrical_utils import Electrical
+from ...measure_utils import Programmable
+# from ..electrical_utils import Electrical
 from .keithley_device import KeithleyDevice
 from . import programs
 print(f"Import: OK <{__name__}>")
 
-class Keithley(Electrical):
+class Keithley(Programmable):
     """
     Keithley class.
     

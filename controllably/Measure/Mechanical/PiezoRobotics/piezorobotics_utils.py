@@ -10,12 +10,13 @@ Notes / actionables:
 
 # Local application imports
 from __future__ import annotations
-from ..mechanical_utils import Mechanical
+from ...measure_utils import Programmable
+# from ..mechanical_utils import Mechanical
 from .piezorobotics_device import PiezoRoboticsDevice
 from . import programs
 print(f"Import: OK <{__name__}>")
         
-class PiezoRobotics(Mechanical):
+class PiezoRobotics(Programmable):
     """
     PiezoRobotics object
 
