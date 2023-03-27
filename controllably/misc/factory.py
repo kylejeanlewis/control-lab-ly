@@ -7,8 +7,12 @@ Notes / actionables:
 -
 """
 # Standard library imports
+from dataclasses import dataclass, field
 import importlib
+import inspect
 import numpy as np
+import pprint
+import sys
 from typing import Callable, Optional
 
 # Third party imports
@@ -18,7 +22,29 @@ import yaml # pip install pyyaml
 from . import helper
 print(f"Import: OK <{__name__}>")
 
-# packages = {}
+HOME_PACKAGE = 'controllably'
+
+class DottableDict(dict):
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+        self.__dict__ = self
+    def allowDotting(self, state:bool = True):
+        if state:
+            self.__dict__ = self
+        else:
+            self.__dict__ = dict()
+
+@dataclass
+class ModuleDirectory:
+    _modules: DottableDict = field(default_factory=DottableDict)
+    def __repr__(self) -> str:
+        return pprint.pformat(self._modules)
+    @property
+    def at(self):
+        return self._modules
+        
+modules = ModuleDirectory()
+"""Holds all `controllably` and user-registered classes and functions"""
 
 def get_class(dot_notation:str) -> Callable:
     """
@@ -103,6 +129,36 @@ def get_plans(config_file:str, registry_file:Optional[str] = None, package:Optio
     configs = get_details(configs, addresses=addresses)
     return configs
 
+def include_this_module(
+    where:Optional[str] = None, 
+    module_name:Optional[str] = None, 
+    get_local_only:bool = True
+):
+    if module_name is None:
+        frm = inspect.stack()[1]
+        mod = inspect.getmodule(frm[0])
+        module_name = mod.__name__
+    classes = inspect.getmembers(sys.modules[module_name], inspect.isclass)
+    functions = inspect.getmembers(sys.modules[module_name], inspect.isfunction)
+    objs = classes + functions
+    if get_local_only:
+        objs = [obj for obj in objs if obj[1].__module__ == module_name]
+    
+    for name,obj in objs:
+        if name == inspect.stack()[0][3]:
+            continue
+        mod = obj.__module__ if where is None else where
+        keys = mod.split('.')[:-1] if where is None else mod.split('.')
+        temp = modules._modules
+        for key in keys:
+            if key == HOME_PACKAGE:
+                continue
+            if key not in temp:
+                temp[key] = DottableDict()
+            temp = temp[key]
+        temp[name] = obj
+    return
+
 def load_components(config:dict) -> dict:
     """
     Load components of compound tools
@@ -124,12 +180,35 @@ def load_components(config:dict) -> dict:
         components[name] = _class(**settings)
     return components
 
-# def register(_class:Callable, dot_notation:str):
-#     nesting = dot_notation.split('.')
-#     package = packages
-#     for nest in nesting:
-#         if nest not in package:
-#             package[nest] = {}
-#         package = package.get(nest, {})
-#     print(packages)
-#     return
+def register(new_class: Callable, where:str):
+    mod = new_class.__module__ if where is None else where
+    keys = mod.split('.')[:-1] if where is None else mod.split('.')
+    temp = modules._modules
+    for key in keys:
+        if key == HOME_PACKAGE:
+            continue
+        if key not in temp:
+            temp[key] = DottableDict()
+        temp = temp[key]
+    temp[new_class.__name__] = new_class
+    return
+
+def unregister(what:str):
+    keys = what.split('.')
+    keys, name = keys[:-1], keys[-1]
+    temp = modules._modules
+    for key in keys:
+        if key == HOME_PACKAGE:
+            continue
+        temp = temp[key]
+    temp.pop(name)
+    
+    # Clean up empty dictionaries
+    def remove_empty_dicts(d):
+        for k, v in list(d.items()):
+            if isinstance(v, dict):
+                remove_empty_dicts(v)
+            if not v:
+                del d[k]
+    remove_empty_dicts(modules._modules)
+    return
