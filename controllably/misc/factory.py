@@ -22,7 +22,7 @@ import yaml # pip install pyyaml
 from . import helper
 print(f"Import: OK <{__name__}>")
 
-HOME_PACKAGE = 'controllably'
+HOME_PACKAGE = ('controllably','lab')
 
 class DottableDict(dict):
     def __init__(self, *args, **kwargs):
@@ -54,7 +54,7 @@ class ModuleDirectory:
         keys = keys[:-1]
         temp = self._modules
         for key in keys:
-            if key == HOME_PACKAGE:
+            if key in HOME_PACKAGE:
                 continue
             temp = temp[key]
         return temp
@@ -147,16 +147,20 @@ def get_plans(config_file:str, registry_file:Optional[str] = None, package:Optio
     return configs
 
 def include_this_module(
-    where:Optional[str] = None, 
-    module_name:Optional[str] = None, 
-    get_local_only:bool = True
+    where: Optional[str] = None, 
+    module_name: Optional[str] = None, 
+    get_local_only: bool = True
 ):
     if module_name is None:
         frm = inspect.stack()[1]
         mod = inspect.getmodule(frm[0])
         module_name = mod.__name__
-    classes = inspect.getmembers(sys.modules[module_name], inspect.isclass)
-    functions = inspect.getmembers(sys.modules[module_name], inspect.isfunction)
+    
+    objs = inspect.getmembers(sys.modules[module_name])
+    __where__ = [obj for name,obj in objs if name == "__where__"]
+    where = f"{__where__[0]}." if (len(__where__) and where is None) else where
+    classes = [(nm,obj) for nm,obj in objs if inspect.isclass(obj)]
+    functions = [(nm,obj) for nm,obj in objs if inspect.isfunction(obj)]
     objs = classes + functions
     if get_local_only:
         objs = [obj for obj in objs if obj[1].__module__ == module_name]
@@ -165,15 +169,7 @@ def include_this_module(
         if name == inspect.stack()[0][3]:
             continue
         mod = obj.__module__ if where is None else where
-        keys = mod.split('.')[:-1] if where is None else mod.split('.')
-        temp = modules._modules
-        for key in keys:
-            if key == HOME_PACKAGE:
-                continue
-            if key not in temp:
-                temp[key] = DottableDict()
-            temp = temp[key]
-        temp[name] = obj
+        register(obj, '.'.join(mod.split('.')[:-1]))
     return
 
 def load_components(config:dict) -> dict:
@@ -197,16 +193,21 @@ def load_components(config:dict) -> dict:
         components[name] = _class(**settings)
     return components
 
-def register(new_class: Callable, where:str):
-    mod = new_class.__module__ if where is None else where
-    keys = mod.split('.')[:-1] if where is None else mod.split('.')
+def register(new_class:Callable, where:str):
+    keys = where.split('.')
     temp = modules._modules
     for key in keys:
-        if key == HOME_PACKAGE:
+        if key in HOME_PACKAGE:
             continue
         if key not in temp:
             temp[key] = DottableDict()
         temp = temp[key]
+    name = new_class.__name__
+    if name in temp:
+        overwrite = input(f"An object with the same name ({name}) already exists, Overwrite? [y/n]")
+        if overwrite.lower()[0] == 'n':
+            print(f"Skipping {name}...")
+            return
     temp[new_class.__name__] = new_class
     return
 
@@ -215,7 +216,7 @@ def unregister(dot_notation:str):
     keys, name = keys[:-1], keys[-1]
     temp = modules._modules
     for key in keys:
-        if key == HOME_PACKAGE:
+        if key in HOME_PACKAGE:
             continue
         temp = temp[key]
     temp.pop(name)
