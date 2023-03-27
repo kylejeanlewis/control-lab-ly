@@ -622,6 +622,8 @@ class TriContinent(Pump):
         self._write(message)
         response = ''
         while not self._is_expected_reply(response):
+            if not self.isConnected():
+                break
             if time.time() - start_time > timeout_s:
                 break
             response = self._read()
