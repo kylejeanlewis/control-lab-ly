@@ -10,6 +10,7 @@ Notes / actionables:
 """
 # Standard library imports
 from __future__ import annotations
+from functools import wraps
 import string
 import time
 from typing import Callable, Optional, Union
@@ -89,6 +90,7 @@ class TriContinent(Pump):
         Returns:
             Callable: wrapped method
         """
+        @wraps(func)
         def wrapper(self, *args, **kwargs) -> str:
             channel = kwargs.get('channel')
             self.setCurrentChannel(channel)
@@ -108,6 +110,7 @@ class TriContinent(Pump):
         Returns:
             Callable: wrapped method
         """
+        @wraps(func)
         def wrapper(self, *args, **kwargs) -> str:
             channel = kwargs.get('channel')
             self.setCurrentChannel(channel)

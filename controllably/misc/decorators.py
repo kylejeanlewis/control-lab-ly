@@ -8,6 +8,7 @@ Notes / actionables:
 """
 # Standard library imports
 from collections import namedtuple
+from functools import wraps
 import time
 from typing import Callable, Optional
 
@@ -23,6 +24,7 @@ def named_tuple_from_dict(func:Callable) -> Callable:
     Args:
         func (Callable): function to be wrapped
     """
+    @wraps(func)
     def wrapper(*args, **kwargs) -> tuple:
         setup_dict = func(*args, **kwargs)
         field_list = []
@@ -45,6 +47,7 @@ def safety_measures(mode:Optional[str] = None, countdown:int = 3) -> Callable:
         mode (str, optional): mode for implementing safety measure. Defaults to None.
     """
     def inner(func:Callable):
+        @wraps(func)
         def wrapper(*args, **kwargs) -> Callable:
             str_method = repr(func).split(' ')[1]
             str_args = ','.join([repr(a) for a in args[1:]])

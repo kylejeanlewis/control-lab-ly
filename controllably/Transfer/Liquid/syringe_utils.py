@@ -10,6 +10,7 @@ Notes / actionables:
 """
 # Standard library imports
 from __future__ import annotations
+from functools import wraps
 import time
 from typing import Callable, Optional, Protocol, Union
 
@@ -83,6 +84,7 @@ class SyringeAssembly(LiquidHandler):
     
     # Decorators
     def _multi_channel(func:Callable):
+        @wraps(func)
         def wrapper(self, *args, **kwargs):
             success = []
             channels = []
