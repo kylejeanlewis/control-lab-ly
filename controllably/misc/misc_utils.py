@@ -6,6 +6,13 @@ Created: Tue 2022/11/02 17:13:35
 Notes / actionables:
 -
 """
+__all__ = [
+    "create_configs", 
+    "create_setup", 
+    "load_deck", 
+    "load_setup", 
+    "set_safety"
+]
 # Standard library imports
 import os
 from pathlib import Path
@@ -63,6 +70,31 @@ def create_setup(setup_name:Optional[str] = None):
         copytree(src=src, dst=dst)
     return
 
+def load_deck(device:Callable, layout_file:str, get_absolute_filepath:bool = True) -> Callable:
+    """
+    Load the deck information from layout file
+
+    Args:
+        device (object): device object that has the deck attribute
+        layout_file (str): layout file name
+        get_absolute_filepath (bool, optional): whether to extend the filepaths defined in layout file to their absolute filepaths. Defaults to True.
+
+    Returns:
+        object: device with deck loaded
+    """
+    layout_dict = helper.read_json(layout_file)
+    if get_absolute_filepath:
+        get_repo_name = True
+        root = ''
+        for slot in layout_dict['slots'].values():
+            if get_repo_name:
+                repo_name = slot.get('filepath','').replace('\\', '/').split('/')[0]
+                root = layout_file.split(repo_name)[0]
+                get_repo_name = False
+            slot['filepath'] = f"{root}{slot['filepath']}"
+    device.loadDeck(layout_dict=layout_dict)
+    return device
+
 @decorators.named_tuple_from_dict
 def load_setup(config_file:str, registry_file:Optional[str] = None) -> dict:
     """
@@ -90,31 +122,6 @@ def load_setup(config_file:str, registry_file:Optional[str] = None) -> dict:
             continue
         setup[key] = tool.components.get(child)
     return setup
-
-def load_deck(device:Callable, layout_file:str, get_absolute_filepath:bool = True) -> Callable:
-    """
-    Load the deck information from layout file
-
-    Args:
-        device (object): device object that has the deck attribute
-        layout_file (str): layout file name
-        get_absolute_filepath (bool, optional): whether to extend the filepaths defined in layout file to their absolute filepaths. Defaults to True.
-
-    Returns:
-        object: device with deck loaded
-    """
-    layout_dict = helper.read_json(layout_file)
-    if get_absolute_filepath:
-        get_repo_name = True
-        root = ''
-        for slot in layout_dict['slots'].values():
-            if get_repo_name:
-                repo_name = slot.get('filepath','').replace('\\', '/').split('/')[0]
-                root = layout_file.split(repo_name)[0]
-                get_repo_name = False
-            slot['filepath'] = f"{root}{slot['filepath']}"
-    device.loadDeck(layout_dict=layout_dict)
-    return device
 
 def set_safety(safety_level:Optional[str] = None, safety_countdown:int = 3):
     """
