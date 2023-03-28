@@ -26,13 +26,12 @@ class LED:
     Args:
         channel (int): channel index
     """
-    def __init__(self, channel:int):
-        self.channel = channel
-        self._duration = 0
-        self._end_time = time.time()
-        self._power = 0
-        self.flags = {'power_update': False}
-        pass
+    
+    channel: int
+    update_power: bool = field(default=False, init=False)
+    _duration: int = field(default=0, init=False)
+    _end_time: float = field(default=time.time(), init=False)
+    _power: int = field(default=0, init=False)
     
     # Properties
     @property
@@ -40,25 +39,11 @@ class LED:
         return self._power
     @power.setter
     def power(self, value:int):
-        if type(value) == int and (0 <= value <= 255):
+        if type(value) is int and (0 <= value <= 255):
             self._power = value
-            self.setFlag(power_update=True)
+            self.update_power = True
         else:
             print('Please input an integer between 0 and 255.')
-        return
-    
-    def setFlag(self, **kwargs):
-        """
-        Set a flag's truth value
-
-        Args:
-            `name` (str): label
-            `value` (bool): flag value
-        """
-        if not all([type(v)==bool for v in kwargs.values()]):
-            raise ValueError("Ensure all assigned flag values are boolean.")
-        for key, value in kwargs.items():
-            self.flags[key] = value
         return
     
     def setPower(self, value:int, time_s:int = 0):
@@ -130,7 +115,7 @@ class LEDArray(Maker):
             list: list of channels that are still timed
         """
         now = time.time()
-        self._timed_channels = [chn.channel for chn in self.channels.values() if chn._end_time>now]
+        self._timed_channels = [chn.channel for chn in self.channels.values() if (chn._end_time>now and chn._duration)]
         return self._timed_channels
     
     def isBusy(self) -> bool:
@@ -156,7 +141,7 @@ class LEDArray(Maker):
         if channel is None:
             for chn in self.channels.values():
                 chn.setPower(value, time_s)
-        elif type(channel) == int and channel in self.channels:
+        elif type(channel) is int and channel in self.channels:
             self.channels[channel].setPower(value, time_s)
         self.startTiming()
         return
@@ -253,7 +238,7 @@ class LEDArray(Maker):
         Returns:
             str: command string
         """
-        if not any([chn.flags['power_update'] for chn in self.channels.values()]):
+        if not any([chn.update_power for chn in self.channels.values()]):
             return ''
         command = f"{';'.join([str(v) for v in self.getPower()])}\n"
         try:
@@ -262,10 +247,11 @@ class LEDArray(Maker):
             pass
         now = time.time()
         for chn in self.channels.values():
-            if chn.flags['power_update']:
+            if chn.update_power:
                 chn._end_time = now + chn._duration
                 chn._duration = 0
                 chn.setFlag(power_update=False)
+                chn.update_power = False
         if self.verbose:
             print(command)
         return command
