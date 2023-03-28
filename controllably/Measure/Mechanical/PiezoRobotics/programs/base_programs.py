@@ -50,7 +50,7 @@ class DMA(Program):
         verbose: bool = False, 
         **kwargs
     ):
-        super().__init__(device=device, parameters=parameters, verbose=verbose **kwargs)
+        super().__init__(device=device, parameters=parameters, verbose=verbose, **kwargs)
         return
     
     def run(self):
