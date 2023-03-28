@@ -34,7 +34,7 @@ class KeithleyDevice(Instrument):
         self.name = name
         self._fields = ('',)
         
-        self.active_buffer = self._default_buffer.copy()
+        self.active_buffer = self._default_buffer
         self.sense = SenseDetails()
         self.source = SourceDetails()
         self._connect(ip_address)
@@ -219,10 +219,23 @@ class KeithleyDevice(Instrument):
         """
         Reset the device
         """
-        self.active_buffer = self._default_buffer.copy()
+        self.active_buffer = self._default_buffer
         self.sense = SenseDetails()
         self.source = SourceDetails()
         return self._query('*RST')
+    
+    def run(self, sequential_commands:bool = True):
+        """
+        Initialise the measurement
+
+        Args:
+            sequential_commands (bool, optional): whether commands whose operations must finish before the next command is executed. Defaults to True.
+        """
+        if sequential_commands:
+            commands = [f'TRACe:TRIGger "{self.active_buffer}"']
+        else:
+            commands = ['INITiate ; *WAI']
+        return self.sendCommands(commands=commands)
     
     def saveState(self, state:int):
         """
@@ -268,19 +281,6 @@ class KeithleyDevice(Instrument):
         self.source._count += 1
         return self._query(f'SOURce:{self.source.function_type} {value}')
 
-    def run(self, sequential_commands:bool = True):
-        """
-        Initialise the measurement
-
-        Args:
-            sequential_commands (bool, optional): whether commands whose operations must finish before the next command is executed. Defaults to True.
-        """
-        if sequential_commands:
-            commands = [f'TRACe:TRIGger "{self.active_buffer}"']
-        else:
-            commands = ['INITiate ; *WAI']
-        return self.sendCommands(commands=commands)
-
     def stop(self):
         """
         Abort all actions
@@ -321,6 +321,8 @@ class KeithleyDevice(Instrument):
                 print(e) 
         else:
             device.read_termination = '\n'
+            self.device = device
+            self.setFlag(connected=True)
             self.beep(500)
             print(f"{self.__info__()}")
             print(f"{self.name.title()} Keithley ready")
@@ -366,7 +368,7 @@ class KeithleyDevice(Instrument):
         
         if not self.isConnected():
             print(command)
-            dummy_return = ';'.join([0 for _ in range(command.count(';')+1)]) if "?" in command else ''
+            dummy_return = ';'.join(['0' for _ in range(command.count(';')+1)]) if "?" in command else ''
             return dummy_return
         
         if "?" not in command:
