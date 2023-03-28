@@ -55,7 +55,7 @@ class Spinner(Maker):
     def port(self) -> str:
         return self.connection_details.get('port', '')
     
-    def execute(self, soak_time:int = 0, spin_speed:int = 2000, spin_time:int = 1, **kwargs):
+    def run(self, soak_time:int = 0, spin_speed:int = 2000, spin_time:int = 1, **kwargs):
         """
         Executes the soak and spin steps
 
@@ -74,7 +74,7 @@ class Spinner(Maker):
     def shutdown(self):
         return super().shutdown()
 
-    def soak(self, seconds:int, **kwargs):
+    def soak(self, time_s:int, **kwargs):
         """
         Executes the soak step
 
@@ -83,11 +83,11 @@ class Spinner(Maker):
             channel (int, optional): channel index. Defaults to None.
         """
         self.speed = 0
-        if seconds:
-            time.sleep(seconds)
+        if time_s:
+            time.sleep(time_s)
         return
 
-    def spin(self, speed:int, seconds:int, **kwargs):
+    def spin(self, speed:int, time_s:int, **kwargs):
         """
         Executes the spin step
 
@@ -96,8 +96,18 @@ class Spinner(Maker):
             seconds (int): spin time
             channel (int, optional): channel index. Defaults to None.
         """
+        self._write(speed)
         self.speed = speed
-        self._run_spin_step(speed, seconds)
+        
+        interval = 1
+        start_time = time.time()
+        while(True):
+            time.sleep(0.1)
+            if (interval <= time.time() - start_time):
+                interval += 1
+            if (time_s <= time.time() - start_time):
+                break
+        self._write(0)
         self.speed = 0
         return
 
@@ -139,11 +149,12 @@ class Spinner(Maker):
         Run diagnostic on tool
         """
         thread = Thread(target=self.execute, name=f'maker_diag_{self.channel}')
+        thread = Thread(target=self.run, name=f'maker_diag_{self.channel}')
         thread.start()
         time.sleep(1)
         return
     
-    def _run_speed(self, speed:int):
+    def _write(self, speed:int):
         """
         Relay spin speed to spinner
 
@@ -155,27 +166,6 @@ class Spinner(Maker):
         except AttributeError:
             pass
         print("Spin speed: {}".format(speed))
-        return
-    
-    def _run_spin_step(self, speed:int, run_time:int):
-        """
-        Perform timed spin step
-
-        Args:
-            speed (int): spin speed
-            run_time (int): spin time
-        """
-        interval = 1
-        start_time = time.time()
-        self._run_speed(speed)
-        
-        while(True):
-            time.sleep(0.1)
-            if (interval <= time.time() - start_time):
-                interval += 1
-            if (run_time <= time.time() - start_time):
-                self._run_speed(0)
-                break
         return
 
 
@@ -212,21 +202,6 @@ class SpinnerAssembly(Maker):
             channel.disconnect()
         return super().disconnect() 
         
-    def execute(self, soak_time:int, spin_speed:int, spin_time:int, channel:int):
-        """
-        Executes the soak and spin steps
-
-        Args:
-            soak_time (int): soak time
-            spin_speed (int): spin speed
-            spin_time (int): spin time
-            channel (int): channel index
-        """
-        thread = Thread(target=self.channels[channel].execute, args=(soak_time, spin_speed, spin_time))
-        thread.start()
-        self._threads[f'channel_{channel}_execute'] = thread
-        return
-    
     def isBusy(self) -> bool:
         """
         Check whether any of the spinners are still busy
@@ -244,6 +219,21 @@ class SpinnerAssembly(Maker):
             bool: whether all spinners are connected
         """
         return all([channel.isConnected() for channel in self.channels.values()])
+    
+    def run(self, soak_time:int, spin_speed:int, spin_time:int, channel:int):
+        """
+        Execute the soak and spin steps
+
+        Args:
+            soak_time (int): soak time
+            spin_speed (int): spin speed
+            spin_time (int): spin time
+            channel (int): channel id
+        """
+        thread = Thread(target=self.channels[channel].run, args=(soak_time, spin_speed, spin_time))
+        thread.start()
+        self._threads[f'channel_{channel}_run'] = thread
+        return
     
     def shutdown(self):
         for thread in self._threads.values():
