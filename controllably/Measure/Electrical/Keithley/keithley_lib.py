@@ -59,8 +59,9 @@ class SenseDetails:
     
     def __post_init__(self):
         self.function_type = set_function_type(self.function_type, self._choices)
-        self.count = max(1, min(self.count, COUNT_UPPER_LIMIT))
         self.range_limit = set_limit(self.range_limit, (self.function_type=='CURRent'))
+        self.four_point = 'ON' if self.four_point else 'OFF'
+        self.count = max(1, min(self.count, COUNT_UPPER_LIMIT))
         return
     
     # Properties
@@ -78,7 +79,7 @@ class SenseDetails:
             'RSENse': self.four_point,
             'UNIT': self.unit
         }
-        commands = [f'{self._name}:{self.function_type}:{k} {v}' for k,v in commands]
+        commands = [f'{self._name}:{self.function_type}:{k} {v}' for k,v in commands.items()]
         for i,command in enumerate(commands):
             if 'AUTO' in command:
                 new_command = ':AUTO'.join((command.split(' AUTO')))
@@ -96,7 +97,7 @@ class SourceDetails:
     _name: str = field(default='SOURce', init=False)
     
     def __post_init__(self):
-        self.function_type = self.set_function_type(self.function_type, self._choices)
+        self.function_type = set_function_type(self.function_type, self._choices)
         self.range_limit = set_limit(self.range_limit, (self.function_type=='CURRent'))
         self.measure_limit = set_limit(self.measure_limit, (self.function_type!='CURRent'))
         return
@@ -112,7 +113,7 @@ class SourceDetails:
             'RANGe': self.range_limit,
             self.measure_type: self.measure_limit
         }
-        commands = [f'{self._name}:{self.function_type}:{k} {v}' for k,v in commands]
+        commands = [f'{self._name}:{self.function_type}:{k} {v}' for k,v in commands.items()]
         for i,command in enumerate(commands):
             if 'AUTO' in command:
                 new_command = ':AUTO'.join((command.split(' AUTO')))
