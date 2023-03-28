@@ -254,8 +254,8 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """
-        message = f'RB{self.home_position}' if home else 'RB'
-        response = self._query(message)
+        command = f'RB{self.home_position}' if home else 'RB'
+        response = self._query(command)
         self.position = self.home_position
         time.sleep(1)
         return response
@@ -365,8 +365,8 @@ class Sartorius(LiquidHandler):
             str: device response
         """
         self.reagent = ''
-        message = f'RE{self.home_position}' if home else 'RE'
-        response = self._query(message)
+        command = f'RE{self.home_position}' if home else 'RE'
+        response = self._query(command)
         self.position = self.home_position if home else 0
         time.sleep(1)
         return response
@@ -544,9 +544,9 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """
-        message = f'RI{steps}' if steps > 0 else f'RO{-steps}'
+        command = f'RI{steps}' if steps > 0 else f'RO{-steps}'
         self.position += steps
-        return self._query(message)
+        return self._query(command)
     
     def moveTo(self, position:int, **kwargs) -> str:
         """
@@ -715,12 +715,12 @@ class Sartorius(LiquidHandler):
         self.device = device
         return
     
-    def _is_expected_reply(self, response:str, message_code:str, **kwargs) -> bool:
+    def _is_expected_reply(self, response:str, command_code:str, **kwargs) -> bool:
         """
         Check whether the response is an expected reply
 
         Args:
-            message_code (str): two-character message code
+            command_code (str): two-character command code
             response (str): response string from device
 
         Returns:
@@ -728,9 +728,9 @@ class Sartorius(LiquidHandler):
         """
         if response in ErrorCode._member_names_:
             return True
-        if message_code not in QUERIES and response == 'ok':
+        if command_code not in QUERIES and response == 'ok':
             return True
-        if message_code in QUERIES and response[:2] == message_code.lower():
+        if command_code in QUERIES and response[:2] == command_code.lower():
             reply_code, data = response[:2], response[2:]
             if self.verbose:
                 print(f'[{reply_code}] {data}')
@@ -751,7 +751,7 @@ class Sartorius(LiquidHandler):
         return
     
     def _query(self, 
-        message: str, 
+        command: str, 
         timeout_s: float = 0.3, 
         resume_feedback: bool = False
     ) -> str:
@@ -759,14 +759,14 @@ class Sartorius(LiquidHandler):
         Send query and wait for response
 
         Args:
-            message (str): message string
+            command (str): command string
             timeout_s (int, optional): duration to wait before timeout. Defaults to 0.3.
 
         Returns:
-            str: message readout
+            str: command readout
         """
-        message_code = message[:2]
-        if message_code not in STATUS_QUERIES:
+        command_code = command[:2]
+        if command_code not in STATUS_QUERIES:
             if self.flags['get_feedback'] and not self.flags['pause_feedback']:
                 self.setFlag(pause_feedback=True)
                 time.sleep(timeout_s)
@@ -775,16 +775,16 @@ class Sartorius(LiquidHandler):
                 self.getStatus()
         
         start_time = time.time()
-        self._write(message)
+        self._write(command)
         response = ''
-        while not self._is_expected_reply(response, message_code):
+        while not self._is_expected_reply(response, command_code):
             if time.time() - start_time > timeout_s:
                 break
             response = self._read()
         # print(time.time() - start_time)
-        if message_code in QUERIES:
+        if command_code in QUERIES:
             response = response[2:]
-        if message_code not in STATUS_QUERIES:
+        if command_code not in STATUS_QUERIES:
             self.getPosition()
             if resume_feedback:
                 self.setFlag(pause_feedback=False)
@@ -829,19 +829,19 @@ class Sartorius(LiquidHandler):
             self.channel = new_channel_id
         return
     
-    def _write(self, message:str) -> bool:
+    def _write(self, command:str) -> bool:
         """
-        Sends message to device
+        Sends command to device
 
         Args:
-            message (str): <message code><value>
+            command (str): <command code><value>
 
         Returns:
-            str: two-character message code
+            str: two-character command code
         """
         if self.verbose:
-            print(message)
-        fstring = f'{self.channel}{message}º\r' # message template: <PRE><ADR><CODE><DATA><LRC><POST>
+            print(command)
+        fstring = f'{self.channel}{command}º\r' # command template: <PRE><ADR><CODE><DATA><LRC><POST>
         # bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
         try:
             # Typical timeout wait is 400ms

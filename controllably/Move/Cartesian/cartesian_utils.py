@@ -207,9 +207,9 @@ class Gantry(Mover):
         self.device = device
         return
 
-    def _query(self, message:str) -> str:
+    def _query(self, command:str) -> str:
         response = ''
-        self._write(message)
+        self._write(command)
         try:
             response = self.device.readline()
         except Exception as e:
@@ -219,9 +219,9 @@ class Gantry(Mover):
             print(response)
         return response
 
-    def _write(self, message:str):
+    def _write(self, command:str):
         try:
-            self.device.write(message.encode('utf-8'))
+            self.device.write(command.encode('utf-8'))
         except Exception as e:
             if self.verbose:
                 print(e)

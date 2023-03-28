@@ -77,9 +77,9 @@ class Pump(LiquidHandler):
         self.device = device
         return
     
-    def _write(self, message:str) -> bool:
+    def _write(self, command:str) -> bool:
         try:
-            self.device.write(message.encode('utf-8'))
+            self.device.write(command.encode('utf-8'))
         except Exception as e:
             if self.verbose:
                 print(e)

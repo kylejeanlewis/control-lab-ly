@@ -186,23 +186,23 @@ class PiezoRoboticsDevice(Instrument):
         self.device = device
         return
     
-    def _query(self, message:str, timeout_s:int = 60) -> Union[str, tuple[str]]:
+    def _query(self, command:str, timeout_s:int = 60) -> Union[str, tuple[str]]:
         """
         Send query and wait for response
 
         Args:
-            message (str): message string
+            command (str): command string
             timeout_s (int, optional): duration to wait before timeout. If None, no timeout duration. Defaults to 60.
 
         Yields:
             str: response string
         """
-        message_code = message.split(',')[0].strip().upper()
-        if message_code not in CommandCode._member_names_:
+        command_code = command.split(',')[0].strip().upper()
+        if command_code not in CommandCode._member_names_:
             raise Exception(f"Please select a valid command code from: {', '.join(CommandCode._member_names_)}")
         
         start_time = time.time()
-        self._write(message)
+        self._write(command)
         cache = []
         response = ''
         while response != 'OKC':
@@ -210,11 +210,11 @@ class PiezoRoboticsDevice(Instrument):
                 print('Timeout! Aborting run...')
                 break
             response = self._read()
-            if message_code == 'GET' and len(response):
+            if command_code == 'GET' and len(response):
                 cache.append(response)
         self.setFlag(busy=False)
         time.sleep(0.1)
-        if message_code == 'GET':
+        if command_code == 'GET':
             return tuple(cache)
         return response
     
@@ -241,22 +241,22 @@ class PiezoRoboticsDevice(Instrument):
                 print(ErrorCode[response].value)
         return response
     
-    def _write(self, message:str) -> bool:
+    def _write(self, command:str) -> bool:
         """
-        Sends message to device
+        Sends command to device
 
         Args:
-            message (str): <message code>,<option 1>[,<option 2>]
+            command (str): <command code>,<option 1>[,<option 2>]
 
         Raises:
             Exception: Select a valid command code.
         
         Returns:
-            str: two-character message code
+            str: two-character command code
         """
         if self.verbose:
-            print(message)
-        fstring = f'DMA,SN{self.channel},{message},END' # message template: <PRE>,<SN>,<CODE>,<OPTIONS>,<POST>
+            print(command)
+        fstring = f'DMA,SN{self.channel},{command},END' # command template: <PRE>,<SN>,<CODE>,<OPTIONS>,<POST>
         # bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
         try:
             self.device.write(fstring.encode('utf-8'))

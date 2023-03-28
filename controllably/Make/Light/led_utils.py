@@ -248,16 +248,16 @@ class LEDArray(Maker):
     
     def _update_power(self) -> str:
         """
-        Update power levels by sending message to device
+        Update power levels by sending command to device
 
         Returns:
-            str: message string
+            str: command string
         """
         if not any([chn.flags['power_update'] for chn in self.channels.values()]):
             return ''
-        message = f"{';'.join([str(v) for v in self.getPower()])}\n"
+        command = f"{';'.join([str(v) for v in self.getPower()])}\n"
         try:
-            self.device.write(bytes(message, 'utf-8'))
+            self.device.write(bytes(command, 'utf-8'))
         except AttributeError:
             pass
         now = time.time()
@@ -267,6 +267,6 @@ class LEDArray(Maker):
                 chn._duration = 0
                 chn.setFlag(power_update=False)
         if self.verbose:
-            print(message)
-        return message
+            print(command)
+        return command
     
