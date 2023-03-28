@@ -208,7 +208,7 @@ class RobotArm(Mover):
             bool: whether movement is successful
         """
         if coordinates is None:
-            coordinates,_ = self.getToolPosition() if tool_offset else self.getUserPosition()
+            coordinates,_ = self.tool_position if tool_offset else self.user_position
         if orientation is None:
             orientation = self.orientation
         coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
