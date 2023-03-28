@@ -167,7 +167,8 @@ class Gantry(Mover):
         return super().reset()
     
     def setSpeed(self, speed: int): # NOTE: waiting for PR #48
-        return super().setSpeed(speed)
+        super().setSpeed(speed)
+        return False, self.speed
     
     def shutdown(self):
         """
@@ -177,7 +178,7 @@ class Gantry(Mover):
         return super().shutdown()
     
     # Protected method(s)
-    def _connect(self, port:str, baudrate:int, timeout:int = None):
+    def _connect(self, port:str, baudrate:int = 115200, timeout:int = None):
         """
         Connect to machine control unit
 
