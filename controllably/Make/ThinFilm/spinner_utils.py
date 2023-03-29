@@ -10,6 +10,7 @@ Notes / actionables:
 """
 # Standard library imports
 from __future__ import annotations
+import numpy as np
 from threading import Thread
 import time
 
@@ -45,7 +46,7 @@ class Spinner(Maker):
     ):
         super().__init__(**kwargs)
         self.channel = channel
-        self.position = tuple(position)
+        self._position = tuple(position)
         self.speed = 0
         self._connect(port)
         return
@@ -54,6 +55,10 @@ class Spinner(Maker):
     @property
     def port(self) -> str:
         return self.connection_details.get('port', '')
+    
+    @property
+    def position(self) -> np.ndarray:
+        return np.array(self._position)
     
     def run(self, soak_time:int = 0, spin_speed:int = 2000, spin_time:int = 1, **kwargs):
         """
