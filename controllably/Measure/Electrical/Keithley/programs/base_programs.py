@@ -12,7 +12,7 @@ import time
 from typing import Optional, Protocol
 
 # Local application imports
-from ....program_utils import Program
+from ....program_utils import Program, get_program_details
 from ..keithley_lib import SenseDetails, SourceDetails
 print(f"Import: OK <{__name__}>")
 
@@ -78,7 +78,7 @@ class IV_Scan(Program):
         device.makeBuffer()
         device.beep()
         
-        for current in self.parameters.get('currents', []):
+        for current in self.parameters.get('currents', (0,)):
             device.setSource(value=current)
             device.toggleOutput(on=True)
             device.run()
@@ -259,7 +259,7 @@ class LSV(Program):
 
 PROGRAMS = [IV_Scan, OCV, LSV]
 PROGRAM_NAMES = [prog.__name__ for prog in PROGRAMS]
-INPUTS = [item for item in [[key for key in prog.getDetails().inputs] for prog in PROGRAMS]]
+INPUTS = [item for item in [[key for key in get_program_details(prog).inputs] for prog in PROGRAMS]]
 INPUTS_SET = sorted( list(set([item for sublist in INPUTS for item in sublist])) )
 
 # %%

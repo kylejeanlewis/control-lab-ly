@@ -12,9 +12,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 import inspect
 import pandas as pd
-from typing import Optional, Protocol, Any
-
-# Local application imports
+from typing import Callable, Optional, Protocol, Any
 print(f"Import: OK <{__name__}>")
 
 class Device(Protocol):
@@ -57,50 +55,50 @@ class Program(ABC):
         """
         Run the measurement program
         """
+def get_program_details(program_class: Callable, verbose:bool = False) -> ProgramDetails:
+    """
+    Get the input fields and defaults
     
-    @classmethod
-    def getDetails(cls, verbose:bool = False) -> ProgramDetails:
-        """
-        Get the input fields and defaults
-        
-        Args:
-            verbose: whether to print out truncated docstring. Defaults to False.
+    Args:
+        program_class (Callable): program class of interest
+        verbose: whether to print out truncated docstring. Defaults to False.
 
-        Returns:
-            dict: dictionary of program details
-        """
-        doc = inspect.getdoc(cls)
-        # Extract truncated docstring and parameter listing
-        lines = doc.split('\n')
-        start, end = 0,0
-        for i,line in enumerate(lines):
-            # line = line.strip()
-            if line.startswith('Args:'):
-                start = i
-            if line.startswith('==========') and start:
-                end = i
-                break
-        parameter_list = sorted([_l.strip() for _l in lines[end+2:] if len(_l.strip())])
-        short_lines = lines[:start-1] + lines[end:]
-        short_doc = '\n'.join(short_lines)
-        tooltip = '\n'.join(['Parameters:'] + [f'- {_p}' for _p in parameter_list])
-        
-        # Extract input fields and defaults
-        inputs = []
-        defaults = {}
-        for parameter in parameter_list:
-            if len(parameter) == 0:
-                continue
-            inputs.append(parameter.split(' ')[0])
-            if 'Defaults' in parameter:
-                defaults[inputs[-1]] = parameter.split(' ')[-1][:-1]
+    Returns:
+        ProgramDetails: details of program class
+    """
+    doc = inspect.getdoc(program_class)
     
-        cls.details = ProgramDetails(
-            inputs=inputs,
-            defaults=defaults,
-            short_doc=short_doc,
-            tooltip=tooltip
-        )
-        if verbose:
-            print(short_doc)
-        return cls.details
+    # Extract truncated docstring and parameter listing
+    lines = doc.split('\n')
+    start, end = 0,0
+    for i,line in enumerate(lines):
+        # line = line.strip()
+        if line.startswith('### Constructor'):
+            start = i
+        if line.startswith('===') and start:
+            end = i
+            break
+    short_lines = [''] + lines[:start-1] + lines[end:]
+    short_doc = '\n'.join(short_lines).replace("### ", "")
+    parameter_list = [l.strip() for l in lines[end+3:] if len(l.strip())]
+    tooltip = '\n'.join(['Parameters:'] + [f'- {p}' for p in parameter_list])
+    
+    # Extract input fields and defaults
+    inputs = []
+    defaults = {}
+    for parameter in parameter_list:
+        if len(parameter) == 0:
+            continue
+        inputs.append(parameter.split(' ')[0])
+        if 'Defaults' in parameter:
+            defaults[inputs[-1]] = parameter.split(' ')[-1][:-1]
+
+    details = ProgramDetails(
+        inputs=inputs,
+        defaults=defaults,
+        short_doc=short_doc,
+        tooltip=tooltip
+    )
+    if verbose:
+        print(short_doc)
+    return details

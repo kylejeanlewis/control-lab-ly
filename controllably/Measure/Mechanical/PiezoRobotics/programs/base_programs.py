@@ -13,7 +13,7 @@ import time
 from typing import Optional, Protocol
 
 # Local application imports
-from ....program_utils import Program, ProgramDetails
+from ....program_utils import Program, get_program_details
 from ..piezorobotics_lib import FrequencyCode
 print(f"Import: OK <{__name__}>")
 
@@ -85,5 +85,5 @@ class DMA(Program):
 
 PROGRAMS = [DMA]
 PROGRAM_NAMES = [prog.__name__ for prog in PROGRAMS]
-INPUTS = [item for item in [[key for key in prog.getDetails().inputs] for prog in PROGRAMS]]
+INPUTS = [item for item in [[key for key in get_program_details(prog).inputs] for prog in PROGRAMS]]
 INPUTS_SET = sorted( list(set([item for sublist in INPUTS for item in sublist])) )
