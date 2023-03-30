@@ -7,6 +7,9 @@ Notes / actionables:
 - validation on copper 
 - rewrite the operation modes as programs, instead of subclasses
 """
+# Standard library imports
+from abc import ABC, abstractmethod
+
 # Third party imports
 import cv2 # pip install opencv-python
 
@@ -14,14 +17,17 @@ import cv2 # pip install opencv-python
 from ..image_utils import Image
 print(f"Import: OK <{__name__}>")
 
-class Classifier(object):
+class Classifier(ABC):
     """
     Classifier object
     """
     def __init__(self):
+        """Instantiate the class"""
+        self.classifier = None
         pass
     
-    def detect(self, image:Image, scale:int, neighbors:int):
+    @abstractmethod
+    def detect(self, image:Image, scale:int, neighbors:int) -> dict:
         """
         Detect targets
 
@@ -46,7 +52,7 @@ class CascadeClassifier(Classifier):
         self.classifier = cv2.CascadeClassifier(xml_path)
         pass
     
-    def detect(self, image:Image, scale:int, neighbors:int):
+    def detect(self, image:Image, scale:int, neighbors:int) -> dict:
         """
         Detect targets
 
