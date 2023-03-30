@@ -32,9 +32,9 @@ class Panel(ABC):
     def __init__(self, 
         name: str = '', 
         group: Optional[str] = None,
-        font_sizes: list[int] = list(FONT_SIZES),
-        theme: str = THEME, 
-        typeface: str = TYPEFACE
+        font_sizes: tuple[int] = (14,12,10,8,6),
+        theme: str = 'LightGreen', 
+        typeface: str = "Helvetica"
     ):
         """
         Panel class
@@ -49,6 +49,8 @@ class Panel(ABC):
         self.name = name
         self.group = group
         self.flags = {}
+        self.flags = self._default_flags.copy()
+        self.tool = None
         self.window = None
         
         Panel.font_sizes = font_sizes
@@ -99,91 +101,6 @@ class Panel(ABC):
         # Listen to events here
         return updates
 
-    @staticmethod
-    def getButtons(
-        labels: list[str], 
-        size: Union[int, tuple], 
-        key_prefix: str, 
-        font: tuple[str, int], 
-        texts: list[str] = [], 
-        **kwargs
-    ) -> list[sg.Button]:
-        """
-        Get list of panel buttons
-
-        Args:
-            labels (list): list of button labels
-            size (int, or tuple): button width (,height)
-            key_prefix (any): prefix of button key
-            font (tuple): (typeface, font size)
-            texts (list, optional): alternative text labels for buttons. Defaults to [].
-
-        Returns:
-            list: list of PySimpleGUI.Button objects
-        """
-        buttons = []
-        specials = kwargs.pop('specials', {})
-        for i,label in enumerate(labels):
-            key_string = label.replace('\n','')
-            key = f"-{key_prefix}-{key_string}-" if key_prefix else f"-{key_string}-"
-            kw = kwargs.copy()
-            if label in specials.keys():
-                for k,v in specials[label].items():
-                    kw[k] = v
-            if len(texts):
-                try:
-                    label = texts[i]
-                except IndexError:
-                    pass
-            buttons.append(sg.Button(label, size=size, key=key, font=font, **kw))
-        return buttons
-    
-    @staticmethod
-    def pad():
-        """
-        Spacer / padding
-
-        Returns:
-            PySimpleGUI.Push: padding
-        """
-        ele = sg.Text('', size=(1,1))
-        try:
-            ele = sg.Push()
-        except Exception as e:
-            print(e)
-        return ele
-    
-    @staticmethod
-    def parseInput(string:str) -> list[Union[float, str]]:
-        """
-        Parse inputs from GUI
-
-        Args:
-            string (str): input string read from GUI window
-
-        Returns:
-            any: appropriate values
-        """
-        if ',' in string:
-            strings = string.split(',')
-        elif ';' in string:
-            strings = string.split(';')
-        else:
-            try:
-                string = float(string)
-                return string
-            finally:
-                # return string
-                pass
-        output = []
-        for string in strings:
-            try:
-                output.append(float(string))
-            except ValueError:
-                # output.append(string)
-                pass
-        return output
-    
     @classmethod
     def arrangeElements(cls, elements:list, shape:tuple[int, int] = (0,0), form:str = '') -> list[list]:
         """
@@ -243,7 +160,15 @@ class Panel(ABC):
                 arranged_elements.append([cls.pad()]+ [elements[l:u]] +[cls.pad()])
                 n += row
         return arranged_elements
-    
+
+    def close(self):
+        """Exit the application"""
+        try:
+            self.window.close()
+        except AttributeError:
+            pass
+        return
+
     @classmethod
     def configure(cls, **kwargs):
         """
@@ -260,15 +185,45 @@ class Panel(ABC):
         sg.set_options(font=font, element_padding=element_padding, **kwargs)
         return
     
-    def close(self):
+    @staticmethod
+    def getButtons(
+        labels: list[str], 
+        size: Union[int, tuple], 
+        key_prefix: str, 
+        font: tuple[str, int], 
+        texts: Optional[list[str]] = None, 
+        **kwargs
+    ) -> list[sg.Button]:
         """
-        Close window
+        Get list of panel buttons
+
+        Args:
+            labels (list[str]): list of button labels
+            size (Union[int, tuple]): button width (,height)
+            key_prefix (str): prefix of button key
+            font (tuple[str, int]): (typeface, font size)
+            texts (Optional[list[str]], optional): alternative text labels for buttons. Defaults to None.
+
+        Returns:
+            list: list of PySimpleGUI.Button objects
         """
-        try:
-            self.window.close()
-        except AttributeError:
-            pass
-        return
+        texts = [] if texts is None else texts
+        buttons = []
+        specials = kwargs.pop('specials', {})
+        for i,label in enumerate(labels):
+            key_string = label.replace('\n','')
+            key = f"-{key_prefix}-{key_string}-" if key_prefix else f"-{key_string}-"
+            kw = kwargs.copy()
+            if label in specials.keys():
+                for k,v in specials[label].items():
+                    kw[k] = v
+            if len(texts):
+                try:
+                    label = texts[i]
+                except IndexError:
+                    pass
+            buttons.append(sg.Button(label, size=size, key=key, font=font, **kw))
+        return buttons
 
     def getWindow(self, title:str = 'Application', **kwargs) -> sg.Window:
         """
@@ -284,8 +239,54 @@ class Panel(ABC):
         window = sg.Window(title, layout, enable_close_attempted_event=True, resizable=False, finalize=True, icon='icon.ico', **kwargs)
         self.window = window
         return window
+
+    @staticmethod
+    def pad() -> Union[sg.Push, sg.Text]:
+        """
+        Add spacer in GUI
+
+        Returns:
+            Union[sg.Push, sg.Text]: GUI spacer
+        """
+        ele = sg.Text('', size=(1,1))
+        try:
+            ele = sg.Push()
+        except Exception as e:
+            print(e)
+        return ele
     
-    def runGUI(self, title='Application', maximize=False):
+    @staticmethod
+    def parseInput(text:str) -> list[Union[float, str]]:
+        """
+        Parse inputs from GUI
+
+        Args:
+            text (str): input text read from GUI window
+
+        Returns:
+            list[Union[float, str]]: variable output including floats, strings, and tuples
+        """
+        if ',' in text:
+            strings = text.split(',')
+        elif ';' in text:
+            strings = text.split(';')
+        else:
+            try:
+                text = float(text)
+                return text
+            finally:
+                # return text
+                pass
+        output = []
+        for text in strings:
+            try:
+                output.append(float(text))
+            except ValueError:
+                # output.append(text)
+                pass
+        return output
+    
+    def runGUI(self, title:str = 'Application', maximize:bool = False):
         """
         Run the GUI loop
 
@@ -337,17 +338,17 @@ class Panel(ABC):
                 self.window[ele_key].update(**kwargs)
         return
     
-    def _mangle(self, string:str):
+    def _mangle(self, text:str) -> str:
         """
-        Mangle string with name of panel
+        Mangle text with name of panel
 
         Args:
-            string (str): string to be mangled
+            text (str): text to be mangled
 
         Returns:
-            str: mangled string
+            str: mangled text
         """
-        return f'-{self.name}{string}'
+        return f'-{self.name}{text}'
     
 
 class CompoundPanel(Panel):
