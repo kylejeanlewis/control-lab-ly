@@ -42,6 +42,11 @@ class Well:
     def __repr__(self) -> str:
         return f"{self.name} in {self._labware_name} at Slot {self._labware_slot}" 
     
+    # Properties
+    @property
+    def bottom(self) -> np.ndarray:
+        return self.center
+    
     @property
     def center(self) -> np.ndarray:
         """
@@ -62,6 +67,11 @@ class Well:
         """
         return self.details.get('depth', 0)
     
+    @property
+    def middle(self) -> np.ndarray:
+        depth = self.details.get('depth', 0)
+        return self.center + np.array((0,0,depth/2))
+        
     @property
     def offset(self) -> np.ndarray:
         """
@@ -162,25 +172,16 @@ class Labware:
     ):
         self.details = helper.read_json(json_file=labware_file, package=package)
         self.name = self.details.get('metadata',{}).get('displayName', '')
-        self.reference_point = np.array(bottom_left_coordinates)
+        self._reference_point = tuple(bottom_left_coordinates)
         self.slot = slot
         self._wells = {}
-        self.load_wells()
+        self._load_wells()
         pass
     
     def __repr__(self) -> str:
         return f"{self.name} at Slot {self.slot}" 
     
-    @property
-    def info(self) -> dict[str, Union[str, tuple[float]]]:
-        """
-        Summary of labware info
-
-        Returns:
-            dict: dictionary of name, reference point, and slot
-        """
-        return {'name':self.name, 'reference_point':self.reference_point, 'slot':self.slot}
-    
+    # Properties
     @property
     def center(self) -> np.ndarray:
         """
@@ -229,6 +230,18 @@ class Labware:
         y = dimensions.get('yDimension', 0)
         z = dimensions.get('zDimension', 0)
         return np.array((x,y,z))
+
+    @property
+    def info(self) -> dict[str, Union[str, tuple[float]]]:
+        return {'name':self.name, 'reference_point':self.reference_point, 'slot':self.slot}
+    
+    @property
+    def reference_point(self) -> np.ndarray:
+        return self._reference_point
+    @reference_point.setter
+    def reference_point(self, value:tuple[float]):
+        self._reference_point = value
+        return
     
     @property
     def rows(self) -> dict[str, int]:
@@ -265,15 +278,15 @@ class Labware:
     
     @property
     def wells_list(self) -> list[Well]:
+        return [self._wells[well] for well in self.details.get('wells',{})]
+
+    def at(self, name:str) -> Well:
         """
         Labware wells as list
 
         Returns:
             list: list of wells
         """
-        return [self._wells[well] for well in self.details.get('wells',{})]
-
-    def at(self, name:str) -> Well:
         return self.get_well(name=name)
     
     def get_well(self, name:str) -> Well:
@@ -288,10 +301,8 @@ class Labware:
         """
         return self.wells.get(name)
     
-    def load_wells(self):
-        """
-        Load wells into memory
-        """
+    def _load_wells(self):
+        """Load wells into memory"""
         wells = self.details.get('wells',{})
         for well in wells:
             self._wells[well] = Well(labware_info=self.info, name=well, details=wells[well])
@@ -317,7 +328,7 @@ class Deck:
     def __repr__(self) -> str:
         labwares = [''] + [repr(labware) for labware in self.slots.values()]
         labware_string = '\n'.join(labwares)
-        return f"Deck with labwares:{labware_string}" 
+        return f"Deck with Labwares:{labware_string}" 
     
     @property
     def slots(self) -> dict[str, Labware]:
@@ -343,7 +354,7 @@ class Deck:
             return self.get_slot(index=slot)
         elif type(slot) == str:
             return self.get_slot(name=slot)
-        print("Input a valid index or name of Labware in slot.")
+        print("Input a valid slot id or name of Labware in slot.")
         return
     
     def get_slot(self, index:Optional[int] = None, name:Optional[str] = None) -> Optional[Labware]:
@@ -361,7 +372,7 @@ class Deck:
             Labware: Labware in slot
         """
         if not any((index, name)) or all((index, name)):
-            raise Exception('Please input either slot index or name')
+            raise ValueError('Please input either slot id or name.')
         if index is None and name is not None:
             index = self.names.get(name)
         return self._slots.get(str(index))
@@ -435,7 +446,7 @@ class Deck:
         if layout_file is None and layout_dict is None:
             return
         elif layout_file is not None and layout_dict is not None:
-            raise Exception("Please input either `layout_file` or `layout_dict`")
+            raise Exception("Please input either `layout_file` or `layout_dict`.")
             print()
         elif layout_file is not None:
             self.details = helper.read_json(json_file=layout_file, package=package)
@@ -464,7 +475,7 @@ class Deck:
             Exception: Inputs 'index' and 'name' cannot be both 'None'
         """
         if not any((index, name)) or all((index, name)):
-            raise Exception('Please input either slot index or name')
+            raise Exception('Please input either slot id or name.')
         if index is None and name is not None:
             index = self.names.get(name)
         elif index is not None and name is None:
