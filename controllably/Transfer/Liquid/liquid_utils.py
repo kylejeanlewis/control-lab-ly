@@ -12,8 +12,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import numpy as np
 from typing import Optional, Union
-
-# Local application imports
 print(f"Import: OK <{__name__}>")
 
 PRE_FILL_CYCLES = 1
