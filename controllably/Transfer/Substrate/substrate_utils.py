@@ -8,13 +8,12 @@ Notes / actionables:
 """
 # Standard library imports
 from abc import ABC, abstractmethod
-
-# Local application imports
 print(f"Import: OK <{__name__}>")
 
 class Gripper(ABC):
     def __init__(self):
-        return
+        """Instantiate the class"""
+        ...
     
     @abstractmethod
     def drop(self) -> bool:
