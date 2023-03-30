@@ -25,7 +25,7 @@ Device = namedtuple('Device', ['dashboard', 'feedback'])
 
 class DobotAttachment(Protocol):
     implement_offset: tuple
-    def _set_dashboard(self, dashboard) -> None:
+    def setDashboard(self, dashboard):
         ...
 
 class Dobot(RobotArm):
@@ -267,8 +267,17 @@ class Dobot(RobotArm):
                 print("Not connected to arm.")
         return
 
-    def retractArm(self, target: Optional[tuple[float]] = None) -> bool:
-        return super().retractArm(target)
+    # def retractArm(self, target: Optional[tuple[float]] = None) -> bool:
+    #     """
+    #     Tuck in arm, rotate about base, then extend again
+
+    #     Args:
+    #         target (Optional[tuple[float]], optional): x,y,z coordinates of destination. Defaults to None.
+
+    #     Returns:
+    #         bool: whether movement is successful
+    #     """
+    #     return super().retractArm(target)
     
     def setSpeed(self, speed:float) -> tuple[bool, float]:
         """
@@ -305,8 +314,8 @@ class Dobot(RobotArm):
         """
         if on: # Add attachment
             print("Please secure tool attachment.")
-            self.attachment = attachment_class()
-            self.attachment._set_dashboard(self.dashboard)
+            self.attachment: DobotAttachment = attachment_class()
+            self.attachment.setDashboard(dashboard=self.dashboard)
             self.setImplementOffset(self.attachment.implement_offset)
         else: # Remove attachment
             print("Please remove tool attachment.")

@@ -25,19 +25,30 @@ class DobotGripper(Gripper):
         dashboard (any): Dashboard object
     """
     _implement_offset: tuple[float] = (0,0,0)
-    def __init__(self, dashboard:Callable):
+    def __init__(self, dashboard:Optional[Callable] = None, channel:int = 1):
         self.dashboard = None
-        self._set_dashboard(dashboard=dashboard)
+        self._channel = 0
+        self.setDashboard(dashboard=dashboard, channel=channel)
         return
     
     # Properties
     @property
+    def channel(self) -> int:
+        return self._channel
+    @channel.setter
+    def channel(self, value:int):
+        if 1<= value <= 24:
+            self._channel = value
+        else:
+            raise ValueError("Please provide a valid channel id from 1 to 24.")
+        return
+    @property
     def implement_offset(self) -> np.ndarray:
         return np.array(self._implement_offset)
     
-    #Protected method(s)
-    def _set_dashboard(self, dashboard:Callable):
+    def setDashboard(self, dashboard:Callable, channel:int = 1):
         self.dashboard = dashboard
+        self.channel= channel
         return
     
     
@@ -49,8 +60,8 @@ class TwoJawGrip(DobotGripper):
         dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
     """
     _implement_offset = (0,0,-95)
-    def __init__(self, dashboard:Callable):
-        super().__init__(dashboard=dashboard)
+    def __init__(self, dashboard:Optional[Callable] = None, channel:int = 1):
+        super().__init__(dashboard=dashboard, channel=channel)
         return
 
     def drop(self) -> bool:
@@ -92,8 +103,8 @@ class VacuumGrip(DobotGripper):
         dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
     """
     _implement_offset = (0,0,-60)
-    def __init__(self, dashboard:Callable):
-        super().__init__(dashboard=dashboard)
+    def __init__(self, dashboard:Optional[Callable] = None, channel:int = 1):
+        super().__init__(dashboard=dashboard, channel=channel)
         return
 
     def drop(self) -> bool:
@@ -177,6 +188,7 @@ class VacuumGrip(DobotGripper):
         return True
 
 
+# FIXME
 ATTACHMENTS = [TwoJawGrip, VacuumGrip]
 ATTACHMENT_NAMES = ['TwoJawGrip', 'VacuumGrip']
 METHODS = [Helper.get_method_names(attachment) for attachment in ATTACHMENTS]
