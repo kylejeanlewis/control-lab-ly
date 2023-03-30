@@ -77,11 +77,10 @@ def get_class(dot_notation:str) -> Callable:
     top_package = __name__.split('.')[0]
     import_path = f'{top_package}.{dot_notation}'
     package = importlib.import_module('.'.join(import_path.split('.')[:-1]))
-    # _class = getattr(package, import_path.split('.')[-1])
     _class = modules.get_class(dot_notation=dot_notation)
     return _class
 
-def get_details(configs:dict, addresses:dict = {}) -> dict:
+def get_details(configs:dict, addresses:Optional[dict] = None) -> dict:
     """
     Decode dictionary of configuration details to get np.ndarrays and tuples
 
@@ -92,6 +91,7 @@ def get_details(configs:dict, addresses:dict = {}) -> dict:
     Returns:
         dict: dictionary of configuration details
     """
+    addresses = {} if addresses is None else addresses
     for name, details in configs.items():
         settings = details.get('settings', {})
         
@@ -193,7 +193,7 @@ def load_components(config:dict) -> dict:
         components[name] = _class(**settings)
     return components
 
-def register(new_class:Callable, where:str):
+def register(new_object:Callable, where:str):
     keys = where.split('.')
     temp = modules._modules
     for key in keys:
@@ -202,13 +202,13 @@ def register(new_class:Callable, where:str):
         if key not in temp:
             temp[key] = DottableDict()
         temp = temp[key]
-    name = new_class.__name__
+    name = new_object.__name__
     if name in temp:
         overwrite = input(f"An object with the same name ({name}) already exists, Overwrite? [y/n]")
         if overwrite.lower()[0] == 'n':
             print(f"Skipping {name}...")
             return
-    temp[new_class.__name__] = new_class
+    temp[new_object.__name__] = new_object
     return
 
 def unregister(dot_notation:str):
