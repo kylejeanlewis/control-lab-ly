@@ -9,8 +9,6 @@ Notes / actionables:
 # Standard library imports
 from dataclasses import dataclass, field
 from enum import Enum
-
-# Local application imports
 print(f"Import: OK <{__name__}>")
 
 class ErrorCode(Enum):
@@ -46,9 +44,9 @@ class TriContinentPump:
     busy: bool = field(default=False, init=False)
     init_status: bool = field(default=False, init=False)
     
+    command: str = field(default='', init=False)
     position: int = field(default=0, init=False)
     _status_code: str = field(default='', init=False)
-    action_message: str = field(default='', init=False)
     
     def __post_init__(self):
         self.step_limit = int(''.join(filter(str.isdigit, self.model)))
