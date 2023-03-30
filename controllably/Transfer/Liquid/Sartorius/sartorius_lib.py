@@ -10,8 +10,6 @@ Notes / actionables:
 from collections import namedtuple
 from dataclasses import dataclass
 from enum import Enum
-
-# Local application imports
 print(f"Import: OK <{__name__}>")
 
 PresetSpeeds = namedtuple('PresetSpeeds', ['s1','s2','s3','s4','s5','s6'])
@@ -61,6 +59,8 @@ class StatusQueryCode(Enum):
     Position        = 'DP'
     Liquid_Sensor   = 'DN'
 
+
+# FIXME
 STATIC_QUERIES  = [static_query.value for static_query in StaticQueryCode]
 STATUS_QUERIES  = [status_query.value for status_query in StatusQueryCode]
 QUERIES         = STATUS_QUERIES + STATIC_QUERIES
