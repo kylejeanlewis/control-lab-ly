@@ -29,8 +29,13 @@ class Optical(Camera):
     """
     _package = __name__
     _placeholder_filename = 'placeholders/optical_camera.png'
-    def __init__(self, cam_index:int = 0, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, 
+        cam_index: int = 0, 
+        calibration_unit: float = 1, 
+        cam_size: tuple[int] = (640,480), 
+        **kwargs
+    ):
+        super().__init__(calibration_unit=calibration_unit, cam_size=cam_size, **kwargs)
         self._connect(cam_index)
         return
     
@@ -62,7 +67,7 @@ class Optical(Camera):
         return
 
     # Protected method(s)
-    def _connect(self, cam_index=0, **kwargs):
+    def _connect(self, cam_index:int = 0, **kwargs):
         """
         Connect to the imaging device
         
