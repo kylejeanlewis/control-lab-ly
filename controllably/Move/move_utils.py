@@ -30,9 +30,11 @@ class Mover(ABC):
         scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
         verbose (bool, optional): whether to print outputs. Defaults to False.
     """
-    # max_actions = 0
+    
     _default_flags: dict[str, bool] = {'busy': False, 'connected': False}
     _default_heights: dict[str, float] = {}
+    possible_attachments = ()                               ### FIXME: hard-coded
+    max_actions = 5                                         ### FIXME: hard-coded
     def __init__(self, 
         coordinates: tuple[float] = (0,0,0),
         deck: Layout.Deck = Layout.Deck(),
@@ -118,7 +120,7 @@ class Mover(ABC):
         """
         vector = np.array(vector)
         angles = np.array(angles)
-        user_position = self.getUserPosition()
+        user_position = self.user_position
         new_coordinates = np.round( user_position[0] + np.array(vector) , 2)
         new_orientation = np.round( user_position[1] + np.array(angles) , 2)
         return self.moveTo(coordinates=new_coordinates, orientation=new_orientation, tool_offset=False, **kwargs)
@@ -127,7 +129,7 @@ class Mover(ABC):
     def moveTo(self, 
         coordinates: Optional[tuple[float]] = None, 
         orientation: Optional[tuple[float]] = None, 
-        tool_offset: Optional[tuple[float]] = None, 
+        tool_offset: bool = False, 
         **kwargs
     ) -> bool:
         """
@@ -142,7 +144,7 @@ class Mover(ABC):
             bool: whether movement is successful
         """
         if coordinates is None:
-            coordinates = self.getToolPosition() if tool_offset else self.getUserPosition()
+            coordinates = self.tool_position if tool_offset else self.user_position
         if orientation is None:
             orientation = self.orientation
         coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
@@ -160,7 +162,7 @@ class Mover(ABC):
         """Clear any errors and enable robot"""
     
     @abstractmethod
-    def setSpeed(self, speed:int) -> bool:
+    def setSpeed(self, speed:int) -> tuple[bool, float]:
         """
         Setting the movement speed rate.
 
@@ -265,6 +267,11 @@ class Mover(ABC):
         return self._speed_max * self._speed_fraction
  
     @property
+    def tool_position(self) -> tuple(np.ndarray, np.ndarray):
+        """2-uple of tool tip (coordinates, orientation)"""
+        return self._transform_out(coordinates=self.coordinates, tool_offset=True), self.orientation
+ 
+    @property
     def translate_vector(self) -> np.ndarray:
         return np.array(self._translate_vector)
     @translate_vector.setter
@@ -273,10 +280,6 @@ class Mover(ABC):
             raise Exception('Please input x,y,z vector')
         self._translate_vector = tuple(value)
         return
-    
-    @property
-    def tool_position(self) -> tuple(np.ndarray, np.ndarray):
-        return self._transform_out(coordinates=self.coordinates, tool_offset=True), self.orientation
     
     @property
     def user_position(self) -> tuple(np.ndarray, np.ndarray):
@@ -385,7 +388,7 @@ class Mover(ABC):
         self.deck.load_layout(layout_file=layout_file, layout_dict=layout_dict)
         return
     
-    def move(self, axis:str, value:float, speed:Optional[float] = None, **kwargs) -> bool:
+    def move(self, axis:str, value:float, speed:float = 1, **kwargs) -> bool:
         """
         Move robot along axis by specified value
 
@@ -431,8 +434,8 @@ class Mover(ABC):
         coordinates: Optional[tuple[float]] = None, 
         orientation: Optional[tuple[float]] = None, 
         tool_offset: Optional[tuple[float]] = None, 
-        ascent_speed: Optional[float] = None, 
-        descent_speed: Optional[float] = None, 
+        ascent_speed: Optional[float] = 1, 
+        descent_speed: Optional[float] = 1, 
         **kwargs
     ) -> bool:
         """
@@ -449,7 +452,7 @@ class Mover(ABC):
         """
         success = []
         if coordinates is None:
-            coordinates = self.getToolPosition() if tool_offset else self.getUserPosition()
+            coordinates = self.tool_position if tool_offset else self.user_position
         if orientation is None:
             orientation = self.orientation
         coordinates = np.array(coordinates)
@@ -458,7 +461,7 @@ class Mover(ABC):
         ret = self.move('z', max(0, self.home_coordinates[2]-self.coordinates[2]), speed=ascent_speed)
         success.append(ret)
         
-        intermediate_position = self.getToolPosition() if tool_offset else self.getUserPosition()
+        intermediate_position = self.tool_position if tool_offset else self.user_position
         ret = self.moveTo(
             coordinates=list(coordinates[:2])+[float(intermediate_position[0][2])], 
             orientation=orientation, 
@@ -503,6 +506,8 @@ class Mover(ABC):
         Raises:
             Exception: Height with the same name has already been defined
         """
+        for k,v in kwargs.items():
+            kwargs[k] = float(v) if type(v) is int else v
         if not all([type(v)==float for v in kwargs.values()]):
             raise ValueError("Ensure all assigned height values are floating point numbers.")
         for key, value in kwargs.items():
@@ -516,7 +521,7 @@ class Mover(ABC):
                 self.heights[key] = value
         return
     
-    def setImplementOffset(self, implement_offset: tuple[float], home:bool = True):
+    def setImplementOffset(self, implement_offset:tuple[float], home:bool = True):
         """
         Set offset of implement, then home
 
@@ -595,7 +600,7 @@ class Mover(ABC):
             translate = translate - self.implement_offset if tool_offset else translate
             to_be_transformed = coordinates
         else:
-            raise Exception("Input only either 'coordinates' or 'vector'.")
+            raise RuntimeError("Input only either 'coordinates' or 'vector'.")
         scale = (1/self.scale) if stretch else 1
         return tuple( translate + np.matmul(self.orientate_matrix.T, scale * np.array(to_be_transformed)) )
 
@@ -629,7 +634,7 @@ class Mover(ABC):
             translate = translate + self.implement_offset if tool_offset else translate
             to_be_transformed = coordinates
         else:
-            raise Exception("Input only either 'coordinates' or 'vector'.")
+            raise RuntimeError("Input only either 'coordinates' or 'vector'.")
         scale = self.scale if stretch else 1
         return tuple( scale * np.matmul(self.orientate_matrix, translate + np.array(to_be_transformed)) )
 
