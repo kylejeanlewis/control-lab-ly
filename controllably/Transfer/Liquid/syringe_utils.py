@@ -14,8 +14,6 @@ from functools import wraps
 import time
 from typing import Callable, Optional, Protocol, Union
 
-# Third party imports
-
 # Local application imports
 from ...misc import Helper
 from .liquid_utils import LiquidHandler, Speed
@@ -47,8 +45,8 @@ class SyringeAssembly(LiquidHandler):
     Kwargs:
         verbose (bool, optional): whether to print output. Defaults to False.
     """
-    def __init__(
-        self, 
+    
+    def __init__(self, 
         pump: Pump, 
         capacities: tuple[float], 
         channels: tuple[int],
@@ -83,7 +81,7 @@ class SyringeAssembly(LiquidHandler):
         return self.channels
     
     # Decorators
-    def _multi_channel(func:Callable):
+    def _multi_channel(func:Callable) -> Callable:
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             success = []
