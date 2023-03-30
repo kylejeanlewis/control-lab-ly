@@ -9,10 +9,6 @@ Notes / actionables:
 # Standard library imports
 from __future__ import annotations
 from abc import ABC, abstractmethod
-
-# Third party imports
-
-# Local application imports
 print(f"Import: OK <{__name__}>")
 
 class Maker(ABC):
