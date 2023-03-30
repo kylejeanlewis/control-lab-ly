@@ -201,6 +201,42 @@ class KeithleyDevice(Instrument):
             buffer_size = 10
         return self._query(f'TRACe:MAKE "{name}",{buffer_size}')
     
+    def read(self, 
+        name: Optional[str] = None, 
+        fields: tuple[str] = ('SOURce','READing', 'SEConds'), 
+        average: bool = True
+    ) -> pd.DataFrame:
+        """
+        Read the latest data fom buffer
+
+        Args:
+            name (Optional[str], optional): buffer name. Defaults to None.
+            fields (tuple[str], optional): fields of interest. Defaults to ('SOURce','READing', 'SEConds').
+            average (bool, optional): whether to average the data of multiple readings. Defaults to True.
+
+        Returns:
+            pd.DataFrame: dataframe of measurements
+        """
+        return self._read(bulk=False, name=name, fields=fields, average=average)
+        
+    def readAll(self, 
+        name: Optional[str] = None, 
+        fields: tuple[str] = ('SOURce','READing', 'SEConds'), 
+        average: bool = True
+    ) -> pd.DataFrame:
+        """
+        Read the data from buffer after a series of measurements
+
+        Args:
+            name (Optional[str], optional): buffer name. Defaults to None.
+            fields (tuple[str], optional): fields of interest. Defaults to ('SOURce','READing', 'SEConds').
+            average (bool, optional): whether to average the data of multiple readings. Defaults to True.
+
+        Returns:
+            pd.DataFrame: dataframe of measurements
+        """
+        return self._read(bulk=True, name=name, fields=fields, average=average)
+    
     def recallState(self, state:int):
         """
         Recall a previously saved settings of device
