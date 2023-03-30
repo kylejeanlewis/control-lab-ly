@@ -46,7 +46,7 @@ def safety_measures(mode:Optional[str] = None, countdown:int = 3) -> Callable:
         func (Callable): function to be wrapped
         mode (str, optional): mode for implementing safety measure. Defaults to None.
     """
-    def inner(func:Callable):
+    def inner(func:Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs) -> Callable:
             str_method = repr(func).split(' ')[1]
