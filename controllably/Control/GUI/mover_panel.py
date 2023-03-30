@@ -25,10 +25,7 @@ class Mover(Protocol):
     home_coordinates: tuple
     max_actions: int
     possible_attachments: list
-    def _transform_out(self, *args, **kwargs):
-        ...
-    def getToolPosition(self, *args, **kwargs):
-        ...
+    tool_position: tuple(np.ndarray, np.ndarray)
     def home(self, *args, **kwargs):
         ...
     def move(self, *args, **kwargs):
@@ -41,6 +38,8 @@ class Mover(Protocol):
         ...
     # def toggleAttachment(self, *args, **kwargs):
     #     ...
+    def _transform_out(self, *args, **kwargs):
+        ...
         
 class MoverPanel(Panel):
     """
@@ -63,7 +62,7 @@ class MoverPanel(Panel):
         **kwargs
     ):
         super().__init__(name=name, group=group, **kwargs)
-        self.mover = mover
+        self.tool = mover
         
         self.axes = [*axes]
         self.buttons = {}
@@ -73,6 +72,11 @@ class MoverPanel(Panel):
         
         self.flags['update_position'] = True
         return
+    
+    # Properties
+    @property
+    def mover(self) -> Mover:
+        return self.tool
        
     def getLayout(self, title_font_level:int = 1, **kwargs) -> sg.Column:
         """
@@ -177,7 +181,7 @@ class MoverPanel(Panel):
             dict: dictionary of updates
         """
         updates = {}
-        tool_position = list(np.concatenate(self.mover.getToolPosition()))
+        tool_position = list(np.concatenate(self.mover.tool_position))
         cache_position = tool_position.copy()
         if event in [self._mangle(f'-{e}-') for e in ('safe', 'home', 'Go', 'Clear', 'Reset')]:
             self.flags['update_position'] = True
@@ -204,21 +208,21 @@ class MoverPanel(Panel):
             axis, displacement = self.buttons[event]
             self.mover.move(axis, displacement)
             self.flags['update_position'] = True
-            tool_position = list(np.concatenate(self.mover.getToolPosition()))
+            tool_position = list(np.concatenate(self.mover.tool_position))
             
         # 4. abg sliders
         if event in [self._mangle(f'-{axis}-SLIDER-') for axis in ['a','b','c']]:
             orientation = [float(values[self._mangle(f'-{axis}-SLIDER-')]) for axis in ['a','b','c']]
             self.mover.rotateTo(orientation)
             self.flags['update_position'] = True
-            tool_position = list(np.concatenate(self.mover.getToolPosition()))
+            tool_position = list(np.concatenate(self.mover.tool_position))
             
         # 5. Go to position
         if event == self._mangle(f'-Go-'):
             coord = [float(values[self._mangle(f'-{axis}-VALUE-')]) for axis in ['X','Y','Z']]
             orientation = [float(values[self._mangle(f'-{axis}-VALUE-')]) for axis in ['a','b','c']]
             self.mover.moveTo(coord, orientation)
-            tool_position = list(np.concatenate(self.mover.getToolPosition()))
+            tool_position = list(np.concatenate(self.mover.tool_position))
         
         # 6. Reset mover
         if event == self._mangle(f'-Reset-'):
