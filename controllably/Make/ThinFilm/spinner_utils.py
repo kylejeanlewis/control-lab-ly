@@ -150,10 +150,7 @@ class Spinner(Maker):
         return
     
     def _diagnostic(self):
-        """
-        Run diagnostic on tool
-        """
-        thread = Thread(target=self.execute, name=f'maker_diag_{self.channel}')
+        """Run diagnostic test"""
         thread = Thread(target=self.run, name=f'maker_diag_{self.channel}')
         thread.start()
         time.sleep(1)
