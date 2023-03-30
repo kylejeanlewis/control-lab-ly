@@ -157,7 +157,7 @@ def read_yaml(yaml_file:str, package:Optional[str] = None) -> dict:
             yml = file.read()
     return yaml.safe_load(yml)
 
-def safety_measures(func):
+def safety_measures(func:Callable) -> Callable:
     return decorators.safety_measures(mode=safety_mode, countdown=safety_countdown)(func=func)
 
 def zip_inputs(primary_keyword:str, **kwargs) -> dict:
