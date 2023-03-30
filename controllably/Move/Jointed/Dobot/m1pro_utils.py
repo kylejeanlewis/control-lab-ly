@@ -138,6 +138,9 @@ class M1Pro(Dobot):
         new_orientation = np.array(orientation) + np.array(angles)
         return self.moveCoordTo(new_coordinates, new_orientation)
     
+    def retractArm(self, *args, **kwargs) -> bool:      # NOTE: not implemented
+        return super().retractArm()
+    
     def setHandedness(self, right_hand:bool, stretch:bool = False) -> bool:
         """
         Set handedness of robot arm
