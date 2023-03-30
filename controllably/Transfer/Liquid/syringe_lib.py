@@ -13,10 +13,6 @@ from __future__ import annotations
 from collections import namedtuple
 from dataclasses import dataclass
 import numpy as np
-
-# Third party imports
-
-# Local application imports
 print(f"Import: OK <{__name__}>")
 
 Calibration = namedtuple('Calibration', ['aspirate','dispense'])
@@ -60,11 +56,11 @@ class Syringe:
     
     # Properties
     @property
-    def calibration(self):
+    def calibration(self) -> SyringeCalibration:
         return self._calibration
     
     @property
-    def offset(self):
+    def offset(self) -> np.ndarray:
         return np.array(self._offset)
     
     def update(self, **kwargs):
