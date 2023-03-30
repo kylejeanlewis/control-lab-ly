@@ -13,9 +13,6 @@ from __future__ import annotations
 import time
 from typing import Optional, Union
 
-# Third party imports
-import serial # pip install pyserial
-
 # Local application imports
 from .pump_utils import Pump
 print(f"Import: OK <{__name__}>")
@@ -33,11 +30,11 @@ class Peristaltic(Pump):
         'connected': False,
         'output_clockwise': False
     }
-    def __init__(self, port:str, **kwargs):
+    def __init__(self, port:str, output_clockwise:bool = False, **kwargs):
         super().__init__(port=port, **kwargs)
         return
     
-    def aspirate(self, speed:int, pump_time:int, channel:int=None, **kwargs) -> bool:
+    def aspirate(self, speed:int, pump_time:int, channel:Optional[int] = None, **kwargs) -> bool:
         self.setFlag(busy=True)
         self.setValve(open=True, channel=channel)
         
@@ -52,7 +49,7 @@ class Peristaltic(Pump):
     def blowout(self, channel: Optional[Union[int, tuple[int]]] = None, **kwargs) -> bool: # NOTE: no implementation
         return False
     
-    def dispense(self, speed:int, pump_time:int, channel:int=None, **kwargs) -> bool:
+    def dispense(self, speed:int, pump_time:int, channel:Optional[int] = None, **kwargs) -> bool:
         self.setFlag(busy=True)
         self.setValve(open=True, channel=channel)
         
@@ -68,7 +65,7 @@ class Peristaltic(Pump):
         pull_func = self.turnAntiClockwise if self.flags['output_clockwise'] else self.turnClockwise
         return pull_func(speed=speed)
         
-    def pullback(self, speed:int, pump_time:int, channel:int=None, **kwargs) -> bool:
+    def pullback(self, speed:int, pump_time:int, channel:Optional[int] = None, **kwargs) -> bool:
         self.setFlag(busy=True)
         self.setValve(open=True, channel=channel)
         
