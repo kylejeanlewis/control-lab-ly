@@ -16,6 +16,11 @@ from typing import Optional, Union
 print(f"Import: OK <{__name__}>")
 
 COUNT_UPPER_LIMIT = 300000
+"""Maximum number of rows in buffer"""
+CURRENT_LIMITS = (10e-9, 100e-9, 1e-6, 10e-6, 100e-6, 1e-3, 10e-3, 100e-3, 1)
+"""Available current limit settings"""
+VOLTAGE_LIMITS = (20e-3, 200e-3, 2, 20, 200)
+"""Available voltage limit settings"""
 
 def set_function_type(value:str, choices:tuple[str]) -> str:
     if value is None:
@@ -36,10 +41,8 @@ def set_limit(limit:Union[str, float, None], is_current:bool) -> Union[str, floa
             if limit in choice.lower():
                 return choice
         raise ValueError(f"Select a valid option from: {', '.join([c.lower() for c in choices])}")
-    curr = (10e-9, 100e-9, 1e-6, 10e-6, 100e-6, 1e-3, 10e-3, 100e-3, 1)
-    volt = (20e-3, 200e-3, 2, 20, 200)
     unit = 'A' if is_current == 'CURRent' else 'V'
-    options = np.array(curr) if is_current == 'CURRent' else np.array(volt)
+    options = np.array(CURRENT_LIMITS) if is_current == 'CURRent' else np.array(VOLTAGE_LIMITS)
     shortlist = options[options >= abs(limit)]
     if len(shortlist):
         return shortlist[0]
