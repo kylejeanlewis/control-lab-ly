@@ -10,10 +10,6 @@ Notes / actionables:
 import os
 import time
 from typing import Optional
-
-# Third party imports
-
-# Local application imports
 print(f"Import: OK <{__name__}>")
 
 class Logger:
@@ -26,7 +22,6 @@ class Logger:
         self.logs = {}
         pass
     
-    # Instance methods
     def log_now(self, message:str, group:Optional[str] = None) -> str:
         """
         Add log with timestamp
@@ -54,7 +49,7 @@ class Logger:
         self.logs = {}
         return
 
-    def save_logs(self, groups:list = [], folder:str = ''):
+    def save_logs(self, groups:Optional[list] = None, folder:str = ''):
         """
         Write logs into txt files
 
@@ -62,6 +57,7 @@ class Logger:
             groups (list, optional): list of log messages. Defaults to [].
             folder (str, optional): folder to save to. Defaults to ''.
         """
+        groups = [] if groups is None else groups
         dst_folder = '/'.join([folder, 'logs'])
         if not os.path.exists(dst_folder):
             os.makedirs(dst_folder)
