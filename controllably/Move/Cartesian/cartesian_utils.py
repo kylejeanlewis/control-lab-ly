@@ -129,7 +129,7 @@ class Gantry(Mover):
         return super().moveBy(vector=vector)
     
     @Helper.safety_measures
-    def moveTo(self, coordinates, tool_offset=True, **kwargs) -> bool:
+    def moveTo(self, coordinates:tuple[float], tool_offset:bool = True, **kwargs) -> bool:
         """
         Move robot to specified coordinates and orientation
 
@@ -178,7 +178,7 @@ class Gantry(Mover):
         return super().shutdown()
     
     # Protected method(s)
-    def _connect(self, port:str, baudrate:int = 115200, timeout:int = None):
+    def _connect(self, port:str, baudrate:int = 115200, timeout:int = 1):
         """
         Connect to machine control unit
 
@@ -220,7 +220,7 @@ class Gantry(Mover):
             print(response)
         return response
 
-    def _write(self, command:str):
+    def _write(self, command:str) -> bool:
         try:
             self.device.write(command.encode('utf-8'))
         except Exception as e:
@@ -228,52 +228,3 @@ class Gantry(Mover):
                 print(e)
             return False
         return True
-
-    # def safeMoveTo(self, coordinates, jump_height=None, tool_offset=True, **kwargs) -> bool:
-    #     """
-    #     Safe version of moveTo
-
-    #     Args:
-    #         coordinates (tuple): x,y,z coordinates to move to. Defaults to None.
-    #         jump_height (int, or float): height value to jump to. Defaults to None.
-    #         tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
-            
-    #     Returns:
-    #         bool: whether movement is successful
-    #     """
-    #     coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
-    #     coordinates = np.array(coordinates)
-    #     if not self.isFeasible(coordinates):
-    #         return False
-        
-    #     # Retreat to safe height first
-    #     if jump_height is None:
-    #         jump_height = self.heights['safe']
-    #     if self.coordinates[2] < jump_height:
-    #         try:
-    #             self._query("G90\n")
-    #             self._query(f"G0 Z{jump_height}\n")
-    #             self._query("G90\n")
-    #         except Exception as e:
-    #             if self.verbose:
-    #                 print(e)
-    #         self.coordinates = (*self.coordinates[0:2], jump_height)
-    
-    #     z_first = True if self.coordinates[2]<coordinates[2] else False
-    #     positionXY = f'X{coordinates[0]}Y{coordinates[1]}'
-    #     position_Z = f'Z{coordinates[2]}'
-    #     moves = [position_Z, positionXY] if z_first else [positionXY, position_Z]
-    #     try:
-    #         self._query("G90\n")
-    #         for move in moves:
-    #             self._query(f"G0 {move}\n")
-    #         self._query("G90\n")
-    #     except Exception as e:
-    #         if self.verbose:
-    #             print(e)
-    #     distances = abs(self.coordinates - coordinates)
-    #     times = distances / self.speed
-    #     move_time = max(times[:2]) + times[2]
-    #     time.sleep(move_time)
-    #     self.updatePosition(coordinates=coordinates)
-    #     return True
