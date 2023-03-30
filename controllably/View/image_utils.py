@@ -13,8 +13,6 @@ from typing import Optional
 
 # Third party imports
 import cv2              # pip install opencv-python
-
-# Local application imports
 print(f"Import: OK <{__name__}>")
 
 class Image:
@@ -102,7 +100,7 @@ class Image:
             return
         return Image(frame)
     
-    # def convolve(self, inplace:bool = False) -> Optional[Image]:
+    # def convolve(self, inplace:bool = False) -> Optional[Image]: # FIXME
     #     """
     #     Perform convolution on image
 
@@ -162,7 +160,7 @@ class Image:
             return
         return Image(frame)
     
-    def process(self, alpha:float, beta:float, blur_kernel:int = 3, inplace:bool = False) -> Optional[Image]:
+    def process(self, alpha:float, beta:float, blur_kernel:int = 3, inplace:bool = False) -> Optional[Image]: # FIXME
         """
         Process the image
 
