@@ -50,7 +50,9 @@ class Camera(ABC):
     def __init__(self, 
         calibration_unit: float = 1, 
         cam_size: tuple[int] = (640,480), 
-        rotation: int = 0
+        rotation: int = 0,
+        verbose: bool = False,
+        **kwargs
     ):
         self.calibration_unit = calibration_unit
         self.cam_size = cam_size
@@ -64,6 +66,7 @@ class Camera(ABC):
         self.rotation = rotation
         
         self.flags = self._default_flags.copy() 
+        self.verbose = verbose
         self._threads = {}
         self._set_placeholder()
         pass
@@ -71,6 +74,11 @@ class Camera(ABC):
     def __del__(self):
         self.shutdown()
         return
+    
+    @abstractmethod
+    def disconnect(self):
+        """Disconnect from device"""
+        self.setFlag(connected=False)
     
     @abstractmethod
     def _connect(self, *args, **kwargs):
@@ -91,15 +99,10 @@ class Camera(ABC):
             bool, array: True if frame is obtained; array of frame
         """
     
-    @abstractmethod
-    def disconnect(self):
         """
-        Release the camera feed
-        """
-        self.setFlag(connected=False)
     
     def annotateAll(self, 
-        df:pd.DataFrame, 
+        df: pd.DataFrame, 
         image: Optional[Image] = None, 
         frame: Optional[np.ndarray] = None    
     ) -> tuple[dict[str,tuple[int]], Image]:
@@ -126,6 +129,10 @@ class Camera(ABC):
                 image.annotate(index, (x,y,w,h), inplace=True)
                 data[f'C{index+1}'] = (int(x+(w/2)), int(y+(h/2)))  # Center of target
         return data, image
+    
+    def connect(self):
+        """Establish connection with device"""
+        return self._connect(**self.connection_details)
 
     def detect(self, image:Image, scale:int, neighbors:int) -> pd.DataFrame:
         """
@@ -143,10 +150,21 @@ class Camera(ABC):
             pd.DataFrame: dataframe of detected targets
         """
         if self.classifier is None:
-            raise Exception('Please load a classifier first.')
+            raise RuntimeError('Please load a classifier first.')
         image.grayscale(inplace=True)
         detected_data = self.classifier.detect(frame=image.frame, scale=scale, neighbors=neighbors)
         return self._data_to_df(detected_data)
+    
+    def isConnected(self) -> bool:
+        """
+        Checks and returns whether the device is connected
+
+        Returns:
+            bool: whether the device is connected
+        """
+        if not self.flags.get('connected', False):
+            print(f"{self.__class__} is not connected.")
+        return self.flags.get('connected', False)
     
     def loadClassifier(self, classifier:Classifier):
         """
@@ -161,17 +179,6 @@ class Camera(ABC):
         #     print('Please select a classifier.')
         return
 
-    def isConnected(self) -> bool:
-        """
-        Check whether the camera is connected
-
-        Returns:
-            bool: whether the camera is connected
-        """
-        if not self.flags.get('connected', False):
-            print(f"{self.__class__} is not connected.")
-        return self.flags.get('connected', False)
-    
     def resetFlags(self):
         self.flags = self._default_flags.copy()
         return
@@ -224,7 +231,7 @@ class Camera(ABC):
         return
  
     # Image handling
-    def decodeImage(self, array:np.ndarray) -> Image:
+    def decodeImage(self, array:bytes) -> Image:
         """
         Decode byte array of image
 
@@ -257,7 +264,7 @@ class Camera(ABC):
             bytes: byte representation of image/frame
         """
         if (frame is None) == (image is None):
-            raise Exception('Please input either image or frame.')
+            raise ValueError('Please input either image or frame.')
         elif image is not None:
             return image.encode(extension)
         return cv2.imencode(extension, frame)[1].tobytes()
@@ -307,7 +314,7 @@ class Camera(ABC):
     def saveImage(self, 
         image: Optional[Image] = None, 
         frame: Optional[np.ndarray] = None, 
-        filename: str = ''
+        filename: str = 'image.png'
     ) -> bool:
         """
         Save image to file
@@ -323,12 +330,12 @@ class Camera(ABC):
         Returns:
             bool: True if successfully saved
         """
-        if not len(filename):
+        if filename == 'image.png':
             now = datetime.now().strftime("%Y%m%d_%H-%M-%S")
             filename = f'image{now}.png'
         
         if (frame is None) == (image is None):
-            raise Exception('Please input either image or frame.')
+            raise ValueError('Please input either image or frame.')
         elif image is not None:
             return image.save(filename)
         return cv2.imwrite(filename, frame)
