@@ -27,8 +27,14 @@ class Thermal(Camera):
     """
     _package = __name__
     _placeholder_filename = 'placeholders/infrared_camera.png'
-    def __init__(self, ip_address:str, rotation:int = 180, **kwargs):
-        super().__init__(rotation=rotation, **kwargs)
+    def __init__(self, 
+        ip_address:str, 
+        calibration_unit: float = 1, 
+        cam_size: tuple[int] = (640,480), 
+        rotation:int = 180, 
+        **kwargs
+    ):
+        super().__init__(calibration_unit=calibration_unit, cam_size=cam_size, rotation=rotation, **kwargs)
         self._connect(ip_address)
         return
     
