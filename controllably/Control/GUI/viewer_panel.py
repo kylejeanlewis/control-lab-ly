@@ -43,13 +43,18 @@ class ViewerPanel(Panel):
         **kwargs
     ):
         super().__init__(name=name, group=group, **kwargs)
-        self.viewer = viewer
+        self.tool = viewer
         
         self.display_box = self._mangle('-IMAGE-')
         self._last_read_time = time.time()
         
-        self.flags['update_display'] = True
+        self.setFlag(update_display=True)
         return
+    
+    # Properties
+    @property
+    def viewer(self) -> Viewer:
+        return self.tool
     
     def close(self):
         """
