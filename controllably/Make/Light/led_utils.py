@@ -8,6 +8,7 @@ Notes / actionables:
 """
 # Standard library imports
 from __future__ import annotations
+from dataclasses import dataclass, field
 from threading import Thread
 import time
 from typing import Optional
@@ -19,6 +20,7 @@ import serial   # pip install pyserial
 from ..make_utils import Maker
 print(f"Import: OK <{__name__}>")
 
+@dataclass
 class LED:
     """
     LED class represents a LED unit
