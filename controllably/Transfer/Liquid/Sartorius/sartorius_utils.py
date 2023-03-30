@@ -41,8 +41,8 @@ class Sartorius(LiquidHandler):
         port:str, 
         channel: int = 1, 
         offset: tuple[float] = (0,0,0),
-        response_time: float = 1.03,        # Empirical: minimum drive response time [s]
-        tip_threshold: int = 276,           # Empirical: capacitance value above which tip is attached
+        response_time: float = 1.03,
+        tip_threshold: int = 276,
         **kwargs
     ):
         """
@@ -293,7 +293,7 @@ class Sartorius(LiquidHandler):
         if force_dispense:
             volume = min(volume, self.volume)
         elif volume > self.volume:
-            raise Exception('Required dispense volume is greater than volume in tip')
+            raise ValueError('Required dispense volume is greater than volume in tip.')
         steps = int(volume / self.resolution)
         volume = steps * self.resolution
         if volume == 0:
@@ -509,7 +509,7 @@ class Sartorius(LiquidHandler):
         tip_on = self.flags['tip_on']
         return tip_on
     
-    def move(self, direction:str, steps:int, **kwargs) -> str:
+    def move(self, steps:int, up:bool, **kwargs) -> str:
         """
         Move plunger either up or down
 
@@ -524,13 +524,7 @@ class Sartorius(LiquidHandler):
         Returns:
             str: device response
         """
-        steps = abs(steps)
-        if direction.lower() in ['up','u']:
-            steps *= 1
-        elif direction.lower() in ['down','d']:
-            steps *= -1
-        else:
-            raise Exception("Please select either 'up' or 'down'")
+        steps = abs(steps) if up else -abs(steps)
         return self.moveBy(steps)
     
     def moveBy(self, steps:int, **kwargs) -> str:
@@ -823,7 +817,7 @@ class Sartorius(LiquidHandler):
             Exception: Address should be between 1~9
         """
         if not (0 < new_channel_id < 10):
-            raise Exception('Please select a valid rLine address from 1 to 9')
+            raise ValueError('Please select a valid rLine address from 1 to 9.')
         response = self._query(f'*A{new_channel_id}')
         if response == 'ok':
             self.channel = new_channel_id
