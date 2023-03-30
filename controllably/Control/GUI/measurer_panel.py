@@ -56,9 +56,14 @@ class MeasurerPanel(Panel):
         **kwargs
     ):
         super().__init__(name=name, group=group, **kwargs)
-        self.measurer = measurer
+        self.tool = measurer
         self.current_program = ''
         return
+    
+    # Properties
+    @property
+    def measurer(self) -> Measurer:
+        return self.tool
     
     def getLayout(self, title_font_level:int = 0, **kwargs) -> sg.Column:
         """
@@ -146,31 +151,7 @@ class MeasurerPanel(Panel):
         return updates
     
     # Protected method(s)
-    def _show_inputs(self, program_details: ProgramDetails) -> dict[str, dict]:
-        """
-        Show the relevant input fields
-
-        Args:
-            active_inputs (list): list of relevant input fields
-
-        Returns:
-            dict: dictionary of updates
-        """
-        updates = {}
-        for input_field in self.measurer.possible_inputs:
-            key_label = self._mangle(f'-{input_field}-LABEL-')
-            key_input = self._mangle(f'-{input_field}-VALUE-')
-            updates[f'{key_label}BOX-'] = dict(visible=False)
-            updates[f'{key_input}BOX-'] = dict(visible=False)
-            if input_field in program_details.inputs:
-                updates[key_label] = dict(tooltip=program_details.tooltip)
-                updates[key_input] = dict(tooltip=program_details.tooltip, 
-                                          value=program_details.get(input_field,''))
-                updates[f'{key_label}BOX-'] = dict(visible=True)
-                updates[f'{key_input}BOX-'] = dict(visible=True)
-        return updates
-
-    def _get_input_section(self):
+    def _get_input_section(self) -> list[sg.Column]:
         """
         Get the layout for the input section
 
@@ -202,3 +183,26 @@ class MeasurerPanel(Panel):
         labels_inputs = [labels_column, inputs_column]
         return labels_inputs
     
+    def _show_inputs(self, program_details: ProgramDetails) -> dict[str, dict]:
+        """
+        Show the relevant input fields
+
+        Args:
+            program_details (ProgramDetails): details of loaded program
+
+        Returns:
+            dict: dictionary of updates
+        """
+        updates = {}
+        for input_field in self.measurer.possible_inputs:
+            key_label = self._mangle(f'-{input_field}-LABEL-')
+            key_input = self._mangle(f'-{input_field}-VALUE-')
+            updates[f'{key_label}BOX-'] = dict(visible=False)
+            updates[f'{key_input}BOX-'] = dict(visible=False)
+            if input_field in program_details.inputs:
+                updates[key_label] = dict(tooltip=program_details.tooltip)
+                updates[key_input] = dict(tooltip=program_details.tooltip, 
+                                          value=program_details.get(input_field,''))
+                updates[f'{key_label}BOX-'] = dict(visible=True)
+                updates[f'{key_input}BOX-'] = dict(visible=True)
+        return updates
