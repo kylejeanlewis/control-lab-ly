@@ -15,8 +15,6 @@ import string
 import time
 from typing import Callable, Optional, Union
 
-# Third party imports
-
 # Local application imports
 from .....misc import Helper
 from ...liquid_utils import Speed
@@ -142,7 +140,7 @@ class TriContinent(Pump):
             self.moveBy(steps),
             self.wait(wait)
         ], channel=channel)
-        command = self.current_pump.action_message
+        command = self.current_pump.command
         print(f"Pump: {self.name}")
         print(f"Aspirating {volume}uL...")
         self.run()
@@ -155,10 +153,47 @@ class TriContinent(Pump):
     def blowout(self, channel: Optional[Union[int, tuple[int]]] = None, **kwargs) -> str: # NOTE: no implementation
         return ''
     
-    def cycle(self, cycles:int, channel:Optional[int] = None, **kwargs) -> str:
-        command = self.rinse(cycles=cycles, channel=channel, print_message=False)
+    @_compound_action
+    def cycle(self, 
+        volume: float, 
+        speed: Optional[float] = 200, 
+        wait: int = 0,  
+        cycles: int = 3,
+        start_speed: int = 50,
+        channel: Optional[Union[int, tuple[int]]] = None,
+        **kwargs
+    ) -> str:
+        """
+        Cycle between aspirate and dispense
+
+        Args:
+            volume (float): target volume
+            speed (Optional[float], optional): speed to aspirate and dispense at. Defaults to 200.
+            wait (int, optional): time delay after each action. Defaults to 0.
+            cycles (int, optional): number of cycles. Defaults to 3.
+            start_speed (int, optional): starting speed of plunger. Defaults to 50.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id(s). Defaults to None.
+
+        Returns:
+            str: command string
+        """
+        self.queue([
+            self.initialise(),
+            self.setStartSpeed(start_speed),
+            self.setTopSpeed(speed),
+            self.setSpeedRamp(1),
+            self.loop(cycles,
+                self.aspirate(volume, speed=speed, wait=wait, start_speed=start_speed),
+                self.wait(wait),
+                self.dispense(volume, speed=speed, wait=wait, start_speed=start_speed),
+                self.wait(wait)
+            )
+        ], channel=channel)
+        command = self.current_pump.command
+        print(f"Pump: {self.name}")
+        self.run()
         print(f"Cycling complete: {cycles} time(s)")
-        return command
+        return command     
     
     @_compound_action
     def dispense(self, 
@@ -167,8 +202,6 @@ class TriContinent(Pump):
         wait: int = 0, 
         pause: bool = False, 
         start_speed: int = 50,
-        blowout: bool = False,
-        force_dispense: bool = False, 
         channel: Optional[Union[int, tuple[int]]] = None,
         **kwargs
     ) -> str:
@@ -186,7 +219,7 @@ class TriContinent(Pump):
             self.moveBy(-abs(steps)),
             self.wait(wait)
         ], channel=channel)
-        command = self.current_pump.action_message
+        command = self.current_pump.command
         print(f"Pump: {self.name}")
         print(f"Dispensing {volume}uL...")
         self.run()
@@ -260,7 +293,7 @@ class TriContinent(Pump):
         return ErrorCode[code].value
  
     @_single_action
-    def initialise(self, output_right:bool = None, channel:Optional[int] = None) -> str:
+    def initialise(self, output_right:Optional[bool] = None, channel:Optional[int] = None) -> str:
         """
         Empty the syringe pump
 
@@ -302,7 +335,7 @@ class TriContinent(Pump):
         return f"g{''.join(args)}G{cycles}"
      
     @_single_action
-    def move(self, direction:str, steps:int, channel:Optional[int] = None) -> str:
+    def move(self, steps:int, up:bool, channel:Optional[int] = None) -> str:
         """
         Move plunger either up or down
 
@@ -318,14 +351,12 @@ class TriContinent(Pump):
         """
         steps = abs(steps)
         command = ''
-        if direction.lower() in ['up','u']:
+        if up:
             self.position -= steps
             command =  f"D{steps}"
-        elif direction.lower() in ['down','d']:
+        else:
             self.position += steps
             command =  f"P{steps}"
-        else:
-            raise Exception("Please select either 'up' or 'down'")
         self.current_pump.position = self.position
         return command
         
@@ -393,7 +424,7 @@ class TriContinent(Pump):
         """
         self.setCurrentChannel(channel=channel)
         command = ''.join(actions)
-        self.current_pump.action_message = self.current_pump.action_message + command
+        self.current_pump.command = self.current_pump.command + command
         return command
     
     def reset(self, channel:Optional[int] = None) -> str:
@@ -430,7 +461,7 @@ class TriContinent(Pump):
                 self.wait(wait)
             )
         ], channel=channel)
-        command = self.current_pump.action_message
+        command = self.current_pump.command
         print(f"Pump: {self.name}")
         self.run()
         if kwargs.get('print_message', True):
@@ -450,8 +481,8 @@ class TriContinent(Pump):
         """
         self.setCurrentChannel(channel=channel)
         if command is None:
-            command = self.current_pump.action_message
-            self.current_pump.action_message = ''
+            command = self.current_pump.command
+            self.current_pump.command = ''
         command = f"{command}R"
         self._query(command)
         while self.isBusy():
@@ -522,7 +553,7 @@ class TriContinent(Pump):
     def setValve(self, 
         valve: str, 
         value: Optional[int] = None, 
-        channel: Optional[Union[int, tuple[int]]] = None
+        channel: Optional[int] = None
     ) -> str:
         """
         Set valve position to one of [I]nput, [O]utput, [B]ypass, [E]xtra
@@ -557,7 +588,11 @@ class TriContinent(Pump):
         Returns:
             str: command string
         """
-        return self._query('T')
+        _channel = self.channel
+        self.channel = _channel if channel is None else channel
+        response = self._query('T')
+        self.channel = _channel
+        return response
    
     @_single_action
     def wait(self, time_ms:int, channel:Optional[int] = None) -> str:
@@ -587,7 +622,7 @@ class TriContinent(Pump):
         properties = Helper.zip_inputs(primary_keyword='channel', **kwargs)
         return {key: TriContinentPump(**value) for key,value in properties.items()}
     
-    def _is_expected_reply(self, response:str, command:Optional[str] = None, **kwargs) -> bool:
+    def _is_expected_reply(self, response:str, **kwargs) -> bool:
         """
         Check whether the response is an expected reply
 
