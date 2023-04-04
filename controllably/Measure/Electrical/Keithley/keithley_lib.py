@@ -1,18 +1,12 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/02 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
-- validation on copper
 """
 # Standard library imports
 from __future__ import annotations
 from dataclasses import dataclass, field
 import numpy as np
 from typing import Optional, Union
-
-# Local application imports
 print(f"Import: OK <{__name__}>")
 
 COUNT_UPPER_LIMIT = 300000
@@ -23,6 +17,19 @@ VOLTAGE_LIMITS = (20e-3, 200e-3, 2, 20, 200)
 """Available voltage limit settings"""
 
 def set_function_type(value:str, choices:tuple[str]) -> str:
+    """
+    Set the function type for either source or sense
+
+    Args:
+        value (str): function type
+        choices (tuple[str]): options for function type
+
+    Raises:
+        ValueError: Select a valid function type
+
+    Returns:
+        str: name of function
+    """
     if value is None:
         return None
     value = value.lower()
@@ -32,6 +39,19 @@ def set_function_type(value:str, choices:tuple[str]) -> str:
     raise ValueError(f"Select a valid function from: {', '.join([c.lower() for c in choices])}")
 
 def set_limit(limit:Union[str, float, None], is_current:bool) -> Union[str, float]:
+    """
+    Set the operating limits of Keithley
+
+    Args:
+        limit (Union[str, float, None]): limit option
+        is_current (bool): whether setting limit for current function
+
+    Raises:
+        ValueError: Select a valid option
+
+    Returns:
+        Union[str, float]: limit option
+    """
     if limit is None:
         return 'AUTO ON'
     if type(limit) is str:
@@ -53,6 +73,29 @@ def set_limit(limit:Union[str, float, None], is_current:bool) -> Union[str, floa
 
 @dataclass
 class SenseDetails:
+    """
+    SenseDetails represents a set of parameters for Keithley's sense terminal
+
+    ### Constructor
+    Args:
+        `function_type` (Optional[str]): name of function, choice from current, resistance, and voltage. Defaults to None.
+        `range_limit` (Union[str, float, None]): sensing range. Defaults to 'DEFault'.
+        `four_point` (bool): whether to use four-point probe measurement. Defaults to True.
+        `count` (int): number of readings to measure for each condition. Defaults to 1.
+        
+    ### Attributes
+    - `count` (int): number of readings to measure for each condition
+    - `four_point` (bool): whether to use four-point probe measurement
+    - `function_type` (Optional[str]): name of function
+    - `range_limit` (Union[str, float, None]): sensing range
+    
+    ### Properties
+    - `unit` (str): units of measurement
+    
+    ### Methods
+    - `get_commands`: generate commands from details
+    """
+    
     function_type: Optional[str] = None
     range_limit: Union[str, float, None] = 'DEFault'
     four_point: bool = True
@@ -76,7 +119,13 @@ class SenseDetails:
             return 'VOLT'
         return ''
     
-    def get_commands(self):
+    def get_commands(self) -> list[str]:
+        """
+        Generate commands from details
+        
+        Returns:
+            list[str]: list of command strings
+        """
         commands = {
             'RANGe': self.range_limit,
             'RSENse': self.four_point,
@@ -92,6 +141,27 @@ class SenseDetails:
     
 @dataclass
 class SourceDetails:
+    """
+    SourceDetails represents a set of parameters for Keithley's source terminal
+
+    ### Constructor
+    Args:
+        `function_type` (Optional[str]): name of function, choice from current and voltage. Defaults to None.
+        `range_limit` (Union[str, float, None]): sourcing range. Defaults to None.
+        `measure_limit` (Union[str, float, None]): limit imposed on the measurement range. Defaults to 'DEFault'.
+        
+    ### Attributes
+    - `function_type` (Optional[str]): name of function
+    - `measure_limit` (Union[str, float, None]): limit imposed on the measurement range
+    - `range_limit` (Union[str, float, None]): sourcing range
+    
+    ### Properties
+    - `measure_type` (str): type of measurement limit
+    
+    ### Methods
+    - `get_commands`: generate commands from details
+    """
+    
     function_type: str = ''
     range_limit: Union[str, float, None] = None
     measure_limit: Union[str, float, None] = 'DEFault'
@@ -111,7 +181,13 @@ class SourceDetails:
         value = 'VLIMit' if self.function_type == 'CURRent' else 'ILIMit'
         return value
     
-    def get_commands(self):
+    def get_commands(self) -> list[str]:
+        """
+        Generate commands from details
+        
+        Returns:
+            list[str]: list of command strings
+        """
         commands = {
             'RANGe': self.range_limit,
             self.measure_type: self.measure_limit

@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/02 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
-- validation on copper
 """
 # Standard library imports
 from __future__ import annotations
@@ -22,14 +18,54 @@ print(f"Import: OK <{__name__}>")
 
 class KeithleyDevice(Instrument):
     """
-    Keithley device object
+    KeithleyDevice provides methods to interface with the potentiometer from Keithley
     
+    ### Constructor
     Args:
-        ip_address (str): IP address of Keithley
-        name (str, optional): nickname for Keithley. Defaults to 'def'.
+        `ip_address` (str): IP address of device
+        `name` (str, optional): name of device. Defaults to 'def'.
+        
+    ### Attributes
+    - `active_buffer` (str): name of active buffer in Keithley
+    - `name` (str): name of device
+    - `sense` (SenseDetails): parameters for Keithley's sense terminal
+    - `source` (SourceDetails): parameters for Keithley's source terminal
+    
+    ### Properties
+    - `buffer_name` (str): name of buffer
+    - `fields` (tuple[str]): tuple of data fields to read from device
+    
+    ### Methods
+    - `beep`: make device emit a beep sound
+    - `clearBuffer`: clear the buffer on the device
+    - `configureSense`: configure the sense terminal
+    - `configureSource`: configure the source terminal
+    - `disconnect`: disconnect from device (NOTE: not implemented)
+    - `getBufferIndices`: get the buffer indices where the the data start and end
+    - `getErrors`: get error messages from device
+    - `getStatus`: get status of device
+    - `makeBuffer`: create a new buffer on the device
+    - `read`: read the latest data from buffer
+    - `readAll`: read the data from buffer after a series of measurements
+    - `recallState`: recall a previously saved device setting
+    - `reset`: reset the device
+    - `run`: start the measurement
+    - `saveState`: save current settings on device
+    - `sendCommands`: write a series of commands to device
+    - `setSource`: set the source to a specified value
+    - `stop`: abort all actions
+    - `toggleOutput`: turn on or off output from device
     """
+    
     _default_buffer = 'defbuffer1'
     def __init__(self, ip_address:str, name:str = 'def', **kwargs):
+        """
+        Instantiate the class
+        
+        Args:
+            ip_address (str): IP address of device
+            name (str, optional): name of device. Defaults to 'def'.
+        """
         super().__init__(**kwargs)
         self.name = name
         self._fields = ('',)
@@ -66,15 +102,11 @@ class KeithleyDevice(Instrument):
     
     def beep(self, frequency:int = 440, duration:float = 1):
         """
-        Set off beeper
+        Make device emit a beep sound
 
         Args:
             frequency (int, optional): frequency of sound wave. Defaults to 440.
             duration (int, optional): duration to play beep. Defaults to 1.
-
-        Raises:
-            Exception: Select a valid frequency
-            Exception: select a valid duration
         """
         if not 20<=frequency<=8000:
             print('Please enter a frequency between 20 and 8000')
@@ -88,10 +120,10 @@ class KeithleyDevice(Instrument):
     
     def clearBuffer(self, name:Optional[str] = None):
         """
-        Clear buffer
+        Clear the buffer on the device
 
         Args:
-            name (str, optional): name of buffer to clear. Defaults to None.
+            name (Optional[str] , optional): name of buffer to clear. Defaults to None.
         """
         name = self.active_buffer if name is None else name
         return self._query(f'TRACe:CLEar "{name}"')
@@ -103,17 +135,13 @@ class KeithleyDevice(Instrument):
         count: int = 1
     ):
         """
-        Configure the sense function
+        Configure the sense terminal
 
         Args:
-            func (str): function to be read, from current, resistance, and voltage
-            limit (str or float, optional): sensing range. Defaults to 'DEFault'.
-            probe_4_point (bool, optional): whether to use 4-point reading. Defaults to True.
-            unit (str, optional): units for reading. Defaults to None.
-            count (int, optional): number of readings per measurement. Defaults to 1.
-
-        Raises:
-            Exception: Select a valid count number
+            func (str): name of function, choice from current, resistance, and voltage
+            limit (Union[str, float, None], optional): sensing range. Defaults to 'DEFault'.
+            four_point (bool, optional): whether to use four-point probe measurement. Defaults to True.
+            count (int, optional): number of readings to measure for each condition. Defaults to 1.
         """
         self.sense = SenseDetails(func, limit, four_point, count)
         self._query(f'SENSe:FUNCtion "{self.sense.function_type}"')
@@ -125,12 +153,12 @@ class KeithleyDevice(Instrument):
         measure_limit: Union[str, float, None] = 'DEFault'
     ):
         """
-        Configure the source function
+        Configure the source terminal
 
         Args:
-            func (str): function to be sourced, from current, and voltage
-            limit (str or float, optional): sourcing range. Defaults to None.
-            measure_limit (str or float, optional): limit imposed on the measurement range. Defaults to 'DEFault'.
+            func (str): name of function, choice from current and voltage
+            limit (Union[str, float, None], optional): sourcing range. Defaults to None.
+            measure_limit (Union[str, float, None], optional): limit imposed on the measurement range. Defaults to 'DEFault'.
         """
         self.source = SourceDetails(func, limit, measure_limit)
         self._query(f'SOURce:FUNCtion {self.source.function_type}')
@@ -141,13 +169,13 @@ class KeithleyDevice(Instrument):
     
     def getBufferIndices(self, name:Optional[str] = None) -> tuple[int]:
         """
-        Get the start and end buffer indices
+        Get the buffer indices where the the data start and end
 
         Args:
-            name (str, optional): name of buffer. Defaults to None.
+            name (Optional[str], optional): name of buffer. Defaults to None.
 
         Returns:
-            list: start and end buffer indices
+            tuple[int]: start and end buffer indices
         """
         name = self.buffer_name if name is None else name
         reply = self._query(f'TRACe:ACTual:STARt? "{name}" ; END? "{name}"')
@@ -163,7 +191,10 @@ class KeithleyDevice(Instrument):
     
     def getErrors(self) -> list[str]:
         """
-        Get Errors from Keithley
+        Gget error messages from device
+        
+        Returns:
+            list[str]: list of error messages from device
         """
         errors = []
         reply = ''
@@ -183,16 +214,16 @@ class KeithleyDevice(Instrument):
         Get status of device
 
         Returns:
-            str: device state
+            str: device status
         """
         return self._query('TRIGger:STATe?')
     
     def makeBuffer(self, name:Optional[str] = None, buffer_size:int = 100000):
         """
-        Make a buffer on the device
+        Create a new buffer on the device
 
         Args:
-            name (str, optional): buffer name. Defaults to None.
+            name (Optional[str] , optional): buffer name. Defaults to None.
             buffer_size (int, optional): buffer size. Defaults to 100000.
         """
         name = self.buffer_name if name is None else name
@@ -239,22 +270,20 @@ class KeithleyDevice(Instrument):
     
     def recallState(self, state:int):
         """
-        Recall a previously saved settings of device
+        Recall a previously saved device setting
 
         Args:
             state (int): state index to recall from
 
         Raises:
-            Exception: Select an index from 0 to 4
+            ValueError: Select an index from 0 to 4
         """
         if not 0 <= state <= 4:
-            raise Exception("Please select a state index from 0 to 4")
+            raise ValueError("Please select a state index from 0 to 4")
         return self._query(f'*RCL {state}')
     
     def reset(self):
-        """
-        Reset the device
-        """
+        """Reset the device"""
         self.active_buffer = self._default_buffer
         self.sense = SenseDetails()
         self.source = SourceDetails()
@@ -262,7 +291,7 @@ class KeithleyDevice(Instrument):
     
     def run(self, sequential_commands:bool = True):
         """
-        Initialise the measurement
+        Start the measurement
 
         Args:
             sequential_commands (bool, optional): whether commands whose operations must finish before the next command is executed. Defaults to True.
@@ -275,24 +304,24 @@ class KeithleyDevice(Instrument):
     
     def saveState(self, state:int):
         """
-        Save current settings / state of device
+        Save current settings on device
 
         Args:
             state (int): state index to save to
 
         Raises:
-            Exception: Select an index from 0 to 4
+            ValueError: Select an index from 0 to 4
         """
         if not 0 <= state <= 4:
-            raise Exception("Please select a state index from 0 to 4")
+            raise ValueError("Please select a state index from 0 to 4")
         return self._query(f'*SAV {state}')
     
     def sendCommands(self, commands:list[str]):
         """
-        Write multiple commands to device
+        Write a series of commands to device
 
         Args:
-            commands (list): list of commands to write
+            commands (list[str]): list of commands strings
         """
         for command in commands:
             self._query(command)
@@ -300,13 +329,13 @@ class KeithleyDevice(Instrument):
     
     def setSource(self, value:float):
         """
-        Set source to desired value
+        Set the source to a specified value
 
         Args:
-            value (int or float): value to set source to 
+            value (float): value to set source to 
 
         Raises:
-            Exception: Set a value within limits
+            ValueError: Please set a source value within limits
         """
         unit = 'A' if self.source.function_type == 'CURRent' else 'V'
         capacity = 1 if self.source.function_type == 'CURRent' else 200
@@ -318,14 +347,12 @@ class KeithleyDevice(Instrument):
         return self._query(f'SOURce:{self.source.function_type} {value}')
 
     def stop(self):
-        """
-        Abort all actions
-        """
+        """Abort all actions"""
         return self._query('ABORt')
 
     def toggleOutput(self, on:bool):
         """
-        Toggle turning on output
+        Turn on or off output from device
 
         Args:
             on (bool): whether to turn on output
@@ -336,13 +363,10 @@ class KeithleyDevice(Instrument):
     # Protected method(s)
     def _connect(self, ip_address:str):
         """
-        Establish connection with Keithley
+        Connection procedure for tool
         
         Args:
-            ip_address (str, optional): IP address of Keithley. Defaults to None
-            
-        Returns:
-            Instrument: Keithley object
+            ip_address (str): IP address of device
         """
         print("Setting up Keithley communications...")
         self.connection_details['ip_address'] = ip_address
@@ -370,10 +394,10 @@ class KeithleyDevice(Instrument):
         Parse the response from device
 
         Args:
-            raw_reply (str): raw response string from device
+            reply (str): raw response string from device
 
         Returns:
-            float, str, or list: float for numeric values, str for strings, list for multiple replies
+            Union[float, str, tuple[Union[float, str]]]: variable output including floats, strings, and tuples
         """
         if ',' not in reply and ';' not in reply:
             try:
@@ -399,6 +423,15 @@ class KeithleyDevice(Instrument):
         return tuple(outs)
     
     def _query(self, command:str) -> str:
+        """
+        Write command to and read response from device
+
+        Args:
+            command (str): SCPI command string
+
+        Returns:
+            str: response string
+        """
         if self.verbose:
             print(command)
         
@@ -434,8 +467,9 @@ class KeithleyDevice(Instrument):
         Read all data on buffer
 
         Args:
-            name (str, optional): buffer name. Defaults to None.
-            fields (list, optional): fields of interest. Defaults to ['SOURce','READing', 'SEConds'].
+            bulk (bool): whether to read data after a series of measurements
+            name (Optional[str], optional): buffer name. Defaults to None.
+            fields (tuple[str], optional): fields of interest. Defaults to ('SOURce','READing', 'SEConds').
             average (bool, optional): whether to average the data of multiple readings. Defaults to True.
 
         Returns:
@@ -463,6 +497,15 @@ class KeithleyDevice(Instrument):
         return df
     
     def _write(self, command:str) -> bool:
+        """
+        Write command to device
+
+        Args:
+            command (str): SCPI command string
+
+        Returns:
+            bool: whether command was sent successfully
+        """
         if self.verbose:
             print(command)
         try:

@@ -1,12 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Adapted from @jaycecheng spinutils
 
-Created: Tue 2022/11/01 17:13:35
-@author: Chang Jie
-
-Notes / actionables:
--
 """
 # Standard library imports
 import time
@@ -19,7 +13,34 @@ from ..liquid_utils import LiquidHandler
 print(f"Import: OK <{__name__}>")
 
 class Pump(LiquidHandler):
+    """
+    Abstract Base Class (ABC) for Pump objects (i.e. tools that moves liquids).
+    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
+    
+    ### Constructor
+    Args:
+        `port` (str): COM port address
+    
+    ### Properties
+    - `port` (str): COM port address
+    
+    ### Methods
+    #### Abstract
+    - `aspirate`: aspirate desired volume of reagent
+    - `blowout`: blowout liquid from tip
+    - `dispense`: dispense desired volume of reagent
+    - `pullback`: pullback liquid from tip
+    #### Public
+    - `disconnect`: disconnect from device
+    """
+    
     def __init__(self, port:str, **kwargs):
+        """
+        Instantiate the class
+
+        Args:
+            port (str): COM port address
+        """
         super().__init__(**kwargs)
         self._connect(port)
         return
@@ -30,12 +51,7 @@ class Pump(LiquidHandler):
         return self.connection_details.get('port', '')
     
     def disconnect(self):
-        """
-        Disconnect serial connection to robot
-        
-        Returns:
-            None: None is successfully disconnected, else serial.Serial
-        """
+        """Disconnect from device"""
         try:
             self.device.close()
         except Exception as e:
@@ -47,15 +63,12 @@ class Pump(LiquidHandler):
     # Protected method(s)
     def _connect(self, port:str, baudrate:int = 9600, timeout:int = 1):
         """
-        Connect to machine control unit
+        Connection procedure for tool
 
         Args:
-            `port` (str): com port address
-            `baudrate` (int, optional): baudrate. Defaults to 9600.
-            `timeout` (int, optional): timeout in seconds. Defaults to 1.
-            
-        Returns:
-            `serial.Serial`: serial connection to machine control unit if connection is successful, else `None`
+            port (str): COM port address
+            baudrate (int, optional): baudrate. Defaults to 9600.
+            timeout (int, optional): timeout in seconds. Defaults to 1.
         """
         self.connection_details = {
             'port': port,
@@ -78,6 +91,15 @@ class Pump(LiquidHandler):
         return
     
     def _write(self, command:str) -> bool:
+        """
+        Write command to device
+
+        Args:
+            command (str): command string
+
+        Returns:
+            bool: whether command was sent successfully
+        """
         try:
             self.device.write(command.encode('utf-8'))
         except Exception as e:

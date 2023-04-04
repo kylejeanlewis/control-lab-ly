@@ -1,12 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Adapted from @aniketchitre C3000_SyringePumpsv2
 
-Created: Tue 2022/11/01 17:13:35
-@author: Chang Jie
-
-Notes / actionables:
--
 """
 # Standard library imports
 from __future__ import annotations
@@ -23,6 +17,64 @@ from .tricontinent_lib import ErrorCode, StatusCode, TriContinentPump
 print(f"Import: OK <{__name__}>")
 
 class TriContinent(Pump):
+    """
+    TriContinent provides methods to control a syringe pump from TriContinent
+
+    ### Constructor
+    Args:
+        `port` (str): COM port address
+        `channel` (Union[int, tuple[int]]): channel id(s)
+        `model` (Union[str, tuple[str]]): model name(s)
+        `capacity` (Union[int, tuple[int]]): capacity (capacities)
+        `output_right` (Union[bool, tuple[bool]]): whether liquid is pumped out to the right for channel(s)
+        `name` (Union[str, tuple[str]], optional): name of the pump(s). Defaults to ''.
+        
+    ### Attributes
+    - `channels` (dict[int, TriContinentPump]): dictionary of {channel id, TriContinentPump object}
+    - `current_channel` (TriContinentPump): currently active pump
+    - `name` (str): name of current pump
+    - `capacity` (int): syringe capacity of current pump
+    - `resolution` (float): volume resolution of current pump (i.e. uL per step)
+    - `step_limit` (int): maximum allowable position of current pump
+    - `position` (int): position of plunger for current pump
+    
+    ### Properties
+    - `current_pump` (TriContinentPump): alias for `current_channel`
+    - `pumps` (dict[int, TriContinentPump]): alias for `channels`
+    - `status` (str): current status of active pump
+    - `volume` (float): volume of current pump
+    
+    ### Methods
+    - `aspirate`: aspirate desired volume of reagent
+    - `blowout`: blowout liquid from tip (NOTE: not implemented)
+    - `cycle`: cycle between aspirate and dispense
+    - `dispense`: dispense desired volume of reagent
+    - `empty`: empty the syringe pump
+    - `fill`: fill the syringe pump
+    - `getPosition`: get the position of the pump plunger from the device
+    - `getStatus`: get the status of the pump from the device
+    - `initialise`: empty pump and set pump outlet direction
+    - `isBusy`: checks and returns whether the device is busy
+    - `loop`: loop a set of actions
+    - `move`: move the plunger either up or down by a specified number of steps
+    - `moveBy`: move the plunger by a specified number of steps
+    - `moveTo`: move the plunger to a specified position
+    - `prime`: prime the pump by cycling the plunger through its maximum and minimum positions
+    - `pullback`: pullback liquid from tip (NOTE: not implemented)
+    - `queue`: queue several commands together before sending to the device
+    - `reset`: reset the device
+    - `resetChannel`: reset the current channel to default (i.e. first channel)
+    - `rinse`: rinse the channel with aspirate and dispense cycles
+    - `run`: execute the command(s)
+    - `setCurrentChannel`: set the current active pump
+    - `setSpeedRamp`: set the acceleration from start speed to top speed
+    - `setStartSpeed`: set the starting speed of plunger
+    - `setTopSpeed`: set the top speed of plunger
+    - `setValve`: set valve position to one of [I]nput, [O]utput, [B]ypass, [E]xtra
+    - `stop`: stop the device immediately, terminating any actions in progress or in queue
+    - `wait`: wait for a specified amount of time
+    """
+    
     _default_flags = {
         'busy': False, 
         'connected': False,
@@ -37,6 +89,17 @@ class TriContinent(Pump):
         name: Union[str, tuple[str]] = '',
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            port (str): COM port address
+            channel (Union[int, tuple[int]]): channel id(s)
+            model (Union[str, tuple[str]]): model name(s)
+            capacity (Union[int, tuple[int]]): capacity (capacities)
+            output_right (Union[bool, tuple[bool]]): whether liquid is pumped out to the right for channel(s)
+            name (Union[str, tuple[str]], optional): name of the pump(s). Defaults to ''.
+        """
         super().__init__(port, **kwargs)
         self.channels = self._get_pumps(
             channel = channel,
@@ -130,6 +193,21 @@ class TriContinent(Pump):
         channel: Optional[Union[int, tuple[int]]] = None,
         **kwargs
     ) -> str:
+        """
+        Aspirate desired volume of reagent
+
+        Args:
+            volume (float): target volume
+            speed (int, optional): speed to aspirate at. Defaults to 200.
+            wait (int, optional): time delay after aspirate. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            start_speed (int, optional): starting speed of plunger. Defaults to 50.
+            reagent (Optional[str], optional): name of reagent. Defaults to None.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id(s). Defaults to None.
+
+        Returns:
+            str: command string
+        """
         steps = min(int(volume/self.resolution), self.step_limit-self.position)
         volume = steps * self.resolution
         self.queue([
@@ -205,6 +283,20 @@ class TriContinent(Pump):
         channel: Optional[Union[int, tuple[int]]] = None,
         **kwargs
     ) -> str:
+        """
+        Dispense desired volume of reagent
+
+        Args:
+            volume (float): target volume
+            speed (int, optional): speed to dispense at. Defaults to 200.
+            wait (int, optional): time delay after dispense. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            start_speed (int, optional): starting speed of plunger. Defaults to 50.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id(s). Defaults to None.
+
+        Returns:
+            str: command string
+        """
         steps = min(int(volume/self.resolution), self.step_limit)
         volume = steps * self.resolution
         self.queue([
@@ -233,7 +325,7 @@ class TriContinent(Pump):
         Empty the syringe pump
 
         Args:
-            channel (int, optional): channel address. Defaults to None.
+            channel (Optional[int], optional): channel id(s). Defaults to None.
 
         Returns:
             str: command string
@@ -248,7 +340,7 @@ class TriContinent(Pump):
         Fill the syringe pump
 
         Args:
-            channel (int, optional): channel address. Defaults to None.
+            channel (Optional[int], optional): channel id(s). Defaults to None.
 
         Returns:
             str: command string
@@ -258,6 +350,15 @@ class TriContinent(Pump):
         return f"IA{self.step_limit}"
 
     def getPosition(self, channel:Optional[int] = None) -> int:
+        """
+        Get the position of the pump plunger from the device
+
+        Args:
+            channel (Optional[int], optional): channel id(s). Defaults to None.
+
+        Returns:
+            int: position of plunger
+        """
         self.setCurrentChannel(channel=channel)
         response = self._query('?')
         self.position = int(response[3:]) if len(response) else self.position
@@ -265,6 +366,19 @@ class TriContinent(Pump):
         return self.position
     
     def getStatus(self, channel:Optional[int] = None) -> str:
+        """
+        Get the status of the pump from the device
+
+        Args:
+            channel (Optional[int], optional): channel id(s). Defaults to None.
+
+        Raises:
+            RuntimeError: Unable to get status from pump
+            ConnectionError: Please reinitialize pump
+
+        Returns:
+            str: status message
+        """
         self.setCurrentChannel(channel=channel)
         response = self._query('Q')
         _status_code = response[2] if len(response) else ''
@@ -295,11 +409,11 @@ class TriContinent(Pump):
     @_single_action
     def initialise(self, output_right:Optional[bool] = None, channel:Optional[int] = None) -> str:
         """
-        Empty the syringe pump
+        Empty pump and set pump outlet direction
 
         Args:
-            output_right (str, optional): liquid output direction ('left' or 'right'). Defaults to None.
-            channel (int, optional): channel address. Defaults to None.
+            output_right (Optional[bool], optional): whether liquid is pumped out to the right. Defaults to None.
+            channel (Optional[int], optional): channel id(s). Defaults to None.
 
         Returns:
             str: command string
@@ -310,10 +424,7 @@ class TriContinent(Pump):
     
     def isBusy(self) -> bool:
         """
-        Check whether the device is busy
-
-        Raises:
-            Exception: Unable to determine whether the device is busy
+        Checks and returns whether the device is busy
 
         Returns:
             bool: whether the device is busy
@@ -324,10 +435,10 @@ class TriContinent(Pump):
     @staticmethod
     def loop(cycles:int, *args) -> str:
         """
-        Specify how many times to loop the following actions
+        Loop a set of actions
 
         Args:
-            cycles (int): number of times to cycle
+            cycles (int): number of times to loop
 
         Returns:
             str: command string
@@ -337,14 +448,12 @@ class TriContinent(Pump):
     @_single_action
     def move(self, steps:int, up:bool, channel:Optional[int] = None) -> str:
         """
-        Move plunger either up or down
+        Move the plunger either up or down by a specified number of steps
 
         Args:
-            axis (str): desired direction of plunger (up / down)
-            value (int): number of steps to move plunger by
-            channel (int, optional): channel to move. Defaults to None.
-        Raises:
-            Exception: Axis direction either 'up' or 'down'
+            steps (int): number of steps to move plunger by
+            up (bool): whether to move the plunger up
+            channel (Optional[int], optional): channel id(s). Defaults to None.
 
         Returns:
             str: command string
@@ -366,8 +475,8 @@ class TriContinent(Pump):
         Move plunger by specified number of steps
 
         Args:
-            steps (int): number of steps to move plunger by >0: aspirate/move down; <0 dispense/move up)
-            channel (int, optional): channel to move by. Defaults to None.
+            steps (int): number of steps to move plunger by (>0: aspirate/move down; <0 dispense/move up)
+            channel (Optional[int], optional): channel id(s). Defaults to None.
 
         Returns:
             str: command string
@@ -383,8 +492,8 @@ class TriContinent(Pump):
         Move plunger to specified position
 
         Args:
-            position (int): desired plunger position
-            channel (int, optional): channel to move to. Defaults to None.
+            position (int): target plunger position
+            channel (Optional[int], optional): channel id(s). Defaults to None.
 
         Returns:
             str: command string
@@ -398,8 +507,8 @@ class TriContinent(Pump):
         Prime the pump by cycling the plunger through its max and min positions
 
         Args:
-            cycles (int): number of times to cycle
-            channel (int, optional): channel to prime. Defaults to None.
+            cycles (int, optional): number of times to cycle. Defaults to 3.
+            channel (Optional[int], optional): channel id(s). Defaults to None.
             
         Returns:
             str: command string
@@ -416,8 +525,8 @@ class TriContinent(Pump):
         Queue several commands together before sending to the device
 
         Args:
-            actions (list, optional): list of actions. Defaults to [].
-            channel (int, optional): channel to set. Defaults to None.
+            actions (list[str]): list of command strings
+            channel (Optional[int], optional): channel id(s). Defaults to None.
 
         Returns:
             str: command string
@@ -432,11 +541,12 @@ class TriContinent(Pump):
         Reset and initialise the device
 
         Args:
-            channel (int, optional): channel to reset. Defaults to None.
+            channel (Optional[int], optional): channel id(s). Defaults to None.
         """
         return self.initialise()
     
     def resetChannel(self):
+        """Reset the current channel to default (i.e. first channel)"""
         self.setCurrentChannel(list(self.channels)[0])
         return
     
@@ -449,6 +559,19 @@ class TriContinent(Pump):
         channel: Optional[Union[int, tuple[int]]] = None,
         **kwargs
     ) -> str:
+        """
+        Rinse the channel with aspirate and dispense cycles
+
+        Args:
+            speed (int, optional): speed to aspirate and dispense at. Defaults to 200.
+            wait (int, optional): time delay after each action. Defaults to 0.
+            cycles (int, optional): number of cycles. Defaults to 3.
+            start_speed (int, optional): starting speed of plunger. Defaults to 50.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id(s). Defaults to None.
+
+        Returns:
+            str: command string
+        """
         self.queue([
             self.initialise(),
             self.setStartSpeed(start_speed),
@@ -470,11 +593,11 @@ class TriContinent(Pump):
 
     def run(self, command:Optional[str] = None, channel:Optional[int] = None) -> str:
         """
-        Send the command to the device and run the action
+        Execute the command(s)
 
         Args:
-            command (str, optional): command string of commands. Defaults to None.
-            channel (int, optional): channel to run. Defaults to None.
+            command (str, optional): command string. Defaults to None.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id(s). Defaults to None.
 
         Returns:
             str: command string
@@ -494,6 +617,15 @@ class TriContinent(Pump):
         return command
     
     def setCurrentChannel(self, channel:Optional[int] = None) -> TriContinentPump:
+        """
+        Set the current active pump
+
+        Args:
+            channel (Optional[int], optional): channel id. Defaults to None.
+
+        Returns:
+            TriContinentPump: currently active pump
+        """
         channel = self.channel if channel not in self.channels else channel
         self.current_channel = self.channels[channel]
         pump = self.current_pump
@@ -509,11 +641,11 @@ class TriContinent(Pump):
     @_single_action
     def setSpeedRamp(self, ramp:int, channel:Optional[int] = None) -> str:
         """
-        Set the ramp up between start speed and top speed
+        Set the acceleration from start speed to top speed
 
         Args:
-            ramp (int): ramp speed
-            channel (int, optional): channel to set. Defaults to None.
+            ramp (int): acceleration rate
+            channel (Optional[int], optional): channel id. Defaults to None.
 
         Returns:
             str: command string
@@ -527,7 +659,7 @@ class TriContinent(Pump):
 
         Args:
             speed (int): starting speed of plunger
-            channel (int, optional): channel to set. Defaults to None.
+            channel (Optional[int], optional): channel id. Defaults to None.
 
         Returns:
             str: command string
@@ -541,7 +673,7 @@ class TriContinent(Pump):
 
         Args:
             speed (int): top speed of plunger
-            channel (int, optional): channel to set. Defaults to None.
+            channel (Optional[int], optional): channel id. Defaults to None.
 
         Returns:
             str: command string
@@ -560,8 +692,8 @@ class TriContinent(Pump):
 
         Args:
             valve (str): one of the above positions
-            value (int, optional): only for 6-way distribution. Defaults to None.
-            channel (int, optional): channel to set. Defaults to None.
+            value (Optional[int], optional): only for 6-way distribution. Defaults to None.
+            channel (Optional[int], optional): channel to set. Defaults to None.
 
         Raises:
             Exception: Please select a valid position
@@ -580,10 +712,10 @@ class TriContinent(Pump):
    
     def stop(self, channel:Optional[int] = None) -> str:
         """
-        Stops the device immediately, terminating any actions in progress or in queue
+        Stops the pump immediately, terminating any actions in progress or in queue
 
         Args:
-            channel (int, optional): channel to stop. Defaults to None.
+            channel (Optional[int], optional): channel to stop. Defaults to None.
 
         Returns:
             str: command string
@@ -601,7 +733,7 @@ class TriContinent(Pump):
 
         Args:
             time_ms (int): duration in milliseconds
-            channel (int, optional): channel to wait. Defaults to None.
+            channel (Optional[int], optional): channel id. Defaults to None.
 
         Returns:
             str: command string
@@ -612,6 +744,15 @@ class TriContinent(Pump):
     # Protected method(s)
     @staticmethod
     def _get_pumps(**kwargs) -> dict[int, TriContinentPump]:
+        """
+        Generate TriContinentPump dataclass objects from parameters
+
+        Raises:
+            ValueError: Ensure that the length of inputs are the same as the number of channels
+
+        Returns:
+            dict[int, TriContinentPump]: dictionary of {channel id, `TriContinentPump` object}
+        """
         channel_arg = kwargs.get('channel', 1)
         n_channel = 1 if type(channel_arg) is int else len(channel_arg)
         for key, arg in kwargs.items():
@@ -624,10 +765,9 @@ class TriContinent(Pump):
     
     def _is_expected_reply(self, response:str, **kwargs) -> bool:
         """
-        Check whether the response is an expected reply
+        Checks and returns whether the response is an expected reply
 
         Args:
-            command_code (str): two-character command code
             response (str): response string from device
 
         Returns:
@@ -643,14 +783,14 @@ class TriContinent(Pump):
     
     def _query(self, command:str, timeout_s:int = 2) -> str:
         """
-        Send query and wait for response
+        Write command to and read response from device
 
         Args:
             command (str): command string
             timeout_s (int, optional): duration to wait before timeout. Defaults to 2.
 
         Returns:
-            str: command readout
+            str: response string
         """
         # self.connect()
         start_time = time.time()
@@ -690,13 +830,13 @@ class TriContinent(Pump):
     
     def _write(self, command:str) -> bool:
         """
-        Sends command to device
+        Write command to device
 
         Args:
             command (str): <command code><value>
 
         Returns:
-            str: two-character command code
+            bool: whether command was sent successfully
         """
         if self.verbose:
             print(command)

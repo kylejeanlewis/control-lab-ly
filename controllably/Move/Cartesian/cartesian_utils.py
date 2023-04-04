@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/01 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
--
 """
 # Standard library imports
 from __future__ import annotations
@@ -22,23 +18,34 @@ print(f"Import: OK <{__name__}>")
     
 class Gantry(Mover):
     """
-    Gantry robot controls
+    Abstract Base Class (ABC) for Gantry objects. Gantry provides controls for a general cartesian robot.
+    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
+    Gantry provides controls for a general cartesian robot
 
+    ### Constructor
     Args:
-        port (str): com port address
-        limits (list, optional): lower and upper bounds of movement. Defaults to [(0,0,0), (0,0,0)].
-        safe_height (float, optional): safe height. Defaults to None.
-        max_speed (float, optional): maximum movement speed. Defaults to 250.
+        `port` (str): COM port address
+        `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0, 0, 0), (0, 0, 0)).
+        `safe_height` (Optional[float], optional): height at which obstacles can be avoided. Defaults to None.
+        `max_speed` (float, optional): maximum travel speed. Defaults to 250.
     
-    Kwargs:
-        home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,0,0).
-        home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
-        orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
-        translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to (0,0,0).
-        implement_offset (tuple, optional): implement offset vector pointing from end of effector to tool tip. Defaults to (0,0,0).
-        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
-        verbose (bool, optional): whether to print outputs. Defaults to False.
+    ### Properties
+    - `limits` (np.ndarray):lower and upper limits of gantry
+    - `port` (str): COM port address
+    
+    ### Methods
+    #### Abstract
+    - `home`: make the robot go home
+    #### Public
+    - `disconnect`: disconnect from device
+    - `isFeasible`: checks and returns whether the target coordinate is feasible
+    - `moveBy`: move the robot by target direction
+    - `moveTo`: move the robot to target position
+    - `reset`: reset the robot
+    - `setSpeed`: set the speed of the robot
+    - `shutdown`: shutdown procedure for tool
     """
+    
     def __init__(self, 
         port: str, 
         limits: tuple[tuple[float]] = ((0, 0, 0), (0, 0, 0)), 
@@ -46,6 +53,15 @@ class Gantry(Mover):
         max_speed: float = 250, # [mm/s]
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            port (str): COM port address
+            limits (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0, 0, 0), (0, 0, 0)).
+            safe_height (Optional[float], optional): height at which obstacles can be avoided. Defaults to None.
+            max_speed (float, optional): maximum travel speed. Defaults to 250.
+        """
         super().__init__(**kwargs)
         self._limits = ((0, 0, 0), (0, 0, 0))
         
@@ -74,12 +90,7 @@ class Gantry(Mover):
         return self.connection_details.get('port', '')
 
     def disconnect(self):
-        """
-        Disconnect serial connection to robot
-        
-        Returns:
-            None: None is successfully disconnected, else serial.Serial
-        """
+        """ Disconnect from device """
         try:
             self.device.close()
         except Exception as e:
@@ -95,15 +106,15 @@ class Gantry(Mover):
         **kwargs
     ) -> bool:
         """
-        Checks if specified coordinates is a feasible position for robot to access
+        Checks and returns whether the target coordinate is feasible
 
         Args:
-            coordinates (tuple): x,y,z coordinates
-            transform (bool, optional): whether to transform the coordinates. Defaults to False.
-            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
+            coordinates (tuple[float]): target coordinates
+            transform_in (bool, optional): whether to convert to internal coordinates first. Defaults to False.
+            tool_offset (bool, optional): whether to convert from tool tip coordinates first. Defaults to False.
 
         Returns:
-            bool: whether coordinates is a feasible position
+            bool: whether the target coordinate is feasible
         """
         if transform_in:
             coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
@@ -117,28 +128,25 @@ class Gantry(Mover):
 
     def moveBy(self, vector:tuple[float], **kwargs) -> bool:
         """
-        Move robot by specified vector
+        Move the robot by target direction
 
         Args:
-            vector (tuple): x,y,z vector to move in
-            to_safe_height (bool, optional): whether to return to safe height first. Defaults to False.
+            vector (tuple[float]): x,y,z vector to move in
 
         Returns:
-            bool: whether movement is successful
+            bool: whether the movement is successful
         """
         return super().moveBy(vector=vector)
     
     @Helper.safety_measures
     def moveTo(self, coordinates:tuple[float], tool_offset:bool = True, **kwargs) -> bool:
         """
-        Move robot to specified coordinates and orientation
+        Move the robot to target position
 
         Args:
-            coordinates (tuple): x,y,z coordinates to move to. Defaults to None.
-            to_safe_height (bool, optional): whether to return to safe height first. Defaults to True.
-            jump_height (int, or float): height value to jump to. Defaults to None.
+            coordinates (tuple[float]): x,y,z coordinates to move to
             tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
-            
+
         Returns:
             bool: whether movement is successful
         """
@@ -164,31 +172,33 @@ class Gantry(Mover):
         return True
     
     def reset(self):
+        """Reset the robot"""
         return super().reset()
     
     def setSpeed(self, speed: int): # NOTE: waiting for PR #48
+        """
+        Set the speed of the robot
+
+        Args:
+            speed (int): rate value (value range: 1~100)
+        """
         super().setSpeed(speed)
         return False, self.speed
     
     def shutdown(self):
-        """
-        Close serial connection and shutdown
-        """
+        """Shutdown procedure for tool"""
         # self.home()
         return super().shutdown()
     
     # Protected method(s)
     def _connect(self, port:str, baudrate:int = 115200, timeout:int = 1):
         """
-        Connect to machine control unit
+        Connection procedure for tool
 
         Args:
-            port (str): com port address
-            baudrate (int): baudrate
-            timeout (int, optional): timeout in seconds. Defaults to None.
-            
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
+            port (str): COM port address
+            baudrate (int, optional): baudrate. Defaults to 115200.
+            timeout (int, optional): timeout in seconds. Defaults to 1.
         """
         self.connection_details = {
             'port': port,
@@ -209,6 +219,15 @@ class Gantry(Mover):
         return
 
     def _query(self, command:str) -> str:
+        """
+        Write command to and read response from device
+
+        Args:
+            command (str): command string to send to device
+
+        Returns:
+            str: response string from device
+        """
         response = ''
         self._write(command)
         try:
@@ -221,6 +240,15 @@ class Gantry(Mover):
         return response
 
     def _write(self, command:str) -> bool:
+        """
+        Write command to device
+
+        Args:
+            command (str): command string to send to device
+
+        Returns:
+            bool: whether the command is sent successfully
+        """
         try:
             self.device.write(command.encode('utf-8'))
         except Exception as e:

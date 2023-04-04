@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/12/09 11:11:00
-@author: Chang Jie
 
-Notes / actionables:
--
 """
 # Standard library imports
 from dataclasses import dataclass, field
@@ -32,6 +28,37 @@ class StatusCode(Enum):
 
 @dataclass
 class TriContinentPump:
+    """
+    TriContinentPump dataclass represents a single syringe pump channel when pumps are daisy-chained
+
+    ### Constructor
+    Args:
+        `channel` (int): channel id
+        `model` (str): TriContinent pump model name
+        `capacity` (int): syringe capacity
+        `output_right` (bool): whether liquid is pumped out to the right for channel
+        `name` (str): name of the pump. Defaults to ''.
+        `reagent` (str): name of reagent in pump. Defaults to ''.
+    
+    ### Attributes
+    - `busy` (bool): whether the pump is busy
+    - `capacity` (int): syringe capacity
+    - `channel` (int): channel id
+    - `command` (str): command string
+    - `init_status` (bool): whether the pump has been initialised
+    - `model` (str): TriContinent pump model name
+    - `name` (str): name of the pump
+    - `output_right` (bool): whether liquid is pumped out to the right
+    - `position` (int): position of plunger
+    - `reagent` (str): name of reagent in pump
+    - `resolution` (float): volume resolution of pump (i.e. uL per step)
+    - `step_limit` (int): maximum allowable position
+    
+    ### Properties
+    - `status` (str): pump device status
+    - `volume` (float): volume of reagent in pump
+    """
+    
     channel: int
     model: str
     capacity: int

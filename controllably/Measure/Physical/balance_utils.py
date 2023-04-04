@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2023/01/16 11:11:00
-@author: Chang Jie
 
-Notes / actionables:
--
 """
 # Standard library imports
 from datetime import datetime
@@ -20,15 +16,37 @@ from ..measure_utils import Measurer
 print(f"Import: OK <{__name__}>")
 
 CALIBRATION_FACTOR = 6.862879436681862 # Empirical: factor by which to divide output reading by to get mass in mg
-COLUMNS = ['Time', 'Value', 'Factor', 'Baseline', 'Mass']
+COLUMNS = ('Time', 'Value', 'Factor', 'Baseline', 'Mass')
 
 class MassBalance(Measurer):
     """
-    Mass Balance object
+    MassBalance provides methods to read out values from a precision mass balance
 
+    ### Constructor
     Args:
-        port (str): com port address
+        `port` (str): COM port address
+        `calibration_factor` (float, optional): calibration factor of device readout to mg. Defaults to CALIBRATION_FACTOR.
+        
+    ### Attributes
+    - `baseline` (float): baseline readout at which zero mass is set
+    - `calibration_factor` (float): calibration factor of device readout to mg
+    - `precision` (int): number of decimal places to print mass value
+    
+    ### Properties
+    - `mass` (float): mass of sample
+    
+    ### Methods
+    - `clearCache`: clear most recent data and configurations
+    - `disconnect`: disconnect from device
+    - `getMass`: get the mass of the sample by measuring the force response
+    - `reset`: reset the device
+    - `shutdown`: shutdown procedure for tool
+    - `tare`: alias for `zero()`
+    - `toggleFeedbackLoop`: start or stop feedback loop
+    - `toggleRecord`: start or stop data recording
+    - `zero`: set the current reading as baseline (i.e. zero mass)
     """
+    
     _default_flags = {
         'busy': False,
         'connected': False,
@@ -38,6 +56,13 @@ class MassBalance(Measurer):
         'record': False
     }
     def __init__(self, port:str, calibration_factor:float = CALIBRATION_FACTOR, **kwargs):
+        """
+        Instantiate the class
+
+        Args:
+            port (str): COM port address
+            calibration_factor (float, optional): calibration factor of device readout to mg. Defaults to CALIBRATION_FACTOR.
+        """
         super().__init__(**kwargs)
         self.baseline = 0
         self.buffer_df = pd.DataFrame(columns=COLUMNS)
@@ -54,9 +79,7 @@ class MassBalance(Measurer):
         return round(self._mass, self.precision)
    
     def clearCache(self):
-        """
-        Clear dataframe.
-        """
+        """Clear most recent data and configurations"""
         self.setFlag(pause_feedback=True)
         time.sleep(0.1)
         self.buffer_df = pd.DataFrame(columns=COLUMNS)
@@ -64,6 +87,7 @@ class MassBalance(Measurer):
         return
     
     def disconnect(self):
+        """Disconnect from device"""
         try:
             self.device.close()
         except Exception as e:
@@ -74,7 +98,7 @@ class MassBalance(Measurer):
     
     def getMass(self) -> str:
         """
-        Get the mass by measuring force response
+        Get the mass of the sample by measuring the force response
         
         Returns:
             str: device response
@@ -100,32 +124,26 @@ class MassBalance(Measurer):
         return response
   
     def reset(self):
-        """
-        Reset baseline and clear buffer
-        """
+        """Reset the device"""
         super().reset()
         self.baseline = 0
         return
     
     def shutdown(self):
-        """
-        Close serial connection and shutdown
-        """
+        """Shutdown procedure for tool"""
         self.toggleFeedbackLoop(on=False)
         return super().shutdown()
  
     def tare(self):
-        """
-        Alias for zero
-        """
+        """Alias for `zero()`"""
         return self.zero()
     
     def toggleFeedbackLoop(self, on:bool):
         """
-        Toggle between start and stopping feedback loop
+        Start or stop feedback loop
 
         Args:
-            on (bool): whether to listen to feedback
+            on (bool): whether to start loop to continuously read from device
         """
         self.setFlag(get_feedback=on)
         if on:
@@ -140,10 +158,10 @@ class MassBalance(Measurer):
     
     def toggleRecord(self, on:bool):
         """
-        Toggle between start and stopping mass records
+        Start or stop data recording
 
         Args:
-            on (bool): whether to start recording
+            on (bool): whether to start recording temperature
         """
         self.setFlag(record=on, get_feedback=on, pause_feedback=False)
         self.toggleFeedbackLoop(on=on)
@@ -154,7 +172,7 @@ class MassBalance(Measurer):
         Set current reading as baseline (i.e. zero mass)
         
         Args:
-            wait (int, optional): duration to wait while zeroing (seconds). Defaults to 5.
+            wait (int, optional): duration to wait while zeroing, in seconds. Defaults to 5.
         """
         temp_record_state = self.flags['record']
         temp_buffer_df = self.buffer_df.copy()
@@ -173,15 +191,12 @@ class MassBalance(Measurer):
     # Protected method(s)
     def _connect(self, port:str, baudrate:int = 115200, timeout:int = 1):
         """
-        Connect to machine control unit
+        Connection procedure for tool
 
         Args:
-            port (str): com port address
-            baudrate (int): baudrate. Defaults to 9600.
-            timeout (int, optional): timeout in seconds. Defaults to None.
-            
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
+            port (str): COM port address
+            baudrate (int, optional): baudrate. Defaults to 115200.
+            timeout (int, optional): timeout in seconds. Defaults to 1.
         """
         self.connection_details = {
             'port': port,
@@ -204,9 +219,7 @@ class MassBalance(Measurer):
         return
     
     def _loop_feedback(self):
-        """
-        Feedback loop to constantly check status and liquid level
-        """
+        """Loop to constantly read from device"""
         print('Listening...')
         while self.flags['get_feedback']:
             if self.flags['pause_feedback']:

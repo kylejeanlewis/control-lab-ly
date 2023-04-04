@@ -10,8 +10,6 @@ Notes / actionables:
 from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
-
-# Local application imports
 print(f"Import: OK <{__name__}>")
 
 class CommandCode(Enum):
@@ -86,6 +84,22 @@ class FrequencyCode(Enum):
 
 @dataclass
 class Frequency:
+    """
+    Frequency dataclass represents a low and high frequency range limit
+
+    ### Constructor
+    Args:
+        `low` (float): frequency lower bound. Defaults to FrequencyCode.FREQ_01
+        `high` (float): frequency upper bound. Defaults to FrequencyCode.FREQ_54
+        
+    ### Attributes
+    - `low` (float): frequency lower bound. Defaults to FrequencyCode.FREQ_01
+    - `high` (float): frequency upper bound. Defaults to FrequencyCode.FREQ_54
+    
+    ### Properties
+    - `code` (tuple[str]): tuple of (lower frequency code, upper frequency code)
+    """
+    
     low: float = FrequencyCode.FREQ_01
     high: float = FrequencyCode.FREQ_54
     

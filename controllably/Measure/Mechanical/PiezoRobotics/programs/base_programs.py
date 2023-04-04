@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2023/01/05 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
--
 """
 # Standard library imports
 from datetime import datetime
@@ -33,30 +29,49 @@ class DMA(Program):
     """
     Dynamic Mechanical Analysis
 
+    ### Constructor
     Args:
-        device (PiezoRoboticsDevice): PiezoRobotics Device object
-        parameters (dict, optional): dictionary of measurement parameters. Defaults to {}.
+        `device` (Device): device object
+        `parameters` (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+
+    ### Attributes
+    - `data_df` (pd.DataFrame): data collected from device when running the program
+    - `device` (Device): device object
+    - `parameters` (dict[str, ...]): parameters
+    - `verbose` (bool): verbosity of class
+    
+    ### Methods
+    - `run`: run the measurement program
     
     ==========
-    Parameters:
+    
+    ### Parameters:
         low_frequency (float): lower frequency limit to test
         high_frequency (float): upper frequency limit to test
         sample_thickness (float): thickness of measured sample. Defaults to 1E-3.
         pause (bool): whether to pause for loading samples. Defaults to True.
     """
+    
     def __init__(self, 
         device: Device, 
         parameters: Optional[dict] = None,
         verbose: bool = False, 
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            device (Device): device object
+            parameters (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         super().__init__(device=device, parameters=parameters, verbose=verbose, **kwargs)
         return
     
     def run(self):
-        """
-        Run the measurement program
-        """
+        """Run the measurement program"""
         device = self.device
         repeat = self.parameters.get('repeat', 1)
         device.toggleClamp(False)

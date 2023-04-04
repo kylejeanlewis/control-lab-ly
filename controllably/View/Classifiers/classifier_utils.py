@@ -1,11 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/1 13:20:00
-@author: Chang Jie
 
-Notes / actionables:
-- validation on copper 
-- rewrite the operation modes as programs, instead of subclasses
 """
 # Standard library imports
 from abc import ABC, abstractmethod
@@ -19,8 +14,17 @@ print(f"Import: OK <{__name__}>")
 
 class Classifier(ABC):
     """
-    Classifier object
+    Abstract Base Class (ABC) for Classifier objects (i.e. models that can detect image targets).
+    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
+    
+    ### Attributes
+    - `classifier` (Callable): image classifier model
+    
+    ### Methods
+    #### Abstract
+    - `detect`: detect image targets
     """
+    
     def __init__(self):
         """Instantiate the class"""
         self.classifier = None
@@ -29,7 +33,7 @@ class Classifier(ABC):
     @abstractmethod
     def detect(self, image:Image, scale:int, neighbors:int) -> dict:
         """
-        Detect targets
+        Detect image targets
 
         Args:
             image (Image): image to detect from
@@ -39,9 +43,21 @@ class Classifier(ABC):
         Returns:
             dict: dictionary of detected targets
         """
-        return
 
 class CascadeClassifier(Classifier):
+    """
+    Abstract Base Class (ABC) for Classifier objects (i.e. models that can detect image targets).
+    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
+    
+    ### Constructor
+    Args:
+        `xml_path` (str): filepath of trained cascade xml file
+    
+    ### Methods
+    #### Abstract
+    - `detect`: detect image targets
+    """
+    
     def __init__(self, xml_path:str):
         """
         Cascade classifier object
@@ -54,7 +70,7 @@ class CascadeClassifier(Classifier):
     
     def detect(self, image:Image, scale:int, neighbors:int) -> dict:
         """
-        Detect targets
+        Detect image targets
 
         Args:
             image (Image): image to detect from

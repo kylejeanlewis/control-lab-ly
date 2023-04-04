@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/02 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
--
 """
 # Standard library imports
 from collections import namedtuple
@@ -23,6 +19,9 @@ def named_tuple_from_dict(func:Callable) -> Callable:
 
     Args:
         func (Callable): function to be wrapped
+        
+    Returns:
+        Callable: wrapped function
     """
     @wraps(func)
     def wrapper(*args, **kwargs) -> tuple:
@@ -43,10 +42,22 @@ def safety_measures(mode:Optional[str] = None, countdown:int = 3) -> Callable:
     Wrapper for creating safe move functions
 
     Args:
-        func (Callable): function to be wrapped
-        mode (str, optional): mode for implementing safety measure. Defaults to None.
+        mode (Optional[str], optional): mode for implementing safety measure. Defaults to None.
+        countdown (int, optional): time delay before executing action. Defaults to 3.
+        
+    Returns:
+        Callable: wrapped function
     """
     def inner(func:Callable) -> Callable:
+        """
+        Inner wrapper for creating safe move functions
+
+        Args:
+            func (Callable): function to be wrapped
+
+        Returns:
+            Callable: wrapped function
+        """
         @wraps(func)
         def wrapper(*args, **kwargs) -> Callable:
             str_method = repr(func).split(' ')[1]

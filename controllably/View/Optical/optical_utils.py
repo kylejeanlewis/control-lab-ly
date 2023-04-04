@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/1 13:20:00
-@author: Chang Jie
 
-Notes / actionables:
-- 
 """
 # Standard library imports
 from __future__ import annotations
@@ -19,14 +15,22 @@ print(f"Import: OK <{__name__}>")
 
 class Optical(Camera):
     """
-    Optical camera object
+    Optical provides methods for controlling a optical web camera
 
+    ### Constructor
     Args:
-        cam_index (int, optional): address of camera. Defaults to 0.
-        calibration_unit (int, optional): calibration of pixels to mm. Defaults to 1.
-        cam_size (tuple, optional): width and height of image. Defaults to (640,480).
-        rotation (int, optional): rotation of camera feed. Defaults to 0.
+        `cam_index` (int, optional): camera index. Defaults to 0.
+        `calibration_unit` (float, optional): calibration from pixels to mm. Defaults to 1.
+        `cam_size` (tuple[int], optional): (width, height) of camera output. Defaults to (640,480).
+    
+    ### Properties
+    - `cam_index` (int): camera index
+    
+    ### Methods
+    - `disconnect`: disconnect from camera
+    - `setResolution`: set the resolution of camera feed
     """
+    
     _package = __name__
     _placeholder_filename = 'placeholders/optical_camera.png'
     def __init__(self, 
@@ -35,6 +39,14 @@ class Optical(Camera):
         cam_size: tuple[int] = (640,480), 
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            cam_index (int, optional): camera index. Defaults to 0.
+            calibration_unit (float, optional): calibration from pixels to mm. Defaults to 1.
+            cam_size (tuple[int], optional): (width, height) of camera output. Defaults to (640,480).
+        """
         super().__init__(calibration_unit=calibration_unit, cam_size=cam_size, **kwargs)
         self._connect(cam_index)
         return
@@ -45,9 +57,7 @@ class Optical(Camera):
         return self.connection_details.get('cam_index', '')
     
     def disconnect(self):
-        """
-        Release the camera feed
-        """
+        """Disconnect from camera"""
         try:
             self.feed.release()
         except AttributeError:
@@ -57,10 +67,10 @@ class Optical(Camera):
     
     def setResolution(self, size:tuple[int] = (10000,10000)):
         """
-        Set resolution of camera feed
+        Set the resolution of camera feed
 
         Args:
-            size (tuple, optional): width and height of feed in pixels. Defaults to (10000,10000).
+            size (tuple[int], optional): width and height of feed in pixels. Defaults to (10000,10000).
         """
         self.feed.set(cv2.CAP_PROP_FRAME_WIDTH, size[0])
         self.feed.set(cv2.CAP_PROP_FRAME_HEIGHT, size[1])
@@ -69,10 +79,10 @@ class Optical(Camera):
     # Protected method(s)
     def _connect(self, cam_index:int = 0, **kwargs):
         """
-        Connect to the imaging device
+        Connection procedure for tool
         
         Args:
-            cam_index (int, optional): address of camera. Defaults to 0.
+            cam_index (int, optional): camera index. Defaults to 0.
         """
         self.connection_details['cam_index'] = cam_index
         self.feed = cv2.VideoCapture(cam_index, cv2.CAP_DSHOW)
@@ -82,10 +92,10 @@ class Optical(Camera):
     
     def _read(self) -> tuple[bool, np.ndarray]:
         """
-        Read camera feed
+        Read camera feed to retrieve image
 
         Returns:
-            bool, array: True if frame is obtained; array of frame
+            tuple[bool, np.ndarray]: (whether frame is obtained, frame array)
         """
         return self.feed.read()
     

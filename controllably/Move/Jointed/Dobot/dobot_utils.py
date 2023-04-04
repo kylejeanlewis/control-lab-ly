@@ -30,25 +30,50 @@ class DobotAttachment(Protocol):
 
 class Dobot(RobotArm):
     """
-    Dobot class.
+    Abstract Base Class (ABC) for Dobot objects. Dobot provides controls for articulated robots from Dobot.
+    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
     
+    ### Constructor
     Args:
-        ip_address (str): IP address of arm
-        attachment (str, optional): Dobot attachment. Defaults to None.
+        `ip_address` (str): IP address of Dobot
+        `attachment_name` (str, optional): name of attachment. Defaults to None.
 
-    Kwargs:
-        home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,0,0).
-        home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
-        orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
-        translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to (0,0,0).
-        implement_offset (tuple, optional): implement offset vector pointing from end of effector to tool tip. Defaults to (0,0,0).
-        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
-        verbose (bool, optional): whether to print outputs. Defaults to False.
-        safe_height (float, optional): safe height. Defaults to None.
+    ### Attributes
+    - `attachment` (DobotAttachment): attached Dobot tool
+    
+    ### Properties
+    - `dashboard` (dobot_api_dashboard): connection to status and signal control
+    - `feedback` (dobot_api_feedback): connection to movement controls
+    - `ip_address` (str): IP address of Dobot
+    
+    ### Methods
+    #### Abstract
+    - `isFeasible`: checks and returns whether the target coordinate is feasible
+    #### Public
+    - `calibrate`: calibrate the internal and external coordinate systems, then verify points
+    - `disconnect`: disconnect from device
+    - `getConfigSettings`: retrieve the robot's configuration
+    - `moveCoordBy`: relative Cartesian movement and tool orientation, using robot coordinates
+    - `moveCoordTo`: absolute Cartesian movement and tool orientation, using robot coordinates
+    - `moveJointBy`: relative joint movement
+    - `moveJointTo`: absolute joint movement
+    - `reset`: reset the robot
+    - `setSpeed`: set the speed of the robot
+    - `shutdown`: shutdown procedure for tool
+    - `toggleAttachment`: couple or remove Dobot attachment that interfaces with Dobot's digital output
+    - `toggleCalibration`: enter or exit calibration mode, with a sharp point implement for alignment
     """
+    
     possible_attachments = ['TwoJawGrip', 'VacuumGrip']     ### FIXME: hard-coded
     max_actions = 5                                         ### FIXME: hard-coded
     def __init__(self, ip_address:str, attachment_name:str = None, **kwargs):
+        """
+        Instantiate the class
+
+        Args:
+            ip_address (str): IP address of Dobot
+            attachment_name (str, optional): name of attachment. Defaults to None.
+        """
         super().__init__(**kwargs)
         self.attachment = None
         self._speed_max = 100
@@ -79,13 +104,13 @@ class Dobot(RobotArm):
         internal_pt2:np.ndarray
     ):
         """
-        Calibrate internal and external coordinate systems, then verify points.
+        Calibrate the internal and external coordinate systems, then verify points.
 
         Args:
-            external_pt1 (numpy.ndarray): x,y,z coordinates of physical point 1
-            internal_pt1 (numpy.ndarray): x,y,z coordinates of robot point 1
-            external_pt2 (numpy.ndarray): x,y,z coordinates of physical point 2
-            internal_pt2 (numpy.ndarray): x,y,z coordinates of robot point 2
+            external_pt1 (np.ndarray): x,y,z coordinates of physical point 1
+            internal_pt1 (np.ndarray): x,y,z coordinates of robot point 1
+            external_pt2 (np.ndarray): x,y,z coordinates of physical point 2
+            internal_pt2 (np.ndarray): x,y,z coordinates of robot point 2
         """
         super().calibrate(external_pt1, internal_pt1, external_pt2, internal_pt2)
 
@@ -98,12 +123,7 @@ class Dobot(RobotArm):
         return
     
     def disconnect(self):
-        """
-        Disconnect serial connection to robot
-        
-        Returns:
-            None: None is successfully disconnected, else dict
-        """
+        """Disconnect from device"""
         self.reset()
         try:
             self.dashboard.close()
@@ -116,10 +136,13 @@ class Dobot(RobotArm):
     
     def getConfigSettings(self, attributes:Optional[list[str]] = None) -> dict:
         """
-        Read the robot configuration settings
+        Retrieve the robot's configuration
+        
+        Args:
+            attributes (list[str]): list of attributes to retrieve values from
         
         Returns:
-            dict: dictionary of robot class and settings
+            dict: dictionary of robot class and configuration
         """
         attributes = [
             "ip_address", 
@@ -138,11 +161,14 @@ class Dobot(RobotArm):
         angles: tuple[float] = (0,0,0)
     ) -> bool:
         """
-        Relative Cartesian movement and tool orientation, using robot coordinates.
+        Relative Cartesian movement and tool orientation, using robot coordinates
 
         Args:
-            vector (tuple, optional): x,y,z displacement vector. Defaults to None.
-            angles (tuple, optional): a,b,c rotation angles in degrees. Defaults to None.
+            vector (tuple[float], optional): x,y,z displacement vector. Defaults to (0,0,0).
+            angles (tuple[float], optional): a,b,c rotation angles in degrees. Defaults to (0,0,0).
+
+        Returns:
+            bool: whether movement is successful
         """
         vector = tuple(vector)
         angles = tuple(angles)
@@ -167,12 +193,14 @@ class Dobot(RobotArm):
         orientation: Optional[tuple[float]] = None
     ) -> bool:
         """
-        Absolute Cartesian movement and tool orientation, using robot coordinates.
+        Absolute Cartesian movement and tool orientation, using robot coordinates
 
         Args:
-            coordinates (tuple): x,y,z position vector. Defaults to None.
-            orientation (tuple, optional): a,b,c orientation angles in degrees. Defaults to None.
-            tool_offset (bool, optional): whether to consider implement offset. Defaults to True.
+            coordinates (Optional[tuple[float]], optional): x,y,z position vector. Defaults to None.
+            orientation (Optional[tuple[float]], optional): a,b,c orientation angles in degrees. Defaults to None.
+        
+        Returns:
+            bool: whether movement is successful
         """
         coordinates = self.coordinates if coordinates is None else coordinates
         orientation = self.orientation if orientation is None else orientation
@@ -207,10 +235,13 @@ class Dobot(RobotArm):
         Relative joint movement
 
         Args:
-            relative_angles (tuple): j1~j6 rotation angles in degrees
-            
+            relative_angles (tuple[float]): j1~j6 rotation angles in degrees
+
         Raises:
-            Exception: Input has to be length 6
+            ValueError: Length of input needs to be 6.
+
+        Returns:
+            bool: whether movement is successful
         """
         if len(relative_angles) != 6:
             raise ValueError('Length of input needs to be 6.')
@@ -234,10 +265,13 @@ class Dobot(RobotArm):
         Absolute joint movement
 
         Args:
-            absolute_angles (tuple): j1~j6 orientation angles in degrees
-        
+            absolute_angles (tuple[float]): j1~j6 orientation angles in degrees
+
         Raises:
-            Exception: Input has to be length 6
+            ValueError: Length of input needs to be 6.
+
+        Returns:
+            bool: whether movement is successful
         """
         if len(absolute_angles) != 6:
             raise ValueError('Length of input needs to be 6.')
@@ -256,9 +290,7 @@ class Dobot(RobotArm):
         return True
 
     def reset(self):
-        """
-        Clear any errors and enable robot
-        """
+        """Reset the robot"""
         try:
             self.dashboard.ClearError()
             self.dashboard.EnableRobot()
@@ -281,7 +313,7 @@ class Dobot(RobotArm):
     
     def setSpeed(self, speed:float) -> tuple[bool, float]:
         """
-        Setting the Global speed rate.
+        Set the speed of the robot
 
         Args:
             speed (int): rate value (value range: 1~100)
@@ -289,7 +321,7 @@ class Dobot(RobotArm):
         speed_fraction = speed/self._speed_max
         if speed_fraction == self._speed_fraction:
             return False, self.speed
-        prevailing_speed = self.speed.copy()
+        prevailing_speed = self.speed
         try:
             self.dashboard.SpeedFactor(int(max(1, speed_fraction*100)))
         except (AttributeError, OSError):
@@ -300,17 +332,17 @@ class Dobot(RobotArm):
         return True, prevailing_speed
     
     def shutdown(self):
-        """Halt robot and close connections."""
+        """Shutdown procedure for tool"""
         self._freeze()
         return super().shutdown()
     
     def toggleAttachment(self, on:bool, attachment_class:Optional[DobotAttachment] = None):
         """
-        Add an attachment that interfaces with the Dobot's Digital Output (DO)
+        Couple or remove Dobot attachment that interfaces with Dobot's digital output
 
         Args:
-            on (bool): whether to add attachment, False if removing attachment
-            attachment_class (any, optional): attachment to load. Defaults to None.
+            on (bool): whether to couple Dobot attachment
+            attachment_class (Optional[DobotAttachment], optional): Dobot attachment to couple. Defaults to None.
         """
         if on: # Add attachment
             print("Please secure tool attachment.")
@@ -325,11 +357,11 @@ class Dobot(RobotArm):
     
     def toggleCalibration(self, on:bool, tip_length:float):
         """
-        Enter into calibration mode, with a sharp point implement for alignment.
+        Enter or exit calibration mode, with a sharp point implement for alignment
 
         Args:
             on (bool): whether to set to calibration mode
-            tip_length (int, optional): length of sharp point alignment implement. Defaults to 21.
+            tip_length (int, optional): length of sharp point alignment implement
         """
         if on: # Enter calibration mode
             input(f"Please swap to calibration tip.")
@@ -344,14 +376,11 @@ class Dobot(RobotArm):
     # Protected method(s)
     def _connect(self, ip_address:str, timeout:int = 10):
         """
-        Connect to robot hardware
+        Connection procedure for tool
 
         Args:
             ip_address (str): IP address of robot
-            timeout (int, optional): duration to wait before timeout
-            
-        Returns:
-            dict: dictionary of dashboard and feedback objects
+            timeout (int, optional): duration to wait before timeout. Defaults to 10.
         """
         self.connection_details = {
             'ip_address': ip_address,
@@ -380,9 +409,7 @@ class Dobot(RobotArm):
         return
 
     def _freeze(self):
-        """
-        Halt and disable robot
-        """
+        """Halt and disable robot"""
         try:
             self.dashboard.ResetRobot()
             self.dashboard.DisableRobot()

@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2023/01/05 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
--
 """
 # Standard library imports
 from __future__ import annotations
@@ -20,21 +16,46 @@ class Device(Protocol):
 
 @dataclass
 class ProgramDetails:
+    """
+    ProgramDetails dataclass represents the set of inputs, default values, truncated docstring and tooltip of a program class
+    
+    ### Constructor
+    Args:
+        `inputs` (list[str]): list of input field names
+        `defaults` (dict[str, Any]): dictionary of kwargs and default values
+        `short_doc` (str): truncated docstring of the program
+        `tooltip` (str): descriptions of input fields
+    """
+    
     inputs: list[str] = field(default_factory=lambda: [])
     defaults: dict[str, Any] = field(default_factory=lambda: {})
     short_doc: str = ''
     tooltip: str = ''
 
+
 class Program(ABC):
     """
     Base Program template
 
+    ### Constructor
     Args:
-        device (PiezoRoboticsDevice): PiezoRobotics Device object
-        parameters (dict, optional): dictionary of measurement parameters. Defaults to {}.
+        `device` (Device): device object
+        `parameters` (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+
+    ### Attributes
+    - `data_df` (pd.DataFrame): data collected from device when running the program
+    - `device` (Device): device object
+    - `parameters` (dict[str, ...]): parameters
+    - `verbose` (bool): verbosity of class
+    
+    ### Methods
+    #### Abstract
+    - `run`: run the measurement program
     
     ==========
-    Parameters:
+    
+    ### Parameters:
         None
     """
     details: ProgramDetails = ProgramDetails()
@@ -44,6 +65,14 @@ class Program(ABC):
         verbose: bool = False, 
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            device (Device): device object
+            parameters (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         self.device = device
         self.data_df = pd.DataFrame()
         self.parameters = parameters
@@ -52,9 +81,9 @@ class Program(ABC):
     
     @abstractmethod
     def run(self, *args, **kwargs):
-        """
-        Run the measurement program
-        """
+        """Run the measurement program"""
+
+
 def get_program_details(program_class: Callable, verbose:bool = False) -> ProgramDetails:
     """
     Get the input fields and defaults

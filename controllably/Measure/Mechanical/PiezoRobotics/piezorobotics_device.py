@@ -1,12 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Adapted from DMA code by @pablo
 
-Created: Tue 2023/01/03 17:13:35
-@author: Chang Jie
-
-Notes / actionables:
--
 """
 # Standard library imports
 from __future__ import annotations
@@ -23,16 +17,35 @@ from ...instrument_utils import Instrument
 from .piezorobotics_lib import CommandCode, ErrorCode, FrequencyCode, Frequency
 print(f"Import: OK <{__name__}>")
 
-FREQUENCIES = np.array([frequency.value for frequency in FrequencyCode])
+FREQUENCIES = tuple([frequency.value for frequency in FrequencyCode])
+"""Tuple of available frequency values"""
 
 class PiezoRoboticsDevice(Instrument):
     """
-    PiezoRoboticsDevice object
+    PiezoRoboticsDevice provides methods to interface with the characterisation device from PiezoRobotics
 
+    ### Constructor
     Args:
-        port (str): com port address
-        channel (int, optional): assigned device channel. Defaults to 1.
+        `port` (str): COM port address
+        `channel` (int, optional): channel id. Defaults to 1.
+        
+    ### Attributes
+    - `channel` (int): channel id
+    
+    ### Properties
+    - `frequency` (Frequency): lower and upper frequency range limit
+    
+    ### Methods
+    - `disconnect`: disconnect from device
+    - `initialise`: initialise the device with the desired frequency range
+    - `readAll`: read all the data on device buffer
+    - `reset`: reset the device
+    - `run`: start the measurement
+    - `setFrequency`: frequency range to measure
+    - `shutdown`: shutdown procedure for tool
+    - `toggleClamp`: close or open the clamp
     """
+    
     _default_flags = {
         'busy': False,
         'connected': False,
@@ -41,11 +54,20 @@ class PiezoRoboticsDevice(Instrument):
         'read': False
     }
     def __init__(self, port:str, channel:int = 1, **kwargs):
+        """
+        Instantiate the class
+
+        Args:
+            port (str): COM port address
+            channel (int, optional): channel id. Defaults to 1.
+        """
+        super().__init__(**kwargs)
         self.channel = channel
         self._frequency = Frequency()
         self._connect(port)
         pass
     
+    # Properties
     @property
     def frequency(self) -> Frequency:
         return self._frequency
@@ -55,14 +77,17 @@ class PiezoRoboticsDevice(Instrument):
         Set the operating frequency range
 
         Args:
-            frequencies (iterable): frequency lower and upper limits
-                low_frequency (float): lower frequency limit
-                high_frequency (float): upper frequency limit
+            value (tuple[float]): frequency lower and upper limits
         """
-        self._frequency = self.range_finder(frequencies=value)
+        self._frequency = self._range_finder(frequencies=value)
         return
     
+    @property
+    def port(self) -> str:
+        return self.connection_details.get('port', '')
+    
     def disconnect(self):
+        """Disconnect from device"""
         try:
             self.device.close()
         except Exception as e:
@@ -72,11 +97,18 @@ class PiezoRoboticsDevice(Instrument):
         return
     
     def initialise(self, low_frequency:Optional[float] = None, high_frequency:Optional[float] = None):
+        """
+        Initialise the device with the desired frequency range
+
+        Args:
+            low_frequency (Optional[float], optional): lowest desired frequency. Defaults to None.
+            high_frequency (Optional[float], optional): highest desired frequency. Defaults to None.
+        """
         if not all((low_frequency, high_frequency)):
             low_frequency, high_frequency = FREQUENCIES[0], FREQUENCIES[-1]
         if self.flags['initialised']:
             return
-        frequency = self.range_finder(low_frequency, high_frequency)
+        frequency = self._range_finder(low_frequency, high_frequency)
         if frequency == self.frequency:
             print('Appropriate frequency range remains the same!')
         else:
@@ -88,29 +120,9 @@ class PiezoRoboticsDevice(Instrument):
         print(self.frequency)
         return
 
-    @staticmethod
-    def range_finder(frequency_1:float, frequency_2:float) -> Frequency:
-        """
-        Find the appropriate the operating frequency range
-
-        Args:
-            frequencies (iterable): frequency lower and upper limits
-                low_frequency (float): lower frequency limit
-                high_frequency (float): upper frequency limit
-        """
-        low_frequency, high_frequency = sorted((frequency_1, frequency_2))
-        lower = FREQUENCIES[FREQUENCIES < low_frequency]
-        higher = FREQUENCIES[FREQUENCIES > high_frequency]
-        low = lower[-1] if len(lower) else FREQUENCIES[0]
-        high = higher[0] if len(higher) else FREQUENCIES[-1]
-        return Frequency(low, high)
-
     def readAll(self, **kwargs) -> pd.DataFrame:
         """
-        Read all data on buffer
-
-        Args:
-            fields (list, optional): fields of interest. Defaults to [].
+        Read all data on device buffer
             
         Returns:
             pd.DataFrame: dataframe of measurements
@@ -120,37 +132,41 @@ class PiezoRoboticsDevice(Instrument):
         return df
     
     def reset(self) -> str:
-        """
-        Clear settings from device. Reset the program, data, and flags
-        """
+        """Reset the device"""
         self._frequency = Frequency()
         self.resetFlags()
         return self._query('CLR,0')
     
     def run(self, sample_thickness:float = 1E-6) -> Optional[str]:
-        """
-        Initialise the measurement
-        """
+        """Start the measurement"""
         if not self.flags['initialised']:
             self.initialise()
         return self._query(f"RUN,{sample_thickness}")
     
     def setFrequency(self, low_frequency:float = None, high_frequency:float = None):
+        """
+        Set the frequency range to measure
+
+        Args:
+            low_frequency (Optional[float], optional): lowest desired frequency. Defaults to None.
+            high_frequency (Optional[float], optional): highest desired frequency. Defaults to None.
+        """
         return self.initialise(low_frequency=low_frequency, high_frequency=high_frequency)
     
     def shutdown(self):
-        """
-        Close serial connection and shutdown
-        """
+        """Shutdown procedure for tool"""
         self.toggleClamp(False)
         return super().shutdown()
     
     def toggleClamp(self, on:bool = False) -> str:
         """
-        Toggle between clamp and release state
+        Close or open the clamp
 
         Args:
             on (bool, optional): whether to clamp down on sample. Defaults to False.
+            
+        Returns:
+            str: response string
         """
         option = -1 if on else 1
         return self._query(f'CLAMP,{option}')
@@ -158,15 +174,12 @@ class PiezoRoboticsDevice(Instrument):
     # Protected method(s)
     def _connect(self, port:str, baudrate:int = 115200, timeout:int = 1):
         """
-        Connect to machine control unit
+        Connection procedure for tool
 
         Args:
-            port (str): com port address
+            port (str): COM port address
             baudrate (int): baudrate. Defaults to 115200.
             timeout (int, optional): timeout in seconds. Defaults to None.
-            
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
         """
         self.connection_details = {
             'port': port,
@@ -188,14 +201,14 @@ class PiezoRoboticsDevice(Instrument):
     
     def _query(self, command:str, timeout_s:int = 60) -> Union[str, tuple[str]]:
         """
-        Send query and wait for response
+        Write command to and read response from device
 
         Args:
             command (str): command string
-            timeout_s (int, optional): duration to wait before timeout. If None, no timeout duration. Defaults to 60.
+            timeout_s (float, optional): duration to wait before timeout. Defaults to 60.
 
-        Yields:
-            str: response string
+        Returns:
+            Union[str, tuple[str]]: response string, or list of response strings
         """
         command_code = command.split(',')[0].strip().upper()
         if command_code not in CommandCode._member_names_:
@@ -217,6 +230,26 @@ class PiezoRoboticsDevice(Instrument):
         if command_code == 'GET':
             return tuple(cache)
         return response
+    
+    @staticmethod
+    def _range_finder(frequency_1:float, frequency_2:float) -> Frequency:
+        """
+        Find the appropriate the operating frequency range
+
+        Args:
+            frequency_1 (float): lower frequency limit
+            frequency_2 (float): upper frequency limit
+            
+        Returns:
+            Frequency: optimal frequency range that covers desired values
+        """
+        frequencies = np.array(FREQUENCIES)
+        low_frequency, high_frequency = sorted((frequency_1, frequency_2))
+        lower = frequencies[frequencies < low_frequency]
+        higher = frequencies[frequencies > high_frequency]
+        low = lower[-1] if len(lower) else frequencies[0]
+        high = higher[0] if len(higher) else frequencies[-1]
+        return Frequency(low, high)
     
     def _read(self) -> str:
         """
@@ -243,16 +276,13 @@ class PiezoRoboticsDevice(Instrument):
     
     def _write(self, command:str) -> bool:
         """
-        Sends command to device
+        Write command to device
 
         Args:
             command (str): <command code>,<option 1>[,<option 2>]
-
-        Raises:
-            Exception: Select a valid command code.
         
         Returns:
-            str: two-character command code
+            bool: whether command was sent successfully
         """
         if self.verbose:
             print(command)

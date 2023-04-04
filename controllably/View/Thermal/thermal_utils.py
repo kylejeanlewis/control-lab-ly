@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/1 13:20:00
-@author: Chang Jie
 
-Notes / actionables:
-- 
 """
 # Standard library imports
 from __future__ import annotations
@@ -19,11 +15,18 @@ class Thermal(Camera):
     """
     Thermal camera object
 
+    ### Constructor
     Args:
-        ip_address (str): IP address of thermal camera
-        calibration_unit (int, optional): calibration of pixels to mm. Defaults to 1.
-        cam_size (tuple, optional): width and height of image. Defaults to (640,480).
-        rotation (int, optional): rotation of camera feed. Defaults to 0.
+        `ip_address` (str): IP address of thermal camera
+        `calibration_unit` (float, optional): calibration from pixels to mm. Defaults to 1.
+        `cam_size` (tuple[int], optional): (width, height) of camera output. Defaults to (640,480).
+        `rotation` (int, optional): rotation angle for camera feed. Defaults to 180.
+    
+    ### Properties
+    - `ip_address` (str): IP address of thermal camera
+    
+    ### Methods
+    - `disconnect`: disconnect from camera
     """
     _package = __name__
     _placeholder_filename = 'placeholders/infrared_camera.png'
@@ -34,6 +37,15 @@ class Thermal(Camera):
         rotation:int = 180, 
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            ip_address (str): IP address of thermal camera
+            calibration_unit (float, optional): calibration from pixels to mm. Defaults to 1.
+            cam_size (tuple[int], optional): (width, height) of camera output. Defaults to (640,480).
+            rotation (int, optional): rotation angle for camera feed. Defaults to 180.
+        """
         super().__init__(calibration_unit=calibration_unit, cam_size=cam_size, rotation=rotation, **kwargs)
         self._connect(ip_address)
         return
@@ -44,9 +56,7 @@ class Thermal(Camera):
         return self.connection_details.get('ip_address', '')
 
     def disconnect(self):
-        """
-        Release the camera feed
-        """
+        """Disconnect from camera"""
         try:
             self.feed.stop()
             self.feed.stream.release()
@@ -58,7 +68,10 @@ class Thermal(Camera):
     # Protected method(s)
     def _connect(self, ip_address:str, **kwargs):
         """
-        Connect to the imaging device
+        Connection procedure for tool
+        
+        Args:
+            ip_address (str): IP address of thermal camera
         """
         self.connection_details['ip_address'] = ip_address
         self.device = Ax8ThermalCamera(ip_address, verbose=True)
@@ -70,10 +83,10 @@ class Thermal(Camera):
     
     def _read(self) -> tuple[bool, np.ndarray]:
         """
-        Read camera feed
+        Read camera feed to retrieve image
 
         Returns:
-            bool, array: True if frame is obtained; array of frame
+            tuple[bool, np.ndarray]: (whether frame is obtained, frame array)
         """
         return True, self.feed.read()
     

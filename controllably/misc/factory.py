@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/02 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
--
 """
 # Standard library imports
 from dataclasses import dataclass, field
@@ -25,11 +21,20 @@ print(f"Import: OK <{__name__}>")
 HOME_PACKAGE = ('controllably','lab')
 
 class DottableDict(dict):
+    """DottableDict provides a way to use dot notation on dictionaries"""
+    
     def __init__(self, *args, **kwargs):
+        """Instantiate the class"""
         dict.__init__(self, *args, **kwargs)
         self.__dict__ = self
         
     def allowDotting(self, state:bool = True):
+        """
+        Turn on or off the dot notation feature
+
+        Args:
+            state (bool, optional): whether to turn on dot notation feature. Defaults to True.
+        """
         if state:
             self.__dict__ = self
         else:
@@ -37,19 +42,50 @@ class DottableDict(dict):
 
 @dataclass
 class ModuleDirectory:
-    _modules: DottableDict = field(default_factory=DottableDict)
+    """
+    ModuleDirectory represents the entire collection of imported modules into `controllably`
+    
+    ### Properties
+    - `at`: dictionary structure of imported Classes
+    
+    ### Methods
+    - `get_class`: get Class object from collection
+    - `get_parent`: get parent dictionary of target Class
+    """
+    
+    _modules: DottableDict = field(default_factory=DottableDict, init=False)
+    
     def __repr__(self) -> str:
         return pprint.pformat(self._modules)
+    
     @property
     def at(self):
         return self._modules
     
     def get_class(self, dot_notation:str) -> Callable:
+        """
+        Get Class object from collection
+
+        Args:
+            dot_notation (str): dot notation of target Class
+
+        Returns:
+            Callable: Class object
+        """
         name = dot_notation.split('.')[-1]
         temp = self.get_parent(dot_notation=dot_notation)
         return temp.get(name)
     
     def get_parent(self, dot_notation:str) -> DottableDict:
+        """
+        Get parent dictionary of target Class
+
+        Args:
+            dot_notation (str): dot notation of target Class
+
+        Returns:
+            DottableDict: parent dictionary of target Class
+        """
         keys = dot_notation.split('.')
         keys = keys[:-1]
         temp = self._modules
@@ -67,11 +103,10 @@ def get_class(dot_notation:str) -> Callable:
     Retrieve the relevant class from the sub-package
 
     Args:
-        module (str): sub-package name
-        dot_notation (str): dot notation of class / module / package
+        dot_notation (str): dot notation of Class object
 
     Returns:
-        class: relevant class
+        Callable: target Class
     """
     print('\n')
     top_package = __name__.split('.')[0]
@@ -86,7 +121,7 @@ def get_details(configs:dict, addresses:Optional[dict] = None) -> dict:
 
     Args:
         configs (dict): dictionary of configuration details
-        addresses (dict, optional): dictionary of registered addresses. Defaults to {}.
+        addresses (Optional[dict], optional): dictionary of registered addresses. Defaults to None.
 
     Returns:
         dict: dictionary of configuration details
@@ -134,8 +169,8 @@ def get_plans(config_file:str, registry_file:Optional[str] = None, package:Optio
 
     Args:
         config_file (str): filename of configuration file
-        registry_file (str, optional): filename of registry file. Defaults to None.
-        package (str, optional): name of package to look in. Defaults to None.
+        registry_file (Optional[str], optional): filename of registry file. Defaults to None.
+        package (Optional[str], optional): name of package to look in. Defaults to None.
 
     Returns:
         dict: dictionary of configuration parameters
@@ -151,6 +186,14 @@ def include_this_module(
     module_name: Optional[str] = None, 
     get_local_only: bool = True
 ):
+    """
+    Include the module py file that this function is called from
+
+    Args:
+        where (Optional[str], optional): location within structure to include module. Defaults to None.
+        module_name (Optional[str], optional): dot notation name of module. Defaults to None.
+        get_local_only (bool, optional): whether to only include objects defined in caller py file. Defaults to True.
+    """
     if module_name is None:
         frm = inspect.stack()[1]
         mod = inspect.getmodule(frm[0])
@@ -194,6 +237,13 @@ def load_components(config:dict) -> dict:
     return components
 
 def register(new_object:Callable, where:str):
+    """
+    Register the object into target location within structure
+
+    Args:
+        new_object (Callable): new Callable object (Class or function) to be registered
+        where (str): location within structure to register the object in
+    """
     keys = where.split('.')
     temp = modules._modules
     for key in keys:
@@ -212,6 +262,12 @@ def register(new_object:Callable, where:str):
     return
 
 def unregister(dot_notation:str):
+    """
+    Unregister an object from structure, using its dot notation reference
+
+    Args:
+        dot_notation (str): dot notation reference to target object
+    """
     keys = dot_notation.split('.')
     keys, name = keys[:-1], keys[-1]
     temp = modules._modules
@@ -223,6 +279,12 @@ def unregister(dot_notation:str):
     
     # Clean up empty dictionaries
     def remove_empty_dicts(d):
+        """
+        Purge empty dictionaries from nested dictionary
+
+        Args:
+            d (dict): dictionary to be purged
+        """
         for k, v in list(d.items()):
             if isinstance(v, dict):
                 remove_empty_dicts(v)

@@ -1,34 +1,42 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2023/01/03 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
--
 """
-# Standard library imports
-
 # Local application imports
 from __future__ import annotations
 from ...measure_utils import Programmable
-# from ..mechanical_utils import Mechanical
 from .piezorobotics_device import PiezoRoboticsDevice
 from . import programs
 print(f"Import: OK <{__name__}>")
         
 class PiezoRobotics(Programmable):
     """
-    PiezoRobotics object
+    PiezoRobotics provides methods to control the characterisation device from PiezoRobotics
 
+    ### Constructor
     Args:
-        port (str): com port address to device
-        channel (int, optional): assigned device serial number. Defaults to 1.
+        `port` (str): COM port address
+        `channel` (int, optional): channel id. Defaults to 1.
+        
+    ### Properties
+    - `port` (str): COM port address
+    
+    ### Methods
+    - `disconnect`: disconnect from device
     """
+    
     _default_program = programs.DMA
     model = 'piezorobotics_'
     available_programs: tuple[str] = tuple(programs.PROGRAM_NAMES)      # FIXME
     possible_inputs: tuple[str] = tuple(programs.INPUTS_SET)            # FIXME
     def __init__(self, port:str, channel=1, **kwargs):
+        """
+        Instantiate the class
+
+        Args:
+            port (str): COM port address
+            channel (int, optional): channel id. Defaults to 1.
+        """
         super().__init__(**kwargs)
         self._connect(port=port, channel=channel)
         return
@@ -39,20 +47,18 @@ class PiezoRobotics(Programmable):
         return self.connection_details.get('port', '')
     
     def disconnect(self):
+        """Disconnect from device"""
         self.device.close()
         return
 
     # Protected method(s)
     def _connect(self, port:str, channel:int = 1):
         """
-        Connect to device
+        Connection procedure for tool
 
         Args:
-            port (str): com port address
+            port (str): COM port address
             channel (int, optional): assigned device serial number. Defaults to 1.
-            
-        Returns:
-            PiezoRoboticsDevice: PiezoRoboticsDevice object
         """
         self.connection_details = {
             'port': port,

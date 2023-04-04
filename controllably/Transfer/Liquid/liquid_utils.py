@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/01 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
-- 
 """
 # Standard library imports
 from __future__ import annotations
@@ -18,18 +14,70 @@ PRE_FILL_CYCLES = 1
 
 @dataclass
 class Speed:
+    """
+    Speed dataclass represents a single aspirate-dispense speed pair
+    
+    ### Constructor
+    Args:
+        up (float): speed of upwards movement
+        down (float): speed of downwards movement
+    """
+    
     up: float
     down: float
 
 class LiquidHandler(ABC):
     """
-    Liquid handler class
-
+    Abstract Base Class (ABC) for Liquid Handler objects (i.e. tools that transfer liquids).
+    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
+    
+    ### Constructor
     Args:
-        **kwargs: catch-all for stray inputs
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+    
+    ### Attributes
+    - `capacity` (float): maximum amount of liquid that can be held
+    - `channel` (int): channel id
+    - `connection_details` (dict): dictionary of connection details (e.g. COM port / IP address)
+    - `device` (Callable): device object that communicates with physical tool
+    - `flags` (dict[str, bool]): keywords paired with boolean flags
+    - `reagent` (str): name of reagent held in liquid handler
+    - `speed` (Speed): up and down speeds of liquid handler
+    - `verbose` (bool): verbosity of class
+    
+    ### Properties
+    - `offset` (np.ndarray): liquid handler offset
+    - `volume` (float): volume held in liquid handler
+    
+    ### Methods
+    #### Abstract
+    - `aspirate`: aspirate desired volume of reagent
+    - `blowout`: blowout liquid from tip
+    - `dispense`: dispense desired volume of reagent
+    - `pullback`: pullback liquid from tip
+    - `_connect`: connection procedure for tool
+    #### Public
+    - `connect`: establish connection with device
+    - `cycle`: cycle between aspirate and dispense
+    - `disconnect`: disconnect from device
+    - `empty`: empty the channel
+    - `fill`: fill the channel
+    - `isBusy`: checks and returns whether the device is busy
+    - `isConnected`: checks and returns whether the device is connected
+    - `resetFlags`: reset all flags to class attribute `_default_flags`
+    - `rinse`: rinse the channel with aspirate and dispense cycles
+    - `setFlag`: set flags by using keyword arguments
+    - `shutdown`: shutdown procedure for tool
     """
+    
     _default_flags: dict[str, bool] = {'busy': False, 'connected': False}
     def __init__(self, verbose:bool = False, **kwargs):
+        """
+        Instantiate the class
+
+        Args:
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         self.capacity = 0
         self.channel = 0
         self.reagent = ''
@@ -58,15 +106,18 @@ class LiquidHandler(ABC):
         **kwargs
     ) -> bool:
         """
-        Aspirate desired volume of reagent into channel
+        Aspirate desired volume of reagent
 
         Args:
-            volume (int, or float): volume to be aspirated
-            speed (int, optional): speed to aspirate. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            reagent (str, optional): name of reagent. Defaults to ''.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            channel (int, optional): channel to aspirate. Defaults to None.
+            volume (float): target volume
+            speed (Optional[float], optional): speed to aspirate at. Defaults to None.
+            wait (int, optional): time delay after aspirate. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            reagent (Optional[str], optional): name of reagent. Defaults to None.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+
+        Returns:
+            bool: whether the action is successful
         """
     
     @abstractmethod
@@ -75,7 +126,10 @@ class LiquidHandler(ABC):
         Blowout liquid from tip
 
         Args:
-            channel (int, optional): channel to pullback. Defaults to None.
+            channel (Optional[Union[int, tuple[int]], optional): channel id. Defaults to None.
+            
+        Returns:
+            bool: whether the action is successful
         """
         return False
     
@@ -91,15 +145,19 @@ class LiquidHandler(ABC):
         **kwargs
     ) -> bool:
         """
-        Dispense desired volume of reagent from channel
+        Dispense desired volume of reagent
 
         Args:
-            volume (int, or float): volume to be dispensed
-            speed (int, optional): speed to dispense. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            force_dispense (bool, optional): whether to continue dispensing even if insufficient volume in channel. Defaults to False.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            channel (int, optional): channel to dispense. Defaults to None.
+            volume (float): target volume
+            speed (Optional[float], optional): speed to dispense at. Defaults to None.
+            wait (int, optional): time delay after dispense. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            blowout (bool, optional): whether perform blowout. Defaults to False.
+            force_dispense (bool, optional): whether to dispense reagent regardless. Defaults to False.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+
+        Returns:
+            bool: whether the action is successful
         """
 
     @abstractmethod
@@ -108,12 +166,16 @@ class LiquidHandler(ABC):
         Pullback liquid from tip
 
         Args:
-            channel (int, optional): channel to pullback. Defaults to None.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+            
+        Returns:
+            bool: whether the action is successful
         """
         return False
 
     @abstractmethod
     def _connect(self):
+        """Connection procedure for tool"""
         self.connection_details = {}
         self.device = None
         self.setFlag(connected=True)
@@ -139,12 +201,7 @@ class LiquidHandler(ABC):
         return
     
     def connect(self):
-        """
-        Reconnect to device using existing port and baudrate
-        
-        Returns:
-            `serial.Serial`: serial connection to machine control unit if connection is successful, else `None`
-        """
+        """Establish connection with device"""
         return self._connect(**self.connection_details)
     
     def cycle(self, 
@@ -157,15 +214,18 @@ class LiquidHandler(ABC):
         **kwargs
     ) -> bool:
         """
-        Cycle the channel with aspirate and dispense
+        Cycle between aspirate and dispense
 
         Args:
-            volume (int, or float): volume to be cycled
-            speed (int, optional): speed to cycle. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            reagent (str, optional): name of reagent. Defaults to ''.
-            cycles (int, optional): number of cycles to perform. Defaults to 1.
-            channel (int, optional): channel to cycle. Defaults to None.
+            volume (float): target volume
+            speed (Optional[float], optional): speed to aspirate and dispense at. Defaults to None.
+            wait (int, optional): time delay after each action. Defaults to 0.
+            cycles (int, optional): number of cycles. Defaults to 1.
+            reagent (Optional[str], optional): name of reagent. Defaults to None.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+
+        Returns:
+            bool: whether the action is successful
         """
         success = []
         for _ in range(cycles):
@@ -175,12 +235,7 @@ class LiquidHandler(ABC):
         return all(success)
     
     def disconnect(self):
-        """
-        Disconnect serial connection to robot
-        
-        Returns:
-            None: None is successfully disconnected, else serial.Serial
-        """
+        """Disconnect from device"""
         try:
             self.device.close()
         except Exception as e:
@@ -197,13 +252,16 @@ class LiquidHandler(ABC):
         **kwargs
     ) -> bool:
         """
-        Empty the channel of its contents
+        Empty the channel
 
         Args:
-            speed (int, optional): speed to empty. Defaults to None.
+            speed (Optional[float], optional): speed to empty. Defaults to None.
             wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            channel (int, optional): channel to empty. Defaults to None.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+            
+        Returns:
+            bool: whether the action is successful
         """
         ret1 = self.dispense(volume=self.capacity, speed=speed, wait=wait, pause=pause, force_dispense=True, channel=channel)
         ret2 = self.blowout(channel=channel)
@@ -219,15 +277,18 @@ class LiquidHandler(ABC):
         **kwargs
     ) -> bool:
         """
-        Fill the channel with reagent to its capacity
+        Fill the channel
 
         Args:
-            speed (int, optional): speed to fill. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            reagent (str, optional): name of reagent. Defaults to ''.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            cycles (bool, optional): whether to pre-wet the channel. Defaults to True.
-            channel (int, optional): channel to fill. Defaults to None.
+            speed (Optional[float], optional): speed to aspirate and dispense at. Defaults to None.
+            wait (int, optional): time delay after each action. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            cycles (int, optional): number of cycles. Defaults to 1.
+            reagent (Optional[str], optional): name of reagent. Defaults to None.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+        
+        Returns:
+            bool: whether the action is successful
         """
         ret1 = self.cycle(volume=self.capacity, speed=speed, wait=wait, cycles=cycles, reagent=reagent, channel=channel)
         ret2 = self.aspirate(volume=self.capacity, speed=speed, wait=wait, pause=pause, reagent=reagent, channel=channel)
@@ -236,25 +297,26 @@ class LiquidHandler(ABC):
     
     def isBusy(self) -> bool:
         """
-        Check whether the device is busy
+        Checks and returns whether the device is busy
         
         Returns:
-            `bool`: whether the device is busy
+            bool: whether the device is busy
         """
         return self.flags.get('busy', False)
     
     def isConnected(self) -> bool:
         """
-        Check whether the device is connected
+        Checks and returns whether the device is connected
 
         Returns:
-            `bool`: whether the device is connected
+            bool: whether the device is connected
         """
         if not self.flags.get('connected', False):
             print(f"{self.__class__} is not connected. Details: {self.connection_details}")
         return self.flags.get('connected', False)
 
     def resetFlags(self):
+        """Reset all flags to class attribute `_default_flags`"""
         self.flags = self._default_flags.copy()
         return
     
@@ -267,24 +329,24 @@ class LiquidHandler(ABC):
     ) -> bool:
         """
         Rinse the channel with aspirate and dispense cycles
-
+        
         Args:
-            volume (int, or float): volume to be rinsed
-            speed (int, optional): speed to cycle. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            reagent (str, optional): name of reagent. Defaults to ''.
-            cycles (int, optional): number of cycles to perform. Defaults to 3.
-            channel (int, optional): channel to cycle. Defaults to None.
+            speed (Optional[float], optional): speed to aspirate and dispense at. Defaults to None.
+            wait (int, optional): time delay after each action. Defaults to 0.
+            cycles (int, optional): number of cycles. Defaults to 1.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+
+        Returns:
+            bool: whether the action is successful
         """
         return self.cycle(volume=self.capacity, speed=speed, wait=wait, cycles=cycles, channel=channel)
     
     def setFlag(self, **kwargs):
         """
-        Set a flag's truth value
+        Set flags by using keyword arguments
 
-        Args:
-            `name` (str): label
-            `value` (bool): flag value
+        Kwargs:
+            key, value: (flag name, boolean) pairs
         """
         if not all([type(v)==bool for v in kwargs.values()]):
             raise ValueError("Ensure all assigned flag values are boolean.")
@@ -293,14 +355,13 @@ class LiquidHandler(ABC):
         return
 
     def shutdown(self):
+        """Shutdown procedure for tool"""
         self.disconnect()
         self.resetFlags()
         return
 
     # Protected method(s)
     def _diagnostic(self):
-        """
-        Run diagnostic on tool
-        """
+        """Run diagnostic test"""
         self.pullback()
         return

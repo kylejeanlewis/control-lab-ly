@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2023/01/16 11:11:00
-@author: Chang Jie
 
-Notes / actionables:
--
 """
 # Standard library imports
 from datetime import datetime
@@ -23,35 +19,35 @@ COLUMNS = ('Time', 'Set', 'Hot', 'Cold', 'Power')
 
 class Peltier(Maker):
     """
-    A Peltier device generates heat to provide local temperature control of the sample.
+    A Peltier device generates heat to provide local temperature control of the sample
 
     ### Constructor
     Args:
-        `port` (str): com port address
-        `tolerance` (float, optional): temperature tolerance to determine if device has reached target temperature. Defaults to `TEMPERATURE_TOLERANCE` (i.e. 1.5).
-        
-    ### Attributes:
-    - `buffer_df` (pandas.DataFrame): data output from device
-    - `device` (serial.Serial): serial connection to device
-    - `port` (str): com port address
-    - `precision` (int): number of decimal places to display current temperature
-    - `temperature` (float): current temperature of device
-    - `tolerance` (float): temperature tolerance
-    - `verbose` (bool): verbosity of class
+        `port` (str): COM port of device
+        `power_threshold` (float, optional): minimum threshold under which temperature can be considered stable. Defaults to 20.
+        `stabilize_buffer_time` (float, optional): buffer time over which temperature can be considered stable. Defaults to 10.
+        `tolerance` (float, optional): tolerance above and below target temperature. Defaults to 1.5.
+            
+    ### Attributes
+    - `power_threshold` (float): minimum threshold under which temperature can be considered stable
+    - `set_point` (float): temperature set point
+    - `stabilize_buffer_time` (float): buffer time over which temperature can be considered stable
+    - `temperature` (float): temperature at sample site
+    - `tolerance` (float): tolerance above and below target temperature
     
-    ### Methods:
+    ### Properties
+    - `port`: COM port of device
+    
+    ### Methods
     - `clearCache`: clears and remove data in buffer
-    - `connect`: connects to the device using the existing port, baudrate and timeout values
-    - `getTemperatures`: reads from the device the set temperature, hot temperature, cold temperature, and the power level
-    - `holdTemperature`: holds the device temperature at target temperature for specified duration
-    - `isBusy`: checks whether the device is busy
-    - `isConnected`: checks whether the device is connected
-    - `isReady`: checks whether the device has reached the set temperature
-    - `reset`: clears data in buffer and set the temperature to room temperature (i.e. 25°C)
-    - `setFlag`: set value of flag
-    - `setTemperature`: change the set temperature
-    - `toggleFeedbackLoop`: toggle the feedback loop thread on or off
-    - `toggleRecord`: toggle the data recording on or off
+    - `getTemperatures`: retrieve temperatures from device
+    - `holdTemperature`: hold target temperature for desired duration
+    - `isReady`: checks and returns whether target temperature has been reached
+    - `reset`: reset the device
+    - `setTemperature`: set a target temperature
+    - `shutdown`: shutdown procedure for tool
+    - `toggleFeedbackLoop`: start or stop feedback loop
+    - `toggleRecord`: start or stop data recording
     """
     
     _default_flags = {
@@ -65,26 +61,27 @@ class Peltier(Maker):
     
     def __init__(self, 
         port: str, 
-        columns: list = COLUMNS,
         power_threshold: float = 20,
         stabilize_buffer_time: float = 10, 
         tolerance: float = 1.5, 
         **kwargs
     ):
         """
-        Construct the Peltier object
+        Instantiate the class
 
         Args:
-            `port` (str): com port address
-            `tolerance` (float, optional): temperature tolerance to determine if device has reached target temperature. Defaults to `TEMPERATURE_TOLERANCE` (i.e. 1.5).
+            port (str): COM port of device
+            power_threshold (float, optional): minimum threshold under which temperature can be considered stable. Defaults to 20.
+            stabilize_buffer_time (float, optional): buffer time over which temperature can be considered stable. Defaults to 10.
+            tolerance (float, optional): tolerance above and below target temperature. Defaults to 1.5.
         """
         super().__init__(**kwargs)
-        self.buffer_df = pd.DataFrame(columns=list(columns))
+        self.buffer_df = pd.DataFrame(columns=list(COLUMNS))
         self.power_threshold = power_threshold
         self.stabilize_buffer_time = stabilize_buffer_time
         self.tolerance = tolerance
         
-        self._columns = list(columns)
+        self._columns = list(COLUMNS)
         self._stabilize_time = None
         self._threads = {}
         
@@ -102,9 +99,7 @@ class Peltier(Maker):
         return self.connection_details.get('port', '')
     
     def clearCache(self):
-        """
-        Clear data from buffer
-        """
+        """Clears and remove data in buffer"""
         self.setFlag(pause_feedback=True)
         time.sleep(0.1)
         self.buffer_df = pd.DataFrame(columns=self._columns)
@@ -113,10 +108,11 @@ class Peltier(Maker):
     
     def getTemperatures(self) -> str:
         """
-        Reads from the device the set temperature, hot temperature, cold temperature, and the power level
+        Retrieve temperatures from device 
+        Including the set temperature, hot temperature, cold temperature, and the power level
         
         Returns:
-            `str`: response from device output
+            str: response from device
         """
         response = self._read()
         now = datetime.now()
@@ -146,11 +142,11 @@ class Peltier(Maker):
     
     def holdTemperature(self, temperature:float, time_s:float):
         """
-        Hold the device temperature at target temperature for specified duration
+        Hold target temperature for desired duration
 
         Args:
-            `temperature` (float): temperature in degree Celsius
-            `time_s` (float): duration in seconds
+            temperature (float): temperature in degree Celsius
+            time_s (float): duration in seconds
         """
         self.setTemperature(temperature)
         print(f"Holding at {self.set_point}°C for {time_s} seconds")
@@ -160,17 +156,15 @@ class Peltier(Maker):
     
     def isReady(self) -> bool:
         """
-        Check whether target temperature has been reached
+        Checks and returns whether target temperature has been reached
 
         Returns:
-            `bool`: whether target temperature has been reached
+            bool: whether target temperature has been reached
         """
         return self.flags['temperature_reached']
     
     def reset(self):
-        """
-        Clears data in buffer and set the temperature to room temperature (i.e. 25°C)
-        """
+        """Reset the device"""
         self.toggleRecord(False)
         self.clearCache()
         self.setTemperature(set_point=25, blocking=False)
@@ -178,10 +172,11 @@ class Peltier(Maker):
     
     def setTemperature(self, set_point:int, blocking:bool = True):
         """
-        Set temperature of the device
+        Set a temperature
 
         Args:
-            `set_point` (int): target temperature in degree Celsius
+            set_point (int): target temperature in degree Celsius
+            blocking (bool, optional): whether to wait for temperature to reach set point. Defaults to True.
         """
         self.setFlag(pause_feedback=True)
         time.sleep(0.5)
@@ -206,19 +201,17 @@ class Peltier(Maker):
         return
     
     def shutdown(self):
-        """
-        Close serial connection and shutdown feedback loop
-        """
+        """Shutdown procedure for tool"""
         for thread in self._threads.values():
             thread.join()
         return super().shutdown()
 
     def toggleFeedbackLoop(self, on:bool):
         """
-        Toggle between starting and stopping feedback loop
+        Start or stop feedback loop
 
         Args:
-            `on` (bool): whether to have loop to continuously read from device
+            on (bool): whether to start loop to continuously read from device
         """
         self.setFlag(get_feedback=on)
         if on:
@@ -233,10 +226,10 @@ class Peltier(Maker):
     
     def toggleRecord(self, on:bool):
         """
-        Toggle between starting and stopping temperature recording
+        Start or stop data recording
 
         Args:
-            `on` (bool): whether to start recording temperature
+            on (bool): whether to start recording temperature
         """
         self.setFlag(record=on, get_feedback=on, pause_feedback=False)
         self.toggleFeedbackLoop(on=on)
@@ -245,15 +238,12 @@ class Peltier(Maker):
     # Protected method(s)
     def _connect(self, port:str, baudrate:int = 115200, timeout:int = 1):
         """
-        Connect to machine control unit
+        Connection procedure for tool
 
         Args:
-            `port` (str): com port address
-            `baudrate` (int, optional): baudrate. Defaults to 115200.
-            `timeout` (int, optional): timeout in seconds. Defaults to 1.
-            
-        Returns:
-            `serial.Serial`: serial connection to machine control unit if connection is successful, else `None`
+            port (str): COM port address
+            baudrate (int, optional): baudrate. Defaults to 115200.
+            timeout (int, optional): timeout in seconds. Defaults to 1.
         """
         self.connection_details = {
             'port': port,
@@ -276,9 +266,7 @@ class Peltier(Maker):
         return
     
     def _loop_feedback(self):
-        """
-        Feedback loop to constantly read values from device
-        """
+        """Loop to constantly read from device"""
         print('Listening...')
         while self.flags['get_feedback']:
             if self.flags['pause_feedback']:
@@ -290,10 +278,10 @@ class Peltier(Maker):
 
     def _read(self) -> str:
         """
-        Read values from the device
+        Read response from device
 
         Returns:
-            `str`: response string
+            str: response string
         """
         response = ''
         try:

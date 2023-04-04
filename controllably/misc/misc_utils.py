@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/02 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
--
 """
 __all__ = [
     "create_configs", 
@@ -19,8 +15,6 @@ from pathlib import Path
 from shutil import copytree
 from typing import Callable, Optional
 
-# Third party imports
-
 # Local application imports
 from . import decorators
 from . import factory
@@ -32,9 +26,7 @@ here = str(Path(__file__).parent.absolute()).replace('\\', '/')
 
 # Core functions
 def create_configs():
-    """
-    Create new configs folder
-    """
+    """Create new configs folder"""
     cwd = os.getcwd().replace('\\', '/')
     src = f"{here}/templates/configs"
     dst = f"{cwd}/configs"
@@ -50,7 +42,7 @@ def create_setup(setup_name:Optional[str] = None):
     Create new setup folder
 
     Args:
-        setup_name (str, optional): name of new setup. Defaults to None.
+        setup_name (Optional[str], optional): name of new setup. Defaults to None.
     """
     cwd = os.getcwd().replace('\\', '/')
     if setup_name is None:
@@ -72,15 +64,15 @@ def create_setup(setup_name:Optional[str] = None):
 
 def load_deck(device:Callable, layout_file:str, get_absolute_filepath:bool = True) -> Callable:
     """
-    Load the deck information from layout file
+    Load deck information from layout file
 
     Args:
-        device (object): device object that has the deck attribute
+        device (Callable): device object that has the deck attribute
         layout_file (str): layout file name
         get_absolute_filepath (bool, optional): whether to extend the filepaths defined in layout file to their absolute filepaths. Defaults to True.
 
     Returns:
-        object: device with deck loaded
+        Callable: device with deck loaded
     """
     layout_dict = helper.read_json(layout_file)
     if get_absolute_filepath:
@@ -102,7 +94,7 @@ def load_setup(config_file:str, registry_file:Optional[str] = None) -> dict:
 
     Args:
         config_file (str): config filename
-        registry_file (str, optional): registry filename. Defaults to None.
+        registry_file (Optional[str], optional): registry filename. Defaults to None.
 
     Returns:
         dict: dictionary of loaded devices
@@ -128,7 +120,7 @@ def set_safety(safety_level:Optional[str] = None, safety_countdown:int = 3):
     Set safety level of session
 
     Args:
-        safety_level (str): 'high' - pauses for input before every move action; 'low' - waits for safety timeout before every move action
+        safety_level (Optional[str], optional): 'high' - pauses for input before every move action; 'low' - waits for safety timeout before every move action. Defaults to None.
         safety_countdown (int, optional): safety timeout in seconds. Defaults to 3.
     """
     safety_mode = None

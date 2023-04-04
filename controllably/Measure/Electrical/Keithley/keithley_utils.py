@@ -1,31 +1,40 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/02 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
-- validation on copper
 """
 # Local application imports
 from __future__ import annotations
 from ...measure_utils import Programmable
-# from ..electrical_utils import Electrical
 from .keithley_device import KeithleyDevice
 from . import programs
 print(f"Import: OK <{__name__}>")
 
 class Keithley(Programmable):
     """
-    Keithley class.
+    Keithley provides methods to control potentiometers from Keithley
     
+    ### Constructor
     Args:
-        ip_address (str, optional): IP address of Keithley. Defaults to '192.168.1.125'.
-        name (str, optional): nickname for Keithley. Defaults to 'def'.
+        `ip_address` (str): IP address of device. Defaults to '192.168.1.125'.
+        `name` (str): name of device. Defaults to 'def'.
+        
+    ### Properties
+    - `ip_address` (str): IP address of device
+    
+    ### Methods
+    - `disconnect`: disconnect from device
     """
     model = 'keithley_'
     available_programs: tuple[str] = tuple(programs.PROGRAM_NAMES)      # FIXME
     possible_inputs: tuple[str] = tuple(programs.INPUTS_SET)            # FIXME
     def __init__(self, ip_address:str = '192.168.1.125', name:str = 'def', **kwargs):
+        """
+        Instantiate the class
+        
+        Args:
+            ip_address (str): IP address of device. Defaults to '192.168.1.125'.
+            name (str): name of device. Defaults to 'def'.
+        """
         super().__init__(**kwargs)
         self._connect(ip_address=ip_address, name=name)
         return
@@ -42,14 +51,11 @@ class Keithley(Programmable):
     # Protected method(s)
     def _connect(self, ip_address:str, name:str = 'def'):
         """
-        Connect to device
+        Connection procedure for tool
 
         Args:
-            ip_address (str): IP address of the Biologic device
-            name (str): nickname for Keithley.
-            
-        Returns:
-            KeithleyDevice: object representation
+            ip_address (str): IP address of device
+            name (str): name of device
         """
         self.connection_details = {
             'ip_address': ip_address,

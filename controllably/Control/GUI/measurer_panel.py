@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/30 10:30:00
-@author: Chang Jie
 
-Notes / actionables:
-- 
 """
 # Standard library imports
 from __future__ import annotations
@@ -20,6 +16,18 @@ print(f"Import: OK <{__name__}>")
 
 @dataclass
 class ProgramDetails:
+    """
+    ProgramDetails dataclass represents the set of inputs, default values, truncated docstring and tooltip of a program class.
+    <from `controllably.Measure.program_utils`>
+    
+    ### Constructor
+    Args:
+        `inputs` (list[str]): list of input field names
+        `defaults` (dict[str, Any]): dictionary of kwargs and default values
+        `short_doc` (str): truncated docstring of the program
+        `tooltip` (str): descriptions of input fields
+    """
+    
     inputs: list[str] = field(default_factory=lambda: [])
     defaults: dict[str, Any] = field(default_factory=lambda: {})
     short_doc: str = ''
@@ -41,13 +49,21 @@ class MeasurerPanel(Panel):
     """
     Measurer Panel class
 
+    ### Constructor
     Args:
-        measurer (obj): Measurer object
-        name (str, optional): name of panel. Defaults to 'MEASURE'.
-        theme (str, optional): name of theme. Defaults to THEME.
-        typeface (str, optional): name of typeface. Defaults to TYPEFACE.
-        font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
-        group (str, optional): name of group. Defaults to 'measurer'.
+        `measurer` (Measurer): Measurer object
+        `name` (str, optional): name of panel. Defaults to 'MEASURE'.
+        `group` (str, optional): name of group. Defaults to 'measurer'.
+        
+    ### Attributes
+    - `current_program` (str): currently active program
+    
+    ### Properties
+    - `measurer` (Measurer): alias for `tool`
+    
+    ### Methods
+    - `getLayout`: build `sg.Column` object
+    - `listenEvents`: listen to events and act on values
     """
     def __init__(self, 
         measurer: Measurer, 
@@ -55,6 +71,14 @@ class MeasurerPanel(Panel):
         group: str = 'measurer', 
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            measurer (Measurer): Measurer object
+            name (str, optional): name of panel. Defaults to 'MEASURE'.
+            group (str, optional): name of group. Defaults to 'measurer'.
+        """
         super().__init__(name=name, group=group, **kwargs)
         self.tool = measurer
         self.current_program = ''
@@ -67,14 +91,14 @@ class MeasurerPanel(Panel):
     
     def getLayout(self, title_font_level:int = 0, **kwargs) -> sg.Column:
         """
-        Get layout object
+        Build `sg.Column` object
 
         Args:
             title (str, optional): title of layout. Defaults to 'Panel'.
             title_font_level (int, optional): index of font size from levels in font_sizes. Defaults to 0.
 
         Returns:
-            PySimpleGUI.Column: Column object
+            sg.Column: Column object
         """
         font = (self.typeface, self.font_sizes[title_font_level])
         layout = super().getLayout(f'{self.name} Control', justification='center', font=font)
@@ -109,7 +133,7 @@ class MeasurerPanel(Panel):
 
         Args:
             event (str): event triggered
-            values (dict): dictionary of values from window
+            values (dict[str, str]): dictionary of values from window
 
         Returns:
             dict: dictionary of updates
@@ -156,7 +180,7 @@ class MeasurerPanel(Panel):
         Get the layout for the input section
 
         Returns:
-            list: list of columns
+            list[sg.Column]: list of columns
         """
         # template for procedurally adding input fields
         labels = []

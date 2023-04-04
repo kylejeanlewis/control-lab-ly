@@ -8,5 +8,5 @@ CONFIG_FILE = f"{HERE}/config.yaml"
 LAYOUT_FILE = f"{HERE}/layout.json"
 REGISTRY_FILE = f"{CONFIGS}/registry.yaml"
 
-SETUP = load_setup(config_file=CONFIG_FILE, registry_file=REGISTRY_FILE)
+setup = load_setup(config_file=CONFIG_FILE, registry_file=REGISTRY_FILE)
 """NOTE: importing SETUP gives the same instance wherever you import it"""

@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/1 13:20:00
-@author: Chang Jie
 
-Notes / actionables:
-- 
 """
 # Standard library imports
 from __future__ import annotations
@@ -19,10 +15,35 @@ class Image:
     """
     Image class with image manipulation methods
 
+    ### Constructor
     Args:
-        frame (array): image frame
+        `frame` (np.ndarray): frame array
+        
+    ### Attributes
+    - `frame` (np.ndarray): frame array
+    
+    ### Methods
+    - `addText`: add text to the image
+    - `annotate`: annotate the image to label identified targets
+    - `blur`: blur the image
+    - `convertToRGB`: turn the image to RGB
+    - `crosshair`: add crosshair in the middle of image
+    - `encode`: encode the frame into bytes
+    - `grayscale`: turn image to grayscale
+    - `process`: process the image
+    - `removeNoise`: remove noise from image
+    - `resize`: resize the image
+    - `rotate`: rotate the 2D array of multiples of 90 degrees, clockwise
+    - `save`: save image to file
     """
+    
     def __init__(self, frame:np.ndarray):
+        """
+        Instantiate the class
+
+        Args:
+            frame (np.ndarray): frame array
+        """
         self.frame = frame
         pass
     
@@ -32,11 +53,11 @@ class Image:
 
         Args:
             text (str): text to be added
-            position (tuple): x,y position of where to place the text
+            position (tuple[int]): x,y position of where to place the text
             inplace (bool, optional): whether to perform action in place. Defaults to False.
 
         Returns:
-            Image, or None: Image object, or None (if inplace=True)
+            Optional[Image]: None if inplace else `Image` object
         """
         frame = self.frame
         frame = cv2.putText(frame, text, position, cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255), 1)
@@ -51,11 +72,11 @@ class Image:
 
         Args:
             index (int): index of target
-            dimensions (list): list of x,y,w,h
+            dimensions (tuple[int]): list of x,y,w,h
             inplace (bool, optional): whether to perform action in place. Defaults to False.
 
         Returns:
-            Image, or None: Image object, or None (if inplace=True)
+            Optional[Image]: None if inplace else `Image` object
         """
         x,y,w,h = dimensions
         frame = self.frame
@@ -76,7 +97,7 @@ class Image:
             inplace (bool, optional): whether to perform action in place. Defaults to False.
 
         Returns:
-            Image, or None: Image object, or None (if inplace=True)
+            Optional[Image]: None if inplace else `Image` object
         """
         frame = cv2.GaussianBlur(self.frame, (blur_kernel,blur_kernel), 0)
         if inplace:
@@ -92,7 +113,7 @@ class Image:
             inplace (bool, optional): whether to perform action in place. Defaults to False.
 
         Returns:
-            Image, or None: Image object, or None (if inplace=True)
+            Optional[Image]: None if inplace else `Image` object
         """
         frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
         if inplace:
@@ -120,7 +141,7 @@ class Image:
             inplace (bool, optional): whether to perform action in place. Defaults to False.
 
         Returns:
-            Image, or None: Image object, or None (if inplace=True)
+            Optional[Image]: None if inplace else `Image` object
         """
         frame = self.frame
         center_x = int(frame.shape[1] / 2)
@@ -134,13 +155,13 @@ class Image:
     
     def encode(self, extension:str = '.png'):
         """
-        Encode the frame into bytes
+        Encode image into byte array
 
         Args:
             extension (str, optional): image format to encode to. Defaults to '.png'.
 
         Returns:
-            bytes: byte representation of image
+            bytes: byte array of image
         """
         return cv2.imencode(extension, self.frame)[1].tobytes()
     
@@ -152,7 +173,7 @@ class Image:
             inplace (bool, optional): whether to perform action in place. Defaults to False.
 
         Returns:
-            Image, or None: Image object, or None (if inplace=True)
+            Optional[Image]: None if inplace else `Image` object
         """
         frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
         if inplace:
@@ -171,7 +192,7 @@ class Image:
             inplace (bool, optional): whether to perform action in place. Defaults to False.
 
         Returns:
-            Image, or None: Image object, or None (if inplace=True)
+            Optional[Image]: None if inplace else `Image` object
         """
         frame = self.frame
         frame = cv2.addWeighted(frame, alpha, np.zeros(frame.shape, frame.dtype), 0, beta)
@@ -192,7 +213,7 @@ class Image:
             inplace (bool, optional): whether to perform action in place. Defaults to False.
 
         Returns:
-            Image, or None: Image object, or None (if inplace=True)
+            Optional[Image]: None if inplace else `Image` object
         """
         kernel = np.ones((3,3),np.uint8)
         frame = self.frame
@@ -209,11 +230,11 @@ class Image:
         Resize the image
 
         Args:
-            size (tuple): tuple of desired image width and height
+            size (tuple[int]): tuple of desired image width and height
             inplace (bool, optional): whether to perform action in place. Defaults to False.
 
         Returns:
-            Image, or None: Image object, or None (if inplace=True)
+            Optional[Image]: None if inplace else `Image` object
         """
         frame = cv2.resize(self.frame, size)
         if inplace:
@@ -230,7 +251,7 @@ class Image:
             inplace (bool, optional): whether to perform action in place. Defaults to False.
 
         Returns:
-            Image, or None: Image object, or None (if inplace=True)
+            Optional[Image]: None if inplace else `Image` object
         """
         rotateCodes = {
             90: cv2.ROTATE_90_CLOCKWISE,
@@ -253,7 +274,7 @@ class Image:
             filename (str): filename to save to
 
         Returns:
-            bool: True if successfully saved
+            bool: whether the image is successfully saved
         """
         return cv2.imwrite(filename, self.frame)
 

@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/12/09 11:11:00
-@author: Chang Jie
 
-Notes / actionables:
--
 """
 # Standard library imports
 from collections import namedtuple
@@ -13,10 +9,26 @@ from enum import Enum
 print(f"Import: OK <{__name__}>")
 
 PresetSpeeds = namedtuple('PresetSpeeds', ['s1','s2','s3','s4','s5','s6'])
+"""PresetSpeeds is a named tuple for a set of the 6 preset speeds provided with each model"""
 SpeedParameters = namedtuple('SpeedParameters', ['preset', 'intervals', 'step_size', 'delay'])
+"""SpeedParameters is a named tuple for a set of calculated parameters for achieving intermediate speeds"""
 
 @dataclass
 class Model:
+    """
+    Model dataclass represents a single model of pipette from Sartorius
+    
+    ### Constructor
+    Args:
+        name (str): model name
+        capacity (int): capacity of pipette
+        home_position (int): home position of pipette
+        max_position (int): maximum position of pipette
+        tip_eject_position (int): tip eject position of pipette
+        resolution (float): volume resolution of pipette (i.e. uL per step)
+        preset_speeds (PresetSpeeds): preset speeds of pipette
+    """
+    
     name: str
     capacity: int
     home_position: int

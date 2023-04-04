@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/30 10:30:00
-@author: Chang Jie
 
-Notes / actionables:
-- 
 """
 # Standard library imports
 from __future__ import annotations
@@ -43,16 +39,28 @@ class Mover(Protocol):
         
 class MoverPanel(Panel):
     """
-    Mover Panel class
+    MoverPanel provides methods to create a control panel for a mover
 
+    ### Constructor
     Args:
-        mover (obj): Mover object
-        name (str, optional): name of panel. Defaults to 'MOVE'.
-        theme (str, optional): name of theme. Defaults to THEME.
-        typeface (str, optional): name of typeface. Defaults to TYPEFACE.
-        font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
-        group (str, optional): name of group. Defaults to 'mover'.
-        axes (list, optional): list of degrees of freedom/axes. Defaults to 'XYZabc'.
+        `mover` (Mover): Mover object
+        `name` (str, optional): name of panel. Defaults to 'MOVE'.
+        `group` (str, optional): name of group. Defaults to 'mover'.
+        `axes` (Union[list, str], optional): available axes of motion. Defaults to 'XYZabc'.
+        
+    ### Attributes
+    - `attachment_methods` (list[str]): list of methods available to attachment
+    - `axes` (list[str]): list of available axes of motion
+    - `buttons` (dict[str, tuple[str, float]]) : dictionary of {button id, (axes, value)}
+    - `current_attachment` (str): name of current attachment
+    - `methods_fn_key_map` (dict[str, str]): dictionary of {button id, button label} 
+    
+    ### Properties
+    - `mover` (Mover): alias for `tool`
+    
+    ### Methods
+    - `getLayout`: build `sg.Column` object
+    - `listenEvents`: listen to events and act on values
     """
     def __init__(self, 
         mover: Mover, 
@@ -61,6 +69,15 @@ class MoverPanel(Panel):
         axes: Union[list, str] = 'XYZabc', 
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            mover (Mover): mover object
+            name (str, optional): name of panel. Defaults to 'MOVE'.
+            group (str, optional): name of group. Defaults to 'mover'.
+            axes (Union[list, str], optional): available axes of motion. Defaults to 'XYZabc'.
+        """
         super().__init__(name=name, group=group, **kwargs)
         self.tool = mover
         
@@ -80,13 +97,13 @@ class MoverPanel(Panel):
        
     def getLayout(self, title_font_level:int = 1, **kwargs) -> sg.Column:
         """
-        Get layout object
+        Build `sg.Column` object
 
         Args:
             title_font_level (int, optional): index of font size from levels in font_sizes. Defaults to 1.
 
         Returns:
-            PySimpleGUI.Column: Column object
+            sg.Column: Column object
         """
         font = (self.typeface, self.font_sizes[title_font_level])
         layout = super().getLayout(f'{self.name} Control', justification='center', font=font)
@@ -175,7 +192,7 @@ class MoverPanel(Panel):
 
         Args:
             event (str): event triggered
-            values (dict): dictionary of values from window
+            values (dict[str, str]): dictionary of values from window
 
         Returns:
             dict: dictionary of updates
@@ -270,10 +287,10 @@ class MoverPanel(Panel):
         Get function buttons for attachment
 
         Args:
-            font (tuple): tuple of typeface and font size
+            font (tuple[str, int]): tuple of typeface and font size
 
         Returns:
-            column: column of labelled buttons if there is an attachment, else placeholder buttons
+            sg.Column: column of labelled buttons if there is an attachment, else placeholder buttons
         """
         show_section = False
         show_buttons = False
@@ -309,8 +326,8 @@ class MoverPanel(Panel):
         Toggle between shown the function buttons for attachment
 
         Args:
-            on (bool, optional): whether to show buttons. Defaults to True.
-            active_buttons (list, optional): list of method names. Defaults to [].
+            on (bool): whether to show buttons
+            active_buttons (Optional[list[str]], optional): list of method names. Defaults to None.
 
         Returns:
             dict: dictionary of updates

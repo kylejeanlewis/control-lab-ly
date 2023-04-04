@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/01 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
-- 
 """
 # Standard library imports
 from __future__ import annotations
@@ -17,23 +13,20 @@ print(f"Import: OK <{__name__}>")
 
 class MG400(Dobot):
     """
-    MG400 class.
+    MG400 provides methods to control Dobot's MG 400 arm
 
+    ### Constructor
     Args:
-        ip_address (str, optional): IP address of arm. Defaults to '192.168.2.8'.
-        retract (bool, optional): whether to tuck arm before each movement. Defaults to True.
-        home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,300,0).
-        
-    Kwargs:
-        attachment (str, optional): Dobot attachment. Defaults to None.
-        home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
-        orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
-        translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to (0,0,0).
-        implement_offset (tuple, optional): implement offset vector pointing from end of effector to tool tip. Defaults to (0,0,0).
-        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
-        verbose (bool, optional): whether to print outputs. Defaults to False.
-        safe_height (float, optional): safe height. Defaults to None.
+        `ip_address` (str, optional): IP address of Dobot. Defaults to '192.168.2.8'.
+        `safe_height` (Optional[float], optional): height at which obstacles can be avoided. Defaults to 75.
+        `retract` (bool, optional): whether to retract arm before movement. Defaults to True.
+        `home_coordinates` (tuple[float], optional): home coordinates for the robot. Defaults to (0,300,0).
+    
+    ### Methods
+    - `isFeasible`: checks and returns whether the target coordinate is feasible
+    - `retractArm`: tuck in arm, rotate about base, then extend again
     """
+    
     def __init__(self, 
         ip_address: str = '192.168.2.8', 
         safe_height: float = 75, 
@@ -41,6 +34,15 @@ class MG400(Dobot):
         home_coordinates: tuple[float] = (0,300,0), 
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            ip_address (str, optional): IP address of Dobot. Defaults to '192.168.2.8'.
+            safe_height (Optional[float], optional): height at which obstacles can be avoided. Defaults to 75.
+            retract (bool, optional): whether to retract arm before movement. Defaults to True.
+            home_coordinates (tuple[float], optional): home coordinates for the robot. Defaults to (0,300,0).
+        """
         super().__init__(
             ip_address=ip_address, 
             safe_height=safe_height,
@@ -59,15 +61,15 @@ class MG400(Dobot):
         **kwargs
     ) -> bool:
         """
-        Checks if specified coordinates is a feasible position for robot to access.
+        Checks and returns whether the target coordinate is feasible
 
         Args:
-            coordinates (tuple): x,y,z coordinates
-            transform (bool, optional): whether to transform the coordinates. Defaults to False.
-            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
+            coordinates (tuple[float]): target coordinates
+            transform_in (bool, optional): whether to convert to internal coordinates first. Defaults to False.
+            tool_offset (bool, optional): whether to convert from tool tip coordinates first. Defaults to False.
 
         Returns:
-            bool: whether coordinates is a feasible position
+            bool: whether the target coordinate is feasible
         """
         if transform_in:
             coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
@@ -87,11 +89,11 @@ class MG400(Dobot):
     
     def retractArm(self, target:Optional[tuple[float]] = None) -> bool:
         """
-        Tuck in arm, rotate about base, then extend again.
+        Tuck in arm, rotate about base, then extend again
 
         Args:
-            target (tuple, optional): x,y,z coordinates of destination. Defaults to None.
-        
+            target (Optional[tuple[float]], optional): x,y,z coordinates of destination. Defaults to None.
+
         Returns:
             bool: whether movement is successful
         """

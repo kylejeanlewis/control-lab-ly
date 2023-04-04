@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/1 13:20:00
-@author: Chang Jie
 
-Notes / actionables:
-- 
 """
 # Standard library imports
 from __future__ import annotations
@@ -22,10 +18,13 @@ import cv2              # pip install opencv-python
 # Local application imports
 from ..misc import Helper
 from .image_utils import Image
+# from . import image_utils as Image
 print(f"Import: OK <{__name__}>")
 
 DIMENSION_THRESHOLD = 36
+"""Minimum width in pixels of target for detection"""
 ROW_DISTANCE = 30
+"""Number of pixels between rows of detected targets"""
 
 class Classifier(Protocol):
     def detect(self, frame:np.ndarray, scale:int, neighbors:int, **kwargs) -> dict:
@@ -33,13 +32,52 @@ class Classifier(Protocol):
 
 class Camera(ABC):
     """
-    Camera object
-
+    Abstract Base Class (ABC) for Camera objects (i.e. tools that capture images).
+    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
+    
+    ### Constructor
     Args:
-        calibration_unit (int, optional): calibration of pixels to mm. Defaults to 1.
-        cam_size (tuple, optional): width and height of image. Defaults to (640,480).
-        rotation (int, optional): rotation of camera feed. Defaults to 0.
+        `calibration_unit` (float, optional): calibration from pixels to mm. Defaults to 1.
+        `cam_size` (tuple[int], optional): (width, height) of camera feed. Defaults to (640,480).
+        `rotation` (int, optional): rotation angle for camera feed. Defaults to 0.
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+    
+    ### Attributes
+    - `calibration_unit` (float): calibration from pixels to mm
+    - `cam_size` (tuple[int], optional): (width, height) of camera feed
+    - `classifier` (Classifier): image classifier object
+    - `connection_details` (dict): dictionary of connection details (e.g. COM port / IP address)
+    - `device` (Callable): device object that communicates with physical tool
+    - `feed` (Callable): connection to image feed
+    - `flags` (dict[str, bool]): keywords paired with boolean flags
+    - `placeholder_image` (Image): placeholder image for when there is no feed available
+    - `record_folder` (str): filepath at which to store images and data
+    - `record_timeout` (int): number of seconds to record images for
+    - `rotation` (int): rotation angle for camera feed (multiples of 90 degrees)
+    - `verbose` (bool): verbosity of class
+    
+    ### Methods
+    #### Abstract
+    - `disconnect`: disconnect from device
+    - `_connect`: connection procedure for tool
+    - `_read`: read camera feed to retrieve image
+    #### Public
+    - `annotateAll`: annotate all detected targets
+    - `connect`: establish connection with device
+    - `decodeImage`: decode byte array of image
+    - `detect`: perform image detection
+    - `encodeImage`: encode image into byte array
+    - `getImage`: retrieve image from camera feed
+    - `isConnected`: checks and returns whether the device is connected
+    - `loadClassifier`: load the desired image classifier
+    - `loadImage`: load an image from file
+    - `resetFlags`: reset all flags to class attribute `_default_flags`
+    - `saveImage`: save image to file
+    - `setFlag`: set flags by using keyword arguments
+    - `shutdown`: shutdown procedure for tool
+    - `toggleRecord`: start or stop data recording
     """
+    
     _default_flags: dict[str, bool] = {
         'connected': False,
         'pause_record': False,
@@ -54,6 +92,15 @@ class Camera(ABC):
         verbose: bool = False,
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            calibration_unit (float, optional): calibration from pixels to mm. Defaults to 1.
+            cam_size (tuple[int], optional): (width, height) of camera output. Defaults to (640,480).
+            rotation (int, optional): rotation angle for camera feed. Defaults to 0.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         self.calibration_unit = calibration_unit
         self.cam_size = cam_size
         self.classifier = None
@@ -82,9 +129,7 @@ class Camera(ABC):
     
     @abstractmethod
     def _connect(self, *args, **kwargs):
-        """
-        Connect to the imaging device
-        """
+        """Connection procedure for tool"""
         self.connection_details = {}
         self.device = None
         self.setFlag(connected=True)
@@ -93,12 +138,10 @@ class Camera(ABC):
     @abstractmethod
     def _read(self) -> tuple[bool, np.ndarray]:
         """
-        Read camera feed
+        Read camera feed to retrieve image
 
         Returns:
-            bool, array: True if frame is obtained; array of frame
-        """
-    
+            tuple[bool, np.ndarray]: (whether frame is obtained, frame array)
         """
     
     def annotateAll(self, 
@@ -107,14 +150,15 @@ class Camera(ABC):
         frame: Optional[np.ndarray] = None    
     ) -> tuple[dict[str,tuple[int]], Image]:
         """
-        Annotate all targets
+        Annotate all detected targets
 
         Args:
-            df (pd.DataFrame): dataframe of details of detected targets
-            frame (array): frame array
+            df (pd.DataFrame): dataframe of detected targets details
+            image (Optional[Image], optional): image object. Defaults to None.
+            frame (Optional[np.ndarray], optional): frame array. Defaults to None.
 
         Returns:
-            dict, Image: dictionary of (target index, center positions); image
+            tuple[dict[str,tuple[int]], Image]: ({target index: center positions}, image object)
         """
         data = {}
         if (frame is None) == (image is None):
@@ -136,7 +180,7 @@ class Camera(ABC):
 
     def detect(self, image:Image, scale:int, neighbors:int) -> pd.DataFrame:
         """
-        Detect targets
+        Perform image detection
 
         Args:
             image (Image): image to detect from
@@ -144,7 +188,7 @@ class Camera(ABC):
             neighbors (int): minimum number of neighbors for targets
 
         Raises:
-            Exception: Classifier not loaded
+            RuntimeError: Please load a classifier first.
 
         Returns:
             pd.DataFrame: dataframe of detected targets
@@ -168,10 +212,10 @@ class Camera(ABC):
     
     def loadClassifier(self, classifier:Classifier):
         """
-        Load target classifier
+        Load the desired image classifier
 
         Args:
-            classifier (Classifier): desired classifier
+            classifier (Classifier): desired image classifier
         """
         # try:
         self.classifier = classifier
@@ -180,16 +224,16 @@ class Camera(ABC):
         return
 
     def resetFlags(self):
+        """Reset all flags to class attribute `_default_flags`"""
         self.flags = self._default_flags.copy()
         return
     
     def setFlag(self, **kwargs):
         """
-        Set a flag's truth value
+        Set flags by using keyword arguments
 
-        Args:
-            `name` (str): label
-            `value` (bool): flag value
+        Kwargs:
+            key, value: (flag name, boolean) pairs
         """
         if not all([type(v)==bool for v in kwargs.values()]):
             raise ValueError("Ensure all assigned flag values are boolean.")
@@ -198,9 +242,7 @@ class Camera(ABC):
         return
     
     def shutdown(self):
-        """
-        Close the camera
-        """
+        """Shutdown procedure for tool"""
         self.disconnect()
         cv2.destroyAllWindows()
         self.resetFlags()
@@ -208,12 +250,12 @@ class Camera(ABC):
     
     def toggleRecord(self, on:bool, folder:str = '', timeout:Optional[int] = None):
         """
-        Toggle record
+        Start or stop image capture and recording
 
         Args:
             on (bool): whether to start recording frames
             folder (str, optional): folder to save to. Defaults to ''.
-            timeout (int, optional): number of seconds to record. Defaults to None.
+            timeout (Optional[int], optional): number of seconds to record. Defaults to None.
         """
         self.setFlag(record=on)
         if on:
@@ -253,15 +295,15 @@ class Camera(ABC):
         Encode image into byte array
 
         Args:
-            image (Image, optional): image object to be encoded. Defaults to None.
-            frame (array, optional): frame array to be encoded. Defaults to None.
+            image (Optional[Image], optional): image object to be encoded. Defaults to None.
+            frame (Optional[np.ndarray], optional): frame array to be encoded. Defaults to None.
             extension (str, optional): image format to encode to. Defaults to '.png'.
 
         Raises:
-            Exception: Input needs to be an Image or frame array
+            ValueError: Please input either image or frame.
 
         Returns:
-            bytes: byte representation of image/frame
+            bytes: byte array of image / frame
         """
         if (frame is None) == (image is None):
             raise ValueError('Please input either image or frame.')
@@ -281,7 +323,7 @@ class Camera(ABC):
             resize (bool, optional): whether to resize the image. Defaults to False.
 
         Returns:
-            bool, Image: True if image is obtained; image object
+            tuple[bool, Image]: (whether an image is obtained, image object)
         """
         ret = False
         image = self.placeholder_image
@@ -303,10 +345,10 @@ class Camera(ABC):
         Load image from file
 
         Args:
-            filename (str): filename of image
+            filename (str): image filename
 
         Returns:
-            Image: file image
+            Image: image from file
         """
         frame = cv2.imread(filename)
         return Image(frame)
@@ -320,15 +362,15 @@ class Camera(ABC):
         Save image to file
 
         Args:
-            image (Image, optional): image object to be encoded. Defaults to None.
-            frame (array, optional): frame array to be encoded. Defaults to None.
+            image (Optional[Image], optional): image object to be saved. Defaults to None.
+            frame (Optional[np.ndarray], optional): frame array to be saved. Defaults to None.
             filename (str, optional): filename to save to. Defaults to 'image.png'.
 
         Raises:
-            Exception: Input needs to be an Image or frame array
+            ValueError: Please input either image or frame.
 
         Returns:
-            bool: True if successfully saved
+            bool: whether the image is successfully saved
         """
         if filename == 'image.png':
             now = datetime.now().strftime("%Y%m%d_%H-%M-%S")
@@ -367,9 +409,7 @@ class Camera(ABC):
         return df
     
     def _loop_record(self):
-        """
-        Record loop to constantly get and save image frames
-        """
+        """Loop to constantly get and save image frames"""
         start_message = f'Recording...' if self.record_timeout is None else f'Recording... ({self.record_timeout}s)'
         print(start_message)
         timestamps = []
@@ -413,11 +453,11 @@ class Camera(ABC):
         resize: bool = False
     ):
         """
-        Gets placeholder image for camera, if not connected
+        Sets placeholder image for camera, if not  camera is not connected
 
         Args:
-            filename (str, optional): name of placeholder image file. Defaults to ''.
-            img_bytes (bytes, optional): byte representation of placeholder image. Defaults to None.
+            filename (str, optional): name of placeholder image file. Defaults to class attribute `_placeholder_filename`.
+            img_bytes (Optional[bytes], optional): byte array of placeholder image. Defaults to None.
             resize (bool, optional): whether to resize the image. Defaults to False.
 
         Returns:

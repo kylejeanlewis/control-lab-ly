@@ -1,12 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Adapted from @jaycecheng sartorius serial
 
-Created: Tue 2022/12/08 11:11:00
-@author: Chang Jie
-
-Notes / actionables:
--
 """
 # Standard library imports
 from __future__ import annotations
@@ -25,8 +19,65 @@ from .sartorius_lib import STATUS_QUERIES, QUERIES
 print(f"Import: OK <{__name__}>")
 
 STEP_RESOLUTION = 10
+"""Minimum number of steps to have tolerable errors in volume"""
 
 class Sartorius(LiquidHandler):
+    """
+    Sartorius object
+
+    ### Constructor
+    Args:
+        `port` (str): COM port address
+        `channel` (int, optional): channel id. Defaults to 1.
+        `offset` (tuple[float], optional): x,y,z offset of tip. Defaults to (0,0,0).
+        `response_time` (float, optional): delay between sending a command and receiving a response, in seconds. Defaults to 1.03.
+        `tip_threshold` (int, optional): threshold above which a conductive pipette tip is considered to be attached. Defaults to 276.
+    
+    ### Attributes
+    - `channel` (int): channel id
+    - `limits` (tuple[int]): lower and upper step limits
+    - `model_info` (SartoriusPipetteModel): Sartorius model info
+    - `offset` (tuple[float]): x,y,z offset of tip
+    - `position` (int): position of plunger
+    - `response_time` (float): delay between sending a command and receiving a response, in seconds
+    - `speed_code` (Speed): codes for aspirate and dispense speeds
+    - `speed_presets` (PresetSpeeds): preset speeds available
+    - `tip_length` (float): length of pipette tip
+    - `tip_threshold` (int): threshold above which a conductive pipette tip is considered to be attached
+    
+    ## Properties
+    - `capacitance` (int): capacitance as measured at the end of the pipette
+    - `home_position` (int): home position of pipette
+    - `port` (str): COM port address
+    - `resolution` (float): volume resolution of pipette (i.e. uL per step)
+    - `status` (str): pipette status
+    
+    ### Methods
+    - `addAirGap`: create an air gap between two volumes of liquid in pipette
+    - `aspirate`: aspirate desired volume of reagent into pipette
+    - `blowout`: blowout liquid from tip
+    - `dispense`: dispense desired volume of reagent
+    - `eject`: eject the pipette tip
+    - `empty`: empty the pipette
+    - `getCapacitance`: get the capacitance as measured at the end of the pipette
+    - `getErrors`: get errors from the device
+    - `getInfo`: get details of the Sartorius pipette model
+    - `getPosition`: get the current position of the pipette
+    - `getStatus`: get the status of the pipette
+    - `home`: return plunger to home position
+    - `isFeasible`: checks and returns whether the plunger position is feasible
+    - `isTipOn`: checks and returns whether a pipette tip is attached
+    - `move`: move the plunger either up or down by a specified number of steps
+    - `moveBy`: move the plunger by a specified number of steps
+    - `moveTo`: move the plunger to a specified position
+    - `pullback`: pullback liquid from tip
+    - `reset`: reset the pipette
+    - `setSpeed`: set the speed of the plunger
+    - `shutdown`: shutdown procedure for tool
+    - `toggleFeedbackLoop`: start or stop feedback loop
+    - `zero`: zero the plunger position
+    """
+    
     _default_flags = {
         'busy': False,
         'conductive_tips': False,
@@ -46,12 +97,14 @@ class Sartorius(LiquidHandler):
         **kwargs
     ):
         """
-        Sartorius object
+        Instantiate the class
 
         Args:
-            port (str): com port address
-            channel (int, optional): device channel. Defaults to 1.
-            offset (tuple, optional): x,y,z offset of tip. Defaults to (0,0,0).
+            port (str): COM port address
+            channel (int, optional): channel id. Defaults to 1.
+            offset (tuple[float], optional): x,y,z offset of tip. Defaults to (0,0,0).
+            response_time (float, optional): delay between sending a command and receiving a response, in seconds. Defaults to 1.03.
+            tip_threshold (int, optional): threshold above which a conductive pipette tip is considered to be attached. Defaults to 276.
         """
         super().__init__(**kwargs)
         self.channel = channel
@@ -100,7 +153,7 @@ class Sartorius(LiquidHandler):
         Retrieve total cycle lifetime
 
         Returns:
-            int: number of lifetime cycles
+            Union[int, str]: number of lifetime cycles, or response string
         """
         response = self._query('DX')
         try:
@@ -112,7 +165,7 @@ class Sartorius(LiquidHandler):
     
     def __model__(self) -> str:
         """
-        Retreive the model of the device
+        Retrieve the model of the device
 
         Returns:
             str: model name
@@ -126,7 +179,7 @@ class Sartorius(LiquidHandler):
         Retrieve the resolution of the device
 
         Returns:
-            int: volume resolution of device in nL
+            Union[int, str]: volume resolution of device in nL, or response string
         """
         response = self._query('DR')
         try:
@@ -138,7 +191,7 @@ class Sartorius(LiquidHandler):
     
     def __version__(self) -> str:
         """
-        Retrieve the version of the device
+        Retrieve the software version on the device
 
         Returns:
             str: device version
@@ -169,15 +222,14 @@ class Sartorius(LiquidHandler):
         **kwargs
     ) -> str:
         """
-        Aspirate desired volume of reagent into channel
+        Aspirate desired volume of reagent
 
         Args:
-            volume (int, or float): volume to be aspirated
-            speed (int, optional): speed to aspirate. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            reagent (str, optional): name of reagent. Defaults to ''.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            channel (int, optional): channel to aspirate. Defaults to None.
+            volume (float): target volume
+            speed (Optional[float], optional): speed to aspirate at. Defaults to None.
+            wait (int, optional): time delay after aspirate. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            reagent (Optional[str], optional): name of reagent. Defaults to None.
             
         Returns:
             str: device response
@@ -245,11 +297,10 @@ class Sartorius(LiquidHandler):
     
     def blowout(self, home:bool = True, **kwargs) -> str:
         """
-        Blowout last remaining drop in pipette
+        Blowout liquid from tip
 
         Args:
             home (bool, optional): whether to return plunger to home position. Defaults to True.
-            channel (int, optional): channel to blowout. Defaults to None.
 
         Returns:
             str: device response
@@ -271,20 +322,19 @@ class Sartorius(LiquidHandler):
         **kwargs
     ) -> str:
         """
-        Dispense desired volume of reagent from channel
+        Dispense desired volume of reagent
 
         Args:
-            volume (int, or float): volume to be dispensed
-            speed (int, optional): speed to dispense. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            force_dispense (bool, optional): whether to continue dispensing even if insufficient volume in channel. Defaults to False.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            blowout (bool, optional): whether to perform blowout when volume reaches zero. Defaults to True.
-            blowout_home (bool, optional): whether to home the plunger after blowout. Defaults to True.
-            channel (int, optional): channel to dispense. Defaults to None.
+            volume (float): target volume
+            speed (Optional[float], optional): speed to dispense at. Defaults to None.
+            wait (int, optional): time delay after dispense. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            blowout (bool, optional): whether perform blowout. Defaults to False.
+            blowout_home (bool, optional): whether to return the plunger home after blowout. Defaults to True.
+            force_dispense (bool, optional): whether to dispense reagent regardless. Defaults to False.
 
         Raises:
-            Exception: Required dispense volume is greater than volume in tip
+            ValueError: Required dispense volume is greater than volume in tip
 
         Returns:
             str: device response
@@ -355,11 +405,10 @@ class Sartorius(LiquidHandler):
     
     def eject(self, home:bool = True) -> str:
         """
-        Eject pipette tip
+        Eject the pipette tip
 
         Args:
             home (bool, optional): whether to return plunger to home position. Defaults to True.
-            channel (int, optional): channel to eject. Defaults to None.
 
         Returns:
             str: device response
@@ -372,17 +421,15 @@ class Sartorius(LiquidHandler):
         return response
     
     def empty(self, **kwargs):
+        """Empty the pipette"""
         return self.home()
     
     def getCapacitance(self) -> Union[int, str]:
         """
-        Get the liquid level by measuring capacitance
-        
-        Args:
-            channel (int, optional): channel to get liquid level. Defaults to None.
+        Get the capacitance as measured at the end of the pipette
         
         Returns:
-            str: device response
+            Union[int, str]: capacitance value, or device response
         """
         response = self._query('DN')
         try:
@@ -394,10 +441,7 @@ class Sartorius(LiquidHandler):
  
     def getErrors(self) -> str:
         """
-        Get errors from device
-        
-        Args:
-            channel (int, optional): channel to get errors. Defaults to None.
+        Get errors from the device
 
         Returns:
             str: device response
@@ -405,12 +449,7 @@ class Sartorius(LiquidHandler):
         return self._query('DE')
     
     def getInfo(self, model: Optional[str] = None):
-        """
-        Get model info
-
-        Raises:
-            Exception: Select a valid model name
-        """
+        """Get details of the Sartorius pipette model"""
         model = self.__model__().split('-')[0] if model is None else model
         if model not in ModelInfo._member_names_:
             print(f'Received: {model}')
@@ -428,6 +467,7 @@ class Sartorius(LiquidHandler):
         return
     
     def getPosition(self, **kwargs) -> int:
+        """Get the current position of the pipette"""
         response = self._query('DP')
         try:
             position = int(response)
@@ -438,10 +478,7 @@ class Sartorius(LiquidHandler):
       
     def getStatus(self, **kwargs) -> str:
         """
-        Get the device status
-        
-        Args:
-            channel (int, optional): channel to get status. Defaults to None.
+        Get the status of the pipette
 
         Returns:
             str: device response
@@ -467,9 +504,6 @@ class Sartorius(LiquidHandler):
         """
         Return plunger to home position
         
-        Args:
-            channel (int, optional): channel to home. Defaults to None.
-
         Returns:
             str: device response
         """
@@ -481,7 +515,7 @@ class Sartorius(LiquidHandler):
     
     def isFeasible(self, position:int) -> bool:
         """
-        Checks if specified position is a feasible position for plunger to access
+        Checks and returns whether the plunger position is feasible
 
         Args:
             position (int): plunger position
@@ -496,10 +530,10 @@ class Sartorius(LiquidHandler):
     
     def isTipOn(self) -> bool:
         """
-        Checks whether tip is on
+        Checks and returns whether a pipette tip is attached
         
         Returns:
-            bool: whether the tip in on
+            bool: whether a pipette tip in attached
         """
         self.getCapacitance()
         print(f'Tip capacitance: {self.capacitance}')
@@ -511,15 +545,11 @@ class Sartorius(LiquidHandler):
     
     def move(self, steps:int, up:bool, **kwargs) -> str:
         """
-        Move plunger either up or down
+        Move the plunger either up or down by a specified number of steps
 
         Args:
-            direction (str): desired direction of plunger (up / down)
-            value (int): number of steps to move plunger by
-            channel (int, optional): channel to move. Defaults to None.
-        Raises:
-            Exception: Value has to be non-negative
-            Exception: Axis direction either 'up' or 'down'
+            steps (int): number of steps to move plunger by
+            up (bool): whether to move the plunger up
 
         Returns:
             str: device response
@@ -529,11 +559,10 @@ class Sartorius(LiquidHandler):
     
     def moveBy(self, steps:int, **kwargs) -> str:
         """
-        Move plunger by specified number of steps
+        Move the plunger by specified number of steps
 
         Args:
             steps (int): number of steps to move plunger by (<0: move down/dispense; >0 move up/aspirate)
-            channel (int, optional): channel to move by. Defaults to None.
 
         Returns:
             str: device response
@@ -544,11 +573,10 @@ class Sartorius(LiquidHandler):
     
     def moveTo(self, position:int, **kwargs) -> str:
         """
-        Move plunger to specified position
+        Move the plunger to a specified position
 
         Args:
-            position (int): desired plunger position
-            channel (int, optional): channel to move to. Defaults to None.
+            position (int): target plunger position
 
         Returns:
             str: device response
@@ -561,8 +589,7 @@ class Sartorius(LiquidHandler):
         Pullback liquid from tip
         
         Args:
-            steps (int, optional): number of steps to pullback. Defaults to DEFAULT_PULLBACK.
-            channel (int, optional): channel to pullback. Defaults to None.
+            steps (int, optional): number of steps to pullback. Defaults to 5.
 
         Returns:
             str: device response
@@ -574,10 +601,7 @@ class Sartorius(LiquidHandler):
     
     def reset(self) -> str:
         """
-        Zeros and go back to home position
-        
-        Args:
-            channel (int, optional): channel to reset. Defaults to None.
+        Reset the pipette
 
         Returns:
             str: device response
@@ -586,34 +610,37 @@ class Sartorius(LiquidHandler):
         return self.home()
     
     def setSpeed(self, speed:int, up:bool, **kwargs) -> str:
+        """
+        Set the speed of the plunger
+
+        Args:
+            speed (int): speed of plunger
+            up (bool): direction of travel
+
+        Returns:
+            str: device response
+        """
         speed_code = 1 + [x for x,val in enumerate(np.array(self.speed_presets)-speed) if val >= 0][0]
         print(f'Speed {speed_code}: {self.speed_presets[speed_code-1]} uL/s')
         direction = 'I' if up else 'O'
         self._query(f'S{direction}{speed_code}')
         if up:
             self.speed_code.up = speed_code
-            # self.speed.up = speed
         else:
             self.speed_code.down = speed_code
-            # self.speed.down = speed
         return self._query(f'D{direction}')
     
     def shutdown(self):
-        """
-        Close serial connection and shutdown
-        """
+        """Shutdown procedure for tool"""
         self.toggleFeedbackLoop(on=False)
         return super().shutdown()
     
     def toggleFeedbackLoop(self, on:bool):
         """
-        Toggle between start and stopping feedback loop
+        Start or stop feedback loop
         
         Args:
-            channel (int, optional): channel to toggle feedback loop. Defaults to None.
-
-        Args:
-            on (bool): whether to listen to feedback
+            on (bool): whether to start feedback loop
         """
         self.setFlag(get_feedback=on)
         if on:
@@ -631,9 +658,6 @@ class Sartorius(LiquidHandler):
         """
         Zero the plunger position
         
-        Args:
-            channel (int, optional): channel to zero. Defaults to None.
-
         Returns:
             str: device response
         """
@@ -677,15 +701,12 @@ class Sartorius(LiquidHandler):
     
     def _connect(self, port:str, baudrate:int = 9600, timeout:int = 1):
         """
-        Connect to machine control unit
+        Connection procedure for tool
 
         Args:
-            `port` (str): com port address
-            `baudrate` (int, optional): baudrate. Defaults to 9600.
-            `timeout` (int, optional): timeout in seconds. Defaults to 1.
-            
-        Returns:
-            `serial.Serial`: serial connection to machine control unit if connection is successful, else `None`
+            port (str): COM port address
+            baudrate (int, optional): baudrate. Defaults to 9600.
+            timeout (int, optional): timeout in seconds. Defaults to 1.
         """
         self.connection_details = {
             'port': port,
@@ -711,11 +732,11 @@ class Sartorius(LiquidHandler):
     
     def _is_expected_reply(self, response:str, command_code:str, **kwargs) -> bool:
         """
-        Check whether the response is an expected reply
+        Checks and returns whether the response is an expected reply
 
         Args:
-            command_code (str): two-character command code
             response (str): response string from device
+            command_code (str): two-character command code
 
         Returns:
             bool: whether the response is an expected reply
@@ -732,9 +753,7 @@ class Sartorius(LiquidHandler):
         return False
 
     def _loop_feedback(self):
-        """
-        Feedback loop to constantly check status and liquid level
-        """
+        """Loop to constantly read from device"""
         print('Listening...')
         while self.flags['get_feedback']:
             if self.flags['pause_feedback']:
@@ -750,14 +769,15 @@ class Sartorius(LiquidHandler):
         resume_feedback: bool = False
     ) -> str:
         """
-        Send query and wait for response
+        Write command to and read response from device
 
         Args:
             command (str): command string
-            timeout_s (int, optional): duration to wait before timeout. Defaults to 0.3.
+            timeout_s (float, optional): duration to wait before timeout. Defaults to 0.3.
+            resume_feedback (bool, optional): whether to resume reading from device
 
         Returns:
-            str: command readout
+            str: response string
         """
         command_code = command[:2]
         if command_code not in STATUS_QUERIES:
@@ -814,7 +834,7 @@ class Sartorius(LiquidHandler):
             new_channel (int): new channel id
 
         Raises:
-            Exception: Address should be between 1~9
+            ValueError: Please select a valid rLine address from 1 to 9
         """
         if not (0 < new_channel_id < 10):
             raise ValueError('Please select a valid rLine address from 1 to 9.')
@@ -825,13 +845,13 @@ class Sartorius(LiquidHandler):
     
     def _write(self, command:str) -> bool:
         """
-        Sends command to device
+        Write command to device
 
         Args:
             command (str): <command code><value>
 
         Returns:
-            str: two-character command code
+            bool: whether command was sent successfully
         """
         if self.verbose:
             print(command)

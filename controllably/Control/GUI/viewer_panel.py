@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/30 10:30:00
-@author: Chang Jie
 
-Notes / actionables:
-- 
 """
 # Standard library imports
 from __future__ import annotations
@@ -26,22 +22,39 @@ class Viewer(Protocol):
 
 class ViewerPanel(Panel):
     """
-    Viewer Panel class
-
+    ViewerPanel provides methods to create a control panel for a viewer
+    
+    ### Constructor
     Args:
-        viewer (obj): Viewer object
-        name (str, optional): name of panel. Defaults to 'VIEW'.
-        theme (str, optional): name of theme. Defaults to THEME.
-        typeface (str, optional): name of typeface. Defaults to TYPEFACE.
-        font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
-        group (str, optional): name of group. Defaults to 'viewer'.
+        `viewer` (Viewer): Viewer object
+        `name` (str, optional): name of panel. Defaults to 'VIEW'.
+        `group` (str, optional): name of group. Defaults to 'viewer'.
+
+    ### Attributes
+    - `display_box` (str): element id
+    
+    ### Properties
+    - `viewer` (Viewer): alias for `tool`
+    
+    ### Methods
+    - `close`: exit the application
+    - `getLayout`: build `sg.Column` object
+    - `listenEvents`: listen to events and act on values
     """
     def __init__(self, 
-        viewer:Viewer, 
-        name='VIEW', 
-        group='viewer', 
+        viewer: Viewer, 
+        name: str = 'VIEW', 
+        group: str = 'viewer', 
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            viewer (Viewer): viewer object
+            name (str, optional): name of panel. Defaults to 'VIEW'.
+            group (str, optional): name of group. Defaults to 'viewer'.
+        """
         super().__init__(name=name, group=group, **kwargs)
         self.tool = viewer
         
@@ -57,21 +70,19 @@ class ViewerPanel(Panel):
         return self.tool
     
     def close(self):
-        """
-        Close window
-        """
+        """Exit the application"""
         self.viewer.shutdown()
         return super().close()
         
     def getLayout(self, title_font_level:int = 1, **kwargs) -> sg.Column:
         """
-        Get layout object
+        Build `sg.Column` object
 
         Args:
-            title_font_level (int, optional): index of font size from levels in font_sizes. Defaults to 1.
+            title_font_level (int, optional): index of font size from levels in `font_sizes`. Defaults to 1.
 
         Returns:
-            PySimpleGUI.Column: Column object
+            sg.Column: Column object
         """
         font = (self.typeface, self.font_sizes[title_font_level])
         layout = super().getLayout(f'{self.name} Control', justification='center', font=font)
@@ -88,7 +99,7 @@ class ViewerPanel(Panel):
 
         Args:
             event (str): event triggered
-            values (dict): dictionary of values from window
+            values (dict[str, str]): dictionary of values from window
 
         Returns:
             dict: dictionary of updates

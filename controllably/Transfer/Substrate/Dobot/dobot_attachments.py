@@ -19,13 +19,34 @@ print(f"Import: OK <{__name__}>")
 
 class DobotGripper(Gripper):
     """
-    Dobot first part implement attachments
+    Abstract Base Class (ABC) for Dobot Gripper objects.
+    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
 
+    ### Constructor
     Args:
-        dashboard (any): Dashboard object
+        `dashboard` (Optional[Callable], optional): connection to status and signal control. Defaults to None.
+        `channel` (int, optional): digital I/O channel. Defaults to 1.
+    
+    ### Attributes
+    - `dashboard` (Callable): connection to status and signal control
+    
+    ### Methods
+    #### Abstract
+    - `drop`: releases an object
+    - `grab`: picks up an object
+    #### Public
+    - `setDashboard`: set the dashboard object
     """
+    
     _implement_offset: tuple[float] = (0,0,0)
     def __init__(self, dashboard:Optional[Callable] = None, channel:int = 1):
+        """
+        Instantiate the class
+
+        Args:
+            dashboard (Optional[Callable], optional): connection to status and signal control. Defaults to None.
+            channel (int, optional): digital I/O channel. Defaults to 1.
+        """
         self.dashboard = None
         self._channel = 0
         self.setDashboard(dashboard=dashboard, channel=channel)
@@ -47,6 +68,13 @@ class DobotGripper(Gripper):
         return np.array(self._implement_offset)
     
     def setDashboard(self, dashboard:Callable, channel:int = 1):
+        """
+        Set the dashboard object
+
+        Args:
+            dashboard (Callable): connection to status and signal control
+            channel (int, optional): digital I/O channel. Defaults to 1.
+        """
         self.dashboard = dashboard
         self.channel= channel
         return
@@ -54,19 +82,33 @@ class DobotGripper(Gripper):
     
 class TwoJawGrip(DobotGripper):
     """
-    TwoJawGrip class
+    TwoJawGrip provides methods to operate the Dobot jaw gripper
     
+    ### Constructor
     Args:
-        dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
+        `dashboard` (Optional[Callable], optional): connection to status and signal control. Defaults to None.
+        `channel` (int, optional): digital I/O channel. Defaults to 1.
+        
+    ### Methods
+    - `drop`: releases an object by opening the gripper
+    - `grab`: picks up an object by closing the gripper
     """
+    
     _implement_offset = (0,0,-95)
     def __init__(self, dashboard:Optional[Callable] = None, channel:int = 1):
+        """
+        Instantiate the class
+
+        Args:
+            dashboard (Optional[Callable], optional): connection to status and signal control. Defaults to None.
+            channel (int, optional): digital I/O channel. Defaults to 1.
+        """
         super().__init__(dashboard=dashboard, channel=channel)
         return
 
     def drop(self) -> bool:
         """
-        Open gripper, let go of object
+        Releases an object by opening the gripper
         
         Returns:
             bool: whether action is successful
@@ -81,7 +123,7 @@ class TwoJawGrip(DobotGripper):
     
     def grab(self) -> bool:
         """
-        Close gripper, pick object up
+        Picks up an object by closing the gripper
         
         Returns:
             bool: whether action is successful
@@ -97,19 +139,36 @@ class TwoJawGrip(DobotGripper):
 
 class VacuumGrip(DobotGripper):
     """
-    VacuumGrip class
-
+    VacuumGrip provides methods to operate the Dobot vacuum grip
+    
+    ### Constructor
     Args:
-        dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
+        `dashboard` (Optional[Callable], optional): connection to status and signal control. Defaults to None.
+        `channel` (int, optional): digital I/O channel. Defaults to 1.
+        
+    ### Methods
+    - `drop`: releases an object by pushing out air
+    - `grab`: picks up an object by pulling in air
+    - `pull`: activate pump to suck in air
+    - `push`: activate pump to blow out air
+    - `stop`: stop airflow
     """
+    
     _implement_offset = (0,0,-60)
     def __init__(self, dashboard:Optional[Callable] = None, channel:int = 1):
+        """
+        Instantiate the class
+
+        Args:
+            dashboard (Optional[Callable], optional): connection to status and signal control. Defaults to None.
+            channel (int, optional): digital I/O channel. Defaults to 1.
+        """
         super().__init__(dashboard=dashboard, channel=channel)
         return
 
     def drop(self) -> bool:
         """
-        Let go of object
+        Releases an object by pushing out air
         
         Returns:
             bool: whether action is successful
@@ -119,7 +178,7 @@ class VacuumGrip(DobotGripper):
     
     def grab(self) -> bool:
         """
-        Pick up object
+        Picks up an object by pulling in air
         
         Returns:
             bool: whether action is successful
@@ -129,10 +188,13 @@ class VacuumGrip(DobotGripper):
     
     def pull(self, duration:Optional[int] = None) -> bool:
         """
-        Inhale air
-
+        Activate pump to suck in air
+        
         Args:
-            duration (int, optional): number of seconds to inhale air. Defaults to None.
+            duration (Optional[int], optional): number of seconds to pull air. Defaults to None.
+        
+        Returns:
+            bool: whether action is successful
         """
         try:
             self.dashboard.DOExecute(1,1)
@@ -149,10 +211,10 @@ class VacuumGrip(DobotGripper):
     
     def push(self, duration:Optional[int] = None) -> bool:
         """
-        Expel air
-
+        Activate pump to blow out air
+        
         Args:
-            duration (int, optional): number of seconds to expel air. Defaults to None.
+            duration (Optional[int], optional): number of seconds to push air. Defaults to None.
             
         Returns:
             bool: whether action is successful

@@ -1,12 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Adapted from @Pablo's labware code
 
-Created: Tue 2023/01/25 17:13:35
-@author: Chang Jie
-
-Notes / actionables:
--
 """
 # Standard library imports
 from __future__ import annotations
@@ -19,18 +13,46 @@ print(f"Import: OK <{__name__}>")
 
 class Well:
     """
-    Well object
+    Well represents a single well in a Labware object
 
+    ### Constructor
     Args:
-        labware_info (dict): labware info of name, slot, reference point
-        name (str): name of well
-        details (dict): details of well
+        `labware_info` (dict): dictionary of truncated Labware information (name, slot, reference point)
+        `name` (str): name of well
+        `details` (dict[str, Union[float, tuple[float]]]): well details
+    
+    ### Attributes
+    - `details` (dict): well details; dictionary of depth, total liquid volume, shape, diameter, x,y,z
+    - `name` (str): name of well
+    - `reference_point` (tuple[int]): bottom left reference corner of Labware
+    
+    ### Properties
+    - `bottom` (np.ndarray): bottom of well
+    - `center` (np.ndarray): center of well
+    - `depth` (np.ndarray): well depth
+    - `middle` (np.ndarray): middle of well
+    - `offset` (np.ndarray): well offset from Labware reference point
+    - `top` (np.ndarray): top of well
+    
+    ### Methods
+    - `from_bottom`: offset from bottom of well
+    - `from_middle`: offset from middle of well
+    - `from_top`: offset from top of well
     """
+    
     def __init__(self, 
         labware_info: dict, 
         name: str, 
         details: dict[str, Union[float, tuple[float]]]
     ):
+        """
+        Instantiate the class
+
+        Args:
+            labware_info (dict): dictionary of truncated Labware information (name, slot, reference point)
+            name (str): name of well
+            details (dict[str, Union[float, tuple[float]]]): well details
+        """
         self.details = details  # depth,totalLiquidVolume,shape,diameter,x,y,z
         self.name = name
         self.reference_point = labware_info.get('reference_point', (0,0,0))
@@ -49,22 +71,10 @@ class Well:
     
     @property
     def center(self) -> np.ndarray:
-        """
-        Center of well bottom
-
-        Returns:
-            tuple: coordinates for center of well bottom
-        """
         return np.array(self.reference_point) + self.offset
     
     @property
     def depth(self) -> float:
-        """
-        Depth of well
-
-        Returns:
-            float: depth of well in mm
-        """
         return self.details.get('depth', 0)
     
     @property
@@ -74,46 +84,13 @@ class Well:
         
     @property
     def offset(self) -> np.ndarray:
-        """
-        Well offset from labware reference point
-
-        Returns:
-            tuple: offset vector
-        """
         x = self.details.get('x', 0)
         y = self.details.get('y', 0)
         z = self.details.get('z', 0)
         return np.array((x,y,z))
     
     @property
-    def bottom(self) -> np.ndarray:
-        """
-        Bottom of well
-
-        Returns:
-            tuple: coordinates for bottom of well
-        """
-        return self.center
-    
-    @property
-    def middle(self) -> np.ndarray:
-        """
-        Middle of well
-
-        Returns:
-            tuple: coordinates for middle of well
-        """
-        depth = self.details.get('depth', 0)
-        return self.center + np.array((0,0,depth/2))
-    
-    @property
     def top(self) -> np.ndarray:
-        """
-        Top of well
-
-        Returns:
-            tuple: coordinates for top of well
-        """
         depth = self.details.get('depth', 0)
         return self.center + np.array((0,0,depth))
     
@@ -156,20 +133,52 @@ class Well:
 
 class Labware:
     """
-    Labware object
+    Labware represents a single Labware on the Deck
 
+    ### Constructor
     Args:
-        slot (str): deck slot
-        bottom_left_coordinates (tuple): coordinates of bottom left corner (reference point)
-        labware_file (str): JSON filepath for labware
-        package (str, optional): name of package to look in. Defaults to None.
+        `slot` (str): deck slot number
+        `bottom_left_coordinates` (tuple[float]): coordinates of bottom left corner of Labware (i.e. reference point)
+        `labware_file` (str): filepath of Labware JSON file
+        `package` (Optional[str], optional): name of package to look in. Defaults to None.
+        
+    ### Attributes
+    - `details` (dict): dictionary read from Labware file
+    - `name` (str): name of Labware
+    - `slot` (str): deck slot number
+    
+    ### Properties
+    - `center` (np.ndarray): center of Labware
+    - `columns` (dict[str, int]): Labware columns
+    - `columns_list` (list[list[int]]): Labware columns as list
+    - `dimensions` (np.ndarray): size of Labware
+    - `info` (dict): summary of Labware info
+    - `reference_point` (np.ndarray): coordinates of bottom left corner of Labware
+    - `rows` (dict[str, int]): Labware rows
+    - `rows_list` (list[list[int]]): Labware rows as list
+    - `wells` (dict[str, Well]): Labware wells
+    - `wells_list` (list[Well]): Labware wells as list
+    
+    ### Methods
+    - `at`: alias for `get_well()`
+    - `get_well`: get `Well` using its name
     """
+    
     def __init__(self, 
         slot: str, 
         bottom_left_coordinates: tuple[float], 
         labware_file: str, 
         package: Optional[str] = None
     ):
+        """
+        Instantiate the class
+
+        Args:
+            slot (str): deck slot number
+            bottom_left_coordinates (tuple[float]): coordinates of bottom left corner (i.e. reference point)
+            labware_file (str): filepath of Labware JSON file
+            package (Optional[str], optional): name of package to look in. Defaults to None.
+        """
         self.details = helper.read_json(json_file=labware_file, package=package)
         self.name = self.details.get('metadata',{}).get('displayName', '')
         self._reference_point = tuple(bottom_left_coordinates)
@@ -184,12 +193,6 @@ class Labware:
     # Properties
     @property
     def center(self) -> np.ndarray:
-        """
-        Center of labware
-
-        Returns:
-            tuple: coordinates of the center of labware
-        """
         dimensions = self.details.get('dimensions',{})
         x = dimensions.get('xDimension', 0)
         y = dimensions.get('yDimension', 0)
@@ -198,33 +201,15 @@ class Labware:
     
     @property
     def columns(self) -> dict[str, int]:
-        """
-        Labware columns
-
-        Returns:
-            dict: dictionary of labelled columns lists
-        """
         columns_list = self.columns_list
         return {str(c+1): columns_list[c] for c in range(len(columns_list))}
     
     @property
     def columns_list(self) -> list[list[int]]:
-        """
-        Labware columns as list
-
-        Returns:
-            list: list of columns
-        """
         return self.details.get('ordering', [[]])
     
     @property
     def dimensions(self) -> np.ndarray:
-        """
-        Size of labware
-
-        Returns:
-            tuple: coordinates of the center of labware
-        """
         dimensions = self.details.get('dimensions',{})
         x = dimensions.get('xDimension', 0)
         y = dimensions.get('yDimension', 0)
@@ -245,35 +230,17 @@ class Labware:
     
     @property
     def rows(self) -> dict[str, int]:
-        """
-        Labware rows
-
-        Returns:
-            dict: dictionary of labelled rows lists
-        """
         first_column = self.details.get('ordering', [[]])[0]
         rows_list = self.rows_list
         return {w[0]: rows_list[r] for r,w in enumerate(first_column)}
     
     @property
     def rows_list(self) -> list[list[int]]:
-        """
-        Labware rows as list
-
-        Returns:
-            list: list of rows
-        """
         columns = self.columns_list
         return [list(z) for z in zip(*columns)]
        
     @property
     def wells(self) -> dict[str, Well]:
-        """
-        Labware wells
-
-        Returns:
-            dict: dictionary of labelled wells
-        """
         return self._wells
     
     @property
@@ -282,22 +249,26 @@ class Labware:
 
     def at(self, name:str) -> Well:
         """
-        Labware wells as list
-
-        Returns:
-            list: list of wells
-        """
-        return self.get_well(name=name)
-    
-    def get_well(self, name:str) -> Well:
-        """
-        Get well using name
+        Get `Well` using its name.
+        Alias for `get_well()`.
 
         Args:
             name (str): name of well
 
         Returns:
-            Well: well object
+            Well: `Well` object
+        """
+        return self.get_well(name=name)
+    
+    def get_well(self, name:str) -> Well:
+        """
+        Get `Well` using its name
+
+        Args:
+            name (str): name of well
+
+        Returns:
+            Well: `Well` object
         """
         return self.wells.get(name)
     
@@ -313,11 +284,36 @@ class Deck:
     """
     Deck object
 
+    ### Constructor
     Args:
-        layout_file (str, optional): JSON filepath of deck layout. Defaults to None.
-        package (str, optional): name of package to look in. Defaults to None.
+        `layout_file` (Optional[str], optional): filepath of deck layout JSON file. Defaults to None.
+        `package` (Optional[str], optional): name of package to look in. Defaults to None.
+    
+    ### Attributes
+    - `details` (dict): details read from layout file
+    - `exclusion_zones` (dict): dictionary of cuboidal zones to avoid
+    - `names` (dict): labels for deck slots
+    
+    ### Properties
+    - `slots` (dict[str, Labware]): loaded Labware in slots
+    
+    ### Methods
+    - `at`: alias for `get_slot()`, with mixed input
+    - `get_slot`: get Labware in slot using slot id or name
+    - `is_excluded`: checks and returns whether the coordinates are in an excluded region
+    - `load_labware`: load Labware into slot
+    - `load_layout`: load deck layout from layout file
+    - `remove_labware`: remove Labware in slot using slot id or name
     """
+    
     def __init__(self, layout_file:Optional[str] = None, package:Optional[str] = None):
+        """
+        Instantiate the class
+
+        Args:
+            layout_file (Optional[str], optional): filepath of deck layout JSON file. Defaults to None.
+            package (Optional[str], optional): name of package to look in. Defaults to None.
+        """
         self.details = {}
         self._slots = {}
         self.names = {}
@@ -332,23 +328,18 @@ class Deck:
     
     @property
     def slots(self) -> dict[str, Labware]:
-        """
-        Loaded Labware in slots
-
-        Returns:
-            dict: dictionary of labware in slots
-        """
         return self._slots
     
     def at(self, slot:Union[int, str]) -> Optional[Labware]:
         """
-        Alias for Deck.get_slot, with mixed input
+        Get Labware in slot using slot id or name, with mixed input.
+        Alias for `get_slot()`.
 
         Args:
-            slot (int/str): index or name of slot
+            slot (Union[int, str]): id or name of slot
 
         Returns:
-            Labware: Labware in slot
+            Optional[Labware]: Labware in slot
         """
         if type(slot) == int:
             return self.get_slot(index=slot)
@@ -359,17 +350,17 @@ class Deck:
     
     def get_slot(self, index:Optional[int] = None, name:Optional[str] = None) -> Optional[Labware]:
         """
-        Get labware in slot using index or name
+        Get Labware in slot using slot id or name
 
         Args:
-            index (int, optional): slot index number. Defaults to None.
-            name (str, optional): nickname of labware. Defaults to None.
+            index (Optional[int], optional): slot id number. Defaults to None.
+            name (Optional[str], optional): nickname of Labware. Defaults to None.
 
         Raises:
-            Exception: Inputs 'index' and 'name' cannot be both 'None'
+            ValueError: Please input either slot id or name
 
         Returns:
-            Labware: Labware in slot
+            Optional[Labware]: Labware in slot
         """
         if not any((index, name)) or all((index, name)):
             raise ValueError('Please input either slot id or name.')
@@ -379,10 +370,10 @@ class Deck:
     
     def is_excluded(self, coordinates:tuple[float]) -> bool:
         """
-        Determine whether the coordinates are in an excluded region.
+        Checks and returns whether the coordinates are in an excluded region.
 
         Args:
-            coordinates (tuple): tuple of given coordinates
+            coordinates (tuple[float]): target coordinates
 
         Returns:
             bool: whether the coordinates are in an excluded region
@@ -412,10 +403,11 @@ class Deck:
         Load Labware into slot
 
         Args:
-            slot (int): slot index
-            labware_file (str): JSON filepath of labware to be loaded
-            package (str, optional): name of package to look in. Defaults to None.
-            name (str, optional): nickname of labware. Defaults to None.
+            slot (int): slot id
+            labware_file (str): filepath Labware JSON file
+            package (Optional[str], optional): name of package to look in. Defaults to None.
+            name (Optional[str], optional): nickname of Labware. Defaults to None.
+            exclusion_height (Optional[float], optional): height clearance from top of Labware. Defaults to None.
         """
         if name:
             self.names[name] = slot
@@ -435,13 +427,16 @@ class Deck:
         labware_package: Optional[str] = None
     ):
         """
-        Load deck layout
+        Load deck layout from layout file
 
         Args:
-            layout_file (str, optional): JSON filepath of deck layout. Defaults to None.
-            layout_dict (dict, optional): dictionary of layout. Defaults to None.
-            package (str, optional): name of package to look in. Defaults to None.
-            labware_package (str, optional): name of package to look in for labware file. Defaults to None.
+            layout_file (Optional[str], optional): filepath of deck layout JSON file. Defaults to None.
+            layout_dict (Optional[dict], optional): layout details. Defaults to None.
+            package (Optional[str], optional): name of package to look in for layout file. Defaults to None.
+            labware_package (Optional[str], optional): name of package to look in for Labware file. Defaults to None.
+
+        Raises:
+            Exception: lease input either `layout_file` or `layout_dict`
         """
         if layout_file is None and layout_dict is None:
             return
@@ -465,14 +460,14 @@ class Deck:
 
     def remove_labware(self, index:Optional[int] = None, name:Optional[str] = None):
         """
-        Remove labware in slot using index or name
+        Remove Labware in slot using slot id or name
 
         Args:
-            index (int, optional): slot index number. Defaults to None.
-            name (str, optional): nickname of labware. Defaults to None.
+            index (Optional[int], optional): slot id. Defaults to None.
+            name (Optional[str], optional): nickname of Labware. Defaults to None.
 
         Raises:
-            Exception: Inputs 'index' and 'name' cannot be both 'None'
+            Exception: Please input either slot id or name
         """
         if not any((index, name)) or all((index, name)):
             raise Exception('Please input either slot id or name.')

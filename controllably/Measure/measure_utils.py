@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/02 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
-- add multi channel support
 """
 # Standard library imports
 from __future__ import annotations
@@ -13,7 +9,7 @@ import pandas as pd
 from typing import Callable, Optional, Protocol, Union
 
 # Local application imports
-from .program_utils import ProgramDetails
+from .program_utils import ProgramDetails, get_program_details
 print(f"Import: OK <{__name__}>")
 
 class Data(Protocol):
@@ -22,17 +18,55 @@ class Data(Protocol):
 
 class Program(Protocol):
     data_df: pd.DataFrame
-    def getDetails(self, *args, **kwargs):
-        ...
     def run(self, *args, **kwargs):
         ...
 
 class Measurer(ABC):
+    """
+    Abstract Base Class (ABC) for Measurer objects (i.e. tools that perform characterisation tasks).
+    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
+    
+    ### Constructor
+    Args:
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+    
+    ### Attributes
+    - `buffer_df` (pd.DataFrame): buffer dataframe to store collected data
+    - `connection_details` (dict): dictionary of connection details (e.g. COM port / IP address)
+    - `device` (Callable): device object that communicates with physical tool
+    - `flags` (dict[str, bool]): keywords paired with boolean flags
+    - `verbose` (bool): verbosity of class
+    
+    ### Properties
+    - `instrument`: Alias for `device`
+    
+    ### Methods
+    #### Abstract
+    - `clearCache`: clear most recent data and configurations
+    - `disconnect`: disconnect from device
+    - `_connect`: connection procedure for tool
+    #### Public
+    - `connect`: establish connection with device
+    - `isBusy`: checks and returns whether the device is busy
+    - `isConnected`: checks and returns whether the device is connected
+    - `reset`: reset the device
+    - `resetFlags`: reset all flags to class attribute `_default_flags`
+    - `saveData`: save data in buffer into file
+    - `setFlag`: set flags by using keyword arguments
+    - `shutdown`: shutdown procedure for tool
+    """
+    
     _default_flags: dict[str, bool] = {'busy': False, 'connected': False}
     def __init__(self,
         verbose: bool = False,
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         self.buffer_df = pd.DataFrame()
         self.connection_details = {}
         self.device = None
@@ -46,15 +80,15 @@ class Measurer(ABC):
     
     @abstractmethod
     def clearCache(self):
-        ...
+        """Clear most recent data and configurations"""
     
     @abstractmethod
     def disconnect(self):
-        ...
+        """Disconnect from device"""
     
     @abstractmethod
     def _connect(self, *args, **kwargs):
-        """Connect to machine control unit"""
+        """Connection procedure for tool"""
         self.connection_details = {}
         self.device = None
         self.setFlag(connected=True)
@@ -69,40 +103,43 @@ class Measurer(ABC):
         self.device = device
     
     def connect(self):
+        """Establish connection with device"""
         return self._connect(**self.connection_details)
 
     def isBusy(self) -> bool:
         """
-        Check whether the device is busy
+        Checks and returns whether the device is busy
         
         Returns:
-            `bool`: whether the device is busy
+            bool: whether the device is busy
         """
         return self.flags.get('busy', False)
     
     def isConnected(self) -> bool:
         """
-        Check whether the device is connected
+        Checks and returns whether the device is connected
 
         Returns:
-            `bool`: whether the device is connected
+            bool: whether the device is connected
         """
         if not self.flags.get('connected', False):
             print(f"{self.__class__} is not connected. Details: {self.connection_details}")
         return self.flags.get('connected', False)
     
     def reset(self):
+        """Reset the device"""
         self.resetFlags()
         self.clearCache()
         return
     
     def resetFlags(self):
+        """Reset all flags to class attribute `_default_flags`"""
         self.flags = self._default_flags.copy()
         return
 
     def saveData(self, filepath:str):
         """
-        Save dataframe to csv file.
+        Save data in buffer into file
         
         Args:
             filepath (str): filepath to which data will be saved
@@ -117,11 +154,10 @@ class Measurer(ABC):
 
     def setFlag(self, **kwargs):
         """
-        Set a flag's truth value
+        Set flags by using keyword arguments
 
-        Args:
-            `name` (str): label
-            `value` (bool): flag value
+        Kwargs:
+            key, value: (flag name, boolean) pairs
         """
         if not all([type(v)==bool for v in kwargs.values()]):
             raise ValueError("Ensure all assigned flag values are boolean.")
@@ -130,9 +166,7 @@ class Measurer(ABC):
         return
     
     def shutdown(self):
-        """
-        Close serial connection and shutdown
-        """
+        """Shutdown procedure for tool"""
         self.reset()
         self.disconnect()
         return
@@ -140,10 +174,46 @@ class Measurer(ABC):
 
 class Programmable(Measurer):
     """
-    Electrical measurer class.
+    Abstract Base Class (ABC) for Programmable Measurer objects (i.e. tools that perform characterisation tasks).
+    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
+    
+    ### Constructor
+    Kwargs:
+        key, value: (`Measurer` keyword argument, value) pairs
+    
+    ### Attributes
+    #### Class
+    - `model` (str): model name of class
+    #### Instance
+    - `data` (Data): instantiated Data class with data in buffer
+    - `datatype` (Data): Data class
+    - `program` (Program): instantiated Program class with parameters provided
+    - `program_details` (ProgramDetails): program details such as inputs, defaults, and docstring
+    - `program_parser` (function): function to get the program details from the program class docstring
+    - `program_type` (Program): Program class
+    - `recent_parameters` (list[dict[str, ...]]): list of previously used parameters
+    
+    ### Properties
+    - `instrument`: alias for `device`
+    
+    ### Methods
+    #### Abstract
+    - `disconnect`: disconnect from device
+    - `_connect`: connection procedure for tool
+    #### Public
+    - `clearCache`: clear most recent data and configurations
+    - `getData`: retrieve data from device and store in buffer
+    - `loadDataType`: load desired Data class
+    - `loadProgram`: load desired Program class
+    - `loadProgramParser`: load a program interpreter to get the program details from the program class docstring
+    - `measure`: perform measurement using loaded Program and parameters provided
+    - `plot`: present data visualisation using loaded DataType, using its `plot()` method
+    - `reset`: reset the device
     """
+    
     _default_datatype: Optional[Data] = None
     _default_program: Optional[Program] = None
+    _default_program_parser: dict[str, function] = {"parser": get_program_details}
     _default_flags = {
         'busy': False,
         'connected': False,
@@ -155,11 +225,12 @@ class Programmable(Measurer):
     available_programs: tuple[str] = ('',)      # FIXME
     possible_inputs: tuple[str] = ('',)         # FIXME
     def __init__(self, **kwargs):
+        """Instantiate the class"""
         super().__init__(**kwargs)
-        self.buffer_df = pd.DataFrame()
         self.data: Optional[Data] = None
         self.datatype: Optional[Data] = self._default_datatype
         self.program: Optional[Program] = None
+        self.program_parser = self._default_program_parser
         self.program_type: Optional[Program] = self._default_program
         
         self.program_details = ProgramDetails()
@@ -168,9 +239,7 @@ class Programmable(Measurer):
         return
           
     def clearCache(self):
-        """
-        Reset data and flags
-        """
+        """Clear most recent data and configurations """
         self.buffer_df = pd.DataFrame()
         self.data = None
         self.program = None
@@ -179,7 +248,7 @@ class Programmable(Measurer):
    
     def getData(self) -> pd.DataFrame:
         """
-        Read the data and cast into custom data type for extended functions.
+        Retrieve data from device and store in buffer
             
         Returns:
             pd.DataFrame: raw dataframe of measurement
@@ -196,10 +265,10 @@ class Programmable(Measurer):
 
     def loadDataType(self, datatype:Optional[Data] = None):
         """
-        Load a custom datatype to analyse and plot data
+        Load desired Data class
 
         Args:
-            datatype (Callable): custom datatype to load
+            datatype (Optional[Data], optional): custom datatype to load. Defaults to None.
         """
         self.datatype = self._default_datatype if datatype is None else datatype
         print(f"Loaded datatype: {self.datatype.__name__}")
@@ -207,28 +276,38 @@ class Programmable(Measurer):
     
     def loadProgram(self, program_type:Optional[Program] = None):
         """
-        Load a program for device to run and its parameters
+        Load desired Program class
 
         Args:
-            program_type (Callable, optional): program to load. Defaults to DMA.
+            program_type (Optional[Program], optional): program type to load. Defaults to None.
         """
         self.program_type = self._default_program if program_type is None else program_type
         print(f"Loaded program: {self.program_type.__name__}")
         self._get_program_details()
+        print(self.program_details.short_doc)
         self.measure.__func__.__doc__ = self._measure_method_docstring + self.program_details.short_doc
+        return
+    
+    def loadProgramInterpreter(self, program_parser: Optional[function] = None):
+        """
+        Load a program interpreter to get the program details from the program class docstring
+
+        Args:
+            program_parser (Optional[function], optional): function that interprets the program class docstring. Defaults to None.
+        """
+        self.program_parser = self._default_program_parser if program_parser is None else {"parser": program_parser}
         return
     
     def measure(self, parameters: Optional[dict] = None, channel:Union[int, tuple[int]] = 0, **kwargs):
         """
-        Performs measurement and tries to plot the data
+        Perform measurement using loaded Program and parameters provided.
+        Use `help()` to find out about program parameters.
 
         Args:
-            parameters (dict, optional): dictionary of parameters. Use help() to find out about program parameters. Defaults to {}.
-            channels (list, optional): list of channels to assign the program to. Defaults to [0].
-            
-        Raises:
-            Exception: Load a program first
+            parameters (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+            channels (Union[int, tuple[int]], optional): channel id(s). Defaults to 0.
         """
+        parameters = {} if parameters is None else parameters
         if self.program_type is None:
             self.loadProgram()
         if self.program_type is None:
@@ -251,10 +330,10 @@ class Programmable(Measurer):
     
     def plot(self, plot_type:Optional[str] = None) -> bool:
         """
-        Plot the measurement data
+        Present data visualisation using loaded DataType, using its `plot()` method
         
         Args:
-            plot_type (str, optional): perform the requested plot of the data. Defaults to None.
+            plot_type (Optional[str] , optional): perform the requested plot of the data. Defaults to None.
         """
         if not self.flags['measured'] or not self.flags['read']:
             return False
@@ -266,9 +345,7 @@ class Programmable(Measurer):
         return True
     
     def reset(self):
-        """
-        Reset the program, data, and flags
-        """
+        """Reset the device"""
         super().reset()
         self.device.reset()
         self.datatype = self._default_datatype
@@ -280,7 +357,7 @@ class Programmable(Measurer):
     # Protected method(s)
     def _extract_data(self) -> bool:
         """
-        Extract data output from device.
+        Extract data output from device
         
         Returns:
             bool: whether the data extraction is successful
@@ -295,15 +372,20 @@ class Programmable(Measurer):
         self.setFlag(read=True)
         return True
     
-    def _get_program_details(self):
+    def _get_program_details(self) -> ProgramDetails:
         """
         Get the input fields and defaults
 
         Raises:
             Exception: Load a program first
+            
+        Returns:
+            ProgramDetails: details of program class
         """
         if self.program_type is None:
             raise Exception('Load a program first.')
-        self.program_details: ProgramDetails = self.program_type.getDetails(verbose=self.verbose)
-        return
+        parser = self.program_parser["parser"]
+        details = parser(program_class=self.program_type, verbose=self.verbose)
+        self.program_details: ProgramDetails = details
+        return details
     

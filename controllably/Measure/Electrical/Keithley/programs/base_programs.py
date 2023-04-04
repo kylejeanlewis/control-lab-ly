@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/02 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
--
 """
 # Standard library imports
 import pandas as pd
@@ -46,15 +42,28 @@ class IV_Scan(Program):
     """
     I-V Scan program
 
+    ### Constructor
     Args:
-        device (KeithleyDevice): Keithley Device object
-        parameters (dict, optional): dictionary of measurement parameters. Defaults to {}.
+        `device` (Device): device object
+        `parameters` (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+
+    ### Attributes
+    - `data_df` (pd.DataFrame): data collected from device when running the program
+    - `device` (Device): device object
+    - `parameters` (dict[str, ...]): parameters
+    - `verbose` (bool): verbosity of class
+    
+    ### Methods
+    - `run`: run the measurement program
     
     ==========
-    Parameters:
+    
+    ### Parameters:
         count (int, optional): number of readings to take and average over. Defaults to 1.
-        currents (iterable): current values to measure. Defaults to 0,.
+        currents (iterable): current values to measure. Defaults to (0,).
     """
+    
     def __init__(self, 
         device: Device, 
         parameters: Optional[dict] = None,
@@ -65,9 +74,7 @@ class IV_Scan(Program):
         return
     
     def run(self):
-        """
-        Run the measurement program
-        """
+        """Run the measurement program"""
         device = self.device
         count = self.parameters.get('count', 1)
         
@@ -94,14 +101,27 @@ class OCV(Program):
     """
     Open Circuit Voltage program
 
+    ### Constructor
     Args:
-        device (KeithleyDevice): Keithley Device object
-        parameters (dict, optional): dictionary of measurement parameters. Defaults to {}.
+        `device` (Device): device object
+        `parameters` (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+
+    ### Attributes
+    - `data_df` (pd.DataFrame): data collected from device when running the program
+    - `device` (Device): device object
+    - `parameters` (dict[str, ...]): parameters
+    - `verbose` (bool): verbosity of class
+    
+    ### Methods
+    - `run`: run the measurement program
     
     ==========
-    Parameters:
+    
+    ### Parameters:
         count (int, optional): number of readings to take and average over. Defaults to 1.
     """
+    
     def __init__(self, 
         device: Device, 
         parameters: Optional[dict] = None,
@@ -112,9 +132,7 @@ class OCV(Program):
         return
     
     def run(self):
-        """
-        Run the measurement program
-        """
+        """Run the measurement program"""
         device = self.device
         count = self.parameters.get('count', 1)
         
@@ -137,23 +155,36 @@ class OCV(Program):
 
 class LSV(Program):
     """
-    Linear Sweep Voltammetry program
+    I-V Scan program
 
+    ### Constructor
     Args:
-        device (KeithleyDevice): Keithley Device object
-        parameters (dict, optional): dictionary of measurement parameters. Defaults to {}.
+        `device` (Device): device object
+        `parameters` (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+
+    ### Attributes
+    - `data_df` (pd.DataFrame): data collected from device when running the program
+    - `device` (Device): device object
+    - `parameters` (dict[str, ...]): parameters
+    - `verbose` (bool): verbosity of class
+    
+    ### Methods
+    - `run`: run the measurement program
     
     ==========
-    Parameters:
-        lower (float): voltage below OCV
-        upper (float): voltage above OCV
-        bidirectional (bool): whether to sweep both directions
-        mode (str): whether to use linear 'lin' or logarithmic 'log' mode
-        step (float): voltage step
-        sweep_rate (float): voltage per seconds V/s
-        dwell_time (float): dwell time at each voltage
-        points (int): number of points
+    
+    ### Parameters:
+        lower (float): voltage below OCV. Defaults to 0.5.
+        upper (float): voltage above OCV. Defaults to 0.5.
+        bidirectional (bool): whether to sweep both directions. Defaults to True.
+        mode (str): whether to use linear 'lin' or logarithmic 'log' mode. Defaults to 'lin'.
+        step (float): voltage step. Defaults to 0.05.
+        sweep_rate (float): voltage per seconds V/s. Defaults to 0.1.
+        dwell_time (float): dwell time at each voltage. Defaults to 0.1.
+        points (int): number of points. Defaults to 15.
     """
+    
     def __init__(self, 
         device: Device, 
         parameters: Optional[dict] = None,
@@ -164,9 +195,7 @@ class LSV(Program):
         return
     
     def run(self):
-        """
-        Run the measurement program
-        """
+        """Run the measurement program"""
         device= self.device
         # Get OCV
         ocv = self.runOCV()

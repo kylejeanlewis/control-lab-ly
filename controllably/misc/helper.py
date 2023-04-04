@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/02 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
--
 """
 # Standard library imports
 from __future__ import annotations
@@ -35,8 +31,11 @@ def create_folder(parent_folder:Optional[str] = None, child_folder:Optional[str]
     Check and create folder if it does not exist
 
     Args:
-        parent_folder (str, optional): parent folder directory. Defaults to None.
-        child_folder (str, optional): child folder directory. Defaults to None.
+        parent_folder (Optional[str], optional): parent folder directory. Defaults to None.
+        child_folder (Optional[str], optional): child folder directory. Defaults to None.
+    
+    Returns:
+        str: name of main folder
     """
     main_folder = datetime.now().strftime("%Y-%m-%d_%H%M")
     if parent_folder:
@@ -48,13 +47,13 @@ def create_folder(parent_folder:Optional[str] = None, child_folder:Optional[str]
     
 def get_method_names(obj:Callable) -> list[str]:
     """
-    Get the names of the methods in object (class/instance)
+    Get the names of the methods in Callable object (class/instance)
 
     Args:
-        obj (any): object of interest
+        obj (Callable): object of interest
 
     Returns:
-        list: list of method names
+        list[str]: list of method names
     """
     method_list = []
     # attribute is a string representing the attribute name
@@ -80,7 +79,7 @@ def get_ports() -> list[str]:
     Get available ports
 
     Returns:
-        list: list of connected serial ports
+        list[str]: list of connected serial ports
     """
     com_ports = []
     ports = serial.tools.list_ports.comports()
@@ -94,14 +93,14 @@ def get_ports() -> list[str]:
 
 def is_overrun(start_time:float, timeout:float) -> bool:
     """
-    Check whether the process has timed out
+    Checks and returns whether the process has overrun
 
     Args:
         start_time (float): start time in seconds since epoch
         timeout (float): timeout duration
 
     Returns:
-        bool: whether process has overrun
+        bool: whether the process has overrun
     """
     if timeout!=None and time.time() - start_time > timeout:
         return True
@@ -127,7 +126,7 @@ def read_json(json_file:str, package:Optional[str] = None) -> dict:
 
     Args:
         json_file (str): JSON filepath
-        package (str, optional): name of package to look in. Defaults to None.
+        package (Optional[str], optional): name of package to look in. Defaults to None.
 
     Returns:
         dict: dictionary loaded from JSON file
@@ -145,7 +144,7 @@ def read_yaml(yaml_file:str, package:Optional[str] = None) -> dict:
 
     Args:
         yaml_file (str): YAML filepath
-        package (str, optional): name of package to look in. Defaults to None.
+        package (Optional[str], optional): name of package to look in. Defaults to None.
 
     Returns:
         dict: dictionary loaded from YAML file
@@ -158,6 +157,15 @@ def read_yaml(yaml_file:str, package:Optional[str] = None) -> dict:
     return yaml.safe_load(yml)
 
 def safety_measures(func:Callable) -> Callable:
+    """
+    Decorator to implement safety measure to movement actions
+
+    Args:
+        func (Callable): function to be wrapped
+
+    Returns:
+        Callable: wrapped function
+    """
     return decorators.safety_measures(mode=safety_mode, countdown=safety_countdown)(func=func)
 
 def zip_inputs(primary_keyword:str, **kwargs) -> dict:
@@ -166,9 +174,12 @@ def zip_inputs(primary_keyword:str, **kwargs) -> dict:
 
     Args:
         primary_keyword (str): primary keyword to be used as key
+        
+    Kwargs:
+        key, list[...]: {keyword, list of values} pairs
 
     Raises:
-        Exception: Inputs have to be of the same length
+        Exception: Ensure the lengths of inputs are the same
 
     Returns:
         dict: dictionary of (primary keyword, kwargs)

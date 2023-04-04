@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/01 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
-- 
 """
 # Standard library imports
 from __future__ import annotations
@@ -18,24 +14,24 @@ print(f"Import: OK <{__name__}>")
 
 class M1Pro(Dobot):
     """
-    M1 Pro class.
+    M1Pro provides methods to control Dobot's M1 Pro arm
     
+    ### Constructor
     Args:
-        ip_address (str, optional): IP address of arm. Defaults to '192.168.2.21'.
-        retract (bool, optional): whether to tuck arm before each movement. Defaults to False.
-        handedness (str, optional): handedness of robot (i.e. left or right). Defaults to 'left'.
-        home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,300,100).
-        
-    Kwargs:
-        attachment (str, optional): Dobot attachment. Defaults to None.
-        home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
-        orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
-        translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to (0,0,0).
-        implement_offset (tuple, optional): implement offset vector pointing from end of effector to tool tip. Defaults to (0,0,0).
-        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
-        verbose (bool, optional): whether to print outputs. Defaults to False.
-        safe_height (float, optional): safe height. Defaults to None.
+        `ip_address` (str, optional): IP address of Dobot. Defaults to '192.168.2.21'.
+        `right_handed` (bool, optional): whether the robot is in right-handed mode (i.e elbow bends to the right). Defaults to True.
+        `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to 100.
+        `home_coordinates` (tuple[float], optional): home coordinates for the robot. Defaults to (0,300,100).
+    
+    ## Methods
+    - `home`: make the robot go home
+    - `isFeasible`: checks and returns whether the target coordinate is feasible
+    - `moveCoordBy`: relative Cartesian movement and tool orientation, using robot coordinates
+    - `retractArm`: tuck in arm, rotate about base, then extend again (NOTE: not implemented)
+    - `setHandedness`: set the handedness of the robot
+    - `stretchArm`: extend the arm to full reach
     """
+    
     _default_flags = {
         'busy': False,
         'connected': False,
@@ -49,6 +45,15 @@ class M1Pro(Dobot):
         home_coordinates: tuple[float] = (0,300,100), 
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            ip_address (str, optional): IP address of Dobot. Defaults to '192.168.2.21'.
+            right_handed (bool, optional): whether the robot is in right-handed mode (i.e elbow bends to the right). Defaults to True.
+            safe_height (float, optional): height at which obstacles can be avoided. Defaults to 100.
+            home_coordinates (tuple[float], optional): home coordinates for the robot. Defaults to (0,300,100).
+        """
         super().__init__(
             ip_address=ip_address, 
             safe_height=safe_height,
@@ -62,10 +67,11 @@ class M1Pro(Dobot):
     
     def home(self, safe:bool = True, tool_offset:bool = False) -> bool:
         """
-        Return the robot to home
+        Make the robot go home
 
         Args:
-            tool_offset (bool, optional): whether to consider the offset of the tooltip. Defaults to False.
+            safe (bool, optional): whether to use `safeMoveTo()`. Defaults to True.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
         
         Returns:
             bool: whether movement is successful
@@ -79,15 +85,15 @@ class M1Pro(Dobot):
         **kwargs
     ) -> bool:
         """
-        Checks if specified coordinates is a feasible position for robot to access.
+        Checks and returns whether the target coordinate is feasible
 
         Args:
-            coordinates (tuple): x,y,z coordinates
-            transform (bool, optional): whether to transform the coordinates. Defaults to False.
-            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
+            coordinates (tuple[float]): target coordinates
+            transform_in (bool, optional): whether to convert to internal coordinates first. Defaults to False.
+            tool_offset (bool, optional): whether to convert from tool tip coordinates first. Defaults to False.
 
         Returns:
-            bool: whether coordinates is a feasible position
+            bool: whether the target coordinate is feasible
         """
         if transform_in:
             coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
@@ -123,11 +129,14 @@ class M1Pro(Dobot):
         angles: tuple[float] = (0,0,0)
     ) -> bool:
         """
-        Relative Cartesian movement and tool orientation, using robot coordinates.
+        Relative Cartesian movement and tool orientation, using robot coordinates
 
         Args:
-            vector (tuple, optional): x,y,z displacement vector. Defaults to None.
-            angles (tuple, optional): a,b,c rotation angles in degrees. Defaults to None.
+            vector (tuple[float], optional): x,y,z displacement vector. Defaults to (0,0,0).
+            angles (tuple[float], optional): a,b,c rotation angles in degrees. Defaults to (0,0,0).
+
+        Returns:
+            bool: whether movement is successful
         """
         if vector is None:
             vector = (0,0,0)
@@ -143,14 +152,14 @@ class M1Pro(Dobot):
     
     def setHandedness(self, right_hand:bool, stretch:bool = False) -> bool:
         """
-        Set handedness of robot arm
+        Set the handedness of the robot
 
         Args:
-            hand (str): handedness
+            right_hand (bool): whether to select right-handedness
             stretch (bool, optional): whether to stretch the arm. Defaults to False.
 
-        Raises:
-            Exception: The parameter 'hand' has to be either 'left' or 'right'
+        Returns:
+            bool: whether movement is successful
         """
         set_value = None
         if not right_hand and self.flags['right_handed'] != False:  # Set to left-handed: 0
@@ -175,7 +184,7 @@ class M1Pro(Dobot):
             
     def stretchArm(self) -> bool:
         """
-        Stretch arm to switch handedness
+        Extend the arm to full reach
         
         Returns:
             bool: whether movement is successful
