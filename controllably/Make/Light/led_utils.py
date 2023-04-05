@@ -64,8 +64,7 @@ class LED:
             time_s (int, optional): duration in seconds. Defaults to 0.
         """
         self.power = value
-        if time_s:
-            self._duration = time_s
+        self._duration = time_s
         return
     
 
@@ -168,7 +167,10 @@ class LEDArray(Maker):
                 chn.setPower(value, time_s)
         elif type(channel) is int and channel in self.channels:
             self.channels[channel].setPower(value, time_s)
-        self.startTiming()
+        if time_s:
+            self.startTiming()
+        else:
+            self._update_power()
         return
     
     def shutdown(self):
@@ -179,11 +181,13 @@ class LEDArray(Maker):
     
     def startTiming(self):
         """Start counting down time left with LEDs on"""
+        print("Timing...")
         if not self.flags['timing_loop']:
+            if 'timing_loop'in self._threads and self._threads['timing_loop'].is_alive():
+                return
             thread = Thread(target=self._loop_timer)
             thread.start()
             self._threads['timing_loop'] = thread
-            print("Timing...")
         return
     
     def turnOff(self, channel:Optional[int] = None):
@@ -247,6 +251,7 @@ class LEDArray(Maker):
             if not self.isBusy():
                 last_round = True
         self.setFlag(timing_loop=False)
+        self._threads.pop('timing_loop')
         self._timed_channels = []
         return
     
@@ -268,8 +273,6 @@ class LEDArray(Maker):
         for chn in self.channels.values():
             if chn.update_power:
                 chn._end_time = now + chn._duration
-                chn._duration = 0
-                chn.setFlag(power_update=False)
                 chn.update_power = False
         if self.verbose:
             print(command)
