@@ -349,7 +349,8 @@ class Mover(ABC):
     @property
     def tool_position(self) -> tuple(np.ndarray, np.ndarray):
         """2-uple of tool tip (coordinates, orientation)"""
-        return self._transform_out(coordinates=self.coordinates, tool_offset=True), self.orientation
+        coordinates = self._transform_out(coordinates=self.coordinates, tool_offset=True)
+        return np.array(coordinates), self.orientation
  
     @property
     def translate_vector(self) -> np.ndarray:
@@ -365,7 +366,8 @@ class Mover(ABC):
     @property
     def user_position(self) -> tuple(np.ndarray, np.ndarray):
         """2-uple of user-defined workspace (coordinates, orientation)"""
-        return self._transform_out(coordinates=self.coordinates, tool_offset=False), self.orientation
+        coordinates = self._transform_out(coordinates=self.coordinates, tool_offset=False)
+        return np.array(coordinates), self.orientation
     
     @property
     def workspace_position(self) -> tuple(np.ndarray, np.ndarray):
@@ -471,18 +473,19 @@ class Mover(ABC):
         self.deck.load_layout(layout_file=layout_file, layout_dict=layout_dict)
         return
     
-    def move(self, axis:str, value:float, speed:float = 1, **kwargs) -> bool:
+    def move(self, axis:str, value:float, speed:Optional[float] = None, **kwargs) -> bool:
         """
         Move the robot in a specific axis by a specific value
 
         Args:
             axis (str): axis to move in (x,y,z,a,b,c,j1,j2,j3,j4,j5,j6)
             value (float): value to move by, in mm (translation) or degree (rotation)
-            speed (float, optional): speed of travel. Defaults to 1.
+            speed (Optional[float], optional): speed of travel. Defaults to None.
 
         Returns:
             bool: whether movement is successful
         """
+        speed = self._speed_max if speed is None else speed
         success = False
         speed_change, prevailing_speed = self.setSpeed(speed)
         axis = axis.lower()
@@ -517,9 +520,9 @@ class Mover(ABC):
     def safeMoveTo(self, 
         coordinates: Optional[tuple[float]] = None, 
         orientation: Optional[tuple[float]] = None, 
-        tool_offset: Optional[tuple[float]] = None, 
-        ascent_speed: Optional[float] = 1, 
-        descent_speed: Optional[float] = 1, 
+        tool_offset: bool = True, 
+        ascent_speed: Optional[float] = None, 
+        descent_speed: Optional[float] = None, 
         **kwargs
     ) -> bool:
         """
@@ -528,13 +531,15 @@ class Mover(ABC):
         Args:
             coordinates (Optional[tuple[float]], optional): x,y,z coordinates to move to. Defaults to None.
             orientation (Optional[tuple[float]], optional): a,b,c orientation to move to. Defaults to None.
-            tool_offset (Optional[tuple[float]], optional): whether to consider tooltip offset. Defaults to True.
-            ascent_speed (float, optional): speed to ascend at. Defaults to 1.
-            descent_speed (float, optional): speed to descend at. Defaults to 1.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
+            ascent_speed (Optional[float], optional): speed to ascend at. Defaults to None.
+            descent_speed (Optional[float], optional): speed to descend at. Defaults to None.
             
         Returns:
             bool: whether movement is successful
         """
+        ascent_speed = self._speed_max if ascent_speed is None else ascent_speed
+        descent_speed = self._speed_max if descent_speed is None else descent_speed
         success = []
         if coordinates is None:
             coordinates = self.tool_position if tool_offset else self.user_position
