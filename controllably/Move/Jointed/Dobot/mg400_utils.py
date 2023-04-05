@@ -17,7 +17,7 @@ class MG400(Dobot):
 
     ### Constructor
     Args:
-        `ip_address` (str, optional): IP address of Dobot. Defaults to '192.168.2.8'.
+        `ip_address` (str): IP address of Dobot
         `safe_height` (Optional[float], optional): height at which obstacles can be avoided. Defaults to 75.
         `retract` (bool, optional): whether to retract arm before movement. Defaults to True.
         `home_coordinates` (tuple[float], optional): home coordinates for the robot. Defaults to (0,300,0).
@@ -28,7 +28,7 @@ class MG400(Dobot):
     """
     
     def __init__(self, 
-        ip_address: str = '192.168.2.8', 
+        ip_address: str, 
         safe_height: float = 75, 
         retract: bool = True, 
         home_coordinates: tuple[float] = (0,300,0), 
@@ -38,7 +38,7 @@ class MG400(Dobot):
         Instantiate the class
 
         Args:
-            ip_address (str, optional): IP address of Dobot. Defaults to '192.168.2.8'.
+            ip_address (str): IP address of Dobot
             safe_height (Optional[float], optional): height at which obstacles can be avoided. Defaults to 75.
             retract (bool, optional): whether to retract arm before movement. Defaults to True.
             home_coordinates (tuple[float], optional): home coordinates for the robot. Defaults to (0,300,0).
