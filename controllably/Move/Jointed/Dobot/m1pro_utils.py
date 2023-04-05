@@ -18,7 +18,7 @@ class M1Pro(Dobot):
     
     ### Constructor
     Args:
-        `ip_address` (str, optional): IP address of Dobot. Defaults to '192.168.2.21'.
+        `ip_address` (str): IP address of Dobot
         `right_handed` (bool, optional): whether the robot is in right-handed mode (i.e elbow bends to the right). Defaults to True.
         `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to 100.
         `home_coordinates` (tuple[float], optional): home coordinates for the robot. Defaults to (0,300,100).
@@ -39,7 +39,7 @@ class M1Pro(Dobot):
         'right_handed': None
     }
     def __init__(self, 
-        ip_address: str = '192.168.2.21', 
+        ip_address: str, 
         right_handed: bool = True, 
         safe_height: float = 100,
         home_coordinates: tuple[float] = (0,300,100), 
@@ -49,7 +49,7 @@ class M1Pro(Dobot):
         Instantiate the class
 
         Args:
-            ip_address (str, optional): IP address of Dobot. Defaults to '192.168.2.21'.
+            ip_address (str): IP address of Dobot
             right_handed (bool, optional): whether the robot is in right-handed mode (i.e elbow bends to the right). Defaults to True.
             safe_height (float, optional): height at which obstacles can be avoided. Defaults to 100.
             home_coordinates (tuple[float], optional): home coordinates for the robot. Defaults to (0,300,100).
