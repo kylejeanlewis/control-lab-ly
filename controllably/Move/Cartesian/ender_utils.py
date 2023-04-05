@@ -20,10 +20,15 @@ class Ender(Gantry):
         `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0,0,0), (240,235,210)).
         `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to 30.
     
+    ### Attributes
+    - `temperature_range` (tuple): range of temperature that can be set for the platform bed
+    
     ### Methods
-    - `heat`: heat the 3-D printer platform bed to temperature
+    - `setTemperature`: set the temperature of the 3-D printer platform bed
     - `home`: make the robot go home
     """
+    
+    temperature_range = (0,110)
     def __init__(self, 
         port: str, 
         limits: tuple[tuple[float]] = ((0,0,0), (240,235,210)), 
@@ -42,26 +47,6 @@ class Ender(Gantry):
         self.home_coordinates = (0,0,self.heights['safe'])
         return
 
-    def heat(self, bed_temperature: float) -> bool:
-        """
-        Heat the 3-D printer platform bed to temperature
-
-        Args:
-            bed_temperature (float): set point for platform temperature
-
-        Returns:
-            bool: whether setting bed temperature was successful
-        """
-        bed_temperature = round( min(max(bed_temperature,0), 110) )
-        try:
-            self.device.write(bytes(f'M140 S{bed_temperature}\n', 'utf-8'))
-        except Exception as e:
-            print('Unable to heat stage!')
-            if self.verbose:
-                print(e)
-            return False
-        return True
-
     @Helper.safety_measures
     def home(self) -> bool:
         """Make the robot go home"""
@@ -77,4 +62,28 @@ class Ender(Gantry):
         
         self.coordinates = self.home_coordinates
         print("Homed")
+        return True
+
+    def setTemperature(self, set_point: float) -> bool:
+        """
+        Set the temperature of the 3-D printer platform bed
+
+        Args:
+            set_point (float): set point for platform temperature
+
+        Returns:
+            bool: whether setting bed temperature was successful
+        """
+        if set_point < self.temperature_range[0] or set_point > self.temperature_range[1]:
+            print(f'Please select a temperature between {self.temperature_range[0]} and {self.temperature_range[1]}°C.')
+            return False
+        set_point = round( min(max(set_point,0), 110) )
+        try:
+            print(f"New set temperature at {set_point}°C")
+            self.device.write(bytes(f'M140 S{set_point}\n', 'utf-8'))
+        except Exception as e:
+            print('Unable to heat stage!')
+            if self.verbose:
+                print(e)
+            return False
         return True
