@@ -20,5 +20,5 @@ me.safeMoveTo((-20,-40,-90))
 # %%
 me.home()
 # %%
-me.setSpeed()
+me.setSpeed() # NOTE: waiting for update
 # %%

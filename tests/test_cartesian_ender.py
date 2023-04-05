@@ -24,5 +24,5 @@ me.setTemperature(30)
 # %%
 me.setTemperature(25)
 # %%
-me.setSpeed()
+me.setSpeed() # NOTE: waiting for update
 # %%
