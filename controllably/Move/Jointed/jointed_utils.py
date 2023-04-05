@@ -213,7 +213,7 @@ class RobotArm(Mover):
     def moveTo(self, 
         coordinates: Optional[tuple[float]] = None, 
         orientation: Optional[tuple[float]] = None, 
-        tool_offset: Optional[tuple[float]] = None, 
+        tool_offset: bool = True, 
         retract: bool = False, 
         **kwargs
     ) -> bool:
@@ -223,7 +223,7 @@ class RobotArm(Mover):
         Args:
             coordinates (Optional[tuple[float]], optional): x,y,z coordinates to move to. Defaults to None.
             orientation (Optional[tuple[float]], optional): a,b,c orientation to move to. Defaults to None.
-            tool_offset (Optional[tuple[float]], optional): _description_. Defaults to None.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
             retract (bool, optional): whether to retract arm before movement. Defaults to False.
 
         Returns:
@@ -263,7 +263,7 @@ class RobotArm(Mover):
             return True
         if len(angles) == 3:
             return self.moveJointBy((0,0,0,*angles))
-        if len(angles) != 6:
+        if len(angles) == 6:
             return self.moveJointBy(angles)
         raise ValueError('Length of input needs to be 3 or 6.')
 
@@ -283,7 +283,7 @@ class RobotArm(Mover):
         if not any(orientation):
             return True
         if len(orientation) == 3:
-            return self.moveJointTo((0,0,0,*orientation))
-        if len(orientation) != 6:
+            return self.rotateBy(orientation - self.orientation)
+        if len(orientation) == 6:
             return self.moveJointTo(orientation)
         raise ValueError('Length of input needs to be 3 or 6.')
