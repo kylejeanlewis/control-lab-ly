@@ -305,6 +305,7 @@ class TriContinent(Pump):
             self.setSpeedRamp(1)
         ], channel=channel)
         if self.position <= steps:
+            print("Refilling first...")
             self.queue([self.fill()], channel=channel)
         self.queue([
             self.setValve('O'),
@@ -383,7 +384,7 @@ class TriContinent(Pump):
         response = self._query('Q')
         _status_code = response[2] if len(response) else ''
         if self.device is not None:
-            if _status_code not in StatusCode.Busy and _status_code not in StatusCode.Idle:
+            if _status_code not in StatusCode.Busy.value and _status_code not in StatusCode.Idle.value:
                 raise RuntimeError(f"Unable to get status from Pump: {self.name}")
     
         if _status_code in StatusCode.Busy.value:
