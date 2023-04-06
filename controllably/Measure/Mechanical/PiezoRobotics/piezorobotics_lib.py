@@ -105,4 +105,6 @@ class Frequency:
     
     @property
     def code(self):
-        return FrequencyCode(self.low).name, FrequencyCode(self.high).name
+        low = str(int(FrequencyCode(self.low).name[-2:]))
+        high = str(int(FrequencyCode(self.high).name[-2:]))
+        return low,high
