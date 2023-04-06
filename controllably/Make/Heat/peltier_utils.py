@@ -191,7 +191,8 @@ class Peltier(Maker):
         
         self._stabilize_time = None
         self.setFlag(temperature_reached=False, pause_feedback=False)
-        print(f"Waiting for temperature to reach {self.set_point}°C")
+        if blocking:
+            print(f"Waiting for temperature to reach {self.set_point}°C")
         while not self.isReady():
             if not self.flags['get_feedback']:
                 self.getTemperatures()
