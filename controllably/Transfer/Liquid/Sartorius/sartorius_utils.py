@@ -725,9 +725,9 @@ class Sartorius(LiquidHandler):
             device.flushInput()
             print(f"Connection opened to {port}")
             self.setFlag(connected=True)
+        self.device = device
         self.getInfo()
         self.reset()
-        self.device = device
         return
     
     def _is_expected_reply(self, response:str, command_code:str, **kwargs) -> bool:
