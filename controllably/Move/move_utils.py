@@ -60,7 +60,7 @@ class Mover(ABC):
     #### Abstract
     - `disconnect`: disconnect from device
     - `home`: make the robot go home
-    - `isFeasible`: checks and returns whether the target coordinate is feasible
+    - `isFeasible`: checks and returns whether the target coordinates is feasible
     - `moveBy`: move the robot by target direction
     - `moveTo`: move the robot to target position
     - `reset`: reset the robot
@@ -160,7 +160,7 @@ class Mover(ABC):
         **kwargs
     ) -> bool:
         """
-        Checks and returns whether the target coordinate is feasible
+        Checks and returns whether the target coordinates is feasible
 
         Args:
             coordinates (tuple[float]): target coordinates
