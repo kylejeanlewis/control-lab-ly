@@ -312,7 +312,8 @@ class LiquidHandler(ABC):
             bool: whether the device is connected
         """
         if not self.flags.get('connected', False):
-            print(f"{self.__class__} is not connected. Details: {self.connection_details}")
+            if self.verbose:
+                print(f"{self.__class__} is not connected. Details: {self.connection_details}")
         return self.flags.get('connected', False)
 
     def resetFlags(self):
