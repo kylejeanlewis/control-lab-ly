@@ -243,6 +243,8 @@ class LEDArray(Maker):
             timed_channels = self._timed_channels
             if len(finished_channels):
                 for c in finished_channels:
+                    if self.channels[c]._duration == 0:
+                        continue
                     self.turnOff(c)
             self._update_power()
             time.sleep(0.01)
@@ -266,7 +268,7 @@ class LEDArray(Maker):
             return ''
         command = f"{';'.join([str(v) for v in self.getPower()])}\n"
         try:
-            self.device.write(bytes(command, 'utf-8'))
+            self.device.write(command.encode('utf-8'))
         except AttributeError:
             pass
         now = time.time()

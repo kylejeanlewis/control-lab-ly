@@ -14,7 +14,7 @@ me.setPower(32,6, channel=3)
 # %%
 me.getTimedChannels()
 # %%
-me.setPower(200) # FIXME: LED will turn off if a new power is set before its time is up
+me.setPower(200,3)
 # %%
 me.turnOff()
 # %%
