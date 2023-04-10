@@ -46,6 +46,26 @@ class LiquidMoverSetup(CompoundSetup):
         `component_config` (Optional[dict], optional): configuration dictionary of component settings. Defaults to None.
         `layout_dict` (Optional[dict], optional): dictionary of layout. Defaults to None.
         `tip_approach_height` (float, optional): height in mm from which to approach tip rack during pick up. Defaults to 20.
+        
+    ### Attributes
+    - `tip_approach_height` (float): height in mm from which to approach tip rack during tip pickup
+    
+    ### Properties
+    - `liquid` (Liquid): liquid transfer tool
+    - `mover` (Mover): movement / translation robot
+    
+    ### Methods
+    - `align`: align the tool tip to the target coordinates, while also considering any additional offset
+    - `aspirateAt`: aspirate specified volume at target location, at desired speed
+    - `attachTip`: attach new pipette tip
+    - `attachTipAt`: attach new pipette tip from specified location
+    - `dispenseAt`: dispense specified volume at target location, at desired speed
+    - `ejectTip`: eject the pipette tip
+    - `ejectTipAt`: eject the pipette tip at the specified location
+    - `loadDeck`: load Labware objects onto the deck from file or dictionary
+    - `reset`: alias for `rest()`
+    - `rest`: go back to the rest position or home
+    - `returnTip`: return current tip to its original rack position
     """
     
     _default_flags: dict[str, bool] = {'at_rest': False}
@@ -215,7 +235,7 @@ class LiquidMoverSetup(CompoundSetup):
     
     def ejectTip(self, slot:str = 'bin', channel:Optional[int] = None) -> tuple[float]:
         """
-        Eject the pipette tip at the specified location
+        Eject the pipette tip
 
         Args:
             slot (str, optional): name of slot with bin. Defaults to 'bin'.
@@ -276,7 +296,7 @@ class LiquidMoverSetup(CompoundSetup):
         return
     
     def reset(self):
-        """Alias for rest"""
+        """Alias for `rest()`"""
         self.rest()
         return
     
