@@ -20,5 +20,5 @@ me.safeMoveTo((-20,-40,-90))
 # %%
 me.home()
 # %%
-me.setSpeed() # NOTE: waiting for update
+me.setSpeed(10) # NOTE: speed does not change for Primitiv
 # %%

@@ -19,6 +19,7 @@ class Ender(Gantry):
         `port` (str): COM port address
         `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0,0,0), (240,235,210)).
         `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to 30.
+        `max_speed` (float, optional): maximum travel speed. Defaults to 180.
     
     ### Attributes
     - `temperature_range` (tuple): range of temperature that can be set for the platform bed
@@ -33,6 +34,7 @@ class Ender(Gantry):
         port: str, 
         limits: tuple[tuple[float]] = ((0,0,0), (240,235,210)), 
         safe_height: float = 30, 
+        max_speed: float = 180, # [mm/s] (i.e. 10,800 mm/min)
         **kwargs
     ):
         """
@@ -42,8 +44,9 @@ class Ender(Gantry):
             port (str): COM port address
             limits (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0,0,0), (240,235,210)).
             safe_height (float, optional): height at which obstacles can be avoided. Defaults to 30.
+            max_speed (float, optional): maximum travel speed. Defaults to 180.
         """
-        super().__init__(port=port, limits=limits, safe_height=safe_height, **kwargs)
+        super().__init__(port=port, limits=limits, safe_height=safe_height, max_speed=max_speed, **kwargs)
         self.home_coordinates = (0,0,self.heights['safe'])
         return
 
@@ -58,7 +61,7 @@ class Ender(Gantry):
         self._query("G90\n")
         self._query(f"G0 Z{self.heights['safe']}\n")
         self._query("G90\n")
-        self._query("G1 F10000\n")
+        self._query("G1 F10800\n")
         
         self.coordinates = self.home_coordinates
         print("Homed")

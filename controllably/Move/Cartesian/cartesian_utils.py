@@ -50,7 +50,7 @@ class Gantry(Mover):
         port: str, 
         limits: tuple[tuple[float]] = ((0, 0, 0), (0, 0, 0)), 
         safe_height: Optional[float] = None, 
-        max_speed: float = 250, # [mm/s]
+        max_speed: float = 250, # [mm/s] (i.e. 15,000 mm/min)
         **kwargs
     ):
         """
@@ -173,6 +173,8 @@ class Gantry(Mover):
     
     def reset(self):
         """Reset the robot"""
+        self.disconnect()
+        self.connect()
         return super().reset()
     
     def setSpeed(self, speed: int): # NOTE: waiting for PR #48
@@ -180,9 +182,12 @@ class Gantry(Mover):
         Set the speed of the robot
 
         Args:
-            speed (int): rate value (value range: 1~100)
+            speed (int): speed in mm/s
         """
-        super().setSpeed(speed)
+        print(f'Speed: {speed} mm/s')
+        self._speed_fraction = (speed/self._speed_max)
+        speed = int(self._speed_max*self._speed_fraction * 60)   # get speed in mm/min
+        self._query(f"G01 F{speed}\n")  # feed rate (i.e. speed) in mm/min
         return False, self.speed
     
     def shutdown(self):
@@ -249,6 +254,8 @@ class Gantry(Mover):
         Returns:
             bool: whether the command is sent successfully
         """
+        if self.verbose:
+            print(command)
         try:
             self.device.write(command.encode('utf-8'))
         except Exception as e:

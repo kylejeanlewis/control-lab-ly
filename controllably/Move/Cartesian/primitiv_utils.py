@@ -21,6 +21,7 @@ class Primitiv(Gantry):
         `port` (str): COM port address
         `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((-410,-290,-120), (0,0,0)).
         `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to -80.
+        `max_speed` (float, optional): maximum travel speed. Defaults to 250.
     
     ### Methods:
     - `home`: make the robot go home
@@ -29,6 +30,7 @@ class Primitiv(Gantry):
         port: str, 
         limits: tuple[tuple[float]] = ((-410,-290,-120), (0,0,0)), 
         safe_height: float = -80, 
+        max_speed: float = 250, # [mm/s] (i.e. 15,000 mm/min)
         **kwargs
     ):
         """
@@ -38,8 +40,9 @@ class Primitiv(Gantry):
             port (str): COM port address
             limits (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((-410,-290,-120), (0,0,0)).
             safe_height (float, optional): height at which obstacles can be avoided. Defaults to -80.
+            max_speed (float, optional): maximum travel speed. Defaults to 250.
         """
-        super().__init__(port=port, limits=limits, safe_height=safe_height, **kwargs)
+        super().__init__(port=port, limits=limits, safe_height=safe_height, max_speed=max_speed, **kwargs)
         return
     
     @Helper.safety_measures
@@ -49,6 +52,10 @@ class Primitiv(Gantry):
         self.coordinates = self.home_coordinates
         print("Homed")
         return True
+    
+    def setSpeed(self, speed: int):
+        print("`setSpeed` method not available in `Primitiv` class")
+        return super().setSpeed(speed)
 
     # Protected method(s)
     def _connect(self, port:str, baudrate:int = 115200, timeout:Optional[int] = None):
