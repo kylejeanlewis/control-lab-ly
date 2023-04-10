@@ -308,6 +308,7 @@ class Programmable(Measurer):
             channels (Union[int, tuple[int]], optional): channel id(s). Defaults to 0.
         """
         parameters = {} if parameters is None else parameters
+        parameters.update(kwargs)
         if self.program_type is None:
             self.loadProgram()
         if self.program_type is None:
