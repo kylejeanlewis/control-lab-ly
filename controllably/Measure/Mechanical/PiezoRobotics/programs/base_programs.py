@@ -50,6 +50,7 @@ class DMA(Program):
         low_frequency (float): lower frequency limit to test
         high_frequency (float): upper frequency limit to test
         sample_thickness (float): thickness of measured sample. Defaults to 1E-3.
+        repeat (int): number of times to run the measurement. Defaults to 1.
         pause (bool): whether to pause for loading samples. Defaults to True.
     """
     
