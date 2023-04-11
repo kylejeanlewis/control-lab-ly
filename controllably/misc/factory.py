@@ -28,7 +28,7 @@ class DottableDict(dict):
         dict.__init__(self, *args, **kwargs)
         self.__dict__ = self
         
-    def allowDotting(self, state:bool = True):
+    def allow_dotting(self, state:bool = True):
         """
         Turn on or off the dot notation feature
 
