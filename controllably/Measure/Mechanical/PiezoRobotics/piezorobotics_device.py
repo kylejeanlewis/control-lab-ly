@@ -1,6 +1,12 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the instrument class for tools from PiezoRobotics.
 
+Classes:
+    PiezoRoboticsDevice (Instrument)
+
+Other constants and variables:
+    FREQUENCIES (tuple)
 """
 # Standard library imports
 from __future__ import annotations
@@ -18,7 +24,7 @@ from .piezorobotics_lib import CommandCode, ErrorCode, FrequencyCode, Frequency
 print(f"Import: OK <{__name__}>")
 
 FREQUENCIES = tuple([frequency.value for frequency in FrequencyCode])
-"""Tuple of available frequency values"""
+"""Collection of all available frequency values"""
 
 class PiezoRoboticsDevice(Instrument):
     """

@@ -1,4 +1,17 @@
-__where__ = "Make.Something.Good"                   # Where to register this module to
+"""
+This module holds the classes and functions of a plugin.
+
+Classes:
+    MyClass
+
+Functions:
+    my_function
+
+Other constants and variables:
+    MY_CONSTANT (str)
+    my_variable (str)
+"""
+__where__ = "Create.Something.Good"                 # Where to register this module to
 
 # ================================================\ Define your plugin classes and functions in this section
 class MyClass:

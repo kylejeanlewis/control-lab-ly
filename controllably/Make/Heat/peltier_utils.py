@@ -1,6 +1,12 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the class for Peltier devices.
 
+Classes:
+    Peltier (Maker)
+
+Other constants and variables:
+    COLUMNS (tuple)
 """
 # Standard library imports
 from datetime import datetime
@@ -16,6 +22,7 @@ from ..make_utils import Maker
 print(f"Import: OK <{__name__}>")
 
 COLUMNS = ('Time', 'Set', 'Hot', 'Cold', 'Power')
+"""Headers for output data from Peltier device"""
 
 class Peltier(Maker):
     """

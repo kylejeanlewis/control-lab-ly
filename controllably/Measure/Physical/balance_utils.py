@@ -1,6 +1,13 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the class for mass balances.
 
+Classes:
+    MassBalance (Measurer)
+
+Other constants and variables:
+    CALIBRATION_FACTOR (float)
+    COLUMNS (tuple)
 """
 # Standard library imports
 from datetime import datetime
@@ -15,8 +22,10 @@ import serial # pip install pyserial
 from ..measure_utils import Measurer
 print(f"Import: OK <{__name__}>")
 
-CALIBRATION_FACTOR = 6.862879436681862 # Empirical: factor by which to divide output reading by to get mass in mg
+CALIBRATION_FACTOR = 6.862879436681862
+"""Empirical factor by which to divide output reading by to get mass in mg"""
 COLUMNS = ('Time', 'Value', 'Factor', 'Baseline', 'Mass')
+"""Headers for output data from mass balance"""
 
 class MassBalance(Measurer):
     """

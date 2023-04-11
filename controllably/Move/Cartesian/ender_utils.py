@@ -1,6 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the class for movement tools based on Creality's Ender-3.
 
+Classes:
+    Ender (Gantry)
 """
 # Standard library imports
 from __future__ import annotations

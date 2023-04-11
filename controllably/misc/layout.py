@@ -1,6 +1,11 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the layout classes in Control.lab.ly.
 
+Classes:
+    Deck
+    Labware
+    Well
 """
 # Standard library imports
 from __future__ import annotations

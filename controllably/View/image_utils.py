@@ -1,6 +1,24 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the base class for image data.
 
+Classes:
+    Image
+    
+Functions:
+    addText
+    annotate
+    blur
+    convertToRGB
+    convolve
+    crosshair
+    encode
+    grayscale
+    process
+    removeNoise
+    resize
+    rotate
+    save
 """
 # Standard library imports
 from __future__ import annotations

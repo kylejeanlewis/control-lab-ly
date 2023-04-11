@@ -1,6 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the class for viewer control panels.
 
+Classes:
+    ViewerPanel (Panel)
 """
 # Standard library imports
 from __future__ import annotations
@@ -41,6 +44,7 @@ class ViewerPanel(Panel):
     - `getLayout`: build `sg.Column` object
     - `listenEvents`: listen to events and act on values
     """
+    
     def __init__(self, 
         viewer: Viewer, 
         name: str = 'VIEW', 

@@ -1,6 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the class for syringe assemblies.
 
+Classes:
+    SyringeAssembly (LiquidHandler)
 """
 # Standard library imports
 from __future__ import annotations

@@ -1,6 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the instrument class for tools from Keithley.
 
+Classes:
+    KeithleyDevice (Instrument)
 """
 # Standard library imports
 from __future__ import annotations

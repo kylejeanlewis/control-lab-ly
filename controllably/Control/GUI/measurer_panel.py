@@ -1,6 +1,10 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the class for measurer control panels.
 
+Classes:
+    MeasurerPanel (Panel)
+    ProgramDetails (dataclass)
 """
 # Standard library imports
 from __future__ import annotations
@@ -65,6 +69,7 @@ class MeasurerPanel(Panel):
     - `getLayout`: build `sg.Column` object
     - `listenEvents`: listen to events and act on values
     """
+    
     def __init__(self, 
         measurer: Measurer, 
         name: str = 'MEASURE', 

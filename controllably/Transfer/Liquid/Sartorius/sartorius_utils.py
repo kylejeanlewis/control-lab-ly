@@ -1,6 +1,12 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the class for pipette tools from Sartorius.
 
+Classes:
+    Sartorius (LiquidHandler)
+
+Other constants and variables:
+    STEP_RESOLUTION (int)
 """
 # Standard library imports
 from __future__ import annotations

@@ -1,6 +1,23 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the references for pipette tools from Sartorius.
 
+Classes:
+    ErrorCode (Enum)
+    ModelInfo (Enum)
+    StaticQueryCode (Enum)
+    StatusCode (Enum)
+    StatusQueryCode (Enum)
+    Model (dataclass)
+
+Other types:
+    PresetSpeeds (namedtuple)
+    SpeedParameters (namedtuple)
+
+Other constants and variables:
+    QUERIES (list)  
+    STATIC_QUERIES (list)
+    STATUS_QUERIES (list)
 """
 # Standard library imports
 from collections import namedtuple
@@ -72,7 +89,7 @@ class StatusQueryCode(Enum):
     Liquid_Sensor   = 'DN'
 
 
-# FIXME
+# FIXME: Do away with these objects below
 STATIC_QUERIES  = [static_query.value for static_query in StaticQueryCode]
 STATUS_QUERIES  = [status_query.value for status_query in StatusQueryCode]
 QUERIES         = STATUS_QUERIES + STATIC_QUERIES

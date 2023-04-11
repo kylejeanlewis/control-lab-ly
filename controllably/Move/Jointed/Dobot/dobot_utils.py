@@ -1,10 +1,15 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/01 17:13:35
-@author: Chang Jie
+This module holds the base class for movement tools from Dobot.
 
-Notes / actionables:
-- 
+Classes:
+    Dobot (RobotArm)
+
+Other types:
+    Device (namedtuple)
+
+Other constants and variables:
+    MOVE_TIME_BUFFER_S (float)
 """
 # Standard library imports
 from __future__ import annotations
@@ -22,6 +27,7 @@ print(f"Import: OK <{__name__}>")
 MOVE_TIME_BUFFER_S = 0.5
 
 Device = namedtuple('Device', ['dashboard', 'feedback'])
+"""Device is a named tuple for a dashboard,feedback pair"""
 
 class DobotAttachment(Protocol):
     implement_offset: tuple

@@ -1,6 +1,14 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the base class for control panels as well as compound panels.
 
+Classes:
+    Panel (ABC)
+    CompoundPanel (Panel)
+    
+Other constants and variables:
+    HEIGHT (int): height of screen size in number of pixels
+    WIDTH (int): width of screen size in number of pixels
 """
 # Standard library imports
 from __future__ import annotations
@@ -397,6 +405,7 @@ class CompoundPanel(Panel):
     - `getLayout`: build `sg.Column` object
     - `listenEvents`: listen to events and act on values
     """
+    
     def __init__(self, 
         ensemble: dict[str, Panel],
         group: Optional[str] = None,

@@ -1,6 +1,13 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the base class for measurement programs.
 
+Classes:
+    Program (ABC)
+    ProgramDetails (dataclass)
+
+Functions:
+    get_program_details
 """
 # Standard library imports
 from __future__ import annotations
@@ -58,6 +65,7 @@ class Program(ABC):
     ### Parameters:
         None
     """
+    
     details: ProgramDetails = ProgramDetails()
     def __init__(self, 
         device: Device, 

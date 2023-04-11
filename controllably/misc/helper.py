@@ -1,6 +1,22 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the helper functions in Control.lab.ly.
 
+Functions:
+    create_folder
+    get_method_names
+    get_node
+    get_ports
+    is_overrun
+    pretty_print_duration
+    read_json
+    read_yaml
+    safety_measures (decorator)
+    zip_inputs
+
+Other constants and variables:
+    safety_countdown (int)
+    safety_mode (Optional[str])
 """
 # Standard library imports
 from __future__ import annotations

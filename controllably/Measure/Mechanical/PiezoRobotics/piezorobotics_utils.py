@@ -1,6 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the class for tools from PiezoRobotics.
 
+Classes:
+    PiezoRobotics (Programmable)
 """
 # Local application imports
 from __future__ import annotations

@@ -1,6 +1,10 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the class for LED arrays.
 
+Classes:
+    LEDArray (Maker)
+    LED (dataclass)
 """
 # Standard library imports
 from __future__ import annotations

@@ -1,3 +1,12 @@
+"""
+This sub-package imports the classes for mechanical measurement tools from Keithley.
+
+Modules:
+    programs
+
+Classes:
+    Keithley (Programmable)
+"""
 from .keithley_utils import Keithley
 from . import programs
 

@@ -1,6 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the base class for liquid pumps.
 
+Classes:
+    Pump (LiquidHandler)
 """
 # Standard library imports
 import time

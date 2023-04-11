@@ -1,6 +1,15 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the program class for tools from PiezoRobotics.
 
+Classes:
+    IV_Scan (Program)
+    LSV (Program)
+    OCV (Program)
+
+Other constants and variables:
+    INPUTS_SET (list)
+    PROGRAM_NAMES (list)
 """
 # Standard library imports
 import pandas as pd
@@ -286,9 +295,13 @@ class LSV(Program):
         device.start(sequential_commands=False)
         return
 
+
+# FIXME: Do away with these objects below
 PROGRAMS = [IV_Scan, OCV, LSV]
-PROGRAM_NAMES = [prog.__name__ for prog in PROGRAMS]
 INPUTS = [item for item in [[key for key in get_program_details(prog).inputs] for prog in PROGRAMS]]
+PROGRAM_NAMES = [prog.__name__ for prog in PROGRAMS]
+"""List of program names"""
 INPUTS_SET = sorted( list(set([item for sublist in INPUTS for item in sublist])) )
+"""Sorted list of input parameters"""
 
 # %%

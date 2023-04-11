@@ -1,6 +1,11 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the references for syringe pumps from TriContinent.
 
+Classes:
+    ErrorCode (Enum)
+    StatusCode (Enum)
+    TriContinentPump (dataclass)
 """
 # Standard library imports
 from dataclasses import dataclass, field

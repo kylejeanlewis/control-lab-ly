@@ -1,5 +1,5 @@
 machine_id:
-  '000000000000000':          # insert your machine's ID here
+  '000000000000000':          # insert your machine's 15-digit ID here
     cam_index:                # camera index of the connected imaging devices
       __cam_1__: 0            # keep the leading and trailing double underscores
       __cam_2__: 1
