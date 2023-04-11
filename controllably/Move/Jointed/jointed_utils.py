@@ -178,7 +178,7 @@ class RobotArm(Mover):
         # Go to home position
         if safe:
             coordinates = self._transform_out(coordinates=coordinates, tool_offset=tool_offset)
-            ret = self.safeMoveTo(coordinates=coordinates, orientation=self.home_orientation)
+            ret = self.safeMoveTo(coordinates=coordinates, orientation=self.home_orientation, tool_offset=tool_offset)
         else:
             ret = self.moveCoordTo(coordinates, self.home_orientation)
         success.append(ret)
