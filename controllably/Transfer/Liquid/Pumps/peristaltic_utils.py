@@ -159,6 +159,7 @@ class Peristaltic(Pump):
         Returns:
             bool: whether the action is successful
         """
+        self.setValve(False)
         return self.setValve(open=True, channel=channel)
     
     def setValve(self, open:bool = False, channel:Optional[int] = None) -> bool:
@@ -208,6 +209,19 @@ class Peristaltic(Pump):
         return self._turn_pump(-abs(speed))
      
     # Protected method(s)
+    def _connect(self, port: str, baudrate: int = 9600, timeout: int = 1):
+        """
+        Connection procedure for tool
+
+        Args:
+            port (str): COM port address
+            baudrate (int, optional): baudrate. Defaults to 9600.
+            timeout (int, optional): timeout in seconds. Defaults to 1.
+        """
+        super()._connect(port, baudrate, timeout)
+        self.setValve(False)
+        return
+    
     def _turn_pump(self, speed:int) -> bool:
         """
         Relay instructions to pump
