@@ -1,10 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/12/12 13:13:00
-@author: Chang Jie
+This module holds the base class for substrate gripper tools.
 
-Notes / actionables:
--
+Classes:
+    Gripper (ABC)
 """
 # Standard library imports
 from abc import ABC, abstractmethod

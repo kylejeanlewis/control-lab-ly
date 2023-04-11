@@ -1,10 +1,15 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/12/12 13:13:00
-@author: Chang Jie
+This module holds the classes for substrate gripper tools from Dobot.
 
-Notes / actionables:
--
+Classes:
+    DobotGripper (Gripper)
+    TwoJawGrip (DobotGripper)
+    VacuumGrip (DobotGripper)
+
+Other constants and variables:
+    ATTACHMENT_NAMES (list)
+    METHODS_SET (list)
 """
 # Standard library imports
 from __future__ import annotations
@@ -250,8 +255,10 @@ class VacuumGrip(DobotGripper):
         return True
 
 
-# FIXME
+# FIXME: Do away with these objects below
 ATTACHMENTS = [TwoJawGrip, VacuumGrip]
-ATTACHMENT_NAMES = ['TwoJawGrip', 'VacuumGrip']
 METHODS = [Helper.get_method_names(attachment) for attachment in ATTACHMENTS]
+ATTACHMENT_NAMES = [att.__name__ for att in ATTACHMENTS]
+"""List of attachment names"""
 METHODS_SET = sorted( list(set([item for sublist in METHODS for item in sublist])) )
+"""Sorted list of method names"""
