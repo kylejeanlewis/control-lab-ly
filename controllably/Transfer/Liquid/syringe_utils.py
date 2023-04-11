@@ -295,7 +295,7 @@ class SyringeAssembly(LiquidHandler):
         speed: Optional[float] = None, 
         wait: int = 0, 
         pause: bool = False, 
-        cycles: int = 3,
+        cycles: int = 1,
         reagent: Optional[str] = None, 
         channel: Optional[Union[int, tuple[int]]] = None,
         **kwargs
@@ -357,7 +357,7 @@ class SyringeAssembly(LiquidHandler):
     def rinse(self, 
         speed: Optional[float] = None, 
         wait: int = 0, 
-        cycles: int = 3, 
+        cycles: int = 1, 
         channel: Optional[Union[int, tuple[int]]] = None,
         **kwargs
     ) -> bool:
