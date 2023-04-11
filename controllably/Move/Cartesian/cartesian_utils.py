@@ -218,6 +218,7 @@ class Gantry(Mover):
             if self.verbose:
                 print(e)
         else:
+            time.sleep(2)
             print(f"Connection opened to {port}")
             self.setFlag(connected=True)
         self.device = device
