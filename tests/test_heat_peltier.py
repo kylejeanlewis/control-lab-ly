@@ -16,5 +16,12 @@ me.getTemperatures()
 me.setTemperature(25, blocking=False)
 # %%
 import plotly.express as px
-px.line(me.buffer_df, 'Time', ['Set','Hot','Cold','Power'])
+me.clearCache()
+me.toggleRecord(True)
+for temperature in [25,30,35,40,45,50]:
+    me.holdTemperature(temperature, 90)
+me.toggleRecord(False)
+me.setTemperature(25)
+fig = px.line(me.buffer_df, 'Time', ['Set','Hot','Cold','Power'])
+fig.show()
 # %%
