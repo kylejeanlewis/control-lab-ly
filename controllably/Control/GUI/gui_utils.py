@@ -497,7 +497,3 @@ class CompoundPanel(Panel):
             update = panel.listenEvents(event, values)
             updates.update(update)
         return updates
-
-
-def configure(**kwargs):
-    return Panel.configure(**kwargs)
