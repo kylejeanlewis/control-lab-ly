@@ -1,106 +1,92 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/01 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
--
 """
+# Standard library imports
+from __future__ import annotations
+
 # Local application imports
-from ...misc import HELPER
+from ...misc import Helper
 from .cartesian_utils import Gantry
 print(f"Import: OK <{__name__}>")
 
 class Ender(Gantry):
     """
-    Ender platform controls
+    Ender provides controls for the Creality Ender-3 platform
 
+    ### Constructor
     Args:
-        port (str): com port address
-        limits (list, optional): lower and upper bounds of movement. Defaults to [(0,0,0), (0,0,0)].
-        safe_height (float, optional): safe height. Defaults to None.
+        `port` (str): COM port address
+        `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0,0,0), (240,235,210)).
+        `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to 30.
+        `max_speed` (float, optional): maximum travel speed. Defaults to 180.
     
-    Kwargs:
-        max_speed (float, optional): maximum movement speed. Defaults to 250.
-        home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,0,0).
-        home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
-        orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
-        translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to (0,0,0).
-        implement_offset (tuple, optional): implement offset vector pointing from end of effector to tool tip. Defaults to (0,0,0).
-        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
-        verbose (bool, optional): whether to print outputs. Defaults to False.
+    ### Attributes
+    - `temperature_range` (tuple): range of temperature that can be set for the platform bed
+    
+    ### Methods
+    - `setTemperature`: set the temperature of the 3-D printer platform bed
+    - `home`: make the robot go home
     """
-    def __init__(self, port:str, limits=[(0,0,0), (240,235,210)], safe_height=30, **kwargs):
-        super().__init__(port=port, limits=limits, safe_height=safe_height, **kwargs)
-        return
     
-    def _connect(self, port:str, baudrate=115200, timeout=None):
+    temperature_range = (0,110)
+    def __init__(self, 
+        port: str, 
+        limits: tuple[tuple[float]] = ((0,0,0), (240,235,210)), 
+        safe_height: float = 30, 
+        max_speed: float = 180, # [mm/s] (i.e. 10,800 mm/min)
+        **kwargs
+    ):
         """
-        Connect to machine control unit
+        Instantiate the class
 
         Args:
-            port (str): com port address
-            baudrate (int): baudrate. Defaults to 115200.
-            timeout (int, optional): timeout in seconds. Defaults to None.
-            
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
+            port (str): COM port address
+            limits (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0,0,0), (240,235,210)).
+            safe_height (float, optional): height at which obstacles can be avoided. Defaults to 30.
+            max_speed (float, optional): maximum travel speed. Defaults to 180.
         """
-        self.port = port
-        self._baudrate = baudrate
-        self._timeout = timeout
-        return super()._connect(self.port, self._baudrate, self._timeout)
+        super().__init__(port=port, limits=limits, safe_height=safe_height, max_speed=max_speed, **kwargs)
+        self.home_coordinates = (0,0,self.heights['safe'])
+        return
 
-    def heat(self, bed_temperature):
+    @Helper.safety_measures
+    def home(self) -> bool:
+        """Make the robot go home"""
+        self._query("G90\n")
+        self._query(f"G0 Z{self.heights['safe']}\n")
+        self._query("G90\n")
+        self._query("G28\n")
+
+        self._query("G90\n")
+        self._query(f"G0 Z{self.heights['safe']}\n")
+        self._query("G90\n")
+        self._query("G1 F10800\n")
+        
+        self.coordinates = self.home_coordinates
+        print("Homed")
+        return True
+
+    def setTemperature(self, set_point: float) -> bool:
         """
-        Heat bed to temperature
+        Set the temperature of the 3-D printer platform bed
 
         Args:
-            bed_temperature (int, or float): temperature of platform
+            set_point (float): set point for platform temperature
 
         Returns:
             bool: whether setting bed temperature was successful
         """
-        bed_temperature = round( min(max(bed_temperature,0), 110) )
+        if set_point < self.temperature_range[0] or set_point > self.temperature_range[1]:
+            print(f'Please select a temperature between {self.temperature_range[0]} and {self.temperature_range[1]}°C.')
+            return False
+        set_point = round( min(max(set_point,0), 110) )
         try:
-            self.device.write(bytes(f'M140 S{bed_temperature}\n', 'utf-8'))
+            print(f"New set temperature at {set_point}°C")
+            self.device.write(bytes(f'M140 S{set_point}\n', 'utf-8'))
         except Exception as e:
             print('Unable to heat stage!')
             if self.verbose:
                 print(e)
             return False
         return True
-
-    @HELPER.safety_measures
-    def home(self):
-        """
-        Homing cycle for Ender platform
-        """
-        try:
-            self.device.write(bytes("G90\n", 'utf-8'))
-            print(self.device.readline())
-            self.device.write(bytes(f"G0 Z{self.heights['safe']}\n", 'utf-8'))
-            print(self.device.readline())
-            self.device.write(bytes("G90\n", 'utf-8'))
-            print(self.device.readline())
-
-            self.device.write(bytes("G28\n", 'utf-8'))
-
-            self.device.write(bytes("G90\n", 'utf-8'))
-            print(self.device.readline())
-            self.device.write(bytes(f"G0 Z{self.heights['safe']}\n", 'utf-8'))
-            print(self.device.readline())
-            self.device.write(bytes("G90\n", 'utf-8'))
-            print(self.device.readline())
-        except Exception as e:
-            if self.verbose:
-                print(e)
-        
-        self.coordinates = (0,0,self.heights['safe'])
-        try:
-            self.device.write(bytes("G1 F10000\n", 'utf-8'))
-            print(self.device.readline())
-        except Exception as e:
-            if self.verbose:
-                print(e)
-        return

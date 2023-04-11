@@ -1,137 +1,210 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2023/02/12 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
--
 """
 # Standard library imports
-
-# Third party imports
+from __future__ import annotations
+from abc import ABC, abstractmethod
+from typing import Optional
 
 # Local application imports
-from ..misc import Deck, Helper
+from ..misc import Factory, Layout
 print(f"Import: OK <{__name__}>")
 
-class CompoundSetup(object):
+class CompoundSetup(ABC):
     """
-    Liquid Mover Setup routines
-
+    Abstract Base Class (ABC) for CompoundSetup objects (i.e. compound tools that combine multiple basic tools).
+    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
+    
+    ### Constructor
     Args:
-        config (str): filename of config .yaml file
-        config_option (int, optional): configuration option from config file. Defaults to 0.
-        layout (str, optional): filename of config .yaml file. Defaults to None.
-        layout_dict (dict, optional): dictionary of layout. Defaults to None.
-        ignore_connections (bool, optional): whether to ignore connections and run methods. Defaults to False.
+        `config` (Optional[str], optional): filename of config .yaml file. Defaults to None.
+        `layout` (Optional[str], optional): filename of layout .json file. Defaults to None.
+        `component_config` (Optional[dict], optional): configuration dictionary of component settings. Defaults to None.
+        `layout_dict` (Optional[dict], optional): dictionary of layout. Defaults to None.
+        `components` (Optional[dict], optional): dictionary of components. Defaults to None.
+        `diagnostic` (bool, optional): whether to run diagnostic tests to check equipment. Defaults to False.
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+
+    ### Attributes
+    - `components` (dict): dictionary of component parts
+    - `deck` (Layout.Deck): Deck object for workspace
+    - `flags` (dict[str, bool]): keywords paired with boolean flags
+    - `positions` (dict[str, tuple[float]]): specified position names and values
+    - `verbose` (bool): verbosity of class
+    
+    ### Methods
+    #### Abstract
+    - `reset`: reset the setup
+    #### Public
+    - `isBusy`: checks and returns whether the setup is busy
+    - `isConnected`: checks and returns whether the setup is connected
+    - `isFeasible`: checks and returns whether the target coordinates is feasible
+    - `loadDeck`: load Labware objects onto the deck from file or dictionary
+    - `resetFlags`: reset all flags to class attribute `_default_flags`
+    - `setFlag`: set flags by using keyword arguments
+    - `setPosition`: set predefined positions using keyword arguments
     """
-    def __init__(self, config:str = None, layout:str = None, component_config:dict = None, layout_dict:dict = None, ignore_connections:bool = False, **kwargs):
-        self.components = {}
-        self.deck = Deck()
+    
+    _default_flags: dict[str, bool] = {}
+    def __init__(self, 
+        config: Optional[str] = None, 
+        layout: Optional[str] = None, 
+        component_config: Optional[dict] = None, 
+        layout_dict: Optional[dict] = None,
+        components: Optional[dict] = None,
+        diagnostic: bool = False,
+        verbose: bool = False,
+        **kwargs
+    ):
+        """
+        Instantiate the class
+
+        Args:
+            config (Optional[str], optional): filename of config .yaml file. Defaults to None.
+            layout (Optional[str], optional): filename of layout .json file. Defaults to None.
+            component_config (Optional[dict], optional): configuration dictionary of component settings. Defaults to None.
+            layout_dict (Optional[dict], optional): dictionary of layout. Defaults to None.
+            components (Optional[dict], optional): dictionary of components. Defaults to None.
+            diagnostic (bool, optional): whether to run diagnostic tests to check equipment. Defaults to False.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
+        self.components = {} if components is None else components
+        self.deck = Layout.Deck()
+        self.flags = self._default_flags.copy()
         self.positions = {}
-        self._config = Helper.get_plans(config) if config is not None else component_config
-        self._flags = {
-            'at_rest': False
-        }
-        self._connect(ignore_connections=ignore_connections)
-        self.loadDeck(layout, layout_dict)
+        self.verbose = verbose
+        self._config = Factory.get_plans(config) if config is not None else component_config
+
+        self._connect(diagnostic=diagnostic)
+        self.loadDeck(layout_file=layout, layout_dict=layout_dict)
         pass
     
-    def _connect(self, diagnostic=True, ignore_connections=False):
-        """
-        Make connections to the respective components
-
-        Args:
-            diagnostic (bool, optional): whether to run diagnostic to check equipment. Defaults to True.
-            ignore_connections (bool, optional): whether to ignore connections and run methods. Defaults to False.
-        """
-        self.components = Helper.load_components(self._config)
-        self.labelPositions(self._config.get('labelled_positions', {}))
-
-        if diagnostic:
-            self._run_diagnostic(ignore_connections)
-        return
+    @abstractmethod
+    def reset(self, *args, **kwargs):
+        """Reset the setup"""
     
-    def _run_diagnostic(self, ignore_connections=False):
+    def isBusy(self) -> bool:
         """
-        Run diagnostic test actions to see if equipment working as expected
-
-        Args:
-            ignore_connections (bool, optional): whether to ignore connections and run methods. Defaults to False.
-        """
-        if self.isConnected():
-            print("Hardware / connection ok!")
-        elif ignore_connections:
-            print("Connection(s) not established. Ignoring...")
-        else:
-            print("Check hardware / connection!")
-            return
+        Checks and returns whether the setup is busy
         
-        # Test tools
-        for component in self.components.values():
-            if '_diagnostic' in dir(component):
-                component._diagnostic()
-        print('Ready!')
-        return
-    
-    def isBusy(self):
-        """
-        Checks whether the setup is busy
-
         Returns:
             bool: whether the setup is busy
         """
         return any([component.isBusy() for component in self.components.values() if 'isBusy' in dir(component)])
     
-    def isFeasible(self, coordinates):
+    def isConnected(self) -> bool:
         """
-        Checks whether the coordinates is feasible
+        Checks and returns whether the setup is connected
+
+        Returns:
+            bool: whether the setup is connected
+        """
+        return all([component.isConnected() for component in self.components.values() if 'isConnected' in dir(component)])
+    
+    def isFeasible(self, coordinates:tuple[float]) -> bool:
+        """
+        Checks and returns whether the target coordinates is feasible
+        
+        Args:
+            coordinates (tuple[float]): target coordinates
 
         Returns:
             bool: whether the coordinates is feasible
         """
         return not self.deck.is_excluded(coordinates)
     
-    def isConnected(self):
+    def loadDeck(self, layout_file:Optional[str] = None, layout_dict:Optional[dict] = None):
         """
-        Checks whether the setup is connected
-
-        Returns:
-            bool: whether the setup us connected
-        """
-        return all([component.isConnected() for component in self.components.values()])
-    
-    def labelPositions(self, names_coords={}, overwrite=False):
-        """
-        Set predefined labelled positions
-
-        Args:
-            names_coords (dict, optional): name,coordinate key-values of labelled positions. Defaults to {}.
-            overwrite (bool, optional): whether to overwrite existing positions that has the same key/name. Defaults to False.
-        """
-        for name,coordinates in names_coords.items():
-            if name not in self.positions.keys() or overwrite:
-                self.positions[name] = coordinates
-            else:
-                print(f"The position '{name}' has already been defined at: {self.positions[name]}")
-        return
-    
-    def loadDeck(self, layout:str = None, layout_dict:dict = None):
-        """
-        Load the deck layout from JSON file
+        Load Labware objects onto the deck from file or dictionary
         
         Args:
-            layout (str, optional): filename of layout .json file. Defaults to None.
-            layout_dict (dict, optional): dictionary of layout. Defaults to None.
+            layout_file (Optional[str], optional): filename of layout .json file. Defaults to None.
+            layout_dict (Optional[dict], optional): dictionary of layout. Defaults to None.
         """
-        self.deck.load_layout(layout, layout_dict)
+        self.deck.load_layout(layout_file=layout_file, layout_dict=layout_dict)
         for name in self.deck.names:
             self.positions[name] = [(well.top, well.depth) for well in self.deck.get_slot(name=name).wells_list]
         return
     
-    def reset(self):
-        """
-        Reset setup
-        """
+    def resetFlags(self):
+        """Reset all flags to class attribute `_default_flags`"""
+        self.flags = self._default_flags.copy()
         return
- 
+    
+    def setFlag(self, **kwargs):
+        """
+        Set flags by using keyword arguments
+
+        Kwargs:
+            key, value: (flag name, boolean) pairs
+        """
+        if not all([type(v)==bool for v in kwargs.values()]):
+            raise ValueError("Ensure all assigned flag values are boolean.")
+        for key, value in kwargs.items():
+            self.flags[key] = value
+        return
+    
+    def setPosition(self, overwrite:bool = False, **kwargs):
+        """
+        Set predefined positions using keyword arguments
+
+        Args:
+            overwrite (bool, optional): whether to overwrite existing position. Defaults to False.
+        
+        Kwargs:
+            key, value: (position name, float value) pairs
+        """
+        for key, value in kwargs.items():
+            if key not in self.positions or overwrite:
+                self.positions[key] = value
+            elif not overwrite:
+                print(f"Previously saved height '{key}': {self.positions[key]}\n")
+                print(f"New height received: {value}")
+                if input('Overwrite? [y/n]').lower() == 'n':
+                    continue
+                self.positions[key] = value
+        return
+    
+    # def loadDeck(self, layout:str = None, layout_dict:dict = None):
+    #     """
+    #     Load the deck layout from JSON file
+        
+    #     Args:
+    #         layout (str, optional): filename of layout .json file. Defaults to None.
+    #         layout_dict (dict, optional): dictionary of layout. Defaults to None.
+    #     """
+    #     self.deck.load_layout(layout, layout_dict)
+    #     for name in self.deck.names:
+    #         self.positions[name] = [(well.top, well.depth) for well in self.deck.get_slot(name=name).wells_list]
+    #     return
+    
+    # Protected method(s)
+    def _connect(self, diagnostic:bool = False):
+        """
+        Make connections to the respective components
+
+        Args:
+            diagnostic (bool, optional): whether to run diagnostic tests to check equipment. Defaults to False.
+        """
+        components = Factory.load_components(self._config)
+        self.components.update(components)
+        labelled_positions = self._config.get('labelled_positions', {})
+        self.setPosition(**labelled_positions)
+        if diagnostic:
+            self._diagnostic()
+        return
+    
+    def _diagnostic(self):
+        """Run diagnostic test"""
+        for component in self.components.values():
+            print(component.__dict__.get('connection_details', {}))
+            if not component.isConnected():
+                print("Check hardware / connection!")
+                continue
+            print("Hardware / connection ok!")
+            if '_diagnostic' in dir(component):
+                component._diagnostic()
+        print('Ready!')
+        return
+    

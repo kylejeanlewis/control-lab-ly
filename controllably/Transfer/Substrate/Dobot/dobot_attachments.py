@@ -7,54 +7,108 @@ Notes / actionables:
 -
 """
 # Standard library imports
-from abc import ABC, abstractmethod
+from __future__ import annotations
+import numpy as np
 import time
+from typing import Callable, Optional
 
 # Local application imports
 from ....misc import Helper
+from ..substrate_utils import Gripper
 print(f"Import: OK <{__name__}>")
 
-class DobotGripper(ABC):
+class DobotGripper(Gripper):
     """
-    Dobot first part implement attachments
+    Abstract Base Class (ABC) for Dobot Gripper objects.
+    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
 
+    ### Constructor
     Args:
-        dashboard (any): Dashboard object
+        `dashboard` (Optional[Callable], optional): connection to status and signal control. Defaults to None.
+        `channel` (int, optional): digital I/O channel. Defaults to 1.
+    
+    ### Attributes
+    - `dashboard` (Callable): connection to status and signal control
+    
+    ### Methods
+    #### Abstract
+    - `drop`: releases an object
+    - `grab`: picks up an object
+    #### Public
+    - `setDashboard`: set the dashboard object
     """
-    dashboard = None
-    implement_offset = (0,0,0)
-    def __init__(self, dashboard):
-        self._set_dashboard(dashboard=dashboard)
+    
+    _implement_offset: tuple[float] = (0,0,0)
+    def __init__(self, dashboard:Optional[Callable] = None, channel:int = 1):
+        """
+        Instantiate the class
+
+        Args:
+            dashboard (Optional[Callable], optional): connection to status and signal control. Defaults to None.
+            channel (int, optional): digital I/O channel. Defaults to 1.
+        """
+        self.dashboard = None
+        self._channel = 0
+        self.setDashboard(dashboard=dashboard, channel=channel)
         return
     
-    def _set_dashboard(self, dashboard) -> None:
+    # Properties
+    @property
+    def channel(self) -> int:
+        return self._channel
+    @channel.setter
+    def channel(self, value:int):
+        if 1<= value <= 24:
+            self._channel = value
+        else:
+            raise ValueError("Please provide a valid channel id from 1 to 24.")
+        return
+    @property
+    def implement_offset(self) -> np.ndarray:
+        return np.array(self._implement_offset)
+    
+    def setDashboard(self, dashboard:Callable, channel:int = 1):
+        """
+        Set the dashboard object
+
+        Args:
+            dashboard (Callable): connection to status and signal control
+            channel (int, optional): digital I/O channel. Defaults to 1.
+        """
         self.dashboard = dashboard
+        self.channel= channel
         return
-    
-    @abstractmethod
-    def drop(self) -> bool:
-        pass
-    
-    @abstractmethod
-    def grab(self) -> bool:
-        pass
     
     
 class TwoJawGrip(DobotGripper):
     """
-    TwoJawGrip class
+    TwoJawGrip provides methods to operate the Dobot jaw gripper
     
+    ### Constructor
     Args:
-        dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
+        `dashboard` (Optional[Callable], optional): connection to status and signal control. Defaults to None.
+        `channel` (int, optional): digital I/O channel. Defaults to 1.
+        
+    ### Methods
+    - `drop`: releases an object by opening the gripper
+    - `grab`: picks up an object by closing the gripper
     """
-    implement_offset = (0,0,-95)
-    def __init__(self, dashboard=None) -> None:
-        super().__init__(dashboard=dashboard)
+    
+    _implement_offset = (0,0,-95)
+    def __init__(self, dashboard:Optional[Callable] = None, channel:int = 1):
+        """
+        Instantiate the class
+
+        Args:
+            dashboard (Optional[Callable], optional): connection to status and signal control. Defaults to None.
+            channel (int, optional): digital I/O channel. Defaults to 1.
+        """
+        super().__init__(dashboard=dashboard, channel=channel)
         return
 
     def drop(self) -> bool:
         """
-        Open gripper, let go of object
+        Releases an object by opening the gripper
         
         Returns:
             bool: whether action is successful
@@ -63,13 +117,13 @@ class TwoJawGrip(DobotGripper):
             self.dashboard.DOExecute(1,1)
         except (AttributeError, OSError):
             print('Tried to drop...')
-            print("Not connected to arm!")
+            print("Not connected to arm.")
             return False
         return True
     
     def grab(self) -> bool:
         """
-        Close gripper, pick object up
+        Picks up an object by closing the gripper
         
         Returns:
             bool: whether action is successful
@@ -78,26 +132,43 @@ class TwoJawGrip(DobotGripper):
             self.dashboard.DOExecute(1,0)
         except (AttributeError, OSError):
             print('Tried to grab...')
-            print("Not connected to arm!")
+            print("Not connected to arm.")
             return False
         return True
 
 
 class VacuumGrip(DobotGripper):
     """
-    VacuumGrip class
-
+    VacuumGrip provides methods to operate the Dobot vacuum grip
+    
+    ### Constructor
     Args:
-        dashboard (dobot_api.dobot_api_dashboard): Dobot API Dashboard object
+        `dashboard` (Optional[Callable], optional): connection to status and signal control. Defaults to None.
+        `channel` (int, optional): digital I/O channel. Defaults to 1.
+        
+    ### Methods
+    - `drop`: releases an object by pushing out air
+    - `grab`: picks up an object by pulling in air
+    - `pull`: activate pump to suck in air
+    - `push`: activate pump to blow out air
+    - `stop`: stop airflow
     """
-    implement_offset = (0,0,-60)
-    def __init__(self, dashboard=None) -> None:
-        super().__init__(dashboard=dashboard)
+    
+    _implement_offset = (0,0,-60)
+    def __init__(self, dashboard:Optional[Callable] = None, channel:int = 1):
+        """
+        Instantiate the class
+
+        Args:
+            dashboard (Optional[Callable], optional): connection to status and signal control. Defaults to None.
+            channel (int, optional): digital I/O channel. Defaults to 1.
+        """
+        super().__init__(dashboard=dashboard, channel=channel)
         return
 
     def drop(self) -> bool:
         """
-        Let go of object
+        Releases an object by pushing out air
         
         Returns:
             bool: whether action is successful
@@ -107,7 +178,7 @@ class VacuumGrip(DobotGripper):
     
     def grab(self) -> bool:
         """
-        Pick up object
+        Picks up an object by pulling in air
         
         Returns:
             bool: whether action is successful
@@ -115,45 +186,50 @@ class VacuumGrip(DobotGripper):
         print('Tried to grab...')
         return self.pull(3)
     
-    def pull(self, duration=None) -> bool:
+    def pull(self, duration:Optional[int] = None) -> bool:
         """
-        Inhale air
-
+        Activate pump to suck in air
+        
         Args:
-            duration (int, optional): number of seconds to inhale air. Defaults to None.
+            duration (Optional[int], optional): number of seconds to pull air. Defaults to None.
+        
+        Returns:
+            bool: whether action is successful
         """
         try:
             self.dashboard.DOExecute(1,1)
+        except (AttributeError, OSError):
+            print('Tried to pull...')
+            print("Not connected to arm.")
+            return False
+        else:
             if duration is not None:
                 time.sleep(duration)
                 self.dashboard.DOExecute(1,0)
                 time.sleep(1)
-        except (AttributeError, OSError):
-            print('Tried to pull...')
-            print("Not connected to arm!")
-            return False
         return True
     
-    def push(self, duration=None) -> bool:
+    def push(self, duration:Optional[int] = None) -> bool:
         """
-        Expel air
-
+        Activate pump to blow out air
+        
         Args:
-            duration (int, optional): number of seconds to expel air. Defaults to None.
+            duration (Optional[int], optional): number of seconds to push air. Defaults to None.
             
         Returns:
             bool: whether action is successful
         """
         try:
             self.dashboard.DOExecute(2,1)
+        except (AttributeError, OSError):
+            print('Tried to push...')
+            print("Not connected to arm.")
+            return False
+        else:
             if duration is not None:
                 time.sleep(duration)
                 self.dashboard.DOExecute(2,0)
                 time.sleep(1)
-        except (AttributeError, OSError):
-            print('Tried to push...')
-            print("Not connected to arm!")
-            return False
         return True
     
     def stop(self) -> bool:
@@ -169,11 +245,12 @@ class VacuumGrip(DobotGripper):
             time.sleep(1)
         except (AttributeError, OSError):
             print('Tried to stop...')
-            print("Not connected to arm!")
+            print("Not connected to arm.")
             return False
         return True
 
 
+# FIXME
 ATTACHMENTS = [TwoJawGrip, VacuumGrip]
 ATTACHMENT_NAMES = ['TwoJawGrip', 'VacuumGrip']
 METHODS = [Helper.get_method_names(attachment) for attachment in ATTACHMENTS]

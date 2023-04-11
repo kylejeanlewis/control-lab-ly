@@ -1,177 +1,368 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/01 17:13:35
-@author: Chang Jie
 
-Notes / actionables:
-- 
 """
-# Local application imports
+# Standard library imports
+from __future__ import annotations
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+import numpy as np
+from typing import Optional, Union
 print(f"Import: OK <{__name__}>")
 
-PRE_WET_CYCLES = 1
+PRE_FILL_CYCLES = 1
 
-class LiquidHandler(object):
+@dataclass
+class Speed:
     """
-    Liquid handler class
-
+    Speed dataclass represents a single aspirate-dispense speed pair
+    
+    ### Constructor
     Args:
-        **kwargs: catch-all for stray inputs
+        up (float): speed of upwards movement
+        down (float): speed of downwards movement
     """
-    def __init__(self, **kwargs):
-        self.capacity = 0
-        self.channel = 0
-        self.offset = (0,0,0)
-        self.reagent = ''
-        self.volume = 0
-        
-        self._speed_in = 0
-        self._speed_out = 0
-        self.verbose = kwargs.get('verbose', False)
-        self._flags = {}
-        return
     
-    @property
-    def speed(self):
-        speed = {
-            'in': self._speed_in,
-            'out': self._speed_out
-        }
-        return speed
-    @speed.setter
-    def speed(self, value:int, direction:str):
-        if direction == 'in':
-            self._speed_in = value
-        elif direction == 'out':
-            self._speed_out = value
-        else:
-            raise Exception("Please select either 'in' or 'out' for direction parameter")
-        return
-    
-    def _diagnostic(self):
-        """
-        Run diagnostic on tool
-        """
-        self.pullback()
-        return
+    up: float
+    down: float
 
-    def aspirate(self, volume, speed=None, wait=0, reagent='', pause=False, channel=None):
+class LiquidHandler(ABC):
+    """
+    Abstract Base Class (ABC) for Liquid Handler objects (i.e. tools that transfer liquids).
+    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
+    
+    ### Constructor
+    Args:
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+    
+    ### Attributes
+    - `capacity` (float): maximum amount of liquid that can be held
+    - `channel` (int): channel id
+    - `connection_details` (dict): dictionary of connection details (e.g. COM port / IP address)
+    - `device` (Callable): device object that communicates with physical tool
+    - `flags` (dict[str, bool]): keywords paired with boolean flags
+    - `reagent` (str): name of reagent held in liquid handler
+    - `speed` (Speed): up and down speeds of liquid handler
+    - `verbose` (bool): verbosity of class
+    
+    ### Properties
+    - `offset` (np.ndarray): liquid handler offset
+    - `volume` (float): volume held in liquid handler
+    
+    ### Methods
+    #### Abstract
+    - `aspirate`: aspirate desired volume of reagent
+    - `blowout`: blowout liquid from tip
+    - `dispense`: dispense desired volume of reagent
+    - `pullback`: pullback liquid from tip
+    - `_connect`: connection procedure for tool
+    #### Public
+    - `connect`: establish connection with device
+    - `cycle`: cycle between aspirate and dispense
+    - `disconnect`: disconnect from device
+    - `empty`: empty the channel
+    - `fill`: fill the channel
+    - `isBusy`: checks and returns whether the device is busy
+    - `isConnected`: checks and returns whether the device is connected
+    - `resetFlags`: reset all flags to class attribute `_default_flags`
+    - `rinse`: rinse the channel with aspirate and dispense cycles
+    - `setFlag`: set flags by using keyword arguments
+    - `shutdown`: shutdown procedure for tool
+    """
+    
+    _default_flags: dict[str, bool] = {'busy': False, 'connected': False}
+    def __init__(self, verbose:bool = False, **kwargs):
         """
-        Aspirate desired volume of reagent into channel
+        Instantiate the class
 
         Args:
-            volume (int, or float): volume to be aspirated
-            speed (int, optional): speed to aspirate. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            reagent (str, optional): name of reagent. Defaults to ''.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            channel (int, optional): channel to aspirate. Defaults to None.
+            verbose (bool, optional): verbosity of class. Defaults to False.
         """
+        self.capacity = 0
+        self.channel = 0
+        self.reagent = ''
+        self.speed = Speed(0,0)
+        self._volume = 0
+        self._offset = (0,0,0)
+        
+        self.connection_details = {}
+        self.device = None
+        self.flags = self._default_flags.copy()
+        self.verbose = verbose
+        return
+
+    def __del__(self):
+        self.shutdown()
         return
     
-    def blowout(self, channel=None):
+    @abstractmethod
+    def aspirate(self, 
+        volume: float, 
+        speed: Optional[float] = None, 
+        wait: int = 0, 
+        pause: bool = False, 
+        reagent: Optional[str] = None, 
+        channel: Optional[Union[int, tuple[int]]] = None,
+        **kwargs
+    ) -> bool:
+        """
+        Aspirate desired volume of reagent
+
+        Args:
+            volume (float): target volume
+            speed (Optional[float], optional): speed to aspirate at. Defaults to None.
+            wait (int, optional): time delay after aspirate. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            reagent (Optional[str], optional): name of reagent. Defaults to None.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+
+        Returns:
+            bool: whether the action is successful
+        """
+    
+    @abstractmethod
+    def blowout(self, channel: Optional[Union[int, tuple[int]]] = None, **kwargs) -> bool:
         """
         Blowout liquid from tip
 
         Args:
-            channel (int, optional): channel to pullback. Defaults to None.
+            channel (Optional[Union[int, tuple[int]], optional): channel id. Defaults to None.
+            
+        Returns:
+            bool: whether the action is successful
         """
-        return
-
-    def cycle(self, volume, speed=None, wait=0, reagent='', cycles=1, channel=None):
-        """
-        Cycle the channel with aspirate and dispense
-
-        Args:
-            volume (int, or float): volume to be cycled
-            speed (int, optional): speed to cycle. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            reagent (str, optional): name of reagent. Defaults to ''.
-            cycles (int, optional): number of cycles to perform. Defaults to 1.
-            channel (int, optional): channel to cycle. Defaults to None.
-        """
-        for _ in range(cycles):
-            self.aspirate(volume=volume, speed=speed, wait=wait, reagent=reagent, channel=channel)
-            self.dispense(volume=volume, speed=speed, wait=wait, force_dispense=True, channel=channel)
-        return
-
-    def dispense(self, volume, speed=None, wait=0, force_dispense=False, pause=False, channel=None):
-        """
-        Dispense desired volume of reagent from channel
-
-        Args:
-            volume (int, or float): volume to be dispensed
-            speed (int, optional): speed to dispense. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            force_dispense (bool, optional): whether to continue dispensing even if insufficient volume in channel. Defaults to False.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            channel (int, optional): channel to dispense. Defaults to None.
-        """
-        return
-
-    def empty(self, speed=None, wait=0, pause=False, channel=None):
-        """
-        Empty the channel of its contents
-
-        Args:
-            speed (int, optional): speed to empty. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            channel (int, optional): channel to empty. Defaults to None.
-        """
-        self.dispense(volume=self.capacity, speed=speed, wait=wait, force_dispense=True, pause=pause, channel=channel)
-        self.blowout(channel=channel)
-        return
+        return False
     
-    def fill(self, speed=None, wait=0, reagent='', pause=False, pre_wet=True, channel=None):
+    @abstractmethod
+    def dispense(self, 
+        volume: float, 
+        speed: Optional[float] = None, 
+        wait: int = 0, 
+        pause: bool = False, 
+        blowout: bool = False,
+        force_dispense: bool = False, 
+        channel: Optional[Union[int, tuple[int]]] = None,
+        **kwargs
+    ) -> bool:
         """
-        Fill the channel with reagent to its capacity
+        Dispense desired volume of reagent
 
         Args:
-            speed (int, optional): speed to fill. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            reagent (str, optional): name of reagent. Defaults to ''.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            pre_wet (bool, optional): whether to pre-wet the channel. Defaults to True.
-            channel (int, optional): channel to fill. Defaults to None.
-        """
-        volume = self.capacity - self.volume
-        if pre_wet:
-            self.cycle(volume=volume, speed=speed, wait=wait, reagent=reagent, cycles=PRE_WET_CYCLES, channel=channel)
-        self.aspirate(volume=volume, speed=speed, wait=wait, reagent=reagent, pause=pause, channel=channel)
-        self.pullback(channel=channel)
-        return
+            volume (float): target volume
+            speed (Optional[float], optional): speed to dispense at. Defaults to None.
+            wait (int, optional): time delay after dispense. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            blowout (bool, optional): whether perform blowout. Defaults to False.
+            force_dispense (bool, optional): whether to dispense reagent regardless. Defaults to False.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
 
-    def pullback(self, channel=None):
+        Returns:
+            bool: whether the action is successful
+        """
+
+    @abstractmethod
+    def pullback(self, channel: Optional[Union[int, tuple[int]]] = None, **kwargs) -> bool:
         """
         Pullback liquid from tip
 
         Args:
-            channel (int, optional): channel to pullback. Defaults to None.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+            
+        Returns:
+            bool: whether the action is successful
         """
+        return False
+
+    @abstractmethod
+    def _connect(self):
+        """Connection procedure for tool"""
+        self.connection_details = {}
+        self.device = None
+        self.setFlag(connected=True)
+        return
+
+    # Properties
+    @property
+    def offset(self) -> np.ndarray:
+        return np.array(self._offset)
+    @offset.setter
+    def offset(self, value:tuple[float]):
+        if len(value) != 3:
+            raise Exception('Please input x,y,z offset')
+        self._offset = tuple(value)
         return
     
-    def rinse(self, volume, speed=None, wait=0, reagent='', cycles=3, channel=None):
+    @property
+    def volume(self) -> float:
+        return self._volume
+    @volume.setter
+    def volume(self, value:float):
+        self._volume = value
+        return
+    
+    def connect(self):
+        """Establish connection with device"""
+        return self._connect(**self.connection_details)
+    
+    def cycle(self, 
+        volume: float, 
+        speed: Optional[float] = None, 
+        wait: int = 0,  
+        cycles: int = 1,
+        reagent: Optional[str] = None, 
+        channel: Optional[Union[int, tuple[int]]] = None,
+        **kwargs
+    ) -> bool:
+        """
+        Cycle between aspirate and dispense
+
+        Args:
+            volume (float): target volume
+            speed (Optional[float], optional): speed to aspirate and dispense at. Defaults to None.
+            wait (int, optional): time delay after each action. Defaults to 0.
+            cycles (int, optional): number of cycles. Defaults to 1.
+            reagent (Optional[str], optional): name of reagent. Defaults to None.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+
+        Returns:
+            bool: whether the action is successful
+        """
+        success = []
+        for _ in range(cycles):
+            ret1 = self.aspirate(volume=volume, speed=speed, wait=wait, pause=False, reagent=reagent, channel=channel)
+            ret2 = self.dispense(volume=volume, speed=speed, wait=wait, pause=False, force_dispense=True, channel=channel)
+            success.extend([ret1,ret2])
+        return all(success)
+    
+    def disconnect(self):
+        """Disconnect from device"""
+        try:
+            self.device.close()
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        self.setFlag(connected=False)
+        return
+    
+    def empty(self, 
+        speed: Optional[float] = None, 
+        wait: int = 0, 
+        pause: bool = False, 
+        channel: Optional[Union[int, tuple[int]]] = None,
+        **kwargs
+    ) -> bool:
+        """
+        Empty the channel
+
+        Args:
+            speed (Optional[float], optional): speed to empty. Defaults to None.
+            wait (int, optional): wait time between steps in seconds. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+            
+        Returns:
+            bool: whether the action is successful
+        """
+        ret1 = self.dispense(volume=self.capacity, speed=speed, wait=wait, pause=pause, force_dispense=True, channel=channel)
+        ret2 = self.blowout(channel=channel)
+        return all([ret1,ret2])
+    
+    def fill(self, 
+        speed: Optional[float] = None, 
+        wait: int = 0, 
+        pause: bool = False, 
+        cycles: int = PRE_FILL_CYCLES,
+        reagent: Optional[str] = None, 
+        channel: Optional[Union[int, tuple[int]]] = None,
+        **kwargs
+    ) -> bool:
+        """
+        Fill the channel
+
+        Args:
+            speed (Optional[float], optional): speed to aspirate and dispense at. Defaults to None.
+            wait (int, optional): time delay after each action. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            cycles (int, optional): number of cycles. Defaults to 1.
+            reagent (Optional[str], optional): name of reagent. Defaults to None.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+        
+        Returns:
+            bool: whether the action is successful
+        """
+        ret1 = self.cycle(volume=self.capacity, speed=speed, wait=wait, cycles=cycles, reagent=reagent, channel=channel)
+        ret2 = self.aspirate(volume=self.capacity, speed=speed, wait=wait, pause=pause, reagent=reagent, channel=channel)
+        ret3 = self.pullback(channel=channel)
+        return all([ret1,ret2,ret3])
+    
+    def isBusy(self) -> bool:
+        """
+        Checks and returns whether the device is busy
+        
+        Returns:
+            bool: whether the device is busy
+        """
+        return self.flags.get('busy', False)
+    
+    def isConnected(self) -> bool:
+        """
+        Checks and returns whether the device is connected
+
+        Returns:
+            bool: whether the device is connected
+        """
+        if not self.flags.get('connected', False):
+            if self.verbose:
+                print(f"{self.__class__} is not connected. Details: {self.connection_details}")
+        return self.flags.get('connected', False)
+
+    def resetFlags(self):
+        """Reset all flags to class attribute `_default_flags`"""
+        self.flags = self._default_flags.copy()
+        return
+    
+    def rinse(self, 
+        speed: Optional[float] = None, 
+        wait: int = 0, 
+        cycles: int = 3, 
+        channel: Optional[Union[int, tuple[int]]] = None,
+        **kwargs
+    ) -> bool:
         """
         Rinse the channel with aspirate and dispense cycles
-
+        
         Args:
-            volume (int, or float): volume to be rinsed
-            speed (int, optional): speed to cycle. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            reagent (str, optional): name of reagent. Defaults to ''.
-            cycles (int, optional): number of cycles to perform. Defaults to 3.
-            channel (int, optional): channel to cycle. Defaults to None.
+            speed (Optional[float], optional): speed to aspirate and dispense at. Defaults to None.
+            wait (int, optional): time delay after each action. Defaults to 0.
+            cycles (int, optional): number of cycles. Defaults to 1.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+
+        Returns:
+            bool: whether the action is successful
         """
-        return self.cycle(volume=volume, speed=speed, wait=wait, reagent=reagent, cycles=cycles, channel=channel)
+        return self.cycle(volume=self.capacity, speed=speed, wait=wait, cycles=cycles, channel=channel)
     
-    def setFlag(self, name:str, value:bool):
+    def setFlag(self, **kwargs):
         """
-        Set a flag truth value
+        Set flags by using keyword arguments
 
-        Args:
-            name (str): label
-            value (bool): flag value
+        Kwargs:
+            key, value: (flag name, boolean) pairs
         """
-        self._flags[name] = value
+        if not all([type(v)==bool for v in kwargs.values()]):
+            raise ValueError("Ensure all assigned flag values are boolean.")
+        for key, value in kwargs.items():
+            self.flags[key] = value
+        return
+
+    def shutdown(self):
+        """Shutdown procedure for tool"""
+        self.disconnect()
+        self.resetFlags()
+        return
+
+    # Protected method(s)
+    def _diagnostic(self):
+        """Run diagnostic test"""
+        self.pullback()
         return
