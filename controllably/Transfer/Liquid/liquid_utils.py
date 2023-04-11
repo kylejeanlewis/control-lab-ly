@@ -10,8 +10,6 @@ import numpy as np
 from typing import Optional, Union
 print(f"Import: OK <{__name__}>")
 
-PRE_FILL_CYCLES = 1
-
 @dataclass
 class Speed:
     """
@@ -271,7 +269,7 @@ class LiquidHandler(ABC):
         speed: Optional[float] = None, 
         wait: int = 0, 
         pause: bool = False, 
-        cycles: int = PRE_FILL_CYCLES,
+        cycles: int = 1,
         reagent: Optional[str] = None, 
         channel: Optional[Union[int, tuple[int]]] = None,
         **kwargs
