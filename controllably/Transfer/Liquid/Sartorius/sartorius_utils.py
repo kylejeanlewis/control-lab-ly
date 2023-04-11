@@ -774,7 +774,7 @@ class Sartorius(LiquidHandler):
         Args:
             command (str): command string
             timeout_s (float, optional): duration to wait before timeout. Defaults to 0.3.
-            resume_feedback (bool, optional): whether to resume reading from device
+            resume_feedback (bool, optional): whether to resume reading from device. Defaults to False.
 
         Returns:
             str: response string
