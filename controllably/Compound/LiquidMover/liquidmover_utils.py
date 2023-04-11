@@ -17,6 +17,10 @@ class Liquid(Protocol):
         ...
     def dispense(self, *args, **kwargs):
         ...
+    def empty(self, *args, **kwargs):
+        ...
+    def fill(self, *args, **kwargs):
+        ... 
     def setFlag(self, *args, **kwargs):
         ...
 
@@ -144,9 +148,15 @@ class LiquidMoverSetup(CompoundSetup):
         if 'eject' in dir(self.liquid) and not self.liquid.isTipOn():
             print("[aspirate] There is no tip attached.")
             return
-        offset = self.liquid.channels[channel].offset if 'channels' in dir(self.liquid) else self.liquid.offset
-        self.align(coordinates=coordinates, offset=offset)
-        self.liquid.aspirate(volume=volume, speed=speed, channel=channel)
+        if channel is not None:
+            offset = self.liquid.channels[channel].offset if 'channels' in dir(self.liquid) else self.liquid.offset
+            self.align(coordinates=coordinates, offset=offset)
+            self.liquid.aspirate(volume=volume, speed=speed, channel=channel)
+        elif 'channels' in dir(self.liquid):
+            for chn in self.liquid.channels:
+                offset = self.liquid.channels[chn].offset
+                self.align(coordinates=coordinates, offset=offset)
+                self.liquid.aspirate(volume=volume, speed=speed, channel=chn)
         return
     
     def attachTip(self, 
@@ -232,9 +242,15 @@ class LiquidMoverSetup(CompoundSetup):
         if 'eject' in dir(self.liquid) and not self.liquid.isTipOn():
             print("[dispense] There is no tip attached.")
             return
-        offset = self.liquid.channels[channel].offset if 'channels' in dir(self.liquid) else self.liquid.offset
-        self.align(coordinates=coordinates, offset=offset)
-        self.liquid.dispense(volume=volume, speed=speed, channel=channel)
+        if channel is not None:
+            offset = self.liquid.channels[channel].offset if 'channels' in dir(self.liquid) else self.liquid.offset
+            self.align(coordinates=coordinates, offset=offset)
+            self.liquid.dispense(volume=volume, speed=speed, channel=channel)
+        elif 'channels' in dir(self.liquid):
+            for chn in self.liquid.channels:
+                offset = self.liquid.channels[chn].offset
+                self.align(coordinates=coordinates, offset=offset)
+                self.liquid.dispense(volume=volume, speed=speed, channel=chn)
         return
     
     def ejectTip(self, slot:str = 'bin', channel:Optional[int] = None) -> tuple[float]:
