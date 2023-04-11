@@ -22,6 +22,7 @@ class CompoundSetup(ABC):
         `layout` (Optional[str], optional): filename of layout .json file. Defaults to None.
         `component_config` (Optional[dict], optional): configuration dictionary of component settings. Defaults to None.
         `layout_dict` (Optional[dict], optional): dictionary of layout. Defaults to None.
+        `components` (Optional[dict], optional): dictionary of components. Defaults to None.
         `diagnostic` (bool, optional): whether to run diagnostic tests to check equipment. Defaults to False.
         `verbose` (bool, optional): verbosity of class. Defaults to False.
 
@@ -51,6 +52,7 @@ class CompoundSetup(ABC):
         layout: Optional[str] = None, 
         component_config: Optional[dict] = None, 
         layout_dict: Optional[dict] = None,
+        components: Optional[dict] = None,
         diagnostic: bool = False,
         verbose: bool = False,
         **kwargs
@@ -63,10 +65,11 @@ class CompoundSetup(ABC):
             layout (Optional[str], optional): filename of layout .json file. Defaults to None.
             component_config (Optional[dict], optional): configuration dictionary of component settings. Defaults to None.
             layout_dict (Optional[dict], optional): dictionary of layout. Defaults to None.
+            components (Optional[dict], optional): dictionary of components. Defaults to None.
             diagnostic (bool, optional): whether to run diagnostic tests to check equipment. Defaults to False.
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
-        self.components = {}
+        self.components = {} if components is None else components
         self.deck = Layout.Deck()
         self.flags = self._default_flags.copy()
         self.positions = {}
@@ -184,7 +187,8 @@ class CompoundSetup(ABC):
         Args:
             diagnostic (bool, optional): whether to run diagnostic tests to check equipment. Defaults to False.
         """
-        self.components = Factory.load_components(self._config)
+        components = Factory.load_components(self._config)
+        self.components.update(components)
         labelled_positions = self._config.get('labelled_positions', {})
         self.setPosition(**labelled_positions)
         if diagnostic:

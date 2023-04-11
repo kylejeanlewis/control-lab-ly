@@ -45,6 +45,7 @@ class LiquidMoverSetup(CompoundSetup):
         `layout` (Optional[str], optional): filename of layout .json file. Defaults to None.
         `component_config` (Optional[dict], optional): configuration dictionary of component settings. Defaults to None.
         `layout_dict` (Optional[dict], optional): dictionary of layout. Defaults to None.
+        `components` (Optional[dict], optional): dictionary of components. Defaults to None.
         `tip_approach_height` (float, optional): height in mm from which to approach tip rack during pick up. Defaults to 20.
         
     ### Attributes
@@ -74,6 +75,7 @@ class LiquidMoverSetup(CompoundSetup):
         layout: Optional[str] = None, 
         component_config: Optional[dict] = None, 
         layout_dict: Optional[dict] = None,
+        components: Optional[dict] = None,
         tip_approach_height: float = 20, 
         **kwargs
     ):
@@ -85,6 +87,7 @@ class LiquidMoverSetup(CompoundSetup):
             layout (Optional[str], optional): filename of layout .json file. Defaults to None.
             component_config (Optional[dict], optional): configuration dictionary of component settings. Defaults to None.
             layout_dict (Optional[dict], optional): dictionary of layout. Defaults to None.
+            components (Optional[dict], optional): dictionary of components. Defaults to None.
             tip_approach_height (float, optional): height in mm from which to approach tip rack during tip pickup. Defaults to 20.
         """
         super().__init__(
@@ -92,6 +95,7 @@ class LiquidMoverSetup(CompoundSetup):
             layout=layout, 
             component_config=component_config, 
             layout_dict=layout_dict, 
+            components=components,
             **kwargs
         )
         self.tip_approach_height = tip_approach_height
