@@ -3,6 +3,29 @@
 ## Unreleased
 *Items under development*
 
+## 1.0.0.x
+Major overhaul in package structure. Standardisation of methods and consolidation of common methods. First released 12 Apr 2023.
+### Added
+#### 1.0.0
+- Usage of Abstract Base Classes (ABCs) to define a base class with abstract methods that needs to be implemented through sub-classing
+- Usage of Protocols to provide an interface between different classes of objects
+- Usage of Dataclasses to store complex data 
+- Usage of decorators to modify methods
+- Introduced different functions to parse the program docstring and find program parameters
+### Changed
+#### 1.0.0
+- Standardised methods and consolidated common methods
+- Added type hints
+- Moved Dobot attachments from Mover to Transfer.Substrate
+- Split GUI Panels into individual files
+- Split Dobot arms into individual files
+- Split functions/methods in `misc.py` into individual files.
+- Changed `_flags` to a public attribute `flags`
+- Update documentation
+### Removed
+#### 1.0.0
+- Unnecessary commented-out blocks of code
+
 ## 0.0.4.x
 Introduced control for Peltier device and TriContinent Series C syringe pumps. First released 10 Mar 2023.
 ### Added
@@ -15,7 +38,6 @@ Introduced control for Peltier device and TriContinent Series C syringe pumps. F
 - Added control for `TriContinent` and `TriContinentEnsemble`
   - single actions such as `empty`, `fill`, `initialise`, move actions, set speeds and valves, and wait
   - compound actions such as `aspirate`, `dispense`, and `prime`
-
 ### Changed
 #### 0.0.4
 - Update documentation
@@ -29,7 +51,6 @@ Minor changes to movement robot safety and pipette control. Introduced control f
   - In `Mover`, update `isFeasible()` method to check if target coordinates violates the deck's exclusion zone
   - New function `set_safety()` defines safety modes when starting a new session to pause for input (in "high" safety setting) and to wait for safety countdown (in "low" safety setting)
 - `Make.Light.LEDArray` for controlling LEDs in the photo-reactor, as well as timing the LED "on" durations
-
 ### Changed
 #### 0.0.3.1
 - Update documentation
@@ -47,7 +68,6 @@ Updates in setting up configuration files. First released 24 Feb 2023.
 - `Deck.at()` method for directly referencing slots using either index numbers or names
 - New `CompoundSetup` class for common methods of `Compound` devices
 - New `load_deck()` function to load `Deck` after initialisation
-
 ### Changed
 #### 0.0.2.1
 - Changed template files for `lab.create_setup()`
