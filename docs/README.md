@@ -68,7 +68,7 @@ $ python -m pydoc controllably.Move
 >Tip: when using Interactive Python (IPython) (e.g. Jupyter notebooks), add a exclamation mark (`!`) in front of the shell command
 ```python
 >>> !python -m pydoc controllably.Move
->>> !python -m pydoc -b                 # Generates a static HTML site to browse package documentation
+>>> !python -m pydoc -b   # Generates a static HTML site to browse package documentation
 ```
 For basic usage, this is all you need to know. Check the documentation for more details on each respective class.
 
@@ -107,12 +107,12 @@ A template of `registry.yaml` has also been added to the folder to hold the mach
 Populate the YAML file in the format shown below.
 ```yaml
 ### registry.yaml ###
-'012345678901234':              # insert your machine's 15-digit ID here (from the above step)
-    cam_index:                  # camera index of the connected imaging devices
-      __cam_01__: 1             # keep the leading and trailing double underscores
+'012345678901234':          # insert your machine's 15-digit ID here (from the above step)
+    cam_index:              # camera index of the connected imaging devices
+      __cam_01__: 1         # keep the leading and trailing double underscores
       __cam_02__: 0
-    port:                       # addresses of serial COM ports
-      __device_01__: COM3       # keep the leading and trailing double underscores
+    port:                   # addresses of serial COM ports
+      __device_01__: COM3   # keep the leading and trailing double underscores
       __device_02__: COM16
 ```
 
@@ -145,22 +145,22 @@ _Device01_:                                     # name of simple device (user-de
 
 `Compound` devices are similarly configured. The configuration values for its component devices are defined under the `component_config` setting. The structure of the configuration values for the component devices are similar to that shown above, except indented to fall under the indentation of the `component_config` setting.
 ```yaml
-_Device02_:                                     # name of 'Compound' device (user-defined)
+_Device02_:                                 # name of 'Compound' device (user-defined)
   module: Compound                            
   class: _submodule_2A_._class_2A_
   settings:
-    _setting_C_: 1                              # other settings for your 'Compound' device
-    component_config:                           # nest component configuration settings here
-      _Component01_:                            # name of component
+    _setting_C_: 1                          # other settings for your 'Compound' device
+    component_config:                       # nest component configuration settings here
+      _Component01_:                        # name of component
         module: _module_name_03_
         class: _submodule_3A_._class_3A_
         settings:
-          ip_address: '192.0.0.1'               # IP addresses do not vary between machines
+          ip_address: '192.0.0.1'           # IP addresses do not vary between machines
       _Component02_: 
         module: _module_name_04_
         class: _submodule_4A_._class_4A_
         settings:
-          _setting_D_: 2                        # settings for your component device
+          _setting_D_: 2                    # settings for your component device
 ```
 
 Lastly, you can define shortcuts to quickly access components of `Compound` devices.
