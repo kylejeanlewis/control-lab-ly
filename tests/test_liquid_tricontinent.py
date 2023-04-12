@@ -18,7 +18,7 @@ me.prime(1)
 # %%
 me.move(40, up=False, channel=1)
 # %%
-me.moveBy(150, channel=2) # FIXME: channel parameter does not work
+me.moveBy(1000, channel=2)
 # %%
 me.moveTo(1500)
 # %%
