@@ -1,83 +1,85 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/01 17:13:35
-@author: Chang Jie
+This module holds the class for movement tools based on Primitiv.
 
-Notes / actionables:
--
+Classes:
+    Primitiv (Gantry)
 """
 # Standard library imports
+from __future__ import annotations
 import time
+from typing import Optional
 
 # Local application imports
-from ...misc import HELPER
+from ...misc import Helper
 from .cartesian_utils import Gantry
 print(f"Import: OK <{__name__}>")
 
 class Primitiv(Gantry):
     """
-    Primitiv platform controls
+    Primitiv provides controls for the Primitv platform
 
+    ### Constructor
     Args:
-        port (str): com port address
-        limits (list, optional): lower and upper bounds of movement. Defaults to [(0,0,0), (0,0,0)].
-        safe_height (float, optional): safe height. Defaults to None.
+        `port` (str): COM port address
+        `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((-410,-290,-120), (0,0,0)).
+        `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to -80.
+        `max_speed` (float, optional): maximum travel speed. Defaults to 250.
     
-    Kwargs:
-        max_speed (float, optional): maximum movement speed. Defaults to 250.
-        home_coordinates (tuple, optional): position to home in arm coordinates. Defaults to (0,0,0).
-        home_orientation (tuple, optional): orientation to home. Defaults to (0,0,0).
-        orientate_matrix (numpy.matrix, optional): matrix to transform arm axes to workspace axes. Defaults to np.identity(3).
-        translate_vector (numpy.ndarray, optional): vector to transform arm position to workspace position. Defaults to (0,0,0).
-        implement_offset (tuple, optional): implement offset vector pointing from end of effector to tool tip. Defaults to (0,0,0).
-        scale (int, optional): scale factor to transform arm scale to workspace scale. Defaults to 1.
-        verbose (bool, optional): whether to print outputs. Defaults to False.
+    ### Methods:
+    - `home`: make the robot go home
     """
-    def __init__(self, port:str, limits=[(-410,-290,-120), (0,0,0)], safe_height=-80, **kwargs):
-        super().__init__(port=port, limits=limits, safe_height=safe_height, **kwargs)
-        self.selected_position = ''
-        return
-    
-    def _connect(self, port:str, baudrate=115200, timeout=None):
+    def __init__(self, 
+        port: str, 
+        limits: tuple[tuple[float]] = ((-410,-290,-120), (0,0,0)), 
+        safe_height: float = -80, 
+        max_speed: float = 250, # [mm/s] (i.e. 15,000 mm/min)
+        **kwargs
+    ):
         """
-        Connect to machine control unit
+        Instantiate the class
 
         Args:
-            port (str): com port address
-            baudrate (int): baudrate. Defaults to 115200.
-            timeout (int, optional): timeout in seconds. Defaults to None.
-            
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
+            port (str): COM port address
+            limits (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((-410,-290,-120), (0,0,0)).
+            safe_height (float, optional): height at which obstacles can be avoided. Defaults to -80.
+            max_speed (float, optional): maximum travel speed. Defaults to 250.
         """
-        self.port = port
-        self._baudrate = baudrate
-        self._timeout = timeout
-        device = super()._connect(self.port, self._baudrate, self._timeout)
-        try:
-            device.close()
-            device.open()
-
-            # Start grbl 
-            device.write(bytes("\r\n\r\n", 'utf-8'))
-            time.sleep(2)
-            device.flushInput()
-        except Exception as e:
-            if self.verbose:
-                print(e)
-        return device
+        super().__init__(port=port, limits=limits, safe_height=safe_height, max_speed=max_speed, **kwargs)
+        return
     
-    @HELPER.safety_measures
-    def home(self):
+    @Helper.safety_measures
+    def home(self) -> bool:
+        """Make the robot go home"""
+        self._query("$H\n")
+        self.coordinates = self.home_coordinates
+        print("Homed")
+        return True
+    
+    def setSpeed(self, speed: int):
+        print("`setSpeed` method not available in `Primitiv` class")
+        return super().setSpeed(speed)
+
+    # Protected method(s)
+    def _connect(self, port:str, baudrate:int = 115200, timeout:Optional[int] = None):
         """
-        Homing cycle for Primitiv platform
+        Connection procedure for tool
+
+        Args:
+            port (str): COM port address
+            baudrate (int, optional): baudrate. Defaults to 115200.
+            timeout (int, optional): timeout in seconds. Defaults to 1.
         """
+        super()._connect(port, baudrate, timeout)
         try:
-            self.device.write(bytes("$H\n", 'utf-8'))
-            print(self.device.readline())
+            self.device.close()
         except Exception as e:
             if self.verbose:
                 print(e)
-        
-        self.coordinates = (0,0,0)
+        else:
+            self.device.open()
+            # Start grbl 
+            self._write("\r\n\r\n")
+            time.sleep(2)
+            self.device.flushInput()
         return

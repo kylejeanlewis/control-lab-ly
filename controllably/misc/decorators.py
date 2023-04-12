@@ -1,28 +1,30 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/02 17:13:35
-@author: Chang Jie
+This module holds the decorator functions in Control.lab.ly.
 
-Notes / actionables:
--
+Functions:
+    named_tuple_from_dict (decorator)
+    safety_measures (decorator)
 """
 # Standard library imports
 from collections import namedtuple
+from functools import wraps
 import time
-
-# Third party imports
-
-# Local application imports
+from typing import Callable, Optional
 print(f"Import: OK <{__name__}>")
 
-def named_tuple_from_dict(func):
+def named_tuple_from_dict(func:Callable) -> Callable:
     """
     Wrapper for creating named tuple from dictionary
 
     Args:
         func (Callable): function to be wrapped
+        
+    Returns:
+        Callable: wrapped function
     """
-    def wrapper(*args, **kwargs):
+    @wraps(func)
+    def wrapper(*args, **kwargs) -> tuple:
         setup_dict = func(*args, **kwargs)
         field_list = []
         object_list = []
@@ -35,16 +37,29 @@ def named_tuple_from_dict(func):
         return Setup(*object_list)
     return wrapper
 
-def safety_measures(mode=None, countdown=3):
+def safety_measures(mode:Optional[str] = None, countdown:int = 3) -> Callable:
     """
     Wrapper for creating safe move functions
 
     Args:
-        func (Callable): function to be wrapped
-        mode (str, optional): mode for implementing safety measure. Defaults to None.
+        mode (Optional[str], optional): mode for implementing safety measure. Defaults to None.
+        countdown (int, optional): time delay before executing action. Defaults to 3.
+        
+    Returns:
+        Callable: wrapped function
     """
-    def inner(func):
-        def wrapper(*args, **kwargs):
+    def inner(func:Callable) -> Callable:
+        """
+        Inner wrapper for creating safe move functions
+
+        Args:
+            func (Callable): function to be wrapped
+
+        Returns:
+            Callable: wrapped function
+        """
+        @wraps(func)
+        def wrapper(*args, **kwargs) -> Callable:
             str_method = repr(func).split(' ')[1]
             str_args = ','.join([repr(a) for a in args[1:]])
             str_kwargs = ','.join([f'{k}={v}' for k,v in kwargs.items()])

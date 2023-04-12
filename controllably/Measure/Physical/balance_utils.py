@@ -1,10 +1,13 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2023/01/16 11:11:00
-@author: Chang Jie
+This module holds the class for mass balances.
 
-Notes / actionables:
--
+Classes:
+    MassBalance (Measurer)
+
+Other constants and variables:
+    CALIBRATION_FACTOR (float)
+    COLUMNS (tuple)
 """
 # Standard library imports
 from datetime import datetime
@@ -16,93 +19,219 @@ import time
 import serial # pip install pyserial
 
 # Local application imports
+from ..measure_utils import Measurer
 print(f"Import: OK <{__name__}>")
 
-CALIBRATION_FACTOR = 6.862879436681862 # factor by which to divide output reading by to get mass in mg
-COLUMNS = ['Time', 'Value', 'Factor', 'Baseline', 'Mass']
+CALIBRATION_FACTOR = 6.862879436681862
+"""Empirical factor by which to divide output reading by to get mass in mg"""
+COLUMNS = ('Time', 'Value', 'Factor', 'Baseline', 'Mass')
+"""Headers for output data from mass balance"""
 
-class MassBalance(object):
+class MassBalance(Measurer):
     """
-    Mass Balance object
+    MassBalance provides methods to read out values from a precision mass balance
 
+    ### Constructor
     Args:
-        port (str): com port address
+        `port` (str): COM port address
+        `calibration_factor` (float, optional): calibration factor of device readout to mg. Defaults to CALIBRATION_FACTOR.
+        
+    ### Attributes
+    - `baseline` (float): baseline readout at which zero mass is set
+    - `calibration_factor` (float): calibration factor of device readout to mg
+    - `precision` (int): number of decimal places to print mass value
+    
+    ### Properties
+    - `mass` (float): mass of sample
+    
+    ### Methods
+    - `clearCache`: clear most recent data and configurations
+    - `disconnect`: disconnect from device
+    - `getMass`: get the mass of the sample by measuring the force response
+    - `reset`: reset the device
+    - `shutdown`: shutdown procedure for tool
+    - `tare`: alias for `zero()`
+    - `toggleFeedbackLoop`: start or stop feedback loop
+    - `toggleRecord`: start or stop data recording
+    - `zero`: set the current reading as baseline (i.e. zero mass)
     """
+    
+    _default_flags = {
+        'busy': False,
+        'connected': False,
+        'get_feedback': False,
+        'pause_feedback': False,
+        'read': True,
+        'record': False
+    }
     def __init__(self, port:str, calibration_factor:float = CALIBRATION_FACTOR, **kwargs):
-        self.device = None
+        """
+        Instantiate the class
+
+        Args:
+            port (str): COM port address
+            calibration_factor (float, optional): calibration factor of device readout to mg. Defaults to CALIBRATION_FACTOR.
+        """
+        super().__init__(**kwargs)
         self.baseline = 0
-        self.calibration_factor = calibration_factor
-        self._flags = {
-            'busy': False,
-            'connected': False,
-            'get_feedback': False,
-            'pause_feedback': False,
-            'record': False
-        }
-        self._mass = 0
-        self._precision = 3
-        self._threads = {}
-        
         self.buffer_df = pd.DataFrame(columns=COLUMNS)
-        
-        self.verbose = False
-        self.port = ''
-        self._baudrate = None
-        self._timeout = None
+        self.calibration_factor = calibration_factor
+        self.precision = 3
+        self._mass = 0
+        self._threads = {}
         self._connect(port)
         return
     
+    # Properties
     @property
-    def mass(self):
-        return round(self._mass, self._precision)
-    
-    @property
-    def precision(self):
-        return 10**(-self._precision)
-    @precision.setter
-    def precision(self, value:int):
-        self._precision = value
+    def mass(self) -> float:
+        return round(self._mass, self.precision)
+   
+    def clearCache(self):
+        """Clear most recent data and configurations"""
+        self.setFlag(pause_feedback=True)
+        time.sleep(0.1)
+        self.buffer_df = pd.DataFrame(columns=COLUMNS)
+        self.setFlag(pause_feedback=False)
         return
     
-    def __delete__(self):
-        self._shutdown()
+    def disconnect(self):
+        """Disconnect from device"""
+        try:
+            self.device.close()
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        self.setFlag(connected=False)
         return
     
-    def _connect(self, port:str, baudrate=115200, timeout=1):
+    def getMass(self) -> str:
         """
-        Connect to machine control unit
+        Get the mass of the sample by measuring the force response
+        
+        Returns:
+            str: device response
+        """
+        response = self._read()
+        now = datetime.now()
+        try:
+            value = int(response)
+        except ValueError:
+            pass
+        else:
+            self._mass = (value - self.baseline) / self.calibration_factor
+            if self.flags['record']:
+                values = [
+                    now, 
+                    value, 
+                    self.calibration_factor, 
+                    self.baseline, 
+                    self._mass
+                ]
+                row = {k:v for k,v in zip(COLUMNS, values)}
+                self.buffer_df = self.buffer_df.append(row, ignore_index=True)
+        return response
+  
+    def reset(self):
+        """Reset the device"""
+        super().reset()
+        self.baseline = 0
+        return
+    
+    def shutdown(self):
+        """Shutdown procedure for tool"""
+        self.toggleFeedbackLoop(on=False)
+        return super().shutdown()
+ 
+    def tare(self):
+        """Alias for `zero()`"""
+        return self.zero()
+    
+    def toggleFeedbackLoop(self, on:bool):
+        """
+        Start or stop feedback loop
 
         Args:
-            port (str): com port address
-            baudrate (int): baudrate. Defaults to 9600.
-            timeout (int, optional): timeout in seconds. Defaults to None.
-            
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
+            on (bool): whether to start loop to continuously read from device
         """
-        self.port = port
-        self._baudrate = baudrate
-        self._timeout = timeout
+        self.setFlag(get_feedback=on)
+        if on:
+            if 'feedback_loop' in self._threads:
+                self._threads['feedback_loop'].join()
+            thread = Thread(target=self._loop_feedback)
+            thread.start()
+            self._threads['feedback_loop'] = thread
+        else:
+            self._threads['feedback_loop'].join()
+        return
+    
+    def toggleRecord(self, on:bool):
+        """
+        Start or stop data recording
+
+        Args:
+            on (bool): whether to start recording temperature
+        """
+        self.setFlag(record=on, get_feedback=on, pause_feedback=False)
+        self.toggleFeedbackLoop(on=on)
+        return
+
+    def zero(self, wait:int = 5):
+        """
+        Set current reading as baseline (i.e. zero mass)
+        
+        Args:
+            wait (int, optional): duration to wait while zeroing, in seconds. Defaults to 5.
+        """
+        temp_record_state = self.flags['record']
+        temp_buffer_df = self.buffer_df.copy()
+        self.reset()
+        self.toggleRecord(True)
+        print(f"Zeroing... ({wait}s)")
+        time.sleep(wait)
+        self.toggleRecord(False)
+        self.baseline = self.buffer_df['Value'].mean()
+        self.clearCache()
+        self.buffer_df = temp_buffer_df.copy()
+        print("Zeroing complete.")
+        self.toggleRecord(temp_record_state)
+        return
+
+    # Protected method(s)
+    def _connect(self, port:str, baudrate:int = 115200, timeout:int = 1):
+        """
+        Connection procedure for tool
+
+        Args:
+            port (str): COM port address
+            baudrate (int, optional): baudrate. Defaults to 115200.
+            timeout (int, optional): timeout in seconds. Defaults to 1.
+        """
+        self.connection_details = {
+            'port': port,
+            'baudrate': baudrate,
+            'timeout': timeout
+        }
         device = None
         try:
-            device = serial.Serial(port, self._baudrate, timeout=self._timeout)
-            self.device = device
-            print(f"Connection opened to {port}")
-            self.setFlag('connected', True)
-            # self.toggleFeedbackLoop(on=True)
+            device = serial.Serial(port, baudrate, timeout=timeout)
         except Exception as e:
             print(f"Could not connect to {port}")
             if self.verbose:
                 print(e)
-        return self.device
+        else:
+            print(f"Connection opened to {port}")
+            self.setFlag(connected=True)
+            time.sleep(1)
+            self.zero()
+        self.device = device
+        return
     
     def _loop_feedback(self):
-        """
-        Feedback loop to constantly check status and liquid level
-        """
+        """Loop to constantly read from device"""
         print('Listening...')
-        while self._flags['get_feedback']:
-            if self._flags['pause_feedback']:
+        while self.flags['get_feedback']:
+            if self.flags['pause_feedback']:
                 continue
             self.getMass()
         print('Stop listening...')
@@ -118,162 +247,12 @@ class MassBalance(object):
         response = ''
         try:
             response = self.device.readline()
-            response = response.decode('utf-8').strip()
         except Exception as e:
             if self.verbose:
                 print(e)
-        return response
-    
-    def _shutdown(self):
-        """
-        Close serial connection and shutdown
-        """
-        self.toggleFeedbackLoop(on=False)
-        self.device.close()
-        self._flags = {
-            'busy': False,
-            'connected': False,
-            'get_feedback': False,
-            'pause_feedback':False
-        }
-        return
-    
-    def clearCache(self):
-        """
-        Clear dataframe.
-        """
-        self.setFlag('pause_feedback', True)
-        time.sleep(0.1)
-        self.buffer_df = pd.DataFrame(columns=COLUMNS)
-        self.setFlag('pause_feedback', False)
-        return
-    
-    def connect(self):
-        """
-        Reconnect to device using existing port and baudrate
-        
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
-        """
-        return self._connect(self.port, self._baudrate, self._timeout)
-    
-    def getMass(self):
-        """
-        Get the mass by measuring force response
-        
-        Returns:
-            str: device response
-        """
-        response = self._read()
-        now = datetime.now()
-        try:
-            value = int(response)
-            self._mass = (value - self.baseline) / self.calibration_factor
-            if self._flags.get('record', False):
-                values = [
-                    now, 
-                    value, 
-                    self.calibration_factor, 
-                    self.baseline, 
-                    self._mass
-                ]
-                row = {k:v for k,v in zip(COLUMNS, values)}
-                self.buffer_df = self.buffer_df.append(row, ignore_index=True)
-        except ValueError:
-            pass
-        return response
-
-    def isBusy(self):
-        """
-        Checks whether the pipette is busy
-        
-        Returns:
-            bool: whether the pipette is busy
-        """
-        return self._flags['busy']
-    
-    def isConnected(self):
-        """
-        Check whether pipette is connected
-
-        Returns:
-            bool: whether pipette is connected
-        """
-        return self._flags['connected']
-    
-    def reset(self):
-        """
-        Reset baseline and clear buffer
-        """
-        self.baseline = 0
-        self.clearCache()
-        return
-
-    def setFlag(self, name:str, value:bool):
-        """
-        Set a flag truth value
-
-        Args:
-            name (str): label
-            value (bool): flag value
-        """
-        self._flags[name] = value
-        return
-    
-    def tare(self):
-        """
-        Alias for zero
-        """
-        return self.zero()
-    
-    def toggleFeedbackLoop(self, on:bool):
-        """
-        Toggle between start and stopping feedback loop
-
-        Args:
-            on (bool): whether to listen to feedback
-        """
-        self.setFlag('get_feedback', on)
-        if on:
-            if 'feedback_loop' in self._threads:
-                self._threads['feedback_loop'].join()
-            thread = Thread(target=self._loop_feedback)
-            thread.start()
-            self._threads['feedback_loop'] = thread
         else:
-            self._threads['feedback_loop'].join()
-        return
-    
-    def toggleRecord(self, on:bool):
-        """
-        Toggle between start and stopping mass records
-
-        Args:
-            on (bool): whether to start recording
-        """
-        self.setFlag('record', on)
-        self.setFlag('get_feedback', on)
-        self.setFlag('pause_feedback', False)
-        self.toggleFeedbackLoop(on=on)
-        return
-
-    def zero(self, wait=5):
-        """
-        Set current reading as baseline (i.e. zero mass)
-        
-        Args:
-            wait (int, optional): duration to wait while zeroing (seconds). Defaults to 5.
-        """
-        temp_record_state = self._flags.get('record', False)
-        temp_buffer_df = self.buffer_df.copy()
-        self.reset()
-        self.toggleRecord(True)
-        print(f"Zeroing... ({wait}s)")
-        time.sleep(wait)
-        self.toggleRecord(False)
-        self.baseline = self.buffer_df['Value'].mean()
-        self.clearCache()
-        self.buffer_df = temp_buffer_df.copy()
-        print("Zeroing complete.")
-        self.toggleRecord(temp_record_state)
-        return
+            response = response.decode('utf-8').strip()
+            if self.verbose:
+                print(response)
+        return response
+ 

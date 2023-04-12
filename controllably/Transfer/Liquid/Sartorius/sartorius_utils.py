@@ -1,190 +1,177 @@
 # %% -*- coding: utf-8 -*-
 """
-Adapted from @jaycecheng sartorius serial
+This module holds the class for pipette tools from Sartorius.
 
-Created: Tue 2022/12/08 11:11:00
-@author: Chang Jie
+Classes:
+    Sartorius (LiquidHandler)
 
-Notes / actionables:
--
+Other constants and variables:
+    STEP_RESOLUTION (int)
 """
 # Standard library imports
+from __future__ import annotations
 import numpy as np
 from threading import Thread
 import time
+from typing import Optional, Union
 
 # Third party imports
 import serial # pip install pyserial
 
 # Local application imports
-from ..liquid_utils import LiquidHandler
-from .sartorius_lib import ErrorCode, ModelInfo, StatusCode
-from .sartorius_lib import ERRORS, MODELS, STATUSES, STATUS_QUERIES, QUERIES
+from ..liquid_utils import LiquidHandler, Speed
+from .sartorius_lib import ErrorCode, ModelInfo, StatusCode, SpeedParameters, Model
+from .sartorius_lib import STATUS_QUERIES, QUERIES
 print(f"Import: OK <{__name__}>")
 
-DEFAULT_AIRGAP = 10 # number of plunger steps for air gap
-DEFAULT_PULLBACK = 5 # number of plunger steps for pullback
-READ_TIMEOUT_S = 0.3
 STEP_RESOLUTION = 10
-STEP_RESOLUTION_ABS = 2
-TIME_RESOLUTION = 1.03 # minimum drive response time [s]
-TIP_THRESHOLD = 276 # capacitance value above which tip is attached
+"""Minimum number of steps to have tolerable errors in volume"""
 
 class Sartorius(LiquidHandler):
-    def __init__(
-        self, 
+    """
+    Sartorius object
+
+    ### Constructor
+    Args:
+        `port` (str): COM port address
+        `channel` (int, optional): channel id. Defaults to 1.
+        `offset` (tuple[float], optional): x,y,z offset of tip. Defaults to (0,0,0).
+        `response_time` (float, optional): delay between sending a command and receiving a response, in seconds. Defaults to 1.03.
+        `tip_threshold` (int, optional): threshold above which a conductive pipette tip is considered to be attached. Defaults to 276.
+    
+    ### Attributes
+    - `channel` (int): channel id
+    - `limits` (tuple[int]): lower and upper step limits
+    - `model_info` (SartoriusPipetteModel): Sartorius model info
+    - `offset` (tuple[float]): x,y,z offset of tip
+    - `position` (int): position of plunger
+    - `response_time` (float): delay between sending a command and receiving a response, in seconds
+    - `speed_code` (Speed): codes for aspirate and dispense speeds
+    - `speed_presets` (PresetSpeeds): preset speeds available
+    - `tip_length` (float): length of pipette tip
+    - `tip_threshold` (int): threshold above which a conductive pipette tip is considered to be attached
+    
+    ## Properties
+    - `capacitance` (int): capacitance as measured at the end of the pipette
+    - `home_position` (int): home position of pipette
+    - `port` (str): COM port address
+    - `resolution` (float): volume resolution of pipette (i.e. uL per step)
+    - `status` (str): pipette status
+    
+    ### Methods
+    - `addAirGap`: create an air gap between two volumes of liquid in pipette
+    - `aspirate`: aspirate desired volume of reagent into pipette
+    - `blowout`: blowout liquid from tip
+    - `dispense`: dispense desired volume of reagent
+    - `eject`: eject the pipette tip
+    - `empty`: empty the pipette
+    - `getCapacitance`: get the capacitance as measured at the end of the pipette
+    - `getErrors`: get errors from the device
+    - `getInfo`: get details of the Sartorius pipette model
+    - `getPosition`: get the current position of the pipette
+    - `getStatus`: get the status of the pipette
+    - `home`: return plunger to home position
+    - `isFeasible`: checks and returns whether the plunger position is feasible
+    - `isTipOn`: checks and returns whether a pipette tip is attached
+    - `move`: move the plunger either up or down by a specified number of steps
+    - `moveBy`: move the plunger by a specified number of steps
+    - `moveTo`: move the plunger to a specified position
+    - `pullback`: pullback liquid from tip
+    - `reset`: reset the pipette
+    - `setSpeed`: set the speed of the plunger
+    - `shutdown`: shutdown procedure for tool
+    - `toggleFeedbackLoop`: start or stop feedback loop
+    - `zero`: zero the plunger position
+    """
+    
+    _default_flags = {
+        'busy': False,
+        'conductive_tips': False,
+        'connected': False,
+        'get_feedback': False,
+        'occupied': False,
+        'pause_feedback':False,
+        'tip_on': False
+    }
+    implement_offset = (0,0,-250)
+    def __init__(self, 
         port:str, 
-        channel=1, 
-        offset=(0,0,0), 
-        default_airgap=DEFAULT_AIRGAP,
-        default_pullback=DEFAULT_PULLBACK,
-        time_resolution=TIME_RESOLUTION,
-        tip_threshold=TIP_THRESHOLD,
+        channel: int = 1, 
+        offset: tuple[float] = (0,0,0),
+        response_time: float = 1.03,
+        tip_threshold: int = 276,
         **kwargs
     ):
         """
-        Sartorius object
+        Instantiate the class
 
         Args:
-            port (str): com port address
-            channel (int, optional): device channel. Defaults to 1.
-            offset (tuple, optional): x,y,z offset of tip. Defaults to (0,0,0).
+            port (str): COM port address
+            channel (int, optional): channel id. Defaults to 1.
+            offset (tuple[float], optional): x,y,z offset of tip. Defaults to (0,0,0).
+            response_time (float, optional): delay between sending a command and receiving a response, in seconds. Defaults to 1.03.
+            tip_threshold (int, optional): threshold above which a conductive pipette tip is considered to be attached. Defaults to 276.
         """
         super().__init__(**kwargs)
         self.channel = channel
         self.offset = offset
-        
-        self.device = None
-        self.home_position = 0
-        self.limits = (0,0)
-        self.implement_offset = (0,0,-250)
-        self.tip_length = 0
-        
-        self.default_airgap = default_airgap
-        self.default_pullback = default_pullback
-        self.time_resolution = time_resolution
+        self.response_time = response_time
         self.tip_threshold = tip_threshold
         
-        self._flags = {
-            'busy': False,
-            'conductive_tips': False,
-            'connected': False,
-            'get_feedback': False,
-            'occupied': False,
-            'pause_feedback':False,
-            'tip_on': False
-        }
-        self._levels = 0
-        self._position = 0
-        self._resolution = 0
-        self._speed_in = 3      # Default speed is setting 3
-        self._speed_out = 3     # Default speed is setting 3
-        self._speed_codes = None
+        self.model_info: Model = None
+        self.limits = (0,0)
+        self.position = 0
+        self.speed_code = Speed(3,3)
+        self.speed_presets = None
+        self.tip_length = 0
+        
+        self._capacitance = 0
         self._status_code = ''
         self._threads = {}
         
-        self.verbose = False
-        self.port = ''
-        self._baudrate = None
-        self._timeout = None
+        print("Any attached pipette tip may drop during initialisation.")
         self._connect(port)
         return
     
+    # Properties
     @property
-    def levels(self):
-        response = self._query('DN')
-        try:
-            self._levels = int(response)
-            return self._levels
-        except ValueError:
-            pass
-        return response
+    def capacitance(self) -> int:
+        return self._capacitance
+        
+    @property
+    def home_position(self) -> int:
+        return self.model_info.home_position
     
     @property
-    def position(self):
-        response = self._query('DP')
-        try:
-            self._position = int(response)
-            return self._position
-        except ValueError:
-            pass
-        return response
+    def port(self) -> str:
+        return self.connection_details.get('port', '')
     
     @property
-    def resolution(self):
-        return self._resolution
+    def resolution(self) -> float:
+        return self.model_info.resolution
     
     @property
-    def speed(self):
-        speed = {
-            'in': self._speed_codes[self._speed_in],
-            'out': self._speed_codes[self._speed_out]
-        }
-        return speed
-    @speed.setter
-    def speed(self, value):
-        """
-        Set the intake or outflow speeds
-
-        Args:
-            value (iterable):
-                speed_code (int): Preset speed code
-                direction (str): 'in' or 'out'
-
-        Raises:
-            Exception: Select a valid speed code
-            Exception: Select a valid direction
-        """
-        speed, direction = value
-        speed_code = [x for x,val in enumerate(np.array(self._speed_codes)-speed) if val >= 0][0]
-        print(f'Speed Code: {speed_code}')
-        if not (0 < speed_code < len(self._speed_codes)):
-            raise Exception(f'Please select a valid speed code from 1 to {len(self._speed_codes)-1}')
-        if direction == 'in':
-            self._speed_in = speed_code
-            self._query(f'SI{speed_code}')
-            self._query('DI')
-        elif direction == 'out':
-            self._speed_out = speed_code
-            self._query(f'SO{speed_code}')
-            self._query('DO')
-        else:
-            raise Exception("Please select either 'in' or 'out' for direction parameter")
-        return
+    def status(self) -> str:
+        return self.getStatus()
     
-    @property
-    def status(self):
-        return StatusCode(self._status_code).name
-    @status.setter
-    def status(self, status_code:str):
-        if status_code not in STATUSES:
-            raise Exception(f"Please input a valid status code from: {', '.join(STATUSES)}")
-        self._status_code = status_code
-        return
-    
-    def __cycles__(self):
+    def __cycles__(self) -> Union[int, str]:
         """
         Retrieve total cycle lifetime
 
         Returns:
-            int: number of lifetime cycles
+            Union[int, str]: number of lifetime cycles, or response string
         """
         response = self._query('DX')
         try:
             cycles = int(response)
-            print(f'Total cycles: {cycles}')
-            return cycles
         except ValueError:
-            pass
-        return response
+            return response
+        print(f'Total cycles: {cycles}')
+        return cycles
     
-    def __delete__(self):
-        self._shutdown()
-        return
-    
-    def __model__(self):
+    def __model__(self) -> str:
         """
-        Retreive the model of the device
+        Retrieve the model of the device
 
         Returns:
             str: model name
@@ -193,32 +180,501 @@ class Sartorius(LiquidHandler):
         print(f'Model: {response}')
         return response
     
-    def __resolution__(self):
+    def __resolution__(self) -> Union[int, str]:
         """
         Retrieve the resolution of the device
 
         Returns:
-            int: volume resolution of device
+            Union[int, str]: volume resolution of device in nL, or response string
         """
         response = self._query('DR')
         try:
-            res = int(response)
-            print(f'{res/1000} uL / step')
-            return res
+            resolution = int(response)
         except ValueError:
-            pass
-        return response
+            return response
+        print(f'{resolution/1000} uL / step')
+        return resolution
     
-    def __version__(self):
+    def __version__(self) -> str:
         """
-        Retrieve the version of the device
+        Retrieve the software version on the device
 
         Returns:
             str: device version
         """
         return self._query('DV')
 
-    def _calculate_speed_parameters(self, volume:int, speed:int):
+    def addAirGap(self, steps:int = 10) -> str:
+        """
+        Create an air gap between two volumes of liquid in pipette
+        
+        Args:
+            steps (int, optional): number of steps for air gap. Defaults to DEFAULT_AIRGAP.
+            channel (int, optional): channel to add air gap. Defaults to None.
+
+        Returns:
+            str: device response
+        """
+        response = self._query(f'RI{steps}')
+        time.sleep(1)
+        return response
+        
+    def aspirate(self, 
+        volume: float, 
+        speed: Optional[float] = None, 
+        wait: int = 0, 
+        pause: bool = False, 
+        reagent: Optional[str] = None,
+        **kwargs
+    ) -> str:
+        """
+        Aspirate desired volume of reagent
+
+        Args:
+            volume (float): target volume
+            speed (Optional[float], optional): speed to aspirate at. Defaults to None.
+            wait (int, optional): time delay after aspirate. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            reagent (Optional[str], optional): name of reagent. Defaults to None.
+            
+        Returns:
+            str: device response
+        """ 
+        self.setFlag(pause_feedback=True, occupied=True)
+        volume = min(volume, self.capacity - self.volume)
+        steps = int(volume / self.resolution)
+        volume = steps * self.resolution
+        if volume == 0:
+            return ''
+        print(f'Aspirating {volume} uL...')
+        start_aspirate = time.time()
+        speed = self.speed.up if speed is None else speed
+        
+        if speed in self.speed_presets:
+            if speed != self.speed.up:
+                self.setSpeed(speed=speed, up=True)
+                self.speed.up = speed
+            start_aspirate = time.time()
+            response = self._query(f'RI{steps}')
+            move_time = steps*self.resolution / speed
+            time.sleep(move_time)
+            # if response != 'ok':
+            #     return response
+            
+        elif speed not in self.speed_presets:
+            print(f"Target: {volume} uL at {speed} uL/s...")
+            speed_parameters = self._calculate_speed_parameters(volume=volume, speed=speed)
+            print(speed_parameters)
+            preset = speed_parameters.preset
+            if preset is None:
+                raise RuntimeError('Target speed not possible.')
+            self.setSpeed(speed=preset, up=True)
+            self.speed.up = speed
+            start_aspirate = time.time()
+            
+            steps_left = steps
+            delay = speed_parameters.delay
+            step_size = speed_parameters.step_size
+            intervals = speed_parameters.intervals
+            for i in range(intervals):
+                start_time = time.time()
+                step = step_size if (i+1 != intervals) else steps_left
+                move_time = step*self.resolution / preset
+                response = self._query(f'RI{step}', resume_feedback=False)
+                # if response != 'ok':
+                #     print("Aspiration failed")
+                #     return response
+                steps_left -= step
+                duration = time.time() - start_time
+                if duration < (delay+move_time):
+                    time.sleep(delay+move_time-duration)
+        
+        # Update values
+        print(f'Aspiration time: {time.time()-start_aspirate}s')
+        time.sleep(wait)
+        self.setFlag(occupied=False, pause_feedback=False)
+        self.volume += volume
+        self.position += steps
+        if reagent is not None:
+            self.reagent = reagent
+        if pause:
+            input("Press 'Enter' to proceed.")
+        return response
+    
+    def blowout(self, home:bool = True, **kwargs) -> str:
+        """
+        Blowout liquid from tip
+
+        Args:
+            home (bool, optional): whether to return plunger to home position. Defaults to True.
+
+        Returns:
+            str: device response
+        """
+        command = f'RB{self.home_position}' if home else 'RB'
+        response = self._query(command)
+        self.position = self.home_position
+        time.sleep(1)
+        return response
+    
+    def dispense(self, 
+        volume: float, 
+        speed: Optional[float] = None, 
+        wait: int = 0, 
+        pause: bool = False, 
+        blowout: bool = False,
+        blowout_home: bool = True,
+        force_dispense: bool = False, 
+        **kwargs
+    ) -> str:
+        """
+        Dispense desired volume of reagent
+
+        Args:
+            volume (float): target volume
+            speed (Optional[float], optional): speed to dispense at. Defaults to None.
+            wait (int, optional): time delay after dispense. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            blowout (bool, optional): whether perform blowout. Defaults to False.
+            blowout_home (bool, optional): whether to return the plunger home after blowout. Defaults to True.
+            force_dispense (bool, optional): whether to dispense reagent regardless. Defaults to False.
+
+        Raises:
+            ValueError: Required dispense volume is greater than volume in tip
+
+        Returns:
+            str: device response
+        """
+        self.setFlag(pause_feedback=True, occupied=True)
+        if force_dispense:
+            volume = min(volume, self.volume)
+        elif volume > self.volume:
+            raise ValueError('Required dispense volume is greater than volume in tip.')
+        steps = int(volume / self.resolution)
+        volume = steps * self.resolution
+        if volume == 0:
+            return ''
+        print(f'Dispensing {volume} uL...')
+        start_dispense = time.time()
+        speed = self.speed.down if speed is None else speed
+
+        if speed in self.speed_presets:
+            if speed != self.speed.down:
+                self.setSpeed(speed=speed, up=False)
+                self.speed.down = speed
+            start_dispense = time.time()
+            response = self._query(f'RO{steps}')
+            move_time = steps*self.resolution / speed
+            time.sleep(move_time)
+            # if response != 'ok':
+            #     return response
+            
+        elif speed not in self.speed_presets:
+            print(f"Target: {volume} uL at {speed} uL/s...")
+            speed_parameters = self._calculate_speed_parameters(volume=volume, speed=speed)
+            print(speed_parameters)
+            preset = speed_parameters.preset
+            if preset is None:
+                raise RuntimeError('Target speed not possible.')
+            self.setSpeed(speed=preset, up=False)
+            self.speed.down = speed
+            start_dispense = time.time()
+        
+            steps_left = steps
+            delay = speed_parameters.delay
+            step_size = speed_parameters.step_size
+            intervals = speed_parameters.intervals
+            for i in range(intervals):
+                start_time = time.time()
+                step = step_size if (i+1 != intervals) else steps_left
+                move_time = step*self.resolution / preset
+                response = self._query(f'RO{step}', resume_feedback=False)
+                # if response != 'ok':
+                #     print("Dispense failed")
+                #     return response
+                steps_left -= step
+                duration = time.time() - start_time
+                if duration < (delay+move_time):
+                    time.sleep(delay+move_time-duration)
+
+        # Update values
+        print(f'Dispense time: {time.time()-start_dispense}s')
+        time.sleep(wait)
+        self.setFlag(occupied=False, pause_feedback=False)
+        self.volume = max(self.volume - volume, 0)
+        self.position -= steps
+        if self.volume == 0 and blowout:
+            self.blowout(home=blowout_home)
+        if pause:
+            input("Press 'Enter' to proceed.")
+        return response
+    
+    def eject(self, home:bool = True) -> str:
+        """
+        Eject the pipette tip
+
+        Args:
+            home (bool, optional): whether to return plunger to home position. Defaults to True.
+
+        Returns:
+            str: device response
+        """
+        self.reagent = ''
+        command = f'RE{self.home_position}' if home else 'RE'
+        response = self._query(command)
+        self.position = self.home_position if home else 0
+        time.sleep(1)
+        return response
+    
+    def empty(self, **kwargs):
+        """Empty the pipette"""
+        return self.home()
+    
+    def getCapacitance(self) -> Union[int, str]:
+        """
+        Get the capacitance as measured at the end of the pipette
+        
+        Returns:
+            Union[int, str]: capacitance value, or device response
+        """
+        response = self._query('DN')
+        try:
+            capacitance = int(response)
+        except ValueError:
+            return response
+        self._capacitance = capacitance
+        return capacitance
+ 
+    def getErrors(self) -> str:
+        """
+        Get errors from the device
+
+        Returns:
+            str: device response
+        """
+        return self._query('DE')
+    
+    def getInfo(self, model: Optional[str] = None):
+        """Get details of the Sartorius pipette model"""
+        model = self.__model__().split('-')[0] if model is None else model
+        if model not in ModelInfo._member_names_:
+            print(f'Received: {model}')
+            model = 'BRL0'
+            print(f"Defaulting to: {'BRL0'}")
+            print(f"Valid models are: {', '.join(ModelInfo._member_names_)}")
+        info: Model = ModelInfo[model].value
+        print(info)
+        self.model_info = info
+        self.capacity = info.capacity
+        self.limits = (info.tip_eject_position, info.max_position)
+        self.speed_presets = info.preset_speeds
+        self.speed.up = self.speed_presets[self.speed_code.up]
+        self.speed.down = self.speed_presets[self.speed_code.down]
+        return
+    
+    def getPosition(self, **kwargs) -> int:
+        """Get the current position of the pipette"""
+        response = self._query('DP')
+        try:
+            position = int(response)
+        except ValueError:
+            return response
+        self.position = position
+        return self.position
+      
+    def getStatus(self, **kwargs) -> str:
+        """
+        Get the status of the pipette
+
+        Returns:
+            str: device response
+        """
+        response = self._query('DS')
+        try:
+            status = int(response)
+        except ValueError:
+            return response
+        if response not in [_status.value for _status in StatusCode]:
+            return response
+        
+        self._status_code = status
+        if status in [4,6,8]:
+            self.setFlag(busy=True)
+            if self.verbose:
+                print(StatusCode(status).name)
+        elif status == 0:
+            self.setFlag(busy=False)
+        return StatusCode(self._status_code).name
+    
+    def home(self) -> str:
+        """
+        Return plunger to home position
+        
+        Returns:
+            str: device response
+        """
+        response = self._query(f'RP{self.home_position}')
+        self.volume = 0
+        self.position = self.home_position
+        time.sleep(1)
+        return response
+    
+    def isFeasible(self, position:int) -> bool:
+        """
+        Checks and returns whether the plunger position is feasible
+
+        Args:
+            position (int): plunger position
+
+        Returns:
+            bool: whether plunger position is feasible
+        """
+        if (self.limits[0] <= position <= self.limits[1]):
+            return True
+        print(f"Range limits reached! {self.limits}")
+        return False
+    
+    def isTipOn(self) -> bool:
+        """
+        Checks and returns whether a pipette tip is attached
+        
+        Returns:
+            bool: whether a pipette tip in attached
+        """
+        self.getCapacitance()
+        print(f'Tip capacitance: {self.capacitance}')
+        if self.flags['conductive_tips']:
+            tip_on = (self.capacitance > self.tip_threshold)
+            self.setFlag(tip_on=tip_on)
+        tip_on = self.flags['tip_on']
+        return tip_on
+    
+    def move(self, steps:int, up:bool, **kwargs) -> str:
+        """
+        Move the plunger either up or down by a specified number of steps
+
+        Args:
+            steps (int): number of steps to move plunger by
+            up (bool): whether to move the plunger up
+
+        Returns:
+            str: device response
+        """
+        steps = abs(steps) if up else -abs(steps)
+        return self.moveBy(steps)
+    
+    def moveBy(self, steps:int, **kwargs) -> str:
+        """
+        Move the plunger by specified number of steps
+
+        Args:
+            steps (int): number of steps to move plunger by (<0: move down/dispense; >0 move up/aspirate)
+
+        Returns:
+            str: device response
+        """
+        command = f'RI{steps}' if steps > 0 else f'RO{-steps}'
+        self.position += steps
+        return self._query(command)
+    
+    def moveTo(self, position:int, **kwargs) -> str:
+        """
+        Move the plunger to a specified position
+
+        Args:
+            position (int): target plunger position
+
+        Returns:
+            str: device response
+        """
+        self.position = position
+        return self._query(f'RP{position}')
+    
+    def pullback(self, steps:int = 5, **kwargs) -> str:
+        """
+        Pullback liquid from tip
+        
+        Args:
+            steps (int, optional): number of steps to pullback. Defaults to 5.
+
+        Returns:
+            str: device response
+        """
+        response = self._query(f'RI{steps}')
+        self.position += steps
+        time.sleep(1)
+        return response
+    
+    def reset(self) -> str:
+        """
+        Reset the pipette
+
+        Returns:
+            str: device response
+        """
+        self.zero()
+        return self.home()
+    
+    def setSpeed(self, speed:int, up:bool, **kwargs) -> str:
+        """
+        Set the speed of the plunger
+
+        Args:
+            speed (int): speed of plunger
+            up (bool): direction of travel
+
+        Returns:
+            str: device response
+        """
+        speed_code = 1 + [x for x,val in enumerate(np.array(self.speed_presets)-speed) if val >= 0][0]
+        print(f'Speed {speed_code}: {self.speed_presets[speed_code-1]} uL/s')
+        direction = 'I' if up else 'O'
+        self._query(f'S{direction}{speed_code}')
+        if up:
+            self.speed_code.up = speed_code
+        else:
+            self.speed_code.down = speed_code
+        return self._query(f'D{direction}')
+    
+    def shutdown(self):
+        """Shutdown procedure for tool"""
+        self.toggleFeedbackLoop(on=False)
+        return super().shutdown()
+    
+    def toggleFeedbackLoop(self, on:bool):
+        """
+        Start or stop feedback loop
+        
+        Args:
+            on (bool): whether to start feedback loop
+        """
+        self.setFlag(get_feedback=on)
+        if on:
+            if 'feedback_loop' in self._threads:
+                self._threads['feedback_loop'].join()
+            thread = Thread(target=self._loop_feedback)
+            thread.start()
+            self._threads['feedback_loop'] = thread
+        else:
+            if 'feedback_loop' in self._threads:
+                self._threads['feedback_loop'].join()
+        return
+
+    def zero(self) -> str:
+        """
+        Zero the plunger position
+        
+        Returns:
+            str: device response
+        """
+        self.eject()
+        response = self._query('RZ')
+        self.position = 0
+        time.sleep(2)
+        return response
+
+    # Protected method(s)
+    def _calculate_speed_parameters(self, volume:int, speed:int) -> SpeedParameters:
         """
         Calculates the best parameters for volume and speed
 
@@ -231,124 +687,130 @@ class Sartorius(LiquidHandler):
         """
         outcomes = {}
         step_interval_limit = int(volume/self.resolution/STEP_RESOLUTION)
-        for standard in self._speed_codes:
-            if not standard or standard < speed:
+        for preset in self.speed_presets:
+            if preset < speed:
+                # preset is slower than target speed, it will never hit target speed
                 continue
-            time_interval_limit = int(volume*(1/speed - 1/standard)/self.time_resolution)
+            time_interval_limit = int(volume*(1/speed - 1/preset)/self.response_time)
             if not step_interval_limit or not time_interval_limit:
                 continue
             intervals = max(min(step_interval_limit, time_interval_limit), 1)
             each_steps = volume/self.resolution/intervals
-            each_delay = volume*(1/speed - 1/standard)/intervals
-            area = 0.5 * (volume**2) * (1/self.resolution) * (1/intervals) * (1/speed - 1/standard)
-            outcomes[area] = {'delay': each_delay, 'intervals': intervals, 'standard': standard, 'step_size': int(each_steps)}
+            each_delay = volume*(1/speed - 1/preset)/intervals
+            area = 0.5 * (volume**2) * (1/self.resolution) * (1/intervals) * (1/speed - 1/preset)
+            outcomes[area] = SpeedParameters(preset, intervals, int(each_steps), each_delay)
         if len(outcomes) == 0:
             print("No feasible speed parameters.")
-            return {}
+            return SpeedParameters(None, STEP_RESOLUTION, STEP_RESOLUTION, self.response_time)
         print(f'Best parameters: {outcomes[min(outcomes)]}')
         return outcomes[min(outcomes)]
     
-    def _connect(self, port:str, baudrate=9600, timeout=1):
+    def _connect(self, port:str, baudrate:int = 9600, timeout:int = 1):
         """
-        Connect to machine control unit
+        Connection procedure for tool
 
         Args:
-            port (str): com port address
-            baudrate (int): baudrate. Defaults to 9600.
-            timeout (int, optional): timeout in seconds. Defaults to None.
-            
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
+            port (str): COM port address
+            baudrate (int, optional): baudrate. Defaults to 9600.
+            timeout (int, optional): timeout in seconds. Defaults to 1.
         """
-        self.port = port
-        self._baudrate = baudrate
-        self._timeout = timeout
+        self.connection_details = {
+            'port': port,
+            'baudrate': baudrate,
+            'timeout': timeout
+        }
         device = None
         try:
-            device = serial.Serial(port, self._baudrate, timeout=self._timeout)
-            self.device = device
-            print(f"Connection opened to {port}")
-            self.setFlag('connected', True)
-            
-            self.getInfo()
-            self.reset()
-            self.toggleFeedbackLoop(on=False)
+            device = serial.Serial(port, baudrate, timeout=timeout)
         except Exception as e:
             print(f"Could not connect to {port}")
             if self.verbose:
                 print(e)
-        return self.device
+        else:
+            time.sleep(2)   # Wait for grbl to initialize
+            device.flushInput()
+            print(f"Connection opened to {port}")
+            self.setFlag(connected=True)
+        self.device = device
+        self.getInfo()
+        self.reset()
+        return
     
-    def _is_expected_reply(self, message_code:str, response:str):
+    def _is_expected_reply(self, response:str, command_code:str, **kwargs) -> bool:
         """
-        Check whether the response is an expected reply
+        Checks and returns whether the response is an expected reply
 
         Args:
-            message_code (str): two-character message code
             response (str): response string from device
+            command_code (str): two-character command code
 
         Returns:
             bool: whether the response is an expected reply
         """
-        if response in ERRORS:
+        if response in ErrorCode._member_names_:
             return True
-        if message_code not in QUERIES and response == 'ok':
+        if command_code not in QUERIES and response == 'ok':
             return True
-        if message_code in QUERIES and response[:2] == message_code.lower():
+        if command_code in QUERIES and response[:2] == command_code.lower():
             reply_code, data = response[:2], response[2:]
             if self.verbose:
                 print(f'[{reply_code}] {data}')
             return True
         return False
-    
+
     def _loop_feedback(self):
-        """
-        Feedback loop to constantly check status and liquid level
-        """
+        """Loop to constantly read from device"""
         print('Listening...')
-        while self._flags['get_feedback']:
-            if self._flags['pause_feedback']:
+        while self.flags['get_feedback']:
+            if self.flags['pause_feedback']:
                 continue
             self.getStatus()
-            self.getLiquidLevel()
+            self.getCapacitance()
         print('Stop listening...')
         return
     
-    def _query(self, string:str, timeout_s=READ_TIMEOUT_S, resume_feedback=False):
+    def _query(self, 
+        command: str, 
+        timeout_s: float = 0.3, 
+        resume_feedback: bool = False
+    ) -> str:
         """
-        Send query and wait for response
+        Write command to and read response from device
 
         Args:
-            string (str): message string
-            timeout_s (int, optional): duration to wait before timeout. Defaults to READ_TIMEOUT_S.
+            command (str): command string
+            timeout_s (float, optional): duration to wait before timeout. Defaults to 0.3.
+            resume_feedback (bool, optional): whether to resume reading from device. Defaults to False.
 
         Returns:
-            str: message readout
+            str: response string
         """
-        message_code = string[:2]
-        if message_code not in STATUS_QUERIES:
-            if self._flags['get_feedback'] and not self._flags['pause_feedback']:
-                self.setFlag('pause_feedback', True)
+        command_code = command[:2]
+        if command_code not in STATUS_QUERIES:
+            if self.flags['get_feedback'] and not self.flags['pause_feedback']:
+                self.setFlag(pause_feedback=True)
                 time.sleep(timeout_s)
             self.getStatus()
             while self.isBusy():
                 self.getStatus()
         
         start_time = time.time()
-        message_code = self._write(string)
+        self._write(command)
         response = ''
-        while not self._is_expected_reply(message_code, response):
+        while not self._is_expected_reply(response, command_code):
             if time.time() - start_time > timeout_s:
                 break
             response = self._read()
         # print(time.time() - start_time)
-        if message_code in QUERIES:
+        if command_code in QUERIES:
             response = response[2:]
-        if message_code not in STATUS_QUERIES and resume_feedback:
-            self.setFlag('pause_feedback', False)
+        if command_code not in STATUS_QUERIES:
+            self.getPosition()
+            if resume_feedback:
+                self.setFlag(pause_feedback=False)
         return response
 
-    def _read(self):
+    def _read(self) -> str:
         """
         Read response from device
 
@@ -361,17 +823,16 @@ class Sartorius(LiquidHandler):
             if len(response) == 0:
                 response = self.device.readline()
             response = response[2:-2].decode('utf-8')
-            if response in ERRORS:
-                print(ErrorCode[response].value)
-                return response
-            elif response == 'ok':
-                return response
+        except AttributeError:
+            pass
         except Exception as e:
             if self.verbose:
                 print(e)
+        if response in ErrorCode._member_names_:
+            print(ErrorCode[response].value)
         return response
     
-    def _set_channel(self, new_channel:int):
+    def _set_channel_id(self, new_channel_id:int):
         """
         Set channel id of device
 
@@ -379,537 +840,37 @@ class Sartorius(LiquidHandler):
             new_channel (int): new channel id
 
         Raises:
-            Exception: Address should be between 1~9
+            ValueError: Please select a valid rLine address from 1 to 9
         """
-        if not (0 < new_channel < 10):
-            raise Exception('Please select a valid rLine address from 1 to 9')
-        response = self._query(f'*A{new_channel}')
+        if not (0 < new_channel_id < 10):
+            raise ValueError('Please select a valid rLine address from 1 to 9.')
+        response = self._query(f'*A{new_channel_id}')
         if response == 'ok':
-            self.channel = new_channel
+            self.channel = new_channel_id
         return
     
-    def _shutdown(self):
+    def _write(self, command:str) -> bool:
         """
-        Close serial connection and shutdown
-        """
-        self.toggleFeedbackLoop(on=False)
-        # self.zero()
-        self.device.close()
-        self._flags = {
-            'busy': False,
-            'connected': False,
-            'get_feedback': False,
-            'occupied': False,
-            'pause_feedback':False,
-            'tip_on': False
-        }
-        return
-    
-    def _write(self, string:str):
-        """
-        Sends message to device
+        Write command to device
 
         Args:
-            string (str): <message code><value>
+            command (str): <command code><value>
 
         Returns:
-            str: two-character message code
+            bool: whether command was sent successfully
         """
-        message_code = string[:2]
-        fstring = f'{self.channel}{string}º\r' # message template: <PRE><ADR><CODE><DATA><LRC><POST>
-        bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
+        if self.verbose:
+            print(command)
+        fstring = f'{self.channel}{command}º\r' # command template: <PRE><ADR><CODE><DATA><LRC><POST>
+        # bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
         try:
             # Typical timeout wait is 400ms
-            self.device.write(bstring)
+            self.device.write(fstring.encode('utf-8'))
+        except AttributeError:
+            pass
         except Exception as e:
             if self.verbose:
                 print(e)
-        return message_code
+            return False
+        return True
     
-    def addAirGap(self, steps:int = None, channel=None):
-        """
-        Create an air gap between two volumes of liquid in pipette
-        
-        Args:
-            steps (int, optional): number of steps for air gap. Defaults to DEFAULT_AIRGAP.
-            channel (int, optional): channel to add air gap. Defaults to None.
-
-        Returns:
-            str: device response
-        """
-        if steps is None:
-            steps = self.default_airgap
-        response = self._query(f'RI{steps}')
-        time.sleep(1)
-        return response
-        
-    def aspirate(self, volume, speed=None, wait=0, reagent='', pause=False, channel=None):
-        """
-        Aspirate desired volume of reagent into channel
-
-        Args:
-            volume (int, or float): volume to be aspirated
-            speed (int, optional): speed to aspirate. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            reagent (str, optional): name of reagent. Defaults to ''.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            channel (int, optional): channel to aspirate. Defaults to None.
-            
-        Returns:
-            str: device response
-        """ 
-        self.setFlag('pause_feedback', True)
-        self.setFlag('occupied', True)
-        volume = min(volume, self.capacity - self.volume)
-        steps = int(volume / self.resolution)
-        volume = steps * self.resolution
-        speed_parameters = {}
-        if speed is None:
-            speed = self.speed['in']
-        elif speed in self._speed_codes:
-            self.speed = speed,'in'
-        elif speed not in self._speed_codes:
-            print(volume)
-            print(speed)
-            speed_parameters = self._calculate_speed_parameters(volume=volume, speed=speed)
-            print(speed_parameters)
-            standard = speed_parameters.get('standard')
-            if standard == None:
-                print('Speed not feasible.')
-                return
-            self.speed = standard,'in'
-        
-        if volume == 0:
-            return ''
-        print(f'Aspirate {volume} uL')
-        start_aspirate = time.time()
-        if speed not in self._speed_codes:
-            delay = speed_parameters.get('delay', self.time_resolution)
-            step_size = speed_parameters.get('step_size', STEP_RESOLUTION)
-            intervals = speed_parameters.get('intervals', STEP_RESOLUTION)
-            for i in range(intervals):
-                start_time = time.time()
-                step = step_size if (i+1 != intervals) else steps
-                move_time = step*self.resolution / standard
-                response = self._query(f'RI{step}', resume_feedback=False)
-                if response != 'ok':
-                    print("Aspirate failed")
-                    return response
-                steps -= step
-                duration = time.time() - start_time
-                if duration < (delay+move_time):
-                    time.sleep(delay+move_time-duration)
-        else:
-            response = self._query(f'RI{steps}')
-            move_time = steps*self.resolution / speed
-            time.sleep(move_time)
-            if response != 'ok':
-                return response
-        print(f'Aspirate time: {time.time()-start_aspirate}s')
-        
-        # Update values
-        self.volume += volume
-        if len(reagent) and len(self.reagent) == 0:
-            self.reagent = reagent
-        
-        time.sleep(wait)
-        self.setFlag('occupied', False)
-        self.setFlag('pause_feedback', False)
-        if pause:
-            input("Press 'Enter' to proceed.")
-        return response
-    
-    def blowout(self, home=True, channel=None):
-        """
-        Blowout last remaining drop in pipette
-
-        Args:
-            home (bool, optional): whether to return plunger to home position. Defaults to True.
-            channel (int, optional): channel to blowout. Defaults to None.
-
-        Returns:
-            str: device response
-        """
-        string = f'RB{self.home_position}' if home else f'RB'
-        response = self._query(string)
-        time.sleep(1)
-        return response
-    
-    def connect(self):
-        """
-        Reconnect to device using existing port and baudrate
-        
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
-        """
-        return self._connect(self.port, self._baudrate, self._timeout)
-    
-    def dispense(self, volume, speed=None, wait=0, force_dispense=False, pause=False, blowout=True, blowout_home=True, channel=None):
-        """
-        Dispense desired volume of reagent from channel
-
-        Args:
-            volume (int, or float): volume to be dispensed
-            speed (int, optional): speed to dispense. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            force_dispense (bool, optional): whether to continue dispensing even if insufficient volume in channel. Defaults to False.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            blowout (bool, optional): whether to perform blowout when volume reaches zero. Defaults to True.
-            blowout_home (bool, optional): whether to home the plunger after blowout. Defaults to True.
-            channel (int, optional): channel to dispense. Defaults to None.
-
-        Raises:
-            Exception: Required dispense volume is greater than volume in tip
-
-        Returns:
-            str: device response
-        """
-        self.setFlag('pause_feedback', True)
-        self.setFlag('occupied', True)
-        if force_dispense:
-            volume = min(volume, self.volume)
-        elif volume > self.volume:
-            raise Exception('Required dispense volume is greater than volume in tip')
-        steps = int(volume / self.resolution)
-        volume = steps * self.resolution
-        speed_parameters = {}
-        if speed is None:
-            speed = self.speed['out']
-        elif speed in self._speed_codes:
-            self.speed = speed,'out'
-        elif speed not in self._speed_codes:
-            print(volume)
-            print(speed)
-            speed_parameters = self._calculate_speed_parameters(volume=volume, speed=speed)
-            print(speed_parameters)
-            standard = speed_parameters.get('standard')
-            if standard == None:
-                print('Speed not feasible.')
-                return
-            self.speed = standard,'out'
-        
-        if volume == 0:
-            return ''
-        print(f'Dispense {volume} uL')
-        start_dispense = time.time()
-        if speed not in self._speed_codes:
-            delay = speed_parameters.get('delay', self.time_resolution)
-            step_size = speed_parameters.get('step_size', STEP_RESOLUTION)
-            intervals = speed_parameters.get('intervals', STEP_RESOLUTION)
-            for i in range(intervals):
-                start_time = time.time()
-                step = step_size if (i+1 != intervals) else steps
-                move_time = step*self.resolution / standard
-                response = self._query(f'RO{step}', resume_feedback=False)
-                if response != 'ok':
-                    print("Dispense failed")
-                    return response
-                steps -= step
-                duration = time.time() - start_time
-                if duration < (delay+move_time):
-                    time.sleep(delay+move_time-duration)
-        else:
-            response = self._query(f'RO{steps}')
-            move_time = steps*self.resolution / speed
-            time.sleep(move_time)
-            if response != 'ok':
-                return response
-        print(f'Dispense time: {time.time()-start_dispense}s')
-        
-        # Update values
-        self.volume = max(self.volume - volume, 0)
-        
-        time.sleep(wait)
-        if self.volume == 0 and blowout:
-            self.blowout(home=blowout_home)
-        self.setFlag('occupied', False)
-        self.setFlag('pause_feedback', False)
-        if pause:
-            input("Press 'Enter' to proceed.")
-        return response
-    
-    def eject(self, home=True, channel=None):
-        """
-        Eject pipette tip
-
-        Args:
-            home (bool, optional): whether to return plunger to home position. Defaults to True.
-            channel (int, optional): channel to eject. Defaults to None.
-
-        Returns:
-            str: device response
-        """
-        self.reagent = ''
-        string = f'RE{self.home_position}' if home else f'RE'
-        response = self._query(string)
-        time.sleep(1)
-        return response
-    
-    def getErrors(self, channel=None):
-        """
-        Get errors from device
-        
-        Args:
-            channel (int, optional): channel to get errors. Defaults to None.
-
-        Returns:
-            str: device response
-        """
-        return self._query('DE')
-    
-    def getInfo(self):
-        """
-        Get model info
-
-        Raises:
-            Exception: Select a valid model name
-        """
-        model = self.__model__().split('-')[0]
-        if model not in MODELS:
-            print(f'Received: {model}')
-            raise Exception(f"Please select a valid model from: {', '.join(MODELS)}")
-        info = ModelInfo[model].value
-        print(info)
-        
-        self.limits = (info['tip_eject_position'], info['max_position'])
-        self.capacity = info['capacity']
-        self.home_position = info['home_position']
-        self._resolution = info['resolution']
-        self._speed_codes = info['speed_codes']
-        return
-    
-    def getLiquidLevel(self, channel=None):
-        """
-        Get the liquid level by measuring capacitance
-        
-        Args:
-            channel (int, optional): channel to get liquid level. Defaults to None.
-        
-        Returns:
-            str: device response
-        """
-        response = self._query('DN')
-        try:
-            self._levels = int(response)
-        except ValueError:
-            pass
-        return response
-      
-    def getStatus(self, channel=None):
-        """
-        Get the device status
-        
-        Args:
-            channel (int, optional): channel to get status. Defaults to None.
-
-        Returns:
-            str: device response
-        """
-        response = self._query('DS')
-        try:
-            response = int(response)
-        except ValueError as e:
-            if self.verbose:
-                print(e)
-            return response
-        if response in ['4','6','8']:
-            self.setFlag('busy', True)
-            if self.verbose:
-                print(StatusCode(response).name)
-        elif response in ['0']:
-            self.setFlag('busy', False)
-        self.status = response
-        return response
-    
-    def home(self, channel=None):
-        """
-        Return plunger to home position
-        
-        Args:
-            channel (int, optional): channel to home. Defaults to None.
-
-        Returns:
-            str: device response
-        """
-        response = self._query(f'RP{self.home_position}')
-        time.sleep(1)
-        return response
-    
-    def isBusy(self):
-        """
-        Checks whether the pipette is busy
-        
-        Returns:
-            bool: whether the pipette is busy
-        """
-        return self._flags['busy']
-    
-    def isConnected(self):
-        """
-        Check whether pipette is connected
-
-        Returns:
-            bool: whether pipette is connected
-        """
-        return self._flags['connected']
-    
-    def isFeasible(self, position:int):
-        """
-        Checks if specified position is a feasible position for plunger to access
-
-        Args:
-            position (int): plunger position
-
-        Returns:
-            bool: whether plunger position is feasible
-        """
-        if (self.limits[0] < position < self.limits[1]):
-            return True
-        print(f"Range limits reached! {self.limits}")
-        return False
-    
-    def isTipOn(self):
-        """
-        Checks whether tip is on
-        
-        Returns:
-            bool: whether the tip in on
-        """
-        self.getLiquidLevel()
-        print(f'Tip capacitance: {self._levels}')
-        if self._flags['conductive_tips']:
-            tip_on = (self._levels > self.tip_threshold)
-            self.setFlag('tip_on', tip_on)
-        tip_on = self._flags.get('tip_on')
-        return tip_on
-    
-    def move(self, direction:str, value:int, channel=None):
-        """
-        Move plunger either up or down
-
-        Args:
-            direction (str): desired direction of plunger (up / down)
-            value (int): number of steps to move plunger by
-            channel (int, optional): channel to move. Defaults to None.
-        Raises:
-            Exception: Value has to be non-negative
-            Exception: Axis direction either 'up' or 'down'
-
-        Returns:
-            str: device response
-        """
-        if value < 0:
-            raise Exception("Please input non-negative value")
-        if direction.lower() in ['up','u']:
-            return self.moveBy(value)
-        elif direction.lower() in ['down','d']:
-            return self.moveBy(-value)
-        else:
-            raise Exception("Please select either 'up' or 'down'")
-    
-    def moveBy(self, steps:int, channel=None):
-        """
-        Move plunger by specified number of steps
-
-        Args:
-            steps (int): number of steps to move plunger by (<0: move down/dispense; >0 move up/aspirate)
-            channel (int, optional): channel to move by. Defaults to None.
-
-        Returns:
-            str: device response
-        """
-        response = ''
-        if steps > 0:
-            response = self._query(f'RI{steps}')
-        elif steps < 0:
-            response = self._query(f'RO{-steps}')
-        return response
-    
-    def moveTo(self, position:int, channel=None):
-        """
-        Move plunger to specified position
-
-        Args:
-            position (int): desired plunger position
-            channel (int, optional): channel to move to. Defaults to None.
-
-        Returns:
-            str: device response
-        """
-        return self._query(f'RP{position}')
-    
-    def pullback(self, steps:int = None, channel=None):
-        """
-        Pullback liquid from tip
-        
-        Args:
-            steps (int, optional): number of steps to pullback. Defaults to DEFAULT_PULLBACK.
-            channel (int, optional): channel to pullback. Defaults to None.
-
-        Returns:
-            str: device response
-        """
-        if steps is None:
-            steps = self.default_pullback
-        response = self._query(f'RI{steps}')
-        time.sleep(1)
-        return response
-    
-    def reset(self, channel=None):
-        """
-        Zeros and go back to home position
-        
-        Args:
-            channel (int, optional): channel to reset. Defaults to None.
-
-        Returns:
-            str: device response
-        """
-        self.zero()
-        return self.home()
-
-    def setFlag(self, name:str, value:bool):
-        """
-        Set a flag truth value
-
-        Args:
-            name (str): label
-            value (bool): flag value
-        """
-        self._flags[name] = value
-        return
-    
-    def toggleFeedbackLoop(self, on:bool, channel=None):
-        """
-        Toggle between start and stopping feedback loop
-        
-        Args:
-            channel (int, optional): channel to toggle feedback loop. Defaults to None.
-
-        Args:
-            on (bool): whether to listen to feedback
-        """
-        self.setFlag('get_feedback', on)
-        if on:
-            thread = Thread(target=self._loop_feedback)
-            thread.start()
-            self._threads['feedback_loop'] = thread
-        else:
-            if 'feedback_loop' in self._threads:
-                self._threads['feedback_loop'].join()
-        return
-
-    def zero(self, channel=None):
-        """
-        Zero the plunger position
-        
-        Args:
-            channel (int, optional): channel to zero. Defaults to None.
-
-        Returns:
-            str: device response
-        """
-        self.eject()
-        response = self._query('RZ')
-        time.sleep(2)
-        return response

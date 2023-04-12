@@ -1,629 +1,521 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/02 17:13:35
-@author: Chang Jie
+This module holds the instrument class for tools from Keithley.
 
-Notes / actionables:
-- validation on copper
+Classes:
+    KeithleyDevice (Instrument)
 """
 # Standard library imports
+from __future__ import annotations
 import numpy as np
 import pandas as pd
+from typing import Optional, Union
 
 # Third party imports
 import pyvisa as visa # pip install -U pyvisa
 
 # Local application imports
+from ...instrument_utils import Instrument
+from .keithley_lib import SenseDetails, SourceDetails
 print(f"Import: OK <{__name__}>")
 
-class KeithleyDevice(object):
+class KeithleyDevice(Instrument):
     """
-    Keithley device object
+    KeithleyDevice provides methods to interface with the potentiometer from Keithley
     
+    ### Constructor
     Args:
-        ip_address (str): IP address of Keithley
-        name (str, optional): nickname for Keithley. Defaults to 'def'.
+        `ip_address` (str): IP address of device
+        `name` (str, optional): name of device. Defaults to 'def'.
+        
+    ### Attributes
+    - `active_buffer` (str): name of active buffer in Keithley
+    - `name` (str): name of device
+    - `sense` (SenseDetails): parameters for Keithley's sense terminal
+    - `source` (SourceDetails): parameters for Keithley's source terminal
+    
+    ### Properties
+    - `buffer_name` (str): name of buffer
+    - `fields` (tuple[str]): tuple of data fields to read from device
+    
+    ### Methods
+    - `beep`: make device emit a beep sound
+    - `clearBuffer`: clear the buffer on the device
+    - `configureSense`: configure the sense terminal
+    - `configureSource`: configure the source terminal
+    - `disconnect`: disconnect from device (NOTE: not implemented)
+    - `getBufferIndices`: get the buffer indices where the the data start and end
+    - `getErrors`: get error messages from device
+    - `getStatus`: get status of device
+    - `makeBuffer`: create a new buffer on the device
+    - `read`: read the latest data from buffer
+    - `readAll`: read the data from buffer after a series of measurements
+    - `recallState`: recall a previously saved device setting
+    - `reset`: reset the device
+    - `run`: start the measurement
+    - `saveState`: save current settings on device
+    - `sendCommands`: write a series of commands to device
+    - `setSource`: set the source to a specified value
+    - `stop`: abort all actions
+    - `toggleOutput`: turn on or off output from device
     """
-    def __init__(self, ip_address:str, name='def'):
-        self._ip_address = ip_address
-        self._name = name
-        self.instrument = None
+    
+    _default_buffer = 'defbuffer1'
+    def __init__(self, ip_address:str, name:str = 'def', **kwargs):
+        """
+        Instantiate the class
         
-        self._active_buffer = 'defbuffer1'
-        self._sense_details = {}
-        self._source_details = {}
+        Args:
+            ip_address (str): IP address of device
+            name (str, optional): name of device. Defaults to 'def'.
+        """
+        super().__init__(**kwargs)
+        self.name = name
+        self._fields = ('',)
         
-        self.verbose = True
-        self._flags = {
-            'busy': False
-        }
-        self.connect(ip_address)
+        self.active_buffer = self._default_buffer
+        self.sense = SenseDetails()
+        self.source = SourceDetails()
+        self._connect(ip_address)
         return
     
-    @property
-    def buffer_name(self):
-        return f'{self.name}buffer'
-    
-    @property
-    def ip_address(self):
-        return self._ip_address
-    
-    @property
-    def name(self):
-        return self._name
-    
-    @property
-    def sense(self):
-        return self._sense_details['function']
-    @sense.setter
-    def sense(self, func:str):
-        self._sense_details['function'] = self._get_function(func=func, sense=True)
-        return
-    
-    @property
-    def source(self):
-        return self._source_details['function']
-    @source.setter
-    def source(self, func:str):
-        self._source_details['function'] = self._get_function(func=func, sense=False)
-        return
-    
-    @staticmethod
-    def _get_fields(fields:list):
-        """
-        Check list of fields
-
-        Args:
-            fields (list): list of fields to retrieve from the buffer
-
-        Raises:
-            Exception: List should have 14 or fewer items
-
-        Returns:
-            list: list of fields
-        """
-        if len(fields) > 14:
-            raise Exception("Please input 14 or fewer buffer elements to read out")
-        return fields
-    
-    @staticmethod
-    def _get_function(func:str, sense=True):
-        """
-        Get the function name and check for validity
-
-        Args:
-            func (str): function name from current, resistance, and voltage
-            sense (bool, optional): whether function is for sensing. Defaults to True.
-
-        Raises:
-            Exception: Select a valid function
-
-        Returns:
-            str: function name
-        """
-        func = func.upper()
-        valid_functions = ['current', 'resistance', 'voltage'] if sense else ['current', 'voltage']
-        if func in ['CURR','CURRENT']:
-            return 'CURRent'
-        elif func in ['RES','RESISTANCE'] and sense:
-            return 'RESistance'
-        elif func in ['VOLT','VOLTAGE']:
-            return 'VOLTage'
-        raise Exception(f"Select a valid function from: {', '.join(valid_functions)}")
-    
-    @staticmethod
-    def _get_limit(limit, current=True):
-        """
-        Get the limits for input
-
-        Args:
-            limit (str, or float): limit of source or reading
-            current (bool, optional): whether limit is for current. Defaults to True.
-
-        Raises:
-            Exception: Select a valid string from default, maximum, minimum
-            Exception: Select a valid current limit
-
-        Returns:
-            str: limit
-        """
-        if limit is None:
-            return 'AUTO ON'
-        if type(limit) == str:
-            if limit.upper() in ['DEF','DEFAULT','MAX','MAXIMUM','MIN','MINIMUM']:
-                return limit
-            raise Exception(f"Select a valid function from: default, maximum, minimum")
-        lim = 0
-        unit = ''
-        if current:
-            unit = 'A'
-            for lim in [10e-9, 100e-9, 1e-6, 10e-6, 100e-6, 1e-3, 10e-3, 100e-3, 1]:
-                if lim >= abs(limit):
-                    return lim
-        else:
-            unit = 'V'
-            for lim in [20e-3, 200e-3, 2, 20, 200]:
-                if lim >= abs(limit):
-                    return lim
-        raise Exception(f'Please set a current limit that is between -{lim} and {lim} {unit}')
-    
-    @staticmethod
-    def _get_limit_type(source):
-        """
-        Get the limit type for the source
-
-        Args:
-            source (str): function type of source
-
-        Returns:
-            str: 'ILIMit' or 'VLIMit'
-        """
-        if source == 'CURRent':
-            return 'VLIMit'
-        return 'ILIMit'
-    
-    def __info__(self):
+    def __info__(self) -> str:
         """
         Get device system info
 
         Returns:
             str: system info
         """
-        return self._send('*IDN?')
+        return self._query('*IDN?')
     
-    def _generate_commands(self, sense=True):
-        func_details = self._sense_details if sense else self._source_details
-        header = 'SENSe' if sense else 'SOURce'
-        excluded_keys = ['COUNt', 'function', 'invoked']
-        commands = [f'{header}:{func_details["function"]}:{key} {value}' for key,value in func_details.items() if key not in excluded_keys]
-        
-        for i,command in enumerate(commands):
-            if 'AUTO' in command:
-                new_command = ':AUTO'.join((command.split(' AUTO')))
-                commands[i] = new_command
-        if sense:
-            commands = commands + [f'SENSe:COUNt {func_details.get("COUNt",1)}']
-        return commands
+    # Properties
+    @property
+    def buffer_name(self) -> str:
+        return f'{self.name}buffer'
     
-    def _parse_reply(self, raw_reply:str):
-        """
-        Parse the response from instrument
-
-        Args:
-            raw_reply (str): raw response string from instrument
-
-        Returns:
-            float, str, or list: float for numeric values, str for strings, list for multiple replies
-        """
-        if ',' in raw_reply:
-            replies = raw_reply.split(',')
-        elif ';' in raw_reply:
-            replies = raw_reply.split(';')
-        else:
-            try:
-                raw_reply = float(raw_reply)
-            finally:
-                return raw_reply
-        output = []
-        for reply in replies:
-            try:
-                output.append(float(reply))
-            except ValueError:
-                output.append(reply)
-        if self.verbose:
-            print(output)
-            self.getErrors()
-        return output
+    @property
+    def fields(self) -> tuple[str]:
+        return self._fields
+    @fields.setter
+    def fields(self, value:tuple[str]):
+        if len(value) > 14:
+            raise RuntimeError("Please input 14 or fewer fields to read out from instrument.")
+        self._fields = tuple(value)
+        return
     
-    def _send(self, command:str):
+    def beep(self, frequency:int = 440, duration:float = 1):
         """
-        Write command to instrument, using query if expecting reply
-
-        Args:
-            command (str): command string to write
-
-        Returns:
-            any: response from query, or None
-        """
-        reply = None 
-        if self.instrument is None:
-            print(command)
-            _dummy_return = [0 for _ in range(command.count(';')+1)] if "?" in command else None
-            return _dummy_return
-        if self.verbose:
-            print(command)
-        try:
-            if "?" not in command:
-                self.instrument.write(command)
-            else:
-                raw_reply = self._query(command)
-                reply = self._parse_reply(raw_reply=raw_reply)
-            if self.verbose and "*WAI" not in command:
-                self.getErrors()
-        except visa.VisaIOError:
-            self.getErrors()
-        return reply
-    
-    def _query(self, command:str):
-        """
-        Perform a query on instrument
-
-        Args:
-            command (str): command string to query
-
-        Returns:
-            str: response from query, or None
-        """
-        reply = ''
-        if self.instrument is not None:
-            reply = self.instrument.query(command)
-        # self.instrument.write(command)
-        # while reply is None:
-        #     reply = self.instrument.read()
-        return reply
-    
-    def beep(self, frequency=440, duration=1):
-        """
-        Set off beeper
+        Make device emit a beep sound
 
         Args:
             frequency (int, optional): frequency of sound wave. Defaults to 440.
             duration (int, optional): duration to play beep. Defaults to 1.
-
-        Raises:
-            Exception: Select a valid frequency
-            Exception: select a valid duration
         """
         if not 20<=frequency<=8000:
-            raise Exception('Please enter a frequency between 20 and 8000')
+            print('Please enter a frequency between 20 and 8000')
+            print('Defaulting to 440 Hz')
+            frequency = 440
         if not 0.001<=duration<=100:
-            raise Exception('Please enter a duration between 0.001 and 100')
-        return self._send(f'SYSTem:BEEPer {frequency},{duration}')
+            print('Please enter a duration between 0.001 and 100')
+            print('Defaulting to 1 s')
+            duration = 1
+        return self._query(f'SYSTem:BEEPer {frequency},{duration}')
     
-    def clearBuffer(self, name=None):
+    def clearBuffer(self, name:Optional[str] = None):
         """
-        Clear buffer
+        Clear the buffer on the device
 
         Args:
-            name (str, optional): name of buffer to clear. Defaults to None.
+            name (Optional[str] , optional): name of buffer to clear. Defaults to None.
         """
-        if name is None:
-            name = self._active_buffer
-        return self._send(f'TRACe:CLEar "{name}"')
+        name = self.active_buffer if name is None else name
+        return self._query(f'TRACe:CLEar "{name}"')
     
-    def configure(self, commands:list):
+    def configureSense(self, 
+        func: str, 
+        limit: Union[str, float, None] = 'DEFault',
+        four_point: bool = True,
+        count: int = 1
+    ):
         """
-        Write multiple commands to instrument
+        Configure the sense terminal
 
         Args:
-            commands (list): list of commands to write
+            func (str): name of function, choice from current, resistance, and voltage
+            limit (Union[str, float, None], optional): sensing range. Defaults to 'DEFault'.
+            four_point (bool, optional): whether to use four-point probe measurement. Defaults to True.
+            count (int, optional): number of readings to measure for each condition. Defaults to 1.
         """
-        for command in commands:
-            self._send(command)
-        return
-
-    def configureSense(self, func, limit='DEFault', probe_4_point=True, unit=None, count=1):
-        """
-        Configure the sense function
-
-        Args:
-            func (str): function to be read, from current, resistance, and voltage
-            limit (str or float, optional): sensing range. Defaults to 'DEFault'.
-            probe_4_point (bool, optional): whether to use 4-point reading. Defaults to True.
-            unit (str, optional): units for reading. Defaults to None.
-            count (int, optional): number of readings per measurement. Defaults to 1.
-
-        Raises:
-            Exception: Select a valid count number
-        """
-        self.sense = func
-        self._send(f'SENSe:FUNCtion "{self.sense}"')
-        
-        is_current = (self.sense=='CURRent')
-        if unit is None:
-            if self.sense == 'CURRent':
-                unit = 'AMP'
-            elif self.sense == 'VOLTage':
-                unit = 'VOLT'
-        count_upper_limit = min(300000, 300000)
-        count = max(1,count)
-        if count>count_upper_limit:
-            raise Exception(f"Please select a count from 1 to {count_upper_limit}")
-        kwargs = {
-            'RANGe': self._get_limit(limit=limit, current=is_current),
-            'RSENse': 'ON' if probe_4_point else 'OFF',
-            'UNIT': unit,
-            'COUNt': int(count)
-        }
-        self._sense_details.update(kwargs)
-        commands = self._generate_commands(sense=True)
-        return self.configure(commands=commands)
+        self.sense = SenseDetails(func, limit, four_point, count)
+        self._query(f'SENSe:FUNCtion "{self.sense.function_type}"')
+        return self.sendCommands(commands=self.sense.get_commands())
     
-    def configureSource(self, func, limit=None, measure_limit='DEFault'):
+    def configureSource(self, 
+        func: str, 
+        limit: Union[str, float, None] = None,
+        measure_limit: Union[str, float, None] = 'DEFault'
+    ):
         """
-        Configure the source function
+        Configure the source terminal
 
         Args:
-            func (str): function to be sourced, from current, and voltage
-            limit (str or float, optional): sourcing range. Defaults to None.
-            measure_limit (str or float, optional): limit imposed on the measurement range. Defaults to 'DEFault'.
+            func (str): name of function, choice from current and voltage
+            limit (Union[str, float, None], optional): sourcing range. Defaults to None.
+            measure_limit (Union[str, float, None], optional): limit imposed on the measurement range. Defaults to 'DEFault'.
         """
-        self.source = func
-        self._send(f'SOURce:FUNCtion {self.source}')
-        
-        is_current = (self.source=='CURRent')
-        kwargs = {
-            'RANGe': self._get_limit(limit=limit, current=is_current),
-            self._get_limit_type(self.source): self._get_limit(limit=measure_limit, current=not(is_current))
-        }
-        self._source_details.update(kwargs)
-        self._source_details.update({'invoked': 0})
-        commands = self._generate_commands(sense=False)
-        return self.configure(commands=commands)
+        self.source = SourceDetails(func, limit, measure_limit)
+        self._query(f'SOURce:FUNCtion {self.source.function_type}')
+        return self.sendCommands(commands=self.source.get_commands())
     
-    def connect(self, ip_address=None):
+    def disconnect(self):       # NOTE: not implemented
+        return super().disconnect()
+    
+    def getBufferIndices(self, name:Optional[str] = None) -> tuple[int]:
         """
-        Establish connection with Keithley
-        
+        Get the buffer indices where the the data start and end
+
         Args:
-            ip_address (str, optional): IP address of Keithley. Defaults to None
-            
+            name (Optional[str], optional): name of buffer. Defaults to None.
+
         Returns:
-            Instrument: Keithley object
+            tuple[int]: start and end buffer indices
         """
-        print("Setting up Keithley communications...")
-        if ip_address is None:
-            ip_address = self.ip_address
-        self._ip_address = ip_address
-        instrument = None
+        name = self.buffer_name if name is None else name
+        reply = self._query(f'TRACe:ACTual:STARt? "{name}" ; END? "{name}"')
         try:
-            rm = visa.ResourceManager('@py')
-            instrument = rm.open_resource(f"TCPIP0::{ip_address}::5025::SOCKET")
-            self.instrument = instrument
-            instrument.write_termination = '\n'
-            instrument.read_termination = '\n'
-            
-            self.beep(500)
-            print(f"{self.__info__()}")
-            print(f"{self.name.title()} Keithley ready")
-        except Exception as e:
-            print("Unable to connect to Keithley!")
-            if self.verbose:
-                print(e) 
-        return instrument
+            start,end = self._parse(reply=reply)
+            start = int(start)
+            end = int(end)
+        except ValueError:
+            return 0,0
+        start = max(1, start)
+        end = max(start, end)
+        return start,end
     
-    def getBufferIndices(self, name=None):
+    def getErrors(self) -> list[str]:
         """
-        Get the start and end buffer indices
-
-        Args:
-            name (str, optional): name of buffer. Defaults to None.
-
+        Gget error messages from device
+        
         Returns:
-            list: start and end buffer indices
-        """
-        if name is None:
-            name = self.buffer_name
-        return self._send(f'TRACe:ACTual:STARt? "{name}" ; END? "{name}"')
-    
-    def getErrors(self):
-        """
-        Get Errors from Keithley
+            list[str]: list of error messages from device
         """
         errors = []
-        reply = self._query('SYSTem:ERRor:COUNt?')
+        reply = ''
         while not reply.isnumeric():
-            print(reply)
             reply = self._query('SYSTem:ERRor:COUNt?')
+            print(reply)
         num_errors = int(reply)
         for i in range(num_errors):
-            error = self._query('SYSTem:ERRor?')
+            reply = self._query('SYSTem:ERRor?')
+            error = self._parse(reply=reply)
             errors.append((error))
             print(f'>>> Error {i+1}: {error}')
         return errors
     
-    def getStatus(self):
+    def getStatus(self) -> str:
         """
-        Get status of instrument
+        Get status of device
 
         Returns:
-            str: instrument state
+            str: device status
         """
-        return self._send('TRIGger:STATe?')
+        return self._query('TRIGger:STATe?')
     
-    def isBusy(self):
+    def makeBuffer(self, name:Optional[str] = None, buffer_size:int = 100000):
         """
-        Checks whether the instrument is busy
-        
-        Returns:
-            bool: whether the instrument is busy
-        """
-        return self._flags['busy']
-    
-    def isConnected(self):
-        """
-        Check whether instrument is connected
-
-        Returns:
-            bool: whether instrument is connected
-        """
-        if self.instrument is None:
-            return False
-        return True
-    
-    def makeBuffer(self, name=None, buffer_size=100000):
-        """
-        Make a buffer on the instrument
+        Create a new buffer on the device
 
         Args:
-            name (str, optional): buffer name. Defaults to None.
+            name (Optional[str] , optional): buffer name. Defaults to None.
             buffer_size (int, optional): buffer size. Defaults to 100000.
         """
-        if name is None:
-            name = self.buffer_name
-            self._active_buffer = name
+        name = self.buffer_name if name is None else name
+        self.active_buffer = name
         if buffer_size < 10 and buffer_size != 0:
             buffer_size = 10
-        return self._send(f'TRACe:MAKE "{name}",{buffer_size}')
+        return self._query(f'TRACe:MAKE "{name}",{buffer_size}')
     
-    def readAll(self, name=None, fields=['SOURce','READing', 'SEConds'], average=True):
+    def read(self, 
+        name: Optional[str] = None, 
+        fields: tuple[str] = ('SOURce','READing', 'SEConds'), 
+        average: bool = True
+    ) -> pd.DataFrame:
         """
-        Read all data on buffer
+        Read the latest data fom buffer
 
         Args:
-            name (str, optional): buffer name. Defaults to None.
-            fields (list, optional): fields of interest. Defaults to ['SOURce','READing', 'SEConds'].
+            name (Optional[str], optional): buffer name. Defaults to None.
+            fields (tuple[str], optional): fields of interest. Defaults to ('SOURce','READing', 'SEConds').
             average (bool, optional): whether to average the data of multiple readings. Defaults to True.
 
         Returns:
             pd.DataFrame: dataframe of measurements
         """
-        if name is None:
-            name = self._active_buffer
-        fields = self._get_fields(fields=fields)
-        start,end = self.getBufferIndices(name=name)
-        start = max(1, start)
-        end = max(start, end)
-        count = self._sense_details.get('COUNt', 1)
+        return self._read(bulk=False, name=name, fields=fields, average=average)
         
-        data = self._send(f'TRACe:DATA? {int(start)},{int(end)},"{name}",{",".join(fields)}')
-        if not all([start,end]): # dummy data
-            num_rows = count * max(1, self._source_details.get('invoked', 1))
-            data = [0] * int(num_rows * len(fields))
-        data = np.reshape(np.array(data), (-1,len(fields)))
-        df = pd.DataFrame(data, columns=fields)
-        if average and count > 1:
-            avg = df.groupby(np.arange(len(df))//count).mean()
-            std = df.groupby(np.arange(len(df))//count).std()
-            df = avg.join(std, rsuffix='_std')
-        return df
-    
-    def readPacket(self, name=None, fields=['SOURce','READing', 'SEConds'], average=True):
+    def readAll(self, 
+        name: Optional[str] = None, 
+        fields: tuple[str] = ('SOURce','READing', 'SEConds'), 
+        average: bool = True
+    ) -> pd.DataFrame:
         """
-        Read data on buffer as measurements take place
+        Read the data from buffer after a series of measurements
 
         Args:
-            name (str, optional): buffer name. Defaults to None.
-            fields (list, optional): fields of interest. Defaults to ['SOURce','READing', 'SEConds'].
-            average (bool, optional): whether ot average the data of multiple readings. Defaults to True.
+            name (Optional[str], optional): buffer name. Defaults to None.
+            fields (tuple[str], optional): fields of interest. Defaults to ('SOURce','READing', 'SEConds').
+            average (bool, optional): whether to average the data of multiple readings. Defaults to True.
 
         Returns:
             pd.DataFrame: dataframe of measurements
         """
-        if name is None:
-            name = self._active_buffer
-        fields = self._get_fields(fields=fields)
-        _start,end = self.getBufferIndices(name=name)
-        _start = max(1, _start)
-        end = max(_start, end)
-        count = self._sense_details.get('COUNt', 1)
-        start = max(1, end - count + 1)
-        
-        data = self._send(f'TRACe:DATA? {int(start)},{int(end)},"{name}",{",".join(fields)}')
-        if not all([start,end]): # dummy data
-            data = [0] * int(count * len(fields))
-        data = np.reshape(np.array(data), (-1,len(fields)))
-        df = pd.DataFrame(data, columns=fields)
-        if average and count > 1:
-            avg = df.groupby(np.arange(len(df))//count).mean()
-            std = df.groupby(np.arange(len(df))//count).std()
-            df = avg.join(std, rsuffix='_std')
-        return df
+        return self._read(bulk=True, name=name, fields=fields, average=average)
     
     def recallState(self, state:int):
         """
-        Recall a previously saved settings of instrument
+        Recall a previously saved device setting
 
         Args:
             state (int): state index to recall from
 
         Raises:
-            Exception: Select an index from 0 to 4
+            ValueError: Select an index from 0 to 4
         """
         if not 0 <= state <= 4:
-            raise Exception("Please select a state index from 0 to 4")
-        return self._send(f'*RCL {state}')
+            raise ValueError("Please select a state index from 0 to 4")
+        return self._query(f'*RCL {state}')
     
     def reset(self):
-        """
-        Reset the instrument
-        """
-        self._active_buffer = 'defbuffer1'
-        self._sense_details = {}
-        self._source_details = {}
-        return self._send('*RST')
+        """Reset the device"""
+        self.active_buffer = self._default_buffer
+        self.sense = SenseDetails()
+        self.source = SourceDetails()
+        return self._query('*RST')
     
-    def saveState(self, state:int):
+    def run(self, sequential_commands:bool = True):
         """
-        Save current settings / state of instrument
-
-        Args:
-            state (int): state index to save to
-
-        Raises:
-            Exception: Select an index from 0 to 4
-        """
-        if not 0 <= state <= 4:
-            raise Exception("Please select a state index from 0 to 4")
-        return self._send(f'*SAV {state}')
-    
-    def setFlag(self, name:str, value:bool):
-        """
-        Set a flag truth value
-
-        Args:
-            name (str): label
-            value (bool): flag value
-        """
-        self._flags[name] = value
-        return
-
-    def setSource(self, value):
-        """
-        Set source to desired value
-
-        Args:
-            value (int or float): value to set source to 
-
-        Raises:
-            Exception: Set a value within limits
-        """
-        capacity = 1 if self.source=='CURRent' else 200
-        limit = self._source_details.get('RANGe', capacity)
-        if type(limit) == str:
-            limit = capacity
-        unit = 'A' if self.source=='CURRent' else 'V'
-        if abs(value) > limit:
-            raise Exception(f'Please set a source value between -{limit} and {limit} {unit}')
-        self._source_details['invoked'] += 1
-        return self._send(f'SOURce:{self.source} {value}')
-
-    def start(self, sequential_commands=True):
-        """
-        Initialise the measurement
+        Start the measurement
 
         Args:
             sequential_commands (bool, optional): whether commands whose operations must finish before the next command is executed. Defaults to True.
         """
         if sequential_commands:
-            commands = [f'TRACe:TRIGger "{self._active_buffer}"']
+            commands = [f'TRACe:TRIGger "{self.active_buffer}"']
         else:
             commands = ['INITiate ; *WAI']
-        return self.configure(commands=commands)
+        return self.sendCommands(commands=commands)
+    
+    def saveState(self, state:int):
+        """
+        Save current settings on device
+
+        Args:
+            state (int): state index to save to
+
+        Raises:
+            ValueError: Select an index from 0 to 4
+        """
+        if not 0 <= state <= 4:
+            raise ValueError("Please select a state index from 0 to 4")
+        return self._query(f'*SAV {state}')
+    
+    def sendCommands(self, commands:list[str]):
+        """
+        Write a series of commands to device
+
+        Args:
+            commands (list[str]): list of commands strings
+        """
+        for command in commands:
+            self._query(command)
+        return
+    
+    def setSource(self, value:float):
+        """
+        Set the source to a specified value
+
+        Args:
+            value (float): value to set source to 
+
+        Raises:
+            ValueError: Please set a source value within limits
+        """
+        unit = 'A' if self.source.function_type == 'CURRent' else 'V'
+        capacity = 1 if self.source.function_type == 'CURRent' else 200
+        limit = capacity if type(self.source.range_limit) is str else self.source.range_limit
+        
+        if abs(value) > limit:
+            raise ValueError(f'Please set a source value between -{limit} and {limit} {unit}')
+        self.source._count += 1
+        return self._query(f'SOURce:{self.source.function_type} {value}')
 
     def stop(self):
-        """
-        Abort all actions
-        """
-        return self._send('ABORt')
+        """Abort all actions"""
+        return self._query('ABORt')
 
     def toggleOutput(self, on:bool):
         """
-        Toggle turning on output
+        Turn on or off output from device
 
         Args:
             on (bool): whether to turn on output
         """
         state = 'ON' if on else 'OFF'
-        return self._send(f'OUTPut {state}')
+        return self._query(f'OUTPut {state}')
     
+    # Protected method(s)
+    def _connect(self, ip_address:str):
+        """
+        Connection procedure for tool
+        
+        Args:
+            ip_address (str): IP address of device
+        """
+        print("Setting up Keithley communications...")
+        self.connection_details['ip_address'] = ip_address
+        device = None
+        try:
+            rm = visa.ResourceManager('@py')
+            device = rm.open_resource(f"TCPIP0::{ip_address}::5025::SOCKET")
+            device.write_termination = '\n'
+        except Exception as e:
+            print("Unable to connect to Keithley")
+            if self.verbose:
+                print(e) 
+        else:
+            device.read_termination = '\n'
+            self.device = device
+            self.setFlag(connected=True)
+            self.beep(500)
+            print(f"{self.__info__()}")
+            print(f"{self.name.title()} Keithley ready")
+        self.device = device
+        return
+
+    def _parse(self, reply:str) -> Union[float, str, tuple[Union[float, str]]]:
+        """
+        Parse the response from device
+
+        Args:
+            reply (str): raw response string from device
+
+        Returns:
+            Union[float, str, tuple[Union[float, str]]]: variable output including floats, strings, and tuples
+        """
+        if ',' not in reply and ';' not in reply:
+            try:
+                reply = float(reply)
+            except ValueError:
+                pass
+            return reply
+        
+        if ',' in reply:
+            replies = reply.split(',')
+        elif ';' in reply:
+            replies = reply.split(';')
+
+        outs = []
+        for reply in replies:
+            try:
+                out = float(reply)
+            except ValueError:
+                pass
+            outs.append(out)
+        if self.verbose:
+            print(tuple(outs))
+        return tuple(outs)
+    
+    def _query(self, command:str) -> str:
+        """
+        Write command to and read response from device
+
+        Args:
+            command (str): SCPI command string
+
+        Returns:
+            str: response string
+        """
+        if self.verbose:
+            print(command)
+        
+        if not self.isConnected():
+            print(command)
+            dummy_return = ';'.join(['0' for _ in range(command.count(';')+1)]) if "?" in command else ''
+            return dummy_return
+        
+        if "?" not in command:
+            self._write(command)
+            return ''
+        
+        reply = ''
+        try:
+            reply = self.device.query(command)
+            # self.device.write(command)
+            # while raw_reply is None:
+            #     raw_reply = self.device.read()
+        except visa.VisaIOError:
+            self.getErrors()
+        else:
+            if self.verbose and "*WAI" not in command:
+                self.getErrors()
+        return reply
+    
+    def _read(self, 
+        bulk: bool,
+        name: Optional[str] = None, 
+        fields: tuple[str] = ('SOURce','READing', 'SEConds'), 
+        average: bool = True
+    ) -> pd.DataFrame:
+        """
+        Read all data on buffer
+
+        Args:
+            bulk (bool): whether to read data after a series of measurements
+            name (Optional[str], optional): buffer name. Defaults to None.
+            fields (tuple[str], optional): fields of interest. Defaults to ('SOURce','READing', 'SEConds').
+            average (bool, optional): whether to average the data of multiple readings. Defaults to True.
+
+        Returns:
+            pd.DataFrame: dataframe of measurements
+        """
+        name = self.active_buffer if name is None else name
+        self.fields = fields
+        count = int(self.sense.count)
+        start,end = self.getBufferIndices(name=name)
+        
+        start = start if bulk else max(1, end-count+1)
+        if not all([start,end]): # dummy data
+            num_rows = count * max(1, int(self.source._count)) if bulk else count
+            data = [0] * num_rows * len(self.fields)
+        else:
+            reply = self._query(f'TRACe:DATA? {int(start)},{int(end)},"{name}",{",".join(self.fields)}')
+            data = self._parse(reply=reply)
+        
+        data = np.reshape(np.array(data), (-1,len(self.fields)))
+        df = pd.DataFrame(data, columns=self.fields)
+        if average and count > 1:
+            avg = df.groupby(np.arange(len(df))//count).mean()
+            std = df.groupby(np.arange(len(df))//count).std()
+            df = avg.join(std, rsuffix='_std')
+        return df
+    
+    def _write(self, command:str) -> bool:
+        """
+        Write command to device
+
+        Args:
+            command (str): SCPI command string
+
+        Returns:
+            bool: whether command was sent successfully
+        """
+        if self.verbose:
+            print(command)
+        try:
+            self.device.write(command)
+        except visa.VisaIOError:
+            self.getErrors()
+            return False
+        if self.verbose and "*WAI" not in command:
+            self.getErrors()
+        return True

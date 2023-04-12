@@ -1,383 +1,413 @@
 # %% -*- coding: utf-8 -*-
 """
-Adapted from @jaycecheng spinutils
+This module holds the class for syringe assemblies.
 
-Created: Tue 2022/11/01 17:13:35
-@author: Chang Jie
-
-Notes / actionables:
--
+Classes:
+    SyringeAssembly (LiquidHandler)
 """
 # Standard library imports
+from __future__ import annotations
+from functools import wraps
 import time
-
-# Third party imports
-import serial # pip install pyserial
+from typing import Callable, Optional, Protocol, Union
 
 # Local application imports
 from ...misc import Helper
-from .liquid_utils import LiquidHandler
-from .Pumps import Peristaltic
+from .liquid_utils import LiquidHandler, Speed
+from .syringe_lib import Syringe
 print(f"Import: OK <{__name__}>")
 
-CALIBRATION_ASPIRATE = 27
-CALIBRATION_DISPENSE = 23.5
-DEFAULT_SPEED = 3000 # speed of pump
-PULLBACK_TIME = 2 # amount of time to pullback [s]
-
-class Syringe(LiquidHandler):
-    """
-    Syringe class
-
-    Args:
-        capacity (int, or float): capacity of syringe
-        channel (int): channel index
-        offset (tuple, optional): coordinates offset. Defaults to None.
-        pullback_time (int, optional): duration of pullback. Defaults to 2.
-        
-    Kwargs:
-        verbose (bool, optional): whether to print output. Defaults to False.
-    """
-    def __init__(
-        self, 
-        capacity, 
-        channel, 
-        offset=None, 
-        pullback_time=PULLBACK_TIME, 
-        default_speed=DEFAULT_SPEED,
-        calibration_aspirate=CALIBRATION_ASPIRATE,
-        calibration_dispense=CALIBRATION_DISPENSE, 
-        **kwargs
-    ):
-        super().__init__(**kwargs)
-        self.capacity = capacity
-        self.channel = channel
-        if offset is None:
-            offset = (0,0,0)
-        self.offset = tuple(offset)
-        
-        self.pump = None
-        
-        self.calibration_aspirate = calibration_aspirate
-        self.calibration_dispense = calibration_dispense
-        self._previous_action = 'first'
-        self._pullback_time = pullback_time
-        self._speed_in = default_speed
-        self._speed_out = default_speed
-        pass
-    
-    def aspirate(self, volume, speed=None, wait=0, reagent='', pause=False, channel=None):
-        """
-        Aspirate desired volume of reagent into channel
-
-        Args:
-            volume (int, or float): volume to be aspirated
-            speed (int, optional): speed to aspirate. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            reagent (str, optional): name of reagent. Defaults to ''.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            channel (int, optional): channel to aspirate. Defaults to None.
-        """
-        if speed is None:
-            speed = self.speed['in']
-        self.pump.setFlag('busy', True)
-        volume = min(volume, self.capacity - self.volume)
-
-        if volume != 0:
-            speed = -abs(speed)
-            t_aspirate = (volume / speed) * self.calibration_aspirate
-            if self._previous_action == 'first':
-                t_aspirate *= 1.3
-            elif self._previous_action == 'aspirate':
-                t_aspirate *= 1
-            elif self._previous_action == 'dispense':
-                t_aspirate *= 1.6
-            print(t_aspirate)
-            t_pullback = (50 / speed) * self.calibration_aspirate
-            print(f'Aspirate {volume} uL')
-            self.pump.push(speed=speed, push_time=t_aspirate, pullback_time=t_pullback, channel=self.channel)
-            
-            # Update values
-            self._previous_action = 'aspirate'
-            self.volume += volume
-            if len(reagent) and len(self.reagent) == 0:
-                self.reagent = reagent
-        
-        time.sleep(wait)
-        self.pump.setFlag('busy', False)
-        if pause:
-            input("Press 'Enter to proceed.")
-        return
-    
-    def dispense(self, volume, speed=None, wait=0, force_dispense=False, pause=False, channel=None):
-        """
-        Aspirate desired volume of reagent into channel
-
-        Args:
-            volume (int, or float): volume to be dispensed
-            speed (int, optional): speed to dispense. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            force_dispense (bool, optional): whether to continue dispensing even if insufficient volume in channel. Defaults to False.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            pump (Pump, optional): pump object. Defaults to None.
-            channel (int, optional): channel to dispense. Defaults to None.
-            
-        Raises:
-            Exception: Required dispense volume is greater than volume in tip
-        """
-        if speed is None:
-            speed = self.speed['out']
-        self.pump.setFlag('busy', True)
-        if force_dispense:
-            volume = min(volume, self.volume)
-        elif volume > self.volume:
-            raise Exception('Required dispense volume is greater than volume in tip')
-        
-        if force_dispense or volume <= self.volume:
-            speed = abs(speed)
-            t_dispense = (volume / speed) * self.calibration_dispense
-            if self._previous_action == 'first':
-                t_dispense *= 1
-            elif self._previous_action == 'aspirate':
-                t_dispense *= 1.55
-            elif self._previous_action == 'dispense':
-                t_dispense *= 1
-            print(t_dispense)
-            t_pullback = (50 / speed) * self.calibration_dispense
-            self.pump.push(speed=speed, push_time=t_dispense, pullback_time=t_pullback, channel=self.channel)
-            
-            # Update values
-            self._previous_action = 'dispense'
-            self.volume = max(self.volume - volume, 0)
-        
-        time.sleep(wait)
-        self.pump.setFlag('busy', False)
-        if pause:
-            input("Press 'Enter to proceed.")
-        return
-    
-    def pullback(self, channel=None):
-        """
-        Pullback liquid from tip
-
-        Args:
-            channel (int, optional): channel to pullback. Defaults to None.
-        """
-        self.pump.setFlag('busy', True)
-        self.pump.push(speed=-300, push_time=0, pullback_time=self._pullback_time, channel=self.channel)
-        self.pump.setFlag('busy', False)
-        return
-    
-    def update(self, field:str, value):
-        """
-        Update the desired attribute
-
-        Args:
-            field (str): name of attribute
-            value (any): new value of attribute
-        """
-        attrs = ['reagent', 'volume', '_previous_action']
-        if field not in attrs:
-            print(f"Select a field from: {', '.join(attrs)}")
-        else:
-            setattr(self, field, value)
-        return
-
+class Pump(Protocol):
+    def aspirate(self, *args, **kwargs):
+        ...
+    def blowout(self, *args, **kwargs):
+        ...
+    def connect(self, *args, **kwargs):
+        ...
+    def dispense(self, *args, **kwargs):
+        ...
+    def pullback(self, *args, **kwargs):
+        ...
 
 class SyringeAssembly(LiquidHandler):
     """
-    SyringeAssembly consisting of a pump and syringe(s)
+    SyringeAssembly provides methods for interfacing a pump with multiple syringes
 
+    ### Constructor
     Args:
-        port (str): com port address
-        capacities (list, optional): list of syringe capacities. Defaults to [].
-        channels (list, optional): list of syringe channels. Defaults to [].
-        offsets (list, optional): list of syringe offsets. Defaults to [].
+        `pump` (Pump): Pump object
+        `capacities` (tuple[float]): capacities of syringes
+        `channels` (tuple[int]): channel ids of syringes
+        `offsets` (tuple[tuple[float]]): coordinate offsets of syringes
+        `speed` (Speed, optional): default speeds of pump. Defaults to Speed(3000,3000).
     
-    Kwargs:
-        verbose (bool, optional): whether to print output. Defaults to False.
+    ### Attributes
+    - `channels` (dict[int, Syringe]): 
+    - `device` (Pump): Pump object
+    - `speed` (Speed): default speeds of pump
+    
+    ### Properties
+    - `last_action` (str): last performed action, either aspirate or dispense
+    - `pump` (Pump): alias for `device`
+    - `syringes` (dict[int, Syringe]): alias for `channels`
+    
+    ### Methods
+    - `aspirate`: aspirate desired volume of reagent
+    - `blowout`: blowout liquid from tip
+    - `connect`: establish connection with device
+    - `disconnect`: disconnect from device
+    - `dispense`: dispense desired volume of reagent
+    - `empty`: empty the channel
+    - `fill`: fill the channel
+    - `isBusy`: checks and returns whether the device is busy
+    - `isConnected`: checks and returns whether the device is connected
+    - `pullback`: pullback liquid from tip
+    - `rinse`: rinse the channel with aspirate and dispense cycles
+    - `updateChannel`: update data stored in Syringe dataclass
     """
-    def __init__(self, port:str, capacities=[], channels=[], offsets=[], **kwargs):
+    
+    def __init__(self, 
+        pump: Pump, 
+        capacities: tuple[float], 
+        channels: tuple[int],
+        offsets: tuple[tuple[float]],
+        speed: Speed = Speed(3000,3000),
+        **kwargs
+    ):
+        """
+        Instantiate the class
+
+        Args:
+            pump (Pump): Pump object
+            capacities (tuple[float]): capacities of syringes
+            channels (tuple[int]): channel ids of syringes
+            offsets (tuple[tuple[float]]): coordinate offsets of syringes
+            speed (Speed, optional): default speed of pump. Defaults to Speed(3000,3000).
+        """
         super().__init__(**kwargs)
-        self.pump = Peristaltic(port)
-        properties = Helper.zip_inputs('channel', capacity=capacities, channel=channels, offset=offsets)
-        self.channels = {key: Syringe(**value) for key,value in properties.items()}
-        for syringe in self.channels.values():
-            syringe.pump = self.pump
+        self.device = pump
+        self.channels = self._get_syringes(capacity=capacities, channel=channels, offset=offsets)
+        self.speed = speed
+        self._last_action = 'first'
         return
     
-    def aspirate(self, volume, speed=None, wait=0, reagent='', pause=False, channel=None):
+    # Properties
+    @property
+    def last_action(self) -> str:
+        return self._last_action
+    @last_action.setter
+    def last_action(self, value:str):
+        if value not in ('first', 'aspirate', 'dispense'):
+            raise ValueError("Select one of: first, aspirate, dispense.")
+        self._last_action = value
+        return
+    
+    @property
+    def pump(self) -> Pump:
+        return self.device
+    
+    @property
+    def syringes(self) -> dict[int, Syringe]:
+        return self.channels
+    
+    # Decorators
+    def _multi_channel(func:Callable) -> Callable:
         """
-        Aspirate desired volume of reagent into channel
+        Decorator to make function work with multiple channels
 
         Args:
-            volume (int, or float): volume to be aspirated
-            speed (int, optional): speed to aspirate. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            reagent (str, optional): name of reagent. Defaults to ''.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            channel (int, optional): channel to aspirate. Defaults to None.
-        
-        Raises:
-            Exception: Select a valid key
-        """
-        if channel not in self.channels.keys():
-            raise Exception(f"Select a valid key from: {', '.join(self.channels.keys())}")
-        return self.channels[channel].aspirate(volume=volume, speed=speed, wait=wait, reagent=reagent, pause=pause)
+            func (Callable): target method
 
-    def connect(self):
-        """
-        Reconnect to device using existing port and baudrate
-        
         Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
+            Callable: multi-channel method
         """
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            success = []
+            channels = []
+            
+            channel = kwargs.pop('channel', None)
+            if channel is None:
+                channels = tuple(self.syringes.keys())
+            elif type(channel) is int:
+                channels = (channel,)
+            else:
+                channels = tuple(channel)
+            
+            for channel in channels:
+                if channel not in self.syringes:
+                    print(f"Channel {channel} not found.")
+                    continue
+                ret = func(self, channel=channel, *args, **kwargs)
+                success.append(ret)
+            return all(success)
+        return wrapper
+    
+    # Public methods
+    @_multi_channel
+    def aspirate(self, 
+        volume: float, 
+        speed: Optional[float] = None, 
+        wait: int = 0, 
+        pause: bool = False, 
+        reagent: Optional[str] = None, 
+        channel: Optional[Union[int, tuple[int]]] = None,
+        **kwargs
+    ) -> bool:
+        """
+        Aspirate desired volume of reagent
+
+        Args:
+            volume (float): target volume
+            speed (Optional[float], optional): speed to aspirate at. Defaults to None.
+            wait (int, optional): time delay after aspirate. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            reagent (Optional[str], optional): name of reagent. Defaults to None.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+
+        Returns:
+            bool: whether the action is successful
+        """
+        syringe = self.syringes[channel]
+        volume = min(volume, syringe.capacity - syringe.volume)
+        if not volume:
+            return False
+        
+        print(f"Syringe {channel}")
+        print(f'Aspirating {volume} uL...')
+        speed = abs(self.speed.up) if speed is None else abs(speed) # NOTE: used to be -ve
+        t_aspirate = (volume / speed)
+        try:
+            t_aspirate *= eval(f"syringe.calibration.{self._last_action}.aspirate")
+        except AttributeError:
+            pass
+        print(t_aspirate)
+        self.pump.aspirate(volume=volume, speed=speed, pump_time=t_aspirate, channel=channel)
+        self.pullback(channel=channel)
+        self.last_action = 'aspirate'
+        
+        time.sleep(wait)
+        syringe.volume += volume
+        if reagent is not None:
+            syringe.reagent = reagent
+        if pause:
+            input("Press 'Enter' to proceed.")
+        return True
+
+    def blowout(self, channel: Optional[Union[int, tuple[int]]] = None, **kwargs) -> bool:
+        """
+        Blowout liquid from tip
+
+        Args:
+            channel (Optional[Union[int, tuple[int]], optional): channel id. Defaults to None.
+            
+        Returns:
+            bool: whether the action is successful
+        """
+        return self.pump.blowout(channel=channel)
+    
+    def connect(self):
+        """Establish connection with device"""
         return self.pump.connect()
     
-    def dispense(self, volume, speed=None, wait=0, force_dispense=False, pause=False, channel=None):
+    def disconnect(self):
+        return self.pump.disconnect()
+    
+    @_multi_channel
+    def dispense(self, 
+        volume: float, 
+        speed: Optional[float] = None, 
+        wait: int = 0, 
+        pause: bool = False, 
+        blowout: bool = False,
+        force_dispense: bool = False, 
+        channel: Optional[Union[int, tuple[int]]] = None,
+        **kwargs
+    ) -> bool:
         """
-        Aspirate desired volume of reagent into channel
+        Dispense desired volume of reagent
 
         Args:
-            volume (int, or float): volume to be dispensed
-            speed (int, optional): speed to dispense. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            force_dispense (bool, optional): whether to continue dispensing even if insufficient volume in channel. Defaults to False.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            channel (int, optional): channel to dispense. Defaults to None.
-        
-        Raises:
-            Exception: Select a valid key
+            volume (float): target volume
+            speed (Optional[float], optional): speed to dispense at. Defaults to None.
+            wait (int, optional): time delay after dispense. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            blowout (bool, optional): whether perform blowout. Defaults to False.
+            force_dispense (bool, optional): whether to dispense reagent regardless. Defaults to False.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+
+        Returns:
+            bool: whether the action is successful
         """
-        if channel not in self.channels.keys():
-            raise Exception(f"Select a valid key from: {', '.join(self.channels.keys())}")
-        return self.channels[channel].dispense(volume=volume, speed=speed, wait=wait, force_dispense=force_dispense, pause=pause)
+        syringe = self.syringes[channel]
+        if not force_dispense and volume > syringe.volume:
+            print('Required dispense volume is greater than volume in tip')
+            return False
+        volume = min(volume, syringe.volume)
+        
+        print(f"Syringe {channel}")
+        print(f'Dispensing {volume} uL...')
+        speed = abs(self.speed.down) if speed is None else abs(speed)
+        t_dispense = (volume / speed)
+        try:
+            t_dispense *= eval(f"syringe.calibration.{self._last_action}.dispense")
+        except AttributeError:
+            pass
+        print(t_dispense)
+        self.pump.dispense(volume=volume, speed=speed, pump_time=t_dispense, channel=channel)
+        self.pullback(channel=channel)
+        self.last_action = 'dispense'
+        
+        time.sleep(wait)
+        syringe.volume = max(syringe.volume - volume, 0)
+        if syringe.volume == 0 and blowout:
+            self.blowout(channel=channel)
+        if pause:
+            input("Press 'Enter' to proceed.")
+        return True
  
-    def empty(self, speed=None, wait=0, pause=False, channel:list=[]):
+    @_multi_channel
+    def empty(self, 
+        speed: Optional[float] = None, 
+        wait: int = 0, 
+        pause: bool = False, 
+        channel: Optional[Union[int, tuple[int]]] = None,
+        **kwargs
+    ) -> bool:
         """
-        Empty multiple channels
+        Empty the channel
 
         Args:
-            speed (int, optional): speed to empty. Defaults to None.
+            speed (Optional[float], optional): speed to empty. Defaults to None.
             wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            channel (list, optional): channel to empty. Defaults to None.
-        
-        Raises:
-            Exception: Select a valid key
-        
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+            
         Returns:
-            dict: dictionary of (channel, return value)
+            bool: whether the action is successful
         """
-        if len(channel) == 0: # all channels instead
-            channel = list(self.channels.keys())
-        
-        return_values = {}
-        for chn in channel:
-            if chn not in self.channels.keys():
-                raise Exception(f"Select a valid key from: {', '.join(self.channels.keys())}")
-            return_values[chn] = self.channels[channel].empty(speed=speed, wait=wait, pause=pause)
-        return return_values
+        syringe = self.syringes[channel]
+        _capacity = self.capacity
+        self.capacity = syringe.capacity
+        success = super().empty(speed=speed, wait=wait, pause=pause, channel=channel)
+        self.capacity = _capacity
+        return success
 
-    def fill(self, speed=None, wait=0, reagents='', pause=False, pre_wet=True, channel:list=[]):
+    @_multi_channel
+    def fill(self, 
+        speed: Optional[float] = None, 
+        wait: int = 0, 
+        pause: bool = False, 
+        cycles: int = 1,
+        reagent: Optional[str] = None, 
+        channel: Optional[Union[int, tuple[int]]] = None,
+        **kwargs
+    ) -> bool:
         """
-        Fill multiple channels
+        Fill the channel
 
         Args:
-            speed (int, optional): speed to fill. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            reagents (list, optional): name of reagent. Defaults to [''].
-            pause (bool, optional): whether to pause for intervention / operator input. Defaults to False.
-            pre_wet (bool, optional): whether to pre-wet the channel. Defaults to True.
-            channel (list, optional): channel to fill. Defaults to [].
-        
-        Raises:
-            Exception: Select a valid key
+            speed (Optional[float], optional): speed to aspirate and dispense at. Defaults to None.
+            wait (int, optional): time delay after each action. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            cycles (int, optional): number of cycles. Defaults to 1.
+            reagent (Optional[str], optional): name of reagent. Defaults to None.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
         
         Returns:
-            dict: dictionary of (channel, return value)
+            bool: whether the action is successful
         """
-        if len(channel) == 0: # all channels instead
-            channel = list(self.channels.keys())
-        
-        return_values = {}
-        for chn in channel:
-            if chn not in self.channels.keys():
-                raise Exception(f"Select a valid key from: {', '.join(self.channels.keys())}")
-            return_values[chn] = self.channels[channel].fill(speed=speed, wait=wait, reagent=reagents, pause=pause, pre_wet=pre_wet)
-        return return_values
+        syringe = self.syringes[channel]
+        _capacity = self.capacity
+        self.capacity = syringe.capacity
+        success = super().fill(speed=speed, wait=wait, pause=pause, cycles=cycles, reagent=reagent, channel=channel)
+        self.capacity = _capacity
+        return success
 
     def isBusy(self):
         """
-        Checks whether the pump is busy
+        Checks and returns whether the pump is busy
         
         Returns:
-            bool: whether the pump is busy
+            bool: whether the device is busy
         """
         return self.pump.isBusy()
     
     def isConnected(self):
         """
-        Check whether pump is connected
+        Checks and returns whether the pump is connected
 
         Returns:
-            bool: whether pump is connected
+            bool: whether the device is connected
         """
         return self.pump.isConnected()
 
-    def pullback(self, channel:list=[]):
+    @_multi_channel
+    def pullback(self, channel:Optional[Union[int, tuple[int]]] = None,): # FIXME
         """
-        Pullback liquid from tip for multiple channels
+        Pullback liquid from tip
 
-        Raises:
-            Exception: Select a valid key
+        Args:
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+            
+        Returns:
+            bool: whether the action is successful
+        """
+        syringe = self.syringes[channel]
+        return self.pump.pullback(speed=300, pump_time=syringe.pullback_time, channel=channel)
+    
+    @_multi_channel
+    def rinse(self, 
+        speed: Optional[float] = None, 
+        wait: int = 0, 
+        cycles: int = 1, 
+        channel: Optional[Union[int, tuple[int]]] = None,
+        **kwargs
+    ) -> bool:
+        """
+        Rinse the channel with aspirate and dispense cycles
         
         Args:
-            channel (int, optional): channel to pullback
-        """
-        if len(channel) == 0: # all channels instead
-            channel = list(self.channels.keys())
-        for chn in channel:
-            if chn not in self.channels.keys():
-                raise Exception(f"Select a valid key from: {', '.join(self.channels.keys())}")
-            self.channels[chn].pullback()
-        return
-    
-    def rinseMany(self, volume, speed=None, wait=0, reagents='', cycles=3, channel:list=[]):
-        """
-        Rinse multiple channels
-
-        Args:
-            volume (int, or float): volume to be rinsed
-            speed (int, optional): speed to cycle. Defaults to None.
-            wait (int, optional): wait time between steps in seconds. Defaults to 0.
-            reagent (list, optional): name of reagent. Defaults to [''].
-            cycles (int, optional): number of cycles to perform. Defaults to 3.
-            channel (list, optional): channel to cycle. Defaults to [].
-
-        Raises:
-            Exception: Select a valid key
+            speed (Optional[float], optional): speed to aspirate and dispense at. Defaults to None.
+            wait (int, optional): time delay after each action. Defaults to 0.
+            cycles (int, optional): number of cycles. Defaults to 1.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
 
         Returns:
-            dict: dictionary of (channel, return value)
+            bool: whether the action is successful
         """
-        if len(channel) == 0: # all channels instead
-            channel = list(self.channels.keys())
-        
-        return_values = {}
-        for chn in channel:
-            if chn not in self.channels.keys():
-                raise Exception(f"Select a valid key from: {', '.join(self.channels.keys())}")
-            return_values[chn] = self.channels[channel].rinse(volume=volume, speed=speed, wait=wait, reagent=reagents, cycles=cycles)
-        return return_values
+        syringe = self.syringes[channel]
+        _capacity = self.capacity
+        self.capacity = syringe.capacity
+        success = super().rinse(speed=speed, wait=wait, cycles=cycles, channel=channel)
+        self.capacity = _capacity
+        return success
     
-    def update(self, field, value, channel):
+    def updateChannel(self, channel:int, **kwargs):
         """
-        Update the desired channel attribute
+        Update data stored in Syringe dataclass
 
         Args:
-            field (str): name of attribute
-            value (any): new value of attribute
             channel (int): channel to update
+        
+        Kwargs:
+            key, value: (attribute name, value) pairs
         """
-        return self.channels[channel].update(field, value)
+        return self.syringes[channel].update(**kwargs)
+
+    # Protected method(s)
+    def _connect(self, *args, **kwargs):
+        """Connection procedure for pump"""
+        return self.pump.connect()
+    
+    @staticmethod
+    def _get_syringes(**kwargs) -> dict[int, Syringe]:
+        """
+        Generate Syringe dataclass objects from parameters
+
+        Returns:
+            dict[int, Syringe]: dictionary of {channel id, `Syringe` object}
+        """
+        properties = Helper.zip_inputs(primary_keyword='channel', **kwargs)
+        print(properties)
+        return {key: Syringe(**value) for key,value in properties.items()}

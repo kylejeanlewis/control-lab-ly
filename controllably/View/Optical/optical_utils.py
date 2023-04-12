@@ -1,13 +1,13 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/1 13:20:00
-@author: Chang Jie
+This module holds the class for optical cameras.
 
-Notes / actionables:
-- 
+Classes:
+    Optical (Camera)
 """
 # Standard library imports
-import pkgutil
+from __future__ import annotations
+import numpy as np
 
 # Third party imports
 import cv2 # pip install opencv-python
@@ -18,41 +18,87 @@ print(f"Import: OK <{__name__}>")
 
 class Optical(Camera):
     """
-    Optical camera object
+    Optical provides methods for controlling a optical web camera
 
+    ### Constructor
     Args:
-        cam_index (int, optional): address of camera. Defaults to 0.
-        calibration_unit (int, optional): calibration of pixels to mm. Defaults to 1.
-        cam_size (tuple, optional): width and height of image. Defaults to (640,480).
-        rotation (int, optional): rotation of camera feed. Defaults to 0.
+        `cam_index` (int, optional): camera index. Defaults to 0.
+        `calibration_unit` (float, optional): calibration from pixels to mm. Defaults to 1.
+        `cam_size` (tuple[int], optional): (width, height) of camera output. Defaults to (640,480).
+    
+    ### Properties
+    - `cam_index` (int): camera index
+    
+    ### Methods
+    - `disconnect`: disconnect from camera
+    - `setResolution`: set the resolution of camera feed
     """
-    def __init__(self, cam_index=0, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._connect(cam_index)
-        
-        img_bytes = pkgutil.get_data(__name__, 'placeholders/optical_camera.png')
-        self._set_placeholder(img_bytes=img_bytes)
-        return
     
-    def _connect(self, cam_index=0):
+    _package = __name__
+    _placeholder_filename = 'placeholders/optical_camera.png'
+    def __init__(self, 
+        cam_index: int = 0, 
+        calibration_unit: float = 1, 
+        cam_size: tuple[int] = (640,480), 
+        **kwargs
+    ):
         """
-        Connect to the imaging device
-        
-        Args:
-            cam_index (int, optional): address of camera. Defaults to 0.
-        """
-        self.feed = cv2.VideoCapture(cam_index, cv2.CAP_DSHOW)
-        self._flags['isConnected'] = True
-        self.setResolution()
-        return
-    
-    def setResolution(self, size=(10000,10000)):
-        """
-        Set resolution of camera feed
+        Instantiate the class
 
         Args:
-            size (tuple, optional): width and height of feed in pixels. Defaults to (10000,10000).
+            cam_index (int, optional): camera index. Defaults to 0.
+            calibration_unit (float, optional): calibration from pixels to mm. Defaults to 1.
+            cam_size (tuple[int], optional): (width, height) of camera output. Defaults to (640,480).
+        """
+        super().__init__(calibration_unit=calibration_unit, cam_size=cam_size, **kwargs)
+        self._connect(cam_index)
+        return
+    
+    # Properties
+    @property
+    def cam_index(self) -> str:
+        return self.connection_details.get('cam_index', '')
+    
+    def disconnect(self):
+        """Disconnect from camera"""
+        try:
+            self.feed.release()
+        except AttributeError:
+            pass
+        self.setFlag(connected=False)
+        return
+    
+    def setResolution(self, size:tuple[int] = (10000,10000)):
+        """
+        Set the resolution of camera feed
+
+        Args:
+            size (tuple[int], optional): width and height of feed in pixels. Defaults to (10000,10000).
         """
         self.feed.set(cv2.CAP_PROP_FRAME_WIDTH, size[0])
         self.feed.set(cv2.CAP_PROP_FRAME_HEIGHT, size[1])
         return
+
+    # Protected method(s)
+    def _connect(self, cam_index:int = 0, **kwargs):
+        """
+        Connection procedure for tool
+        
+        Args:
+            cam_index (int, optional): camera index. Defaults to 0.
+        """
+        self.connection_details['cam_index'] = cam_index
+        self.feed = cv2.VideoCapture(cam_index, cv2.CAP_DSHOW)
+        self.setResolution()
+        self.setFlag(connected=True)
+        return
+    
+    def _read(self) -> tuple[bool, np.ndarray]:
+        """
+        Read camera feed to retrieve image
+
+        Returns:
+            tuple[bool, np.ndarray]: (whether frame is obtained, frame array)
+        """
+        return self.feed.read()
+    

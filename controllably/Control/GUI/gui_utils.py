@@ -1,13 +1,20 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/11/30 10:30:00
-@author: Chang Jie
+This module holds the base class for control panels as well as compound panels.
 
-Notes / actionables:
-- 
+Classes:
+    Panel (ABC)
+    CompoundPanel (Panel)
+    
+Other constants and variables:
+    HEIGHT (int): height of screen size in number of pixels
+    WIDTH (int): width of screen size in number of pixels
 """
 # Standard library imports
+from __future__ import annotations
+from abc import ABC, abstractmethod
 from collections import OrderedDict
+from typing import Optional, Union
 
 # Third party imports
 import PySimpleGUI as sg # pip install PySimpleGUI
@@ -17,139 +24,138 @@ from PySimpleGUI import WIN_CLOSED, WINDOW_CLOSE_ATTEMPTED_EVENT
 print(f"Import: OK <{__name__}>")
 
 WIDTH, HEIGHT = sg.Window.get_screen_size()
-THEME = 'LightGreen'
-TYPEFACE = "Helvetica"
-FONT_SIZES = [14,12,10,8,6]
 
-class Panel(object):
-    def __init__(self, name='', theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group=None):
+class Panel(ABC):
+    """
+    Abstract Base Class (ABC) for Panel objects (i.e. GUI panels).
+    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
+
+    ### Constructor
+    Args:
+        `name` (str, optional): name of panel. Defaults to ''.
+        `group` (Optional[str], optional): name of group. Defaults to None.
+        `font_sizes` (tuple[int], optional): list of font sizes. Defaults to (14,12,10,8,6).
+        `theme` (str, optional): name of theme. Defaults to 'LightGreen'.
+        `typeface` (str, optional): name of typeface. Defaults to "Helvetica".
+
+    ### Attributes
+    #### Class
+    - `font_sizes` (tuple[int]): list of font sizes
+    - `theme` (str): name of theme
+    - `typeface` (str): name of typeface
+    #### Instance
+    - `flags` (dict[str, bool]): keywords paired with boolean flags
+    - `group` (str): name of group
+    - `name` (str): name of panel
+    - `tool` (Callable): tool to be controlled
+    - `window` (sg.Window): Window object
+    
+    ### Methods
+    #### Abstract
+    - `getLayout`: build `sg.Column` object
+    - `listenEvents`: listen to events and act on values
+    #### Public
+    - `arrangeElements`: arrange elements in a horizontal, vertical, or cross-shape pattern
+    - `close`: exit the application
+    - `configure`: configure GUI defaults
+    - `getButtons`: get a list of panel buttons
+    - `getWindow`: build `sg.Window` object
+    - `pad`: add spacer in GUI
+    - `parseInput`: parse inputs from GUI
+    - `runGUI`: run the GUI loop
+    - `setFlag`: set flags by using keyword arguments
+    """
+    
+    font_sizes: tuple[int]
+    theme: str
+    typeface: str
+    _default_flags: dict[str, bool] = {}
+    def __init__(self, 
+        name: str = '', 
+        group: Optional[str] = None,
+        font_sizes: tuple[int] = (14,12,10,8,6),
+        theme: str = 'LightGreen', 
+        typeface: str = "Helvetica"
+    ):
         """
-        Panel class
+        Instantiate the class
 
         Args:
             name (str, optional): name of panel. Defaults to ''.
-            theme (str, optional): name of theme. Defaults to THEME.
-            typeface (str, optional): name of typeface. Defaults to TYPEFACE.
-            font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
-            group (str, optional): name of group. Defaults to None.
+            group (Optional[str], optional): name of group. Defaults to None.
+            font_sizes (tuple[int], optional): list of font sizes. Defaults to (14,12,10,8,6).
+            theme (str, optional): name of theme. Defaults to 'LightGreen'.
+            typeface (str, optional): name of typeface. Defaults to "Helvetica".
         """
-        self.theme = theme
-        self.typeface = typeface
-        self.font_sizes = font_sizes
         self.name = name
         self.group = group
-        
+        self.flags = self._default_flags.copy()
+        self.tool = None
         self.window = None
-        self.configure()
         
-        self.flags = {}
+        Panel.font_sizes = font_sizes
+        Panel.theme = theme
+        Panel.typeface = typeface
+        
+        self.configure()
         return
     
-    @staticmethod
-    def getButtons(labels:list, size, key_prefix, font:tuple, texts=[], **kwargs):
+    def __del__(self):
+        self.close()
+    
+    @abstractmethod
+    def getLayout(self, title:str = 'Panel', title_font_level:int = 0, **kwargs) -> sg.Column:
         """
-        Get list of panel buttons
+        Build `sg.Column` object
 
         Args:
-            labels (list): list of button labels
-            size (int, or tuple): button width (,height)
-            key_prefix (any): prefix of button key
-            font (tuple): (typeface, font size)
-            texts (list, optional): alternative text labels for buttons. Defaults to [].
+            title (str, optional): title of layout. Defaults to 'Panel'.
+            title_font_level (int, optional): index of font size from levels in `font_sizes`. Defaults to 0.
 
         Returns:
-            list: list of PySimpleGUI.Button objects
+            sg.Column: Column object
         """
-        buttons = []
-        specials = kwargs.pop('specials', {})
-        for i,label in enumerate(labels):
-            key_string = label.replace('\n','')
-            key = f"-{key_prefix}-{key_string}-" if key_prefix else f"-{key_string}-"
-            kw = kwargs.copy()
-            if label in specials.keys():
-                for k,v in specials[label].items():
-                    kw[k] = v
-            if len(texts):
-                try:
-                    label = texts[i]
-                except IndexError:
-                    pass
-            buttons.append(sg.Button(label, size=size, key=key, font=font, **kw))
-        return buttons
-    
-    @staticmethod
-    def parseInput(string:str):
+        font = (self.typeface, self.font_sizes[title_font_level]) if 'font' not in kwargs.keys() else kwargs.pop('font')
+        layout = [[
+            sg.Text(title, 
+                    font=font,
+                    **kwargs)
+        ]]
+        # Build Layout here
+        layout = sg.Column(layout, vertical_alignment='top')
+        return layout
+
+    @abstractmethod
+    def listenEvents(self, event:str, values:dict[str, str]) -> dict[str, str]:
         """
-        Parse inputs from GUI
+        Listen to events and act on values
 
         Args:
-            string (str): input string read from GUI window
+            event (str): event triggered
+            values (dict[str, str]): dictionary of values from window
 
         Returns:
-            any: appropriate values
+            dict: dictionary of updates
         """
-        if ',' in string:
-            strings = string.split(',')
-        elif ';' in string:
-            strings = string.split(';')
-        else:
-            try:
-                string = float(string)
-                return string
-            finally:
-                # return string
-                pass
-        output = []
-        for string in strings:
-            try:
-                output.append(float(string))
-            except ValueError:
-                # output.append(string)
-                pass
-        return output
-    
-    def _mangle(self, string:str):
-        """
-        Mangle string with name of panel
+        updates = {}
+        # Listen to events here
+        return updates
 
-        Args:
-            string (str): string to be mangled
-
-        Returns:
-            str: mangled string
-        """
-        return f'-{self.name}{string}'
-    
-    @staticmethod
-    def pad():
-        """
-        Spacer / padding
-
-        Returns:
-            PySimpleGUI.Push: padding
-        """
-        ele = sg.Text('', size=(1,1))
-        try:
-            ele = sg.Push()
-        except Exception as e:
-            print(e)
-        return ele
-    
     @classmethod
-    def arrangeElements(cls, elements:list, shape=(0,0), form=''):
+    def arrangeElements(cls, elements:list, shape:tuple[int, int] = (0,0), form:str = '') -> list[list]:
         """
-        Arrange elements in a horizontal / vertical / cross-shape pattern
+        Arrange elements in a horizontal, vertical, or cross-shape pattern
 
         Args:
             elements (list): list of GUI elements
-            shape (tuple, optional): shape of grid. Defaults to (0,0).
+            shape (tuple[int, int], optional): shape of grid. Defaults to (0,0).
             form (str, optional): shape of pattern. Defaults to ''.
 
         Raises:
-            Exception: Grid size must be large enough to accommodate all elements
+            RuntimeError: Make sure grid size is able to fit the number of elements
 
         Returns:
-            list: list of arranged GUI elements
+            list[list]: list of lists of arranged GUI elements
         """
         arranged_elements = []
         if form in ['X', 'x', 'cross', '+']:
@@ -186,7 +192,7 @@ class Panel(object):
                         root += 1
                     row = root
             elif rows*cols < num:
-                raise Exception('Make sure grid size is able to fit the number of elements.')
+                raise RuntimeError('Make sure grid size is able to fit the number of elements.')
             else:
                 row = rows
             while n < num:
@@ -194,80 +200,166 @@ class Panel(object):
                 arranged_elements.append([cls.pad()]+ [elements[l:u]] +[cls.pad()])
                 n += row
         return arranged_elements
-    
+
     def close(self):
-        """
-        Close window
-        """
+        """Exit the application"""
+        try:
+            self.window.close()
+        except AttributeError:
+            pass
         return
-    
-    def configure(self, **kwargs):
-        """
-        Configure defaults
-        """
-        theme = self.theme if 'theme' not in kwargs.keys() else kwargs.pop('theme')
-        font = (self.typeface, self.font_sizes[int(len(FONT_SIZES)/2)]) if 'font' not in kwargs.keys() else kwargs.pop('font')
-        element_padding = (0,0) if 'element_padding' not in kwargs.keys() else kwargs.pop('element_padding')
+
+    @classmethod
+    def configure(cls, **kwargs):
+        """Configure GUI defaults"""
+        cls.font_sizes = kwargs.pop('font_sizes', cls.font_sizes)
+        cls.theme = kwargs.pop('theme', cls.theme)
+        cls.typeface = kwargs.pop('typeface', cls.typeface)
         
-        sg.theme(theme)
+        element_padding = kwargs.pop('element_padding', (0,0))
+        font = kwargs.pop('font', (cls.typeface, cls.font_sizes[int(len(cls.font_sizes)/2)]))
+        
+        sg.theme(cls.theme)
         sg.set_options(font=font, element_padding=element_padding, **kwargs)
         return
     
-    def getLayout(self, title='Panel', title_font_level=0, **kwargs):
+    @staticmethod
+    def getButtons(
+        labels: list[str], 
+        size: Union[int, tuple], 
+        key_prefix: str, 
+        font: tuple[str, int], 
+        texts: Optional[list[str]] = None, 
+        **kwargs
+    ) -> list[sg.Button]:
         """
-        Get layout object
+        Get list of panel buttons
 
         Args:
-            title (str, optional): title of layout. Defaults to 'Panel'.
-            title_font_level (int, optional): index of font size from levels in font_sizes. Defaults to 0.
+            labels (list[str]): list of button labels
+            size (Union[int, tuple]): button width (,height)
+            key_prefix (str): prefix of button key
+            font (tuple[str, int]): (typeface, font size)
+            texts (Optional[list[str]], optional): alternative text labels for buttons. Defaults to None.
 
         Returns:
-            PySimpleGUI.Column: Column object
+            list: list of PySimpleGUI.Button objects
         """
-        font = (self.typeface, self.font_sizes[title_font_level]) if 'font' not in kwargs.keys() else kwargs.pop('font')
-        layout = [[
-            sg.Text(title, 
-                    font=font,
-                    **kwargs)
-        ]]
-        # Build Layout here
-        layout = sg.Column(layout, vertical_alignment='top')
-        return layout
-    
-    def getWindow(self, title='Application', **kwargs):
+        texts = [] if texts is None else texts
+        buttons = []
+        specials = kwargs.pop('specials', {})
+        for i,label in enumerate(labels):
+            key_string = label.replace('\n','')
+            key = f"-{key_prefix}-{key_string}-" if key_prefix else f"-{key_string}-"
+            kw = kwargs.copy()
+            if label in specials.keys():
+                for k,v in specials[label].items():
+                    kw[k] = v
+            if len(texts):
+                try:
+                    label = texts[i]
+                except IndexError:
+                    pass
+            buttons.append(sg.Button(label, size=size, key=key, font=font, **kw))
+        return buttons
+
+    def getWindow(self, title:str = 'Application', **kwargs) -> sg.Window:
         """
-        Get window object
+        Build `sg.Window` object
 
         Args:
             title (str, optional): title of window. Defaults to 'Application'.
 
         Returns:
-            PySimpleGUI.Window: Window object
+            sg.Window: Window object
         """
         layout = [[self.getLayout()]]
         window = sg.Window(title, layout, enable_close_attempted_event=True, resizable=False, finalize=True, icon='icon.ico', **kwargs)
         self.window = window
         return window
-    
-    def listenEvents(self, event, values):
-        """
-        Listen to events and act on values
 
-        Args:
-            event (str): event triggered
-            values (dict): dictionary of values from window
+    @staticmethod
+    def pad() -> Union[sg.Push, sg.Text]:
+        """
+        Add spacer in GUI
 
         Returns:
-            dict: dictionary of updates
+            Union[sg.Push, sg.Text]: GUI spacer
         """
-        updates = {}
-        # Listen to events here
-        return updates
+        ele = sg.Text('', size=(1,1))
+        try:
+            ele = sg.Push()
+        except Exception as e:
+            print(e)
+        return ele
     
-    def loopGUI(self):
+    @staticmethod
+    def parseInput(text:str) -> list[Union[float, str]]:
         """
-        Loop GUI process
+        Parse inputs from GUI
+
+        Args:
+            text (str): input text read from GUI window
+
+        Returns:
+            list[Union[float, str]]: variable output including floats, strings, and tuples
         """
+        if ',' in text:
+            strings = text.split(',')
+        elif ';' in text:
+            strings = text.split(';')
+        else:
+            try:
+                text = float(text)
+                return text
+            finally:
+                # return text
+                pass
+        output = []
+        for text in strings:
+            try:
+                output.append(float(text))
+            except ValueError:
+                # output.append(text)
+                pass
+        return output
+    
+    def runGUI(self, title:str = 'Application', maximize:bool = False):
+        """
+        Run the GUI loop
+
+        Args:
+            title (str, optional): title of window. Defaults to 'Application'.
+            maximize (bool, optional): whether to maximise window. Defaults to False.
+        """
+        self.configure()
+        self.getWindow(title)
+        self.window.Finalize()
+        if maximize:
+            self.window.Maximize()
+        self.window.bring_to_front()
+        try:
+            self._loop_gui()
+        finally:
+            self.close()
+        return
+    
+    def setFlag(self, **kwargs):
+        """
+        Set flags by using keyword arguments
+
+        Kwargs:
+            key, value: (flag name, boolean) pairs
+        """
+        if not all([type(v)==bool for v in kwargs.values()]):
+            raise ValueError("Ensure all assigned flag values are boolean.")
+        for key, value in kwargs.items():
+            self.flags[key] = value
+        return
+
+    # Protected method(s)
+    def _loop_gui(self):
+        """Loop GUI process"""
         if type(self.window) == type(None):
             return
         while True:
@@ -283,59 +375,69 @@ class Panel(object):
                 self.window[ele_key].update(**kwargs)
         return
     
-    def runGUI(self, title='Application', maximize=False):
+    def _mangle(self, text:str) -> str:
         """
-        Run the GUI loop
+        Mangle text with name of panel
 
         Args:
-            title (str, optional): title of window. Defaults to 'Application'.
-            maximize (bool, optional): whether to maximise window. Defaults to False.
-        """
-        self.getWindow(title)
-        self.window.Finalize()
-        if maximize:
-            self.window.Maximize()
-        self.window.bring_to_front()
-        self.loopGUI()
-        self.window.close()
-        self.close()
-        return
+            text (str): text to be mangled
 
+        Returns:
+            str: mangled text
+        """
+        return f'-{self.name}{text}'
+    
 
 class CompoundPanel(Panel):
     """
-    Compound Panel class
+    CompoundPanel provides methods to form a multi-tool control panel
 
+    ### Constructor
     Args:
-        ensemble (dict, optional): dictionary of individual sub-panels. Defaults to {}.
-        theme (str, optional): name of theme. Defaults to THEME.
-        typeface (str, optional): name of typeface. Defaults to TYPEFACE.
-        font_sizes (list, optional): list of font sizes. Defaults to FONT_SIZES.
-        group (str, optional): name of group. Defaults to None.
+        `ensemble` (dict[str, Panel]): dictionary of individual sub-panels
+        `group` (Optional[str], optional): name of group. Defaults to None.
+        
+    ### Attributes
+    - `panels` (dict[str, Panel]): dictionary of individual sub-panels
+    
+    ### Methods
+    - `close`: exit the application
+    - `getLayout`: build `sg.Column` object
+    - `listenEvents`: listen to events and act on values
     """
-    def __init__(self, ensemble={}, theme=THEME, typeface=TYPEFACE, font_sizes=FONT_SIZES, group=None):
-        super().__init__(theme=theme, typeface=typeface, font_sizes=font_sizes, group=group)
-        self.panels = {key: value[0](name=key, **value[1]) for key,value in ensemble.items()}
+    
+    def __init__(self, 
+        ensemble: dict[str, Panel],
+        group: Optional[str] = None,
+        **kwargs
+    ):
+        """
+        Instantiate the class
+
+        Args:
+            ensemble (dict[str, Panel]): dictionary of individual sub-panels
+            group (Optional[str], optional): name of group. Defaults to None.
+        """
+        super().__init__(group=group, **kwargs)
+        self.panels = {key: value for key,value in ensemble.items()}
         return
     
     def close(self):
-        """
-        Close window
-        """
+        """Exit the application"""
         for panel in self.panels.values():
             panel.close()
-        return
+        return super().close()
     
-    def getLayout(self, title='Control Panel', title_font_level=0, **kwargs):
+    def getLayout(self, title:str = 'Control Panel', title_font_level:int = 0, **kwargs) -> sg.Column:
         """
-        Get layout object
+        Build `sg.Column` object
 
         Args:
-            title (str, optional): title of layout. Defaults to 'Panel'.
-            title_font_level (int, optional): index of font size from levels in font_sizes. Defaults to 0.
+            title (str, optional): title of layout. Defaults to 'Control Panel'.
+            title_font_level (int, optional): index of font size from levels in `font_sizes`. Defaults to 0.
 
         Returns:
-            PySimpleGUI.Column: Column object
+            sg.Column: Column object
         """
         font = (self.typeface, self.font_sizes[title_font_level], 'bold')
         layout = super().getLayout(title, justification='center', font=font)
@@ -388,13 +490,13 @@ class CompoundPanel(Panel):
         layout = sg.Column(layout, vertical_alignment='top')
         return layout
     
-    def listenEvents(self, event, values):
+    def listenEvents(self, event:str, values:dict[str, str]) -> dict[str, dict]:
         """
         Listen to events and act on values
 
         Args:
             event (str): event triggered
-            values (dict): dictionary of values from window
+            values (dict[str, str]): dictionary of values from window
 
         Returns:
             dict: dictionary of updates

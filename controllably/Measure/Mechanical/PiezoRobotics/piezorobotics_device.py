@@ -1,266 +1,134 @@
 # %% -*- coding: utf-8 -*-
 """
-Adapted from DMA code by @pablo
+This module holds the instrument class for tools from PiezoRobotics.
 
-Created: Tue 2023/01/03 17:13:35
-@author: Chang Jie
+Classes:
+    PiezoRoboticsDevice (Instrument)
 
-Notes / actionables:
--
+Other constants and variables:
+    FREQUENCIES (tuple)
 """
 # Standard library imports
+from __future__ import annotations
 import numpy as np
 import pandas as pd
 import time
+from typing import Optional, Union
 
 # Third party imports
 import serial # pip install pyserial
 
 # Local application imports
-from .piezorobotics_lib import ErrorCode, FrequencyCode
-from .piezorobotics_lib import COMMANDS, ERRORS, FREQUENCIES
+from ...instrument_utils import Instrument
+from .piezorobotics_lib import CommandCode, ErrorCode, FrequencyCode, Frequency
 print(f"Import: OK <{__name__}>")
 
-TIMEOUT_S = 60
+FREQUENCIES = tuple([frequency.value for frequency in FrequencyCode])
+"""Collection of all available frequency values"""
 
-class PiezoRoboticsDevice(object):
+class PiezoRoboticsDevice(Instrument):
     """
-    PiezoRoboticsDevice object
+    PiezoRoboticsDevice provides methods to interface with the characterisation device from PiezoRobotics
 
+    ### Constructor
     Args:
-        port (str): com port address
-        channel (int, optional): assigned device channel. Defaults to 1.
+        `port` (str): COM port address
+        `channel` (int, optional): channel id. Defaults to 1.
+        
+    ### Attributes
+    - `channel` (int): channel id
+    
+    ### Properties
+    - `frequency` (Frequency): lower and upper frequency range limit
+    
+    ### Methods
+    - `disconnect`: disconnect from device
+    - `initialise`: initialise the device with the desired frequency range
+    - `readAll`: read all the data on device buffer
+    - `reset`: reset the device
+    - `run`: start the measurement
+    - `setFrequency`: frequency range to measure
+    - `shutdown`: shutdown procedure for tool
+    - `toggleClamp`: close or open the clamp
     """
-    def __init__(self, port:str, channel=1, **kwargs):
+    
+    _default_flags = {
+        'busy': False,
+        'connected': False,
+        'initialised': False,
+        'measured': False,
+        'read': False
+    }
+    def __init__(self, port:str, channel:int = 1, **kwargs):
+        """
+        Instantiate the class
+
+        Args:
+            port (str): COM port address
+            channel (int, optional): channel id. Defaults to 1.
+        """
+        super().__init__(**kwargs)
         self.channel = channel
-        self.instrument = None
-        
-        self._frequency_range_codes = ('0','0')
-        
-        self.verbose = True
-        self._flags = {
-            'busy': False,
-            'connected': False,
-            'initialised': False,
-            'measured': False,
-            'read': False
-        }
-        self.port = ''
-        self._baudrate = None
-        self._timeout = None
+        self._frequency = Frequency()
         self._connect(port)
         pass
     
+    # Properties
     @property
-    def frequency_codes(self):
-        lo_code, hi_code = self._frequency_range_codes
-        return int(lo_code[-2:]), int(hi_code[-2:])
-    
-    @property
-    def frequency_range(self):
-        lo_code, hi_code = self._frequency_range_codes
-        return FrequencyCode[lo_code].value, FrequencyCode[hi_code].value
-    @frequency_range.setter
-    def frequency_range(self, frequencies):
+    def frequency(self) -> Frequency:
+        return self._frequency
+    @frequency.setter
+    def frequency(self, value: tuple[float]):
         """
         Set the operating frequency range
 
         Args:
-            frequencies (iterable): frequency lower and upper limits
-                low_frequency (float): lower frequency limit
-                high_frequency (float): upper frequency limit
+            value (tuple[float]): frequency lower and upper limits
         """
-        lo_code_number, hi_code_number = self.range_finder(frequencies=frequencies)
-        self._frequency_range_codes = (f'FREQ_{lo_code_number:02}', f'FREQ_{hi_code_number:02}')
+        self._frequency = self._range_finder(frequencies=value)
         return
     
-    @staticmethod
-    def range_finder(frequencies):
-        """
-        Find the appropriate the operating frequency range
-
-        Args:
-            frequencies (iterable): frequency lower and upper limits
-                low_frequency (float): lower frequency limit
-                high_frequency (float): upper frequency limit
-        """
-        low_frequency, high_frequency = sorted(list(frequencies))
-        all_freq = np.array(FREQUENCIES)
-        freq_in_range_indices = np.where((all_freq>=low_frequency) & (all_freq<=high_frequency))
-        lo_code_number = max( (freq_in_range_indices[0][0]+1) - 1, 1)
-        hi_code_number = min( (freq_in_range_indices[0][-1]+1) + 1, len(all_freq))
-        return lo_code_number, hi_code_number
+    @property
+    def port(self) -> str:
+        return self.connection_details.get('port', '')
     
-    def __delete__(self):
-        self._shutdown()
-        return
-    
-    def _connect(self, port:str, baudrate=115200, timeout=1):
-        """
-        Connect to machine control unit
-
-        Args:
-            port (str): com port address
-            baudrate (int): baudrate. Defaults to 115200.
-            timeout (int, optional): timeout in seconds. Defaults to None.
-            
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
-        """
-        self.port = port
-        self._baudrate = baudrate
-        self._timeout = timeout
-        instrument = None
+    def disconnect(self):
+        """Disconnect from device"""
         try:
-            instrument = serial.Serial(port, self._baudrate, timeout=self._timeout)
-            self.instrument = instrument
-            print(f"Connection opened to {port}")
-            self.setFlag('connected', True)
-            
+            self.device.close()
         except Exception as e:
             if self.verbose:
-                print(f"Could not connect to {port}")
-        return self.instrument
-    
-    def _query(self, string:str, timeout_s=TIMEOUT_S):
-        """
-        Send query and wait for reponse
-
-        Args:
-            string (str): message string
-            timeout_s (int, optional): duration to wait before timeout. If None, no timeout duration. Defaults to TIMEOUT_S.
-
-        Yields:
-            str: response string
-        """
-        start_time = time.time()
-        message_code = self._write(string)
-        cache = []
-        response = ''
-        while response != 'OKC':
-            if timeout_s is not None and (time.time()-start_time) > timeout_s:
-                print('Timeout! Aborting run...')
-                break
-            response = self._read()
-            if message_code == 'GET' and len(response):
-                cache.append(response)
-
-        self.setFlag('busy', False)
-        time.sleep(0.1)
-        if message_code == 'GET':
-            return cache
-        return response
-    
-    def _read(self):
-        """
-        Read response from instrument
-
-        Returns:
-            str: response string
-        """
-        response = ''
-        try:
-            response = self.instrument.readline()
-            response = response.decode("utf-8").strip()
-            if len(response) and (self.verbose or 'High-Voltage' in response):
-                print(response)
-            if response in ERRORS:
-                print(ErrorCode[response].value)
-        except Exception as e:
-            if self.verbose:
-                pass
-        return response
-    
-    def _shutdown(self):
-        """
-        Close serial connection and shutdown
-        """
-        self.toggleClamp(False)
-        self.reset()
-        self.instrument.close()
+                print(e)
+        self.setFlag(connected=False)
         return
-
-    def _write(self, string:str):
+    
+    def initialise(self, low_frequency:Optional[float] = None, high_frequency:Optional[float] = None):
         """
-        Sends message to instrument
+        Initialise the device with the desired frequency range
 
         Args:
-            string (str): <message code>,<option 1>[,<option 2>]
-
-        Raises:
-            Exception: Select a valid command code.
-        
-        Returns:
-            str: two-character message code
+            low_frequency (Optional[float], optional): lowest desired frequency. Defaults to None.
+            high_frequency (Optional[float], optional): highest desired frequency. Defaults to None.
         """
-        message_code = string.split(',')[0].strip().upper()
-        if message_code not in COMMANDS:
-            raise Exception(f"Please select a valid command code from: {', '.join(COMMANDS)}")
-        fstring = f'DMA,SN{self.channel},{string},END' # message template: <PRE>,<SN>,<CODE>,<OPTIONS>,<POST>
-        bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
-        try:
-            self.instrument.write(bstring)
-            self.setFlag('busy', True)
-        except Exception as e:
-            print(e)
-        if self.verbose:
-            print(fstring)
-        return message_code
-    
-    def close(self):
-        """
-        Alias for _shutdown method
-        """
-        return self._shutdown()
-    
-    def connect(self):
-        """
-        Reconnect to instrument using existing port and baudrate
-        
-        Returns:
-            serial.Serial: serial connection to machine control unit if connection is successful, else None
-        """
-        return self._connect(self.port, self._baudrate, self._timeout)
-    
-    def initialise(self, low_frequency, high_frequency): # TODO: check frequencies if same as previous
-        if self._flags['initialised']:
+        if not all((low_frequency, high_frequency)):
+            low_frequency, high_frequency = FREQUENCIES[0], FREQUENCIES[-1]
+        if self.flags['initialised']:
             return
-        if self.range_finder((low_frequency, high_frequency)) == self.frequency_codes:
+        frequency = self._range_finder(low_frequency, high_frequency)
+        if frequency == self.frequency:
             print('Appropriate frequency range remains the same!')
         else:
-            if any(self.frequency_codes):
-                self.reset()
-            self.frequency_range = low_frequency, high_frequency
+            self.reset()
+            self._frequency = frequency
             input("Ensure no samples within the clamp area during initialization. Press 'Enter' to proceed.")
-            self._query(f"INIT,{','.join([str(_f) for _f in self.frequency_codes])}")
-        self.setFlag('initialised', True)
-        print(self.frequency_range)
+            self._query(f"INIT,{','.join(self.frequency.code)}")
+        self.setFlag(initialised=True)
+        print(self.frequency)
         return
-    
-    def isBusy(self):
-        """
-        Checks whether the instrument is busy
-        
-        Returns:
-            bool: whether the instrument is busy
-        """
-        return self._flags['busy']
-    
-    def isConnected(self):
-        """
-        Check whether instrument is connected
 
-        Returns:
-            bool: whether instrument is connected
+    def readAll(self, **kwargs) -> pd.DataFrame:
         """
-        return self._flags['connected']
-
-    def readAll(self, **kwargs):
-        """
-        Read all data on buffer
-
-        Args:
-            fields (list, optional): fields of interest. Defaults to [].
+        Read all data on device buffer
             
         Returns:
             pd.DataFrame: dataframe of measurements
@@ -269,57 +137,170 @@ class PiezoRoboticsDevice(object):
         df = pd.DataFrame(data[1:], columns=data[0], dtype=float)
         return df
     
-    def reset(self):
+    def reset(self) -> str:
+        """Reset the device"""
+        self._frequency = Frequency()
+        self.resetFlags()
+        return self._query('CLR,0')
+    
+    def run(self, sample_thickness:float = 1E-6) -> Optional[str]:
+        """Start the measurement"""
+        if not self.flags['initialised']:
+            self.initialise()
+        return self._query(f"RUN,{sample_thickness}")
+    
+    def setFrequency(self, low_frequency:float = None, high_frequency:float = None):
         """
-        Clear settings from instrument. Reset the program, data, and flags
-        """
-        self._query('CLR,0')
-        self._frequency_range_codes = ('0','0')
-        self._flags = {
-            'busy': False,
-            'connected': False,
-            'initialised': False,
-            'measured': False,
-            'read': False
-        }
-        return
-        
-    def setFlag(self, name:str, value:bool):
-        """
-        Set a flag truth value
+        Set the frequency range to measure
 
         Args:
-            name (str): label
-            value (bool): flag value
+            low_frequency (Optional[float], optional): lowest desired frequency. Defaults to None.
+            high_frequency (Optional[float], optional): highest desired frequency. Defaults to None.
         """
-        self._flags[name] = value
-        return
+        return self.initialise(low_frequency=low_frequency, high_frequency=high_frequency)
     
-    def start(self, sample_thickness=1E-6):
-        """
-        Initialise the measurement
-        """
-        if not self._flags['initialised']:
-            print("Please initialise the instrument using the 'initialise' method first")
-            return
-        self._query(f"RUN,{sample_thickness}")
-        return
+    def shutdown(self):
+        """Shutdown procedure for tool"""
+        self.toggleClamp(False)
+        return super().shutdown()
     
-    def stopClamp(self):
+    def toggleClamp(self, on:bool = False) -> str:
         """
-        Stop clamp movement
-        """
-        # self._query('CLAMP,0')
-        print('Stop clamp function not available.')
-        return
-    
-    def toggleClamp(self, on=False):
-        """
-        Toggle between clamp and release state
+        Close or open the clamp
 
         Args:
             on (bool, optional): whether to clamp down on sample. Defaults to False.
+            
+        Returns:
+            str: response string
         """
         option = -1 if on else 1
-        self._query(f'CLAMP,{option}')
+        return self._query(f'CLAMP,{option}')
+
+    # Protected method(s)
+    def _connect(self, port:str, baudrate:int = 115200, timeout:int = 1):
+        """
+        Connection procedure for tool
+
+        Args:
+            port (str): COM port address
+            baudrate (int): baudrate. Defaults to 115200.
+            timeout (int, optional): timeout in seconds. Defaults to None.
+        """
+        self.connection_details = {
+            'port': port,
+            'baudrate': baudrate,
+            'timeout': timeout
+        }
+        device = None
+        try:
+            device = serial.Serial(port, baudrate, timeout=timeout)
+        except Exception as e:
+            print(f"Could not connect to {port}")
+            if self.verbose:
+                print(e)
+        else:
+            print(f"Connection opened to {port}")
+            self.setFlag(connected=True)
+        self.device = device
         return
+    
+    def _query(self, command:str, timeout_s:int = 60) -> Union[str, tuple[str]]:
+        """
+        Write command to and read response from device
+
+        Args:
+            command (str): command string
+            timeout_s (float, optional): duration to wait before timeout. Defaults to 60.
+
+        Returns:
+            Union[str, tuple[str]]: response string, or list of response strings
+        """
+        command_code = command.split(',')[0].strip().upper()
+        if command_code not in CommandCode._member_names_:
+            raise Exception(f"Please select a valid command code from: {', '.join(CommandCode._member_names_)}")
+        
+        start_time = time.time()
+        self._write(command)
+        cache = []
+        response = ''
+        while response != 'OKC':
+            if timeout_s is not None and (time.time()-start_time) > timeout_s:
+                print('Timeout! Aborting run...')
+                break
+            response = self._read()
+            if command_code == 'GET' and len(response):
+                cache.append(response)
+        self.setFlag(busy=False)
+        time.sleep(0.1)
+        if command_code == 'GET':
+            return tuple(cache)
+        return response
+    
+    @staticmethod
+    def _range_finder(frequency_1:float, frequency_2:float) -> Frequency:
+        """
+        Find the appropriate the operating frequency range
+
+        Args:
+            frequency_1 (float): lower frequency limit
+            frequency_2 (float): upper frequency limit
+            
+        Returns:
+            Frequency: optimal frequency range that covers desired values
+        """
+        frequencies = np.array(FREQUENCIES)
+        low_frequency, high_frequency = sorted((frequency_1, frequency_2))
+        lower = frequencies[frequencies < low_frequency]
+        higher = frequencies[frequencies > high_frequency]
+        low = lower[-1] if len(lower) else frequencies[0]
+        high = higher[0] if len(higher) else frequencies[-1]
+        return Frequency(low, high)
+    
+    def _read(self) -> str:
+        """
+        Read response from device
+
+        Returns:
+            str: response string
+        """
+        response = ''
+        try:
+            response = self.device.readline()
+            response = response.decode("utf-8").strip()
+        except AttributeError:
+            pass
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        else:
+            if len(response) and (self.verbose or 'High-Voltage' in response):
+                print(response)
+            if response in ErrorCode._member_names_:
+                print(ErrorCode[response].value)
+        return response
+    
+    def _write(self, command:str) -> bool:
+        """
+        Write command to device
+
+        Args:
+            command (str): <command code>,<option 1>[,<option 2>]
+        
+        Returns:
+            bool: whether command was sent successfully
+        """
+        if self.verbose:
+            print(command)
+        fstring = f'DMA,SN{self.channel},{command},END' # command template: <PRE>,<SN>,<CODE>,<OPTIONS>,<POST>
+        # bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
+        try:
+            self.device.write(fstring.encode('utf-8'))
+        except AttributeError:
+            pass
+        except Exception as e:
+            if self.verbose:
+                print(e)
+            return False
+        self.setFlag(busy=True)
+        return True

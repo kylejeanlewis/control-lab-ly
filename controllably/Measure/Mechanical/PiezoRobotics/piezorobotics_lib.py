@@ -1,15 +1,17 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2023/01/03 17:13:35
-@author: Chang Jie
+This module holds the references for tools from PiezoRobotics.
 
-Notes / actionables:
--
+Classes:
+    CommandCode (Enum)
+    ErrorCode (Enum)
+    FrequencyCode (Enum)
+    Frequency (dataclass)
 """
 # Standard library imports
+from __future__ import annotations
+from dataclasses import dataclass
 from enum import Enum
-
-# Local application imports
 print(f"Import: OK <{__name__}>")
 
 class CommandCode(Enum):
@@ -82,6 +84,29 @@ class FrequencyCode(Enum):
     FREQ_53 = 99.8
     FREQ_54 = 110.9
 
-COMMANDS    = [command.name for command in CommandCode]
-ERRORS      = [error.name for error in ErrorCode]
-FREQUENCIES = [frequency.value for frequency in FrequencyCode]
+@dataclass
+class Frequency:
+    """
+    Frequency dataclass represents a low and high frequency range limit
+
+    ### Constructor
+    Args:
+        `low` (float): frequency lower bound. Defaults to FrequencyCode.FREQ_01
+        `high` (float): frequency upper bound. Defaults to FrequencyCode.FREQ_54
+        
+    ### Attributes
+    - `low` (float): frequency lower bound. Defaults to FrequencyCode.FREQ_01
+    - `high` (float): frequency upper bound. Defaults to FrequencyCode.FREQ_54
+    
+    ### Properties
+    - `code` (tuple[str]): tuple of (lower frequency code, upper frequency code)
+    """
+    
+    low: float = FrequencyCode.FREQ_01
+    high: float = FrequencyCode.FREQ_54
+    
+    @property
+    def code(self):
+        low = str(int(FrequencyCode(self.low).name[-2:]))
+        high = str(int(FrequencyCode(self.high).name[-2:]))
+        return low,high
