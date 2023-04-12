@@ -1,6 +1,12 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the logger class in Control.lab.ly.
 
+Classes:
+    Logger
+
+Other constants and variables:
+    LOGGER (Logger)
 """
 # Standard library imports
 import os

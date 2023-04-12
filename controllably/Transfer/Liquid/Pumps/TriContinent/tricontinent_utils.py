@@ -1,6 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the class for syringe pumps from TriContinent.
 
+Classes:
+    TriContinent (Pump)
 """
 # Standard library imports
 from __future__ import annotations
@@ -852,104 +855,4 @@ class TriContinent(Pump):
                 print(e)
             return False
         return True
-    
-
-### NOTE: DEPRECATE
-# class TriContinentEnsemble(Pump):
-#     def __init__(self, 
-#         port: str, 
-#         channels: int, 
-#         models: str, 
-#         capacities: int, 
-#         output_rights: bool, 
-#         names: str = '',
-#         **kwargs
-#     ):
-#         super().__init__(port=port, **kwargs)
-#         self.disconnect()
-#         verbose = kwargs.pop('verbose', False)
-#         self.channels = self._get_pumps(
-#             primary_keyword = 'channel',
-#             port = [port]*len(channels),
-#             channel = channels,
-#             model = models,
-#             capacity = capacities,
-#             output_right = output_rights,
-#             name = names,
-#             device = [self.device]*len(channels),
-#             verbose = [verbose]*len(channels)
-#         )
         
-#         # if len(ports) == 1:
-#         #     super().__init__(ports[0], verbose)
-#         #     properties = Helper.zip_inputs('channel',
-#         #         port=ports*len(channels),
-#         #         channel=channels,
-#         #         model=models,
-#         #         output_right=output_directions,
-#         #         capacity=syringe_volumes,
-#         #         name=names,
-#         #         device=[self.device]*len(channels),
-#         #         verbose=verbose
-#         #     )
-#         # self.channels = {key: TriContinent(**value) for key,value in properties.items()}
-#         self.current_channel = None
-#         return
-    
-#     @staticmethod
-#     def _get_pumps(primary_keyword:str, **kwargs) -> dict[int, TriContinent]:
-#         properties = Helper.zip_inputs(primary_keyword=primary_keyword, **kwargs)
-#         return {key: TriContinent(**value) for key,value in properties.items()}
-    
-#     @staticmethod
-#     def loop(cycles, *args):
-#         return TriContinent.loop(cycles, *args)
-    
-#     # Single actions
-#     def empty(self, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).empty()
-#     def fill(self, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).fill()
-#     def initialise(self, output_right:str = None, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).initialise(output_right=output_right)
-#     def moveBy(self, steps:int, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).moveBy(steps=steps)
-#     def moveTo(self, position:int, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).moveTo(position=position)
-#     def setSpeedRamp(self, ramp:int, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).setSpeedRamp(ramp=ramp)
-#     def setStartSpeed(self, speed:int, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).setStartSpeed(speed=speed)
-#     def setTopSpeed(self, speed:int, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).setTopSpeed(speed=speed)
-#     def setValve(self, position:str, value:int = None, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).setValve(position=position, value=value)
-#     def wait(self, time_ms:int, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).wait(time_ms=time_ms)
-
-#     # Standard actions
-#     def isBusy(self):
-#         return any([pump.isBusy() for pump in self.channels.values()])
-#     def queue(self, actions:list = [], channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).queue(actions)
-#     def reset(self, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).reset()
-#     def run(self, command:str = None, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).run(command)
-#     def stop(self, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).stop()
-    
-#     # Compound actions
-#     def aspirate(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).aspirate(volume=volume, start_speed=start_speed, top_speed=top_speed)
-#     def cycle(self, cycles:int, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).cycle(cycles=cycles)
-#     def dispense(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).dispense(volume=volume, start_speed=start_speed, top_speed=top_speed)
-#     def dose(self, volume:int, start_speed:int = 50, top_speed:int = 200, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).dose(volume=volume, start_speed=start_speed, top_speed=top_speed)
-#     def prime(self, cycles:int, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).prime(cycles=cycles)
-#     def rinse(self, cycles:int, channel:Optional[int] = None):
-#         return self.channels.get(channel, self.current_channel).rinse(cycles=cycles)
-    

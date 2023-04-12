@@ -1,6 +1,13 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the base class for camera tools.
 
+Classes:
+    Camera (ABC)
+
+Other constants and variables:
+    DIMENSION_THRESHOLD (int)
+    ROW_DISTANCE (int)
 """
 # Standard library imports
 from __future__ import annotations

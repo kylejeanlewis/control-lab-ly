@@ -1,6 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the base class for mover tools.
 
+Classes:
+    Mover (ABC)
 """
 # Standard library imports
 from __future__ import annotations
@@ -767,5 +770,3 @@ class Mover(ABC):
         """
         print("`getWorkspacePosition()` to be deprecated. Use `workspace_position` attribute instead.")
         return self.workspace_position
-  
-# %%

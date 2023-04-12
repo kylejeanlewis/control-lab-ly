@@ -1,6 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the base class for jointed mover tools.
 
+Classes:
+    RobotArm (Mover)
 """
 # Standard library imports
 from __future__ import annotations

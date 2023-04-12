@@ -1,6 +1,10 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the base class for measurement tools.
 
+Classes:
+    Measurer (ABC)
+    Programmable (Measurer)
 """
 # Standard library imports
 from __future__ import annotations

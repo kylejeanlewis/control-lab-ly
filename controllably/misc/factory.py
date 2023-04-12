@@ -1,6 +1,24 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the factory functions in Control.lab.ly.
 
+Classes:
+    DottableDict (dict)
+    ModuleDirectory (dataclass)
+
+Functions:
+    get_class
+    get_details
+    get_machine_addresses
+    get_plans
+    include_this_module
+    load_components
+    register
+    unregister
+
+Other constants and variables:
+    HOME_PACKAGE (tuple)
+    modules (ModuleDirectory)
 """
 # Standard library imports
 from dataclasses import dataclass, field
@@ -19,6 +37,7 @@ from . import helper
 print(f"Import: OK <{__name__}>")
 
 HOME_PACKAGE = ('controllably','lab')
+"""Names and aliases of base package"""
 
 class DottableDict(dict):
     """DottableDict provides a way to use dot notation on dictionaries"""

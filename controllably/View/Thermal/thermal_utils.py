@@ -1,6 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the class for thermal cameras.
 
+Classes:
+    Thermal (Camera)
 """
 # Standard library imports
 from __future__ import annotations
@@ -89,6 +92,4 @@ class Thermal(Camera):
             tuple[bool, np.ndarray]: (whether frame is obtained, frame array)
         """
         return True, self.feed.read()
-    
-
-    
+     

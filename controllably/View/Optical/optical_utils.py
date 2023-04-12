@@ -1,6 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the class for optical cameras.
 
+Classes:
+    Optical (Camera)
 """
 # Standard library imports
 from __future__ import annotations

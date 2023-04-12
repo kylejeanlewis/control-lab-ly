@@ -1,6 +1,19 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the references for tools from Keithley.
 
+Classes:
+    SenseDetails (dataclass)
+    SourceDetails (dataclass)
+
+Functions:
+    set_function_type
+    set_limit
+
+Other constants and variables:
+    COUNT_UPPER_LIMIT (int)
+    CURRENT_LIMITS (tuple)
+    VOLTAGE_LIMITS (tuple)
 """
 # Standard library imports
 from __future__ import annotations

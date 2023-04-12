@@ -1,6 +1,11 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the base class for image classifiers
+and the class for cascade classifiers.
 
+Classes:
+    Classifier (ABC)
+    CascadeClassifier (Classifier)
 """
 # Standard library imports
 from abc import ABC, abstractmethod

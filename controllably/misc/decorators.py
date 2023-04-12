@@ -1,16 +1,16 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the decorator functions in Control.lab.ly.
 
+Functions:
+    named_tuple_from_dict (decorator)
+    safety_measures (decorator)
 """
 # Standard library imports
 from collections import namedtuple
 from functools import wraps
 import time
 from typing import Callable, Optional
-
-# Third party imports
-
-# Local application imports
 print(f"Import: OK <{__name__}>")
 
 def named_tuple_from_dict(func:Callable) -> Callable:

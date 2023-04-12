@@ -1,6 +1,16 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the core functions in Control.lab.ly.
+    
+Functions:
+    create_configs
+    create_setup
+    load_deck
+    load_setup
+    set_safety
 
+Other constants and variables:
+    here (str)
 """
 __all__ = [
     "create_configs", 

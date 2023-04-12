@@ -9,34 +9,34 @@
 	},
     "slots":{
 		"1": {
-			"name": "__name_01__",
+			"name": "_name_01_",
 			"exclusion_height": -1,
-			"filepath": "__repo_name__/.../__labware_01__.json"
+			"filepath": "_repo_name_/.../_labware_01_.json"
 		},
 		"2": {
 			"name": "__name_02__",
 			"exclusion_height": -1,
-			"filepath": "__repo_name__/.../__labware_02__.json"
+			"filepath": "_repo_name_/.../_labware_02_.json"
 		},
 		"3": {
-			"name": "__name_03__",
+			"name": "_name_03_",
 			"exclusion_height": -1,
-			"filepath": "__repo_name__/.../__labware_03__.json"
+			"filepath": "_repo_name_/.../_labware_03_.json"
 		},
 		"4": {
-			"name": "__name_04__",
+			"name": "_name_04_",
 			"exclusion_height": -1,
-			"filepath": "__repo_name__/.../__labware_04__.json"
+			"filepath": "_repo_name_/.../_labware_04_.json"
 		},
 		"5": {
-			"name": "__name_05__",
+			"name": "_name_05_",
 			"exclusion_height": -1,
-			"filepath": "__repo_name__/.../__labware_05__.json"
+			"filepath": "_repo_name_/.../_labware_05_.json"
 		},
 		"6": {
-			"name": "__name_06__",
+			"name": "_name_06_",
 			"exclusion_height": -1,
-			"filepath": "__repo_name__/.../__labware_06__.json"
+			"filepath": "_repo_name_/.../_labware_06_.json"
 		}
 	}
 }

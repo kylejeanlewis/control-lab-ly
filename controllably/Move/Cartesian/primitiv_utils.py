@@ -1,6 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the class for movement tools based on Primitiv.
 
+Classes:
+    Primitiv (Gantry)
 """
 # Standard library imports
 from __future__ import annotations

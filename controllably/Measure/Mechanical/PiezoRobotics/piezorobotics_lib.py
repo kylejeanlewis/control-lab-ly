@@ -1,10 +1,12 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2023/01/03 17:13:35
-@author: Chang Jie
+This module holds the references for tools from PiezoRobotics.
 
-Notes / actionables:
--
+Classes:
+    CommandCode (Enum)
+    ErrorCode (Enum)
+    FrequencyCode (Enum)
+    Frequency (dataclass)
 """
 # Standard library imports
 from __future__ import annotations

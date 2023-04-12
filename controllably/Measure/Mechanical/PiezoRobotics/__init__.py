@@ -1,3 +1,12 @@
+"""
+This sub-package imports the classes for mechanical measurement tools from PiezoRobotics.
+
+Modules:
+    programs
+
+Classes:
+    PiezoRobotics (Programmable)
+"""
 from .piezorobotics_utils import PiezoRobotics
 from . import programs
 

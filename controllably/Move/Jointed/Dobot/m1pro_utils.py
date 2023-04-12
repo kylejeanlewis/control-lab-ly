@@ -1,6 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the class for the M1Pro from Dobot.
 
+Classes:
+    M1Pro (Dobot)
 """
 # Standard library imports
 from __future__ import annotations

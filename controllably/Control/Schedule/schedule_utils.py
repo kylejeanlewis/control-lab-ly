@@ -1,10 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-Created: Tue 2022/12/13 10:30:00
-@author: Chang Jie
 
-Notes / actionables:
-- 
 """
 # Standard library imports
 

@@ -1,6 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the class for mover control panels.
 
+Classes:
+    MoverPanel (Panel)
 """
 # Standard library imports
 from __future__ import annotations
@@ -62,6 +65,7 @@ class MoverPanel(Panel):
     - `getLayout`: build `sg.Column` object
     - `listenEvents`: listen to events and act on values
     """
+    
     def __init__(self, 
         mover: Mover, 
         name: str = 'MOVE', 

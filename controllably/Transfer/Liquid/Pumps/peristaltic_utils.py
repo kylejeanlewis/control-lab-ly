@@ -1,6 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the class for peristaltic pumps.
 
+Classes:
+    Peristaltic (Pump)
 """
 # Standard library imports
 from __future__ import annotations

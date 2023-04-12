@@ -1,6 +1,16 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the references for syringe tools.
 
+Classes:
+    Syringe (dataclass)
+    SyringeCalibration (dataclass)
+
+Other types:
+    Calibration (namedtuple)
+
+Other constants and variables:
+    CALIBRATION (SyringeCalibration)
 """
 # Standard library imports
 from __future__ import annotations

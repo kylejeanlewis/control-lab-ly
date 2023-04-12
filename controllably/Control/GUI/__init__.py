@@ -1,4 +1,15 @@
-from .gui_utils import Panel, CompoundPanel, configure
+"""
+This sub-package imports the base class for control panels as well as basic panels
+for measurers, movers, and viewers.
+
+Classes:
+    Panel (ABC)
+    CompoundPanel (Panel)
+    MeasurerPanel (Panel)
+    MoverPanel (Panel)
+    ViewerPanel (Panel)
+"""
+from .gui_utils import Panel, CompoundPanel
 from .measurer_panel import MeasurerPanel
 from .mover_panel import MoverPanel
 from .viewer_panel import ViewerPanel

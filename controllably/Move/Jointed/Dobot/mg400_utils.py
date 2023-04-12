@@ -1,6 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds the class for the MG400 from Dobot.
 
+Classes:
+    MG400 (Dobot)
 """
 # Standard library imports
 from __future__ import annotations
