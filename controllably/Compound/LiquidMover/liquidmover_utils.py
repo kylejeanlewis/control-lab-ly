@@ -392,13 +392,14 @@ class LiquidMoverSetup(CompoundSetup):
             slot (str, optional): name of slot with pipette tips. Defaults to 'tip_rack'.
         """
         wells_list = self.deck.at(slot).wells_list.copy()
-        if start_tip not in wells_list:
+        well_names = [well.name for well in wells_list]
+        if start_tip not in well_names:
             print(f"Received: start_tip={start_tip}; slot={slot}")
             print("Please enter a compatible set of inputs.")
             return
-        self.positions[slot] = wells_list.copy()
-        for well in wells_list:
-            if well.name == start_tip:
+        self.positions[slot] = wells_list
+        for name in well_names:
+            if name == start_tip:
                 break
             self.positions[slot].pop(0)
         return
