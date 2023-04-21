@@ -15,7 +15,7 @@ Other constants and variables:
 # Standard library imports
 from __future__ import annotations
 from collections import namedtuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 print(f"Import: OK <{__name__}>")
 
@@ -80,7 +80,7 @@ class Syringe:
     volume: float = 0
     reagent: str = ''
     pullback_time: float = 2
-    _calibration: SyringeCalibration = CALIBRATION
+    _calibration: SyringeCalibration = field(default_factory=lambda: CALIBRATION)
     
     def __post_init__(self):
         self.offset = np.array(self.offset)
