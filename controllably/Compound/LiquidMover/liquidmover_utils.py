@@ -381,6 +381,8 @@ class LiquidMoverSetup(CompoundSetup):
         """
         wells_list = self.deck.at(slot).wells_list.copy()
         if start_tip not in wells_list:
+            print(f"Received: start_tip={start_tip}; slot={slot}")
+            print("Please enter a compatible set of inputs.")
             return
         self.positions[slot] = wells_list.copy()
         for well in wells_list:
