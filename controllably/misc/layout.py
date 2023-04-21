@@ -282,6 +282,7 @@ class Labware:
         """
         return self.wells.get(name)
     
+    # Protected method(s)
     def _load_wells(self):
         """Load wells into memory"""
         wells = self.details.get('wells',{})
