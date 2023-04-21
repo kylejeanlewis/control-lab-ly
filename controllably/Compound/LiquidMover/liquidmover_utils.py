@@ -349,7 +349,10 @@ class LiquidMoverSetup(CompoundSetup):
     
     def touchTip(self, well:Well) -> tuple[float]:
         """
-        Touch the tip against the inner walls of the well.
+        Touch the tip against the inner walls of the well
+        
+        Args:
+            well (Well): Well object
 
         Returns:
             tuple[float]: coordinates of well center
