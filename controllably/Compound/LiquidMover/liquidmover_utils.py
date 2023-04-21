@@ -12,6 +12,7 @@ import time
 from typing import Optional, Protocol
 
 # Local application imports
+from ...misc.layout import Well
 from ..compound_utils import CompoundSetup
 print(f"Import: OK <{__name__}>")
 
@@ -74,6 +75,8 @@ class LiquidMoverSetup(CompoundSetup):
     - `reset`: alias for `rest()`
     - `rest`: go back to the rest position or home
     - `returnTip`: return current tip to its original rack position
+    - `touchTip`: touch the tip against the inner walls of the well
+    - `updateStartTip`: set the position of the first available pipette tip
     """
     
     _default_flags: dict[str, bool] = {'at_rest': False}
@@ -164,6 +167,7 @@ class LiquidMoverSetup(CompoundSetup):
     
     def attachTip(self, 
         slot: str = 'tip_rack', 
+        start_tip: Optional[str] = None,
         tip_length: float = 80, 
         channel: Optional[int] = None
     ) -> tuple[float]:
@@ -172,12 +176,15 @@ class LiquidMoverSetup(CompoundSetup):
 
         Args:
             slot (str, optional): name of slot with pipette tips. Defaults to 'tip_rack'.
+            start_tip (Optional[str], optional): channel to use. Defaults to None.
             tip_length (float, optional): length of pipette tip. Defaults to 80.
             channel (Optional[int], optional): channel to use. Defaults to None.
         
         Returns:
             tuple[float]: coordinates of top of tip rack well
         """
+        if start_tip is not None:
+            self.updateStartTip(start_tip=start_tip, slot=slot)
         next_tip_location, tip_length = self.positions[slot].pop(0)
         return self.attachTipAt(next_tip_location, tip_length=tip_length, channel=channel)
     
@@ -206,7 +213,7 @@ class LiquidMoverSetup(CompoundSetup):
         if self.liquid.isTipOn():
             raise RuntimeError("Please eject current tip before attaching new tip.")
         
-        tip_offset = np.array((0,0,-tip_length))
+        tip_offset = np.array((0,0,-tip_length + self.liquid.tip_inset_mm))
         self.align(coordinates)
         self.mover.move('z', -self.tip_approach_height, speed=0.01*self.mover._speed_max)
         time.sleep(3)
@@ -289,7 +296,7 @@ class LiquidMoverSetup(CompoundSetup):
             raise AttributeError("`ejectTip` and `ejectTipAt` methods not available.")
         if not self.liquid.isTipOn():
             tip_length = self.liquid.tip_length
-            tip_offset = np.array((0,0,-tip_length))
+            tip_offset = np.array((0,0,-tip_length + self.liquid.tip_inset_mm))
             self.mover.implement_offset = self.mover.implement_offset - tip_offset
             self.liquid.tip_length = 0
             self.liquid.setFlag(tip_on=False)
@@ -344,4 +351,43 @@ class LiquidMoverSetup(CompoundSetup):
         """
         coordinates = self.__dict__.pop('_temp_tip_home')
         return self.ejectTipAt(coordinates=(*coordinates[:2],coordinates[2]-18))
+    
+    def touchTip(self, well:Well) -> tuple[float]:
+        """
+        Touch the tip against the inner walls of the well
+        
+        Args:
+            well (Well): Well object
+
+        Returns:
+            tuple[float]: coordinates of well center
+        """
+        diameter = well.diameter
+        self.mover.safeMoveTo(coordinates=well.from_top(0,0,-10))
+        for axis in ('x','y'):
+            self.mover.move(axis, diameter/2, speed=0.2*self.mover._speed_max)
+            self.mover.move(axis, -diameter, speed=0.2*self.mover._speed_max)
+            self.mover.move(axis, diameter/2, speed=0.2*self.mover._speed_max)
+        self.mover.safeMoveTo(coordinates=well.center)
+        return well.center
+    
+    def updateStartTip(self, start_tip:str, slot:str = 'tip_rack'):
+        """
+        Set the position of the first available pipette tip
+
+        Args:
+            start_tip (str): well name of the first available pipette tip
+            slot (str, optional): name of slot with pipette tips. Defaults to 'tip_rack'.
+        """
+        wells_list = self.deck.at(slot).wells_list.copy()
+        if start_tip not in wells_list:
+            print(f"Received: start_tip={start_tip}; slot={slot}")
+            print("Please enter a compatible set of inputs.")
+            return
+        self.positions[slot] = wells_list.copy()
+        for well in wells_list:
+            if well.name == start_tip:
+                break
+            self.positions[slot].pop(0)
+        return
     

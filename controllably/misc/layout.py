@@ -34,7 +34,8 @@ class Well:
     ### Properties
     - `bottom` (np.ndarray): bottom of well
     - `center` (np.ndarray): center of well
-    - `depth` (np.ndarray): well depth
+    - `depth` (float): well depth
+    - `diameter` (float): well diameter
     - `middle` (np.ndarray): middle of well
     - `offset` (np.ndarray): well offset from Labware reference point
     - `top` (np.ndarray): top of well
@@ -81,6 +82,10 @@ class Well:
     @property
     def depth(self) -> float:
         return self.details.get('depth', 0)
+    
+    @property
+    def diameter(self) -> float:
+        return self.details.get('diameter', 0)
     
     @property
     def middle(self) -> np.ndarray:
@@ -277,6 +282,7 @@ class Labware:
         """
         return self.wells.get(name)
     
+    # Protected method(s)
     def _load_wells(self):
         """Load wells into memory"""
         wells = self.details.get('wells',{})
