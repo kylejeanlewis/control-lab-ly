@@ -7,3 +7,4 @@ gui = ViewerPanel(Optical(0))
 gui.runGUI()
 me = gui.tool
 me.__dict__
+# %%
