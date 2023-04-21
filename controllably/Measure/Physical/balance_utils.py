@@ -129,7 +129,9 @@ class MassBalance(Measurer):
                     self._mass
                 ]
                 row = {k:v for k,v in zip(COLUMNS, values)}
-                self.buffer_df = self.buffer_df.append(row, ignore_index=True)
+                # self.buffer_df = self.buffer_df.append(row, ignore_index=True)
+                new_row_df = pd.DataFrame(row)
+                self.buffer_df = pd.concat([self.buffer_df, new_row_df])
         return response
   
     def reset(self):

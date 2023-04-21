@@ -144,7 +144,9 @@ class Peltier(Maker):
             if self.flags['record']:
                 values = [now] + values
                 row = {k:v for k,v in zip(self._columns, values)}
-                self.buffer_df = self.buffer_df.append(row, ignore_index=True)
+                # self.buffer_df = self.buffer_df.append(row, ignore_index=True)
+                new_row_df = pd.DataFrame(row)
+                self.buffer_df = pd.concat([self.buffer_df, new_row_df])
         return response
     
     def holdTemperature(self, temperature:float, time_s:float):
