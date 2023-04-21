@@ -271,12 +271,14 @@ lab.Factory.register(myClass, "Make.Something.Good")
 Alternatively, you can automatically register all Classes and Functions in a Python module just by importing it.\
 Declare a `__where__` global variable to indicate where to register the module.
 ```python
-### my_module.py
+### my_module.py ###
 __where__ = "Make.Something.Good"                 # Where to register this module to
+# ==========
 def myClass:                                      # Main body of code goes here
   ...
-from controllably import include_this_module
-include_this_module()                             # Registers only the Classes and Functions defined above in this .py file
+# ==========
+from controllably import include_this_module      # Registers only the Classes and Functions
+include_this_module()                             # defined above in this .py file
 ```
 At the end of the .py file, import and call  the `include_this_module()` function.
 
