@@ -169,19 +169,6 @@ class CompoundSetup(ABC):
                 self.positions[key] = value
         return
     
-    # def loadDeck(self, layout:str = None, layout_dict:dict = None):
-    #     """
-    #     Load the deck layout from JSON file
-        
-    #     Args:
-    #         layout (str, optional): filename of layout .json file. Defaults to None.
-    #         layout_dict (dict, optional): dictionary of layout. Defaults to None.
-    #     """
-    #     self.deck.load_layout(layout, layout_dict)
-    #     for name in self.deck.names:
-    #         self.positions[name] = [(well.top, well.depth) for well in self.deck.get_slot(name=name).wells_list]
-    #     return
-    
     # Protected method(s)
     def _connect(self, diagnostic:bool = False):
         """
