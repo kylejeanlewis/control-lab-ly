@@ -185,6 +185,10 @@ class MassBalance(Measurer):
         Args:
             wait (int, optional): duration to wait while zeroing, in seconds. Defaults to 5.
         """
+        if self.flags['record']:
+            print("Unable to zero while recording.")
+            print("Use `toggleRecord(False)` to stop recording.")
+            return
         temp_record_state = self.flags['record']
         temp_buffer_df = self.buffer_df.copy()
         self.reset()
