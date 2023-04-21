@@ -76,6 +76,7 @@ class LiquidMoverSetup(CompoundSetup):
     - `rest`: go back to the rest position or home
     - `returnTip`: return current tip to its original rack position
     - `touchTip`: touch the tip against the inner walls of the well
+    - `updateStartTip`: set the position of the first available pipette tip
     """
     
     _default_flags: dict[str, bool] = {'at_rest': False}
@@ -166,6 +167,7 @@ class LiquidMoverSetup(CompoundSetup):
     
     def attachTip(self, 
         slot: str = 'tip_rack', 
+        start_tip: Optional[str] = None,
         tip_length: float = 80, 
         channel: Optional[int] = None
     ) -> tuple[float]:
@@ -174,12 +176,15 @@ class LiquidMoverSetup(CompoundSetup):
 
         Args:
             slot (str, optional): name of slot with pipette tips. Defaults to 'tip_rack'.
+            start_tip (Optional[str], optional): channel to use. Defaults to None.
             tip_length (float, optional): length of pipette tip. Defaults to 80.
             channel (Optional[int], optional): channel to use. Defaults to None.
         
         Returns:
             tuple[float]: coordinates of top of tip rack well
         """
+        if start_tip is not None:
+            self.updateStartTip(start_tip=start_tip, slot=slot)
         next_tip_location, tip_length = self.positions[slot].pop(0)
         return self.attachTipAt(next_tip_location, tip_length=tip_length, channel=channel)
     
@@ -365,4 +370,22 @@ class LiquidMoverSetup(CompoundSetup):
             self.mover.move(axis, diameter/2, speed=0.2*self.mover._speed_max)
         self.mover.safeMoveTo(coordinates=well.center)
         return well.center
+    
+    def updateStartTip(self, start_tip:str, slot:str = 'tip_rack'):
+        """
+        Set the position of the first available pipette tip
+
+        Args:
+            start_tip (str): well name of the first available pipette tip
+            slot (str, optional): name of slot with pipette tips. Defaults to 'tip_rack'.
+        """
+        wells_list = self.deck.at(slot).wells_list.copy()
+        if start_tip not in wells_list:
+            return
+        self.positions[slot] = wells_list.copy()
+        for well in wells_list:
+            if well.name == start_tip:
+                break
+            self.positions[slot].pop(0)
+        return
     
