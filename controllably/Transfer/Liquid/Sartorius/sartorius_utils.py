@@ -94,6 +94,7 @@ class Sartorius(LiquidHandler):
         'tip_on': False
     }
     implement_offset = (0,0,-250)
+    tip_inset_mm = 12
     def __init__(self, 
         port:str, 
         channel: int = 1, 
