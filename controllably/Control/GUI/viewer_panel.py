@@ -11,6 +11,7 @@ import time
 from typing import Protocol
 
 # Third party imports
+import cv2              # pip install opencv-python
 import PySimpleGUI as sg # pip install PySimpleGUI
 
 # Local application imports
@@ -63,7 +64,7 @@ class ViewerPanel(Panel):
         self.tool = viewer
         
         self.display_box = self._mangle('-IMAGE-')
-        self._last_read_time = time.time()
+        self._last_read_time = time.perf_counter()
         
         self.setFlag(update_display=True)
         return
@@ -110,11 +111,12 @@ class ViewerPanel(Panel):
         """
         updates = {}
         if self.flags['update_display']:
-            frame_interval = time.time() - self._last_read_time
-            fps = round(1/frame_interval, 2)
-            ret, image = self.viewer.getImage()
-            self._last_read_time = time.time()
+            now = time.perf_counter()
+            ret, frame = self.viewer.getImage()
             if ret:
-                image = image.addText(f'FPS: {fps}', position=(0,image.frame.shape[0]-5), inplace=False)
-            updates[self.display_box] = dict(data=image.encode())
+                frame_interval =  now - self._last_read_time
+                self._last_read_time = now
+                fps = round(1/frame_interval, 2)
+                frame = cv2.putText(frame, f'FPS: {fps}', (0,frame.shape[0]-5), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255), 1)
+            updates[self.display_box] = dict(data=cv2.imencode(".png", frame)[1].tobytes())
         return updates
