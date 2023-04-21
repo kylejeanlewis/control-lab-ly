@@ -12,6 +12,7 @@ import time
 from typing import Optional, Protocol
 
 # Local application imports
+from ...misc.layout import Well
 from ..compound_utils import CompoundSetup
 print(f"Import: OK <{__name__}>")
 
@@ -74,6 +75,7 @@ class LiquidMoverSetup(CompoundSetup):
     - `reset`: alias for `rest()`
     - `rest`: go back to the rest position or home
     - `returnTip`: return current tip to its original rack position
+    - `touchTip`: touch the tip against the inner walls of the well
     """
     
     _default_flags: dict[str, bool] = {'at_rest': False}
@@ -344,4 +346,20 @@ class LiquidMoverSetup(CompoundSetup):
         """
         coordinates = self.__dict__.pop('_temp_tip_home')
         return self.ejectTipAt(coordinates=(*coordinates[:2],coordinates[2]-18))
+    
+    def touchTip(self, well:Well) -> tuple[float]:
+        """
+        Touch the tip against the inner walls of the well.
+
+        Returns:
+            tuple[float]: coordinates of well center
+        """
+        diameter = well.diameter
+        self.mover.safeMoveTo(coordinates=well.from_top(0,0,-10))
+        for axis in ('x','y'):
+            self.mover.move(axis, diameter/2, speed=0.2*self.mover._speed_max)
+            self.mover.move(axis, -diameter, speed=0.2*self.mover._speed_max)
+            self.mover.move(axis, diameter/2, speed=0.2*self.mover._speed_max)
+        self.mover.safeMoveTo(coordinates=well.center)
+        return well.center
     
