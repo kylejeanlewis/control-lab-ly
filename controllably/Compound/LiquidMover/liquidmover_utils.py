@@ -31,6 +31,7 @@ class Liquid(Protocol):
 class Mover(Protocol):
     home_coordinates: np.ndarray
     implement_offset: np.ndarray
+    speed: float
     _speed_max: float
     def home(self, *args, **kwargs):
         ...
@@ -40,7 +41,11 @@ class Mover(Protocol):
         ...
     def move(self, *args, **kwargs):
         ...
+    def moveTo(self, *args, **kwargs):
+        ...
     def safeMoveTo(self, *args, **kwargs):
+        ...
+    def setSpeed(self, *args, **kwargs):
         ...
     
 class LiquidMoverSetup(CompoundSetup):
@@ -352,24 +357,31 @@ class LiquidMoverSetup(CompoundSetup):
         coordinates = self.__dict__.pop('_temp_tip_home')
         return self.ejectTipAt(coordinates=(*coordinates[:2],coordinates[2]-18))
     
-    def touchTip(self, well:Well) -> tuple[float]:
+    def touchTip(self, well:Well, safe_move:bool = False) -> tuple[float]:
         """
         Touch the tip against the inner walls of the well
         
         Args:
             well (Well): Well object
+            safe_move (bool, optional): whether to move safely (i.e. go back to safe height first). Defaults to False.
 
         Returns:
             tuple[float]: coordinates of well center
         """
         diameter = well.diameter
-        self.mover.safeMoveTo(coordinates=well.from_top(0,0,-10))
+        if safe_move:
+            self.align(coordinates=well.from_top((0,0,-10)))
+        else:
+            speed = self.mover.speed
+            self.mover.setSpeed(speed=0.2*self.mover._speed_max)
+            self.mover.moveTo(coordinates=well.from_top((0,0,-10)))
+            self.mover.setSpeed(speed=speed)
         for axis in ('x','y'):
             self.mover.move(axis, diameter/2, speed=0.2*self.mover._speed_max)
             self.mover.move(axis, -diameter, speed=0.2*self.mover._speed_max)
             self.mover.move(axis, diameter/2, speed=0.2*self.mover._speed_max)
-        self.mover.safeMoveTo(coordinates=well.center)
-        return well.center
+        self.mover.moveTo(coordinates=well.top)
+        return well.top
     
     def updateStartTip(self, start_tip:str, slot:str = 'tip_rack'):
         """
