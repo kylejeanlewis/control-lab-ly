@@ -231,7 +231,7 @@ class LiquidMoverSetup(CompoundSetup):
         
         if not self.liquid.isTipOn():
             tip_length = self.liquid.tip_length
-            tip_offset = np.array((0,0,-tip_length))
+            tip_offset = np.array((0,0,-tip_length + self.liquid.tip_inset_mm))
             self.mover.implement_offset = self.mover.implement_offset - tip_offset
             self.liquid.tip_length = 0
             self.liquid.setFlag(tip_on=False)
@@ -312,7 +312,7 @@ class LiquidMoverSetup(CompoundSetup):
         self.liquid.eject()
         
         tip_length = self.liquid.tip_length
-        tip_offset = np.array((0,0,-tip_length))
+        tip_offset = np.array((0,0,-tip_length + self.liquid.tip_inset_mm))
         self.mover.implement_offset = self.mover.implement_offset - tip_offset
         self.liquid.tip_length = 0
         self.liquid.setFlag(tip_on=False)
