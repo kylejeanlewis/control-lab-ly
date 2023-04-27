@@ -394,14 +394,14 @@ class Dobot(RobotArm):
         }
         self.device = Device(None,None)
         try:
-            start_time = time.time()
+            start_time = time.perf_counter()
             dashboard = dobot_api_dashboard(ip_address, 29999)
-            if time.time() - start_time > timeout:
+            if time.perf_counter() - start_time > timeout:
                 raise Exception(f"Unable to connect to arm at {ip_address}")
             
-            start_time = time.time()
+            start_time = time.perf_counter()
             feedback = dobot_api_feedback(ip_address, 30003)
-            if time.time() - start_time > timeout:
+            if time.perf_counter() - start_time > timeout:
                 raise Exception(f"Unable to connect to arm at {ip_address}")
         except Exception as e:
             print(e)

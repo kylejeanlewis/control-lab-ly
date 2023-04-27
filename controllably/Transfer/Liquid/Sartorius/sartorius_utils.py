@@ -248,14 +248,14 @@ class Sartorius(LiquidHandler):
         if volume == 0:
             return ''
         print(f'Aspirating {volume} uL...')
-        start_aspirate = time.time()
+        start_aspirate = time.perf_counter()
         speed = self.speed.up if speed is None else speed
         
         if speed in self.speed_presets:
             if speed != self.speed.up:
                 self.setSpeed(speed=speed, up=True)
                 self.speed.up = speed
-            start_aspirate = time.time()
+            start_aspirate = time.perf_counter()
             response = self._query(f'RI{steps}')
             move_time = steps*self.resolution / speed
             time.sleep(move_time)
@@ -271,14 +271,14 @@ class Sartorius(LiquidHandler):
                 raise RuntimeError('Target speed not possible.')
             self.setSpeed(speed=preset, up=True)
             self.speed.up = speed
-            start_aspirate = time.time()
+            start_aspirate = time.perf_counter()
             
             steps_left = steps
             delay = speed_parameters.delay
             step_size = speed_parameters.step_size
             intervals = speed_parameters.intervals
             for i in range(intervals):
-                start_time = time.time()
+                start_time = time.perf_counter()
                 step = step_size if (i+1 != intervals) else steps_left
                 move_time = step*self.resolution / preset
                 response = self._query(f'RI{step}', resume_feedback=False)
@@ -286,12 +286,12 @@ class Sartorius(LiquidHandler):
                 #     print("Aspiration failed")
                 #     return response
                 steps_left -= step
-                duration = time.time() - start_time
+                duration = time.perf_counter() - start_time
                 if duration < (delay+move_time):
                     time.sleep(delay+move_time-duration)
         
         # Update values
-        print(f'Aspiration time: {time.time()-start_aspirate}s')
+        print(f'Aspiration time: {time.perf_counter()-start_aspirate}s')
         time.sleep(wait)
         self.setFlag(occupied=False, pause_feedback=False)
         self.volume += volume
@@ -356,14 +356,14 @@ class Sartorius(LiquidHandler):
         if volume == 0:
             return ''
         print(f'Dispensing {volume} uL...')
-        start_dispense = time.time()
+        start_dispense = time.perf_counter()
         speed = self.speed.down if speed is None else speed
 
         if speed in self.speed_presets:
             if speed != self.speed.down:
                 self.setSpeed(speed=speed, up=False)
                 self.speed.down = speed
-            start_dispense = time.time()
+            start_dispense = time.perf_counter()
             response = self._query(f'RO{steps}')
             move_time = steps*self.resolution / speed
             time.sleep(move_time)
@@ -379,14 +379,14 @@ class Sartorius(LiquidHandler):
                 raise RuntimeError('Target speed not possible.')
             self.setSpeed(speed=preset, up=False)
             self.speed.down = speed
-            start_dispense = time.time()
+            start_dispense = time.perf_counter()
         
             steps_left = steps
             delay = speed_parameters.delay
             step_size = speed_parameters.step_size
             intervals = speed_parameters.intervals
             for i in range(intervals):
-                start_time = time.time()
+                start_time = time.perf_counter()
                 step = step_size if (i+1 != intervals) else steps_left
                 move_time = step*self.resolution / preset
                 response = self._query(f'RO{step}', resume_feedback=False)
@@ -394,12 +394,12 @@ class Sartorius(LiquidHandler):
                 #     print("Dispense failed")
                 #     return response
                 steps_left -= step
-                duration = time.time() - start_time
+                duration = time.perf_counter() - start_time
                 if duration < (delay+move_time):
                     time.sleep(delay+move_time-duration)
 
         # Update values
-        print(f'Dispense time: {time.time()-start_dispense}s')
+        print(f'Dispense time: {time.perf_counter()-start_dispense}s')
         time.sleep(wait)
         self.setFlag(occupied=False, pause_feedback=False)
         self.volume = max(self.volume - volume, 0)
@@ -795,14 +795,14 @@ class Sartorius(LiquidHandler):
             while self.isBusy():
                 self.getStatus()
         
-        start_time = time.time()
+        start_time = time.perf_counter()
         self._write(command)
         response = ''
         while not self._is_expected_reply(response, command_code):
-            if time.time() - start_time > timeout_s:
+            if time.perf_counter() - start_time > timeout_s:
                 break
             response = self._read()
-        # print(time.time() - start_time)
+        # print(time.perf_counter() - start_time)
         if command_code in QUERIES:
             response = response[2:]
         if command_code not in STATUS_QUERIES:
