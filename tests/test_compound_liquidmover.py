@@ -6,6 +6,7 @@ from controllably import Helper, Factory
 
 details = Factory.get_details(Helper.read_yaml('configs/skwr.yaml'))['setup']
 me = LiquidMoverSetup(**details['settings'])
+me.liquid.getInfo('BRL1000')
 me.__dict__
 # %%
 me.loadDeck(r"C:\Users\leongcj\Desktop\Astar_git\control-lab-le\library\deck\layoutB1.json")
