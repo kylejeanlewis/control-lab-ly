@@ -134,7 +134,7 @@ class LiquidMoverSetup(CompoundSetup):
             offset (tuple[float], optional): additional x,y,z offset from tool tip. Defaults to (0,0,0).
         """
         coordinates = np.array(coordinates) - np.array(offset)
-        if not self.mover.isFeasible(coordinates, transform=True, tool_offset=True):
+        if not self.mover.isFeasible(coordinates, transform_in=True, tool_offset=True):
             raise ValueError(f"Infeasible tool position! {coordinates}")
         self.mover.safeMoveTo(coordinates, ascent_speed=0.2*self.mover._speed_max, descent_speed=0.2*self.mover._speed_max)
         self.setFlag(at_rest=False)
@@ -397,7 +397,7 @@ class LiquidMoverSetup(CompoundSetup):
             print(f"Received: start_tip={start_tip}; slot={slot}")
             print("Please enter a compatible set of inputs.")
             return
-        self.positions[slot] = wells_list
+        self.positions[slot] = [(well.top, well.depth) for well in wells_list]
         for name in well_names:
             if name == start_tip:
                 break
