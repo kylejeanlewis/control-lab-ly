@@ -17,3 +17,5 @@ me.aspirate(volume=750)
 # %%
 me.dispense(volume=750, blowout=True, blowout_home=True)
 # %%
+me.dispense(1000,88)
+# %%
