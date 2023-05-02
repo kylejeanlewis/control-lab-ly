@@ -253,8 +253,7 @@ class Sartorius(LiquidHandler):
         
         if speed in self.speed_presets:
             if speed != self.speed.up:
-                self.setSpeed(speed=speed, up=True)
-                self.speed.up = speed
+                self.setSpeed(speed=speed, up=True, default=False)
             start_aspirate = time.perf_counter()
             response = self._query(f'RI{steps}')
             move_time = steps*self.resolution / speed
@@ -269,9 +268,7 @@ class Sartorius(LiquidHandler):
             preset = speed_parameters.preset
             if preset is None:
                 raise RuntimeError('Target speed not possible.')
-            self.setSpeed(speed=preset, up=True)
-            self.speed.up = speed
-            start_aspirate = time.perf_counter()
+            self.setSpeed(speed=preset, up=True, default=False)
             
             steps_left = steps
             delay = speed_parameters.delay
@@ -361,8 +358,7 @@ class Sartorius(LiquidHandler):
 
         if speed in self.speed_presets:
             if speed != self.speed.down:
-                self.setSpeed(speed=speed, up=False)
-                self.speed.down = speed
+                self.setSpeed(speed=speed, up=False, default=False)
             start_dispense = time.perf_counter()
             response = self._query(f'RO{steps}')
             move_time = steps*self.resolution / speed
@@ -377,9 +373,7 @@ class Sartorius(LiquidHandler):
             preset = speed_parameters.preset
             if preset is None:
                 raise RuntimeError('Target speed not possible.')
-            self.setSpeed(speed=preset, up=False)
-            self.speed.down = speed
-            start_dispense = time.perf_counter()
+            self.setSpeed(speed=preset, up=False, default=False)
         
             steps_left = steps
             delay = speed_parameters.delay
@@ -469,8 +463,8 @@ class Sartorius(LiquidHandler):
         self.capacity = info.capacity
         self.limits = (info.tip_eject_position, info.max_position)
         self.speed_presets = info.preset_speeds
-        self.speed.up = self.speed_presets[self.speed_code.up]
-        self.speed.down = self.speed_presets[self.speed_code.down]
+        self.speed.up = self.speed_presets[self.speed_code.up-1]
+        self.speed.down = self.speed_presets[self.speed_code.down-1]
         return
     
     def getPosition(self, **kwargs) -> int:
@@ -616,13 +610,14 @@ class Sartorius(LiquidHandler):
         self.zero()
         return self.home()
     
-    def setSpeed(self, speed:int, up:bool, **kwargs) -> str:
+    def setSpeed(self, speed:int, up:bool, default:bool = True, **kwargs) -> str:
         """
         Set the speed of the plunger
 
         Args:
             speed (int): speed of plunger
             up (bool): direction of travel
+            default (bool, optional): whether to set speed as a default. Defaults to True.
 
         Returns:
             str: device response
@@ -631,10 +626,14 @@ class Sartorius(LiquidHandler):
         print(f'Speed {speed_code}: {self.speed_presets[speed_code-1]} uL/s')
         direction = 'I' if up else 'O'
         self._query(f'S{direction}{speed_code}')
+        if not default:
+            return self._query(f'D{direction}')
         if up:
             self.speed_code.up = speed_code
+            self.speed.up = self.speed_presets[speed_code-1]
         else:
             self.speed_code.down = speed_code
+            self.speed.down = self.speed_presets[speed_code-1]
         return self._query(f'D{direction}')
     
     def shutdown(self):
