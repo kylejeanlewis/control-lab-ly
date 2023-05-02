@@ -257,7 +257,9 @@ class Sartorius(LiquidHandler):
             start_aspirate = time.perf_counter()
             response = self._query(f'RI{steps}')
             move_time = steps*self.resolution / speed
-            time.sleep(move_time)
+            duration = time.perf_counter() - start_aspirate
+            if duration < (move_time):
+                time.sleep(move_time-duration)
             # if response != 'ok':
             #     return response
             
@@ -274,11 +276,12 @@ class Sartorius(LiquidHandler):
             delay = speed_parameters.delay
             step_size = speed_parameters.step_size
             intervals = speed_parameters.intervals
+            start_aspirate = time.perf_counter()
             for i in range(intervals):
                 start_time = time.perf_counter()
                 step = step_size if (i+1 != intervals) else steps_left
                 move_time = step*self.resolution / preset
-                response = self._query(f'RI{step}', resume_feedback=False)
+                response = self._query(f'RI{step}', resume_feedback=False, get_position=False)
                 # if response != 'ok':
                 #     print("Aspiration failed")
                 #     return response
@@ -291,6 +294,7 @@ class Sartorius(LiquidHandler):
         print(f'Aspiration time: {time.perf_counter()-start_aspirate}s')
         time.sleep(wait)
         self.setFlag(occupied=False, pause_feedback=False)
+        self.getPosition()
         self.volume += volume
         self.position += steps
         if reagent is not None:
@@ -362,7 +366,9 @@ class Sartorius(LiquidHandler):
             start_dispense = time.perf_counter()
             response = self._query(f'RO{steps}')
             move_time = steps*self.resolution / speed
-            time.sleep(move_time)
+            duration = time.perf_counter() - start_dispense
+            if duration < (move_time):
+                time.sleep(move_time-duration)
             # if response != 'ok':
             #     return response
             
@@ -379,11 +385,12 @@ class Sartorius(LiquidHandler):
             delay = speed_parameters.delay
             step_size = speed_parameters.step_size
             intervals = speed_parameters.intervals
+            start_dispense = time.perf_counter()
             for i in range(intervals):
                 start_time = time.perf_counter()
                 step = step_size if (i+1 != intervals) else steps_left
                 move_time = step*self.resolution / preset
-                response = self._query(f'RO{step}', resume_feedback=False)
+                response = self._query(f'RO{step}', resume_feedback=False, get_position=False)
                 # if response != 'ok':
                 #     print("Dispense failed")
                 #     return response
@@ -396,6 +403,7 @@ class Sartorius(LiquidHandler):
         print(f'Dispense time: {time.perf_counter()-start_dispense}s')
         time.sleep(wait)
         self.setFlag(occupied=False, pause_feedback=False)
+        self.getPosition()
         self.volume = max(self.volume - volume, 0)
         self.position -= steps
         if self.volume == 0 and blowout:
@@ -772,7 +780,8 @@ class Sartorius(LiquidHandler):
     def _query(self, 
         command: str, 
         timeout_s: float = 0.3, 
-        resume_feedback: bool = False
+        resume_feedback: bool = False,
+        get_position: bool = True
     ) -> str:
         """
         Write command to and read response from device
@@ -781,7 +790,7 @@ class Sartorius(LiquidHandler):
             command (str): command string
             timeout_s (float, optional): duration to wait before timeout. Defaults to 0.3.
             resume_feedback (bool, optional): whether to resume reading from device. Defaults to False.
-
+            get_position (bool, optional): whether to get the position of the plunger. Defaults to True.
         Returns:
             str: response string
         """
@@ -790,9 +799,11 @@ class Sartorius(LiquidHandler):
             if self.flags['get_feedback'] and not self.flags['pause_feedback']:
                 self.setFlag(pause_feedback=True)
                 time.sleep(timeout_s)
-            self.getStatus()
-            while self.isBusy():
-                self.getStatus()
+            # self.getStatus()
+            # while self.isBusy():
+            #     self.getStatus()
+            if self.isBusy():
+                time.sleep(timeout_s)
         
         start_time = time.perf_counter()
         self._write(command)
@@ -805,7 +816,8 @@ class Sartorius(LiquidHandler):
         if command_code in QUERIES:
             response = response[2:]
         if command_code not in STATUS_QUERIES:
-            self.getPosition()
+            if get_position:
+                self.getPosition()
             if resume_feedback:
                 self.setFlag(pause_feedback=False)
         return response
