@@ -43,7 +43,7 @@ class LED:
     channel: int
     update_power: bool = field(default=False, init=False)
     _duration: int = field(default=0, init=False)
-    _end_time: float = field(default=time.time(), init=False)
+    _end_time: float = field(default=time.perf_counter(), init=False)
     _power: int = field(default=0, init=False)
     
     # Properties
@@ -142,7 +142,7 @@ class LEDArray(Maker):
         Returns:
             list[int]: list of channels that are still timed
         """
-        now = time.time()
+        now = time.perf_counter()
         self._timed_channels = [chn.channel for chn in self.channels.values() if (chn._end_time>now and chn._duration)]
         return self._timed_channels
     
@@ -275,7 +275,7 @@ class LEDArray(Maker):
             self.device.write(command.encode('utf-8'))
         except AttributeError:
             pass
-        now = time.time()
+        now = time.perf_counter()
         for chn in self.channels.values():
             if chn.update_power:
                 chn._end_time = now + chn._duration

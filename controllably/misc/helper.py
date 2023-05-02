@@ -118,7 +118,7 @@ def is_overrun(start_time:float, timeout:float) -> bool:
     Returns:
         bool: whether the process has overrun
     """
-    if timeout!=None and time.time() - start_time > timeout:
+    if timeout!=None and time.perf_counter() - start_time > timeout:
         return True
     return False
 

@@ -133,11 +133,11 @@ class Peltier(Maker):
             if not ready:
                 pass
             elif not self._stabilize_time:
-                self._stabilize_time = time.time()
+                self._stabilize_time = time.perf_counter()
                 print(response)
             elif self.flags['temperature_reached']:
                 pass
-            elif (self._power <= self.power_threshold) or (time.time()-self._stabilize_time >= self.stabilize_buffer_time):
+            elif (self._power <= self.power_threshold) or (time.perf_counter()-self._stabilize_time >= self.stabilize_buffer_time):
                 print(response)
                 self.setFlag(temperature_reached=True)
                 print(f"Temperature of {self.set_point}°C reached!")

@@ -797,19 +797,19 @@ class TriContinent(Pump):
             str: response string
         """
         # self.connect()
-        start_time = time.time()
+        start_time = time.perf_counter()
         self._write(command)
         response = ''
         while not self._is_expected_reply(response):
             if not self.isConnected():
                 break
-            if time.time() - start_time > timeout_s:
+            if time.perf_counter() - start_time > timeout_s:
                 break
             response = self._read()
             if response == '__break__':
                 response = ''
                 break
-        # print(time.time() - start_time)
+        # print(time.perf_counter() - start_time)
         # self.disconnect()
         return response
 
