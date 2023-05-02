@@ -273,7 +273,7 @@ class LiquidHandler(ABC):
         speed: Optional[float] = None, 
         wait: int = 0, 
         pause: bool = False, 
-        cycles: int = 1,
+        cycles: int = 0,
         reagent: Optional[str] = None, 
         channel: Optional[Union[int, tuple[int]]] = None,
         **kwargs
@@ -285,14 +285,16 @@ class LiquidHandler(ABC):
             speed (Optional[float], optional): speed to aspirate and dispense at. Defaults to None.
             wait (int, optional): time delay after each action. Defaults to 0.
             pause (bool, optional): whether to pause for user intervention. Defaults to False.
-            cycles (int, optional): number of cycles. Defaults to 1.
+            cycles (int, optional): number of cycles before filling. Defaults to 0.
             reagent (Optional[str], optional): name of reagent. Defaults to None.
             channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
         
         Returns:
             bool: whether the action is successful
         """
-        ret1 = self.cycle(volume=self.capacity, speed=speed, wait=wait, cycles=cycles, reagent=reagent, channel=channel)
+        ret1 = True
+        if cycles:
+            ret1 = self.cycle(volume=self.capacity, speed=speed, wait=wait, cycles=cycles, reagent=reagent, channel=channel)
         ret2 = self.aspirate(volume=self.capacity, speed=speed, wait=wait, pause=pause, reagent=reagent, channel=channel)
         ret3 = self.pullback(channel=channel)
         return all([ret1,ret2,ret3])
