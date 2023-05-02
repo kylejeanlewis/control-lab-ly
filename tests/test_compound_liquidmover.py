@@ -10,7 +10,7 @@ me.__dict__
 # %%
 me.loadDeck(r"C:\Users\leongcj\Desktop\Astar_git\control-lab-le\library\deck\layoutB1.json")
 # %%
-me.attachTip()
+me.attachTip(start_tip='D4')
 # %%
 me.mover.home()
 # %%
