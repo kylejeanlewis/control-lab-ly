@@ -30,10 +30,14 @@ class DobotGripper(Gripper):
     ### Constructor
     Args:
         `dashboard` (Optional[Callable], optional): connection to status and signal control. Defaults to None.
-        `channel` (int, optional): digital I/O channel. Defaults to 1.
+        `channel_map` (Optional[dict], optional): mapping of digital I/O channel(s). Defaults to None.
     
     ### Attributes
     - `dashboard` (Callable): connection to status and signal control
+    
+    ### Properties
+    - `channel_map` (dict): mapping of digital I/O channel(s)
+    - `implement_offset` (np.ndarray): offset from attachment site to tooltip
     
     ### Methods
     #### Abstract
@@ -44,44 +48,48 @@ class DobotGripper(Gripper):
     """
     
     _implement_offset: tuple[float] = (0,0,0)
-    def __init__(self, dashboard:Optional[Callable] = None, channel:int = 1):
+    def __init__(self, dashboard:Optional[Callable] = None, channel_map:Optional[dict] = None):
         """
         Instantiate the class
 
         Args:
             dashboard (Optional[Callable], optional): connection to status and signal control. Defaults to None.
-            channel (int, optional): digital I/O channel. Defaults to 1.
+            channel_map (Optional[dict], optional): mapping of digital I/O channel(s). Defaults to None.
         """
         self.dashboard = None
-        self._channel = 0
-        self.setDashboard(dashboard=dashboard, channel=channel)
+        self._channel_map = {}
+        self.setDashboard(dashboard=dashboard, channel_map=channel_map)
         return
     
     # Properties
     @property
-    def channel(self) -> int:
-        return self._channel
-    @channel.setter
-    def channel(self, value:int):
-        if 1<= value <= 24:
-            self._channel = value
+    def channel_map(self) -> dict:
+        return self._channel_map
+    @channel_map.setter
+    def channel_map(self, value:dict):
+        if value is None:
+            self._channel_map = {}
+            return
+        if all([(1<= v <=24) for v in value.values()]):
+            self._channel_map = value
         else:
-            raise ValueError("Please provide a valid channel id from 1 to 24.")
+            raise ValueError("Please provide valid channel ids from 1 to 24.")
         return
+    
     @property
     def implement_offset(self) -> np.ndarray:
         return np.array(self._implement_offset)
     
-    def setDashboard(self, dashboard:Callable, channel:int = 1):
+    def setDashboard(self, dashboard:Callable, channel_map:Optional[dict] = None):
         """
         Set the dashboard object
 
         Args:
             dashboard (Callable): connection to status and signal control
-            channel (int, optional): digital I/O channel. Defaults to 1.
+            channel_map (Optional[dict], optional): mapping of digital I/O channel(s). Defaults to None.
         """
         self.dashboard = dashboard
-        self.channel= channel
+        self.channel_map = channel_map
         return
     
     
@@ -92,7 +100,7 @@ class TwoJawGrip(DobotGripper):
     ### Constructor
     Args:
         `dashboard` (Optional[Callable], optional): connection to status and signal control. Defaults to None.
-        `channel` (int, optional): digital I/O channel. Defaults to 1.
+        `channel_map` (Optional[dict], optional): mapping of digital I/O channel(s). Defaults to None.
         
     ### Methods
     - `drop`: releases an object by opening the gripper
@@ -100,15 +108,15 @@ class TwoJawGrip(DobotGripper):
     """
     
     _implement_offset = (0,0,-95)
-    def __init__(self, dashboard:Optional[Callable] = None, channel:int = 1):
+    def __init__(self, dashboard:Optional[Callable] = None, channel_map:Optional[dict] = None):
         """
         Instantiate the class
 
         Args:
             dashboard (Optional[Callable], optional): connection to status and signal control. Defaults to None.
-            channel (int, optional): digital I/O channel. Defaults to 1.
+            channel_map (Optional[dict], optional): mapping of digital I/O channel(s). Defaults to None.
         """
-        super().__init__(dashboard=dashboard, channel=channel)
+        super().__init__(dashboard=dashboard, channel_map=channel_map)
         return
 
     def drop(self) -> bool:
@@ -118,8 +126,9 @@ class TwoJawGrip(DobotGripper):
         Returns:
             bool: whether action is successful
         """
+        channel = self.channel_map.get("grab", 1)
         try:
-            self.dashboard.DOExecute(1,1)
+            self.dashboard.DOExecute(channel, 1)
         except (AttributeError, OSError):
             print('Tried to drop...')
             print("Not connected to arm.")
@@ -133,8 +142,9 @@ class TwoJawGrip(DobotGripper):
         Returns:
             bool: whether action is successful
         """
+        channel = self.channel_map.get("grab", 1)
         try:
-            self.dashboard.DOExecute(1,0)
+            self.dashboard.DOExecute(channel, 0)
         except (AttributeError, OSError):
             print('Tried to grab...')
             print("Not connected to arm.")
@@ -149,7 +159,7 @@ class VacuumGrip(DobotGripper):
     ### Constructor
     Args:
         `dashboard` (Optional[Callable], optional): connection to status and signal control. Defaults to None.
-        `channel` (int, optional): digital I/O channel. Defaults to 1.
+        `channel_map` (Optional[dict], optional): mapping of digital I/O channel(s). Defaults to None.
         
     ### Methods
     - `drop`: releases an object by pushing out air
@@ -160,15 +170,15 @@ class VacuumGrip(DobotGripper):
     """
     
     _implement_offset = (0,0,-60)
-    def __init__(self, dashboard:Optional[Callable] = None, channel:int = 1):
+    def __init__(self, dashboard:Optional[Callable] = None, channel_map:Optional[dict] = None):
         """
         Instantiate the class
 
         Args:
             dashboard (Optional[Callable], optional): connection to status and signal control. Defaults to None.
-            channel (int, optional): digital I/O channel. Defaults to 1.
+            channel_map (Optional[dict], optional): mapping of digital I/O channel(s). Defaults to None.
         """
-        super().__init__(dashboard=dashboard, channel=channel)
+        super().__init__(dashboard=dashboard, channel_map=channel_map)
         return
 
     def drop(self) -> bool:
@@ -201,8 +211,9 @@ class VacuumGrip(DobotGripper):
         Returns:
             bool: whether action is successful
         """
+        channel = self.channel_map.get("pull", 1)
         try:
-            self.dashboard.DOExecute(1,1)
+            self.dashboard.DOExecute(channel, 1)
         except (AttributeError, OSError):
             print('Tried to pull...')
             print("Not connected to arm.")
@@ -210,7 +221,7 @@ class VacuumGrip(DobotGripper):
         else:
             if duration is not None:
                 time.sleep(duration)
-                self.dashboard.DOExecute(1,0)
+                self.dashboard.DOExecute(channel, 0)
                 time.sleep(1)
         return True
     
@@ -224,8 +235,9 @@ class VacuumGrip(DobotGripper):
         Returns:
             bool: whether action is successful
         """
+        channel = self.channel_map.get("push", 2)
         try:
-            self.dashboard.DOExecute(2,1)
+            self.dashboard.DOExecute(channel, 1)
         except (AttributeError, OSError):
             print('Tried to push...')
             print("Not connected to arm.")
@@ -233,7 +245,7 @@ class VacuumGrip(DobotGripper):
         else:
             if duration is not None:
                 time.sleep(duration)
-                self.dashboard.DOExecute(2,0)
+                self.dashboard.DOExecute(channel, 0)
                 time.sleep(1)
         return True
     
@@ -244,9 +256,11 @@ class VacuumGrip(DobotGripper):
         Returns:
             bool: whether action is successful
         """
+        channels = [v for v in self.channel_map.values()] if len(self.channel_map) else [1,2]
         try:
-            self.dashboard.DOExecute(2,0)
-            self.dashboard.DOExecute(1,0)
+            for channel in channels:
+                self.dashboard.DOExecute(channel, 0)
+            # self.dashboard.DOExecute(2,0)
             time.sleep(1)
         except (AttributeError, OSError):
             print('Tried to stop...')
