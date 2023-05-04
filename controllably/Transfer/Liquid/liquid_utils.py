@@ -230,7 +230,7 @@ class LiquidHandler(ABC):
             bool: whether the action is successful
         """
         success = []
-        for _ in range(cycles):
+        for _ in range(int(cycles)):
             ret1 = self.aspirate(volume=volume, speed=speed, wait=wait, pause=False, reagent=reagent, channel=channel)
             ret2 = self.dispense(volume=volume, speed=speed, wait=wait, pause=False, force_dispense=True, channel=channel)
             success.extend([ret1,ret2])

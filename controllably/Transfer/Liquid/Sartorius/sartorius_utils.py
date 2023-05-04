@@ -269,7 +269,9 @@ class Sartorius(LiquidHandler):
             print(speed_parameters)
             preset = speed_parameters.preset
             if preset is None:
-                raise RuntimeError('Target speed not possible.')
+                # raise RuntimeError('Target speed not possible.')
+                print('Target speed not possible.')
+                return
             self.setSpeed(speed=preset, up=True, default=False)
             
             steps_left = steps
@@ -378,7 +380,9 @@ class Sartorius(LiquidHandler):
             print(speed_parameters)
             preset = speed_parameters.preset
             if preset is None:
-                raise RuntimeError('Target speed not possible.')
+                # raise RuntimeError('Target speed not possible.')
+                print('Target speed not possible.')
+                return
             self.setSpeed(speed=preset, up=False, default=False)
         
             steps_left = steps
@@ -428,10 +432,6 @@ class Sartorius(LiquidHandler):
         self.position = self.home_position if home else 0
         time.sleep(1)
         return response
-    
-    def empty(self, **kwargs):
-        """Empty the pipette"""
-        return self.home()
     
     def getCapacitance(self) -> Union[int, str]:
         """

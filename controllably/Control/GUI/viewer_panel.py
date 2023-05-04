@@ -90,7 +90,7 @@ class ViewerPanel(Panel):
             sg.Column: Column object
         """
         font = (self.typeface, self.font_sizes[title_font_level])
-        layout = super().getLayout(f'{self.name} Control', justification='center', font=font)
+        layout = super().getLayout(f'{self.name.title()} Control', justification='center', font=font)
         layout = [
             [layout],
             [sg.Image(filename='', key=self.display_box, enable_events=True)]

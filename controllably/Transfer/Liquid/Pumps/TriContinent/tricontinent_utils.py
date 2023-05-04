@@ -388,6 +388,7 @@ class TriContinent(Pump):
         _status_code = response[2] if len(response) else ''
         if self.device is not None:
             if _status_code not in StatusCode.Busy.value and _status_code not in StatusCode.Idle.value:
+                print(repr(_status_code))
                 raise RuntimeError(f"Unable to get status from Pump: {self.name}")
     
         if _status_code in StatusCode.Busy.value:

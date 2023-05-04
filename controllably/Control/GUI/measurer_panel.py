@@ -106,7 +106,7 @@ class MeasurerPanel(Panel):
             sg.Column: Column object
         """
         font = (self.typeface, self.font_sizes[title_font_level])
-        layout = super().getLayout(f'{self.name} Control', justification='center', font=font)
+        layout = super().getLayout(f'{self.name.title()} Control', justification='center', font=font)
         
         font = (self.typeface, self.font_sizes[title_font_level+1])
         # add dropdown for program list
@@ -116,7 +116,7 @@ class MeasurerPanel(Panel):
         )
         
         # add template for procedurally adding input fields
-        labels_inputs = self._get_input_section()
+        labels_inputs = self.getInputs(fields=self.measurer.possible_inputs, key_prefix=self.name)
         
         # add run, clear, reset buttons
         layout = [
@@ -179,39 +179,7 @@ class MeasurerPanel(Panel):
             updates.update(update_part)
         return updates
     
-    # Protected method(s)
-    def _get_input_section(self) -> list[sg.Column]:
-        """
-        Get the layout for the input section
-
-        Returns:
-            list[sg.Column]: list of columns
-        """
-        # template for procedurally adding input fields
-        labels = []
-        inputs = []
-        for input_field in self.measurer.possible_inputs:
-            key_label = self._mangle(f'-{input_field}-LABEL-')
-            key_input = self._mangle(f'-{input_field}-VALUE-')
-            _label = sg.pin(
-                sg.Column(
-                    [[sg.Text(input_field.title(), key=key_label, visible=True)]],
-                    key=f'{key_label}BOX-', visible=False
-                )
-            )
-            _input = sg.pin(
-                sg.Column(
-                    [[sg.Input(0, size=(5,2), key=key_input, visible=True, tooltip='')]],
-                    key=f'{key_input}BOX-', visible=False
-                )
-            )
-            labels.append([_label])
-            inputs.append([_input])
-        labels_column = sg.Column(labels, justification='right', pad=10, visible=True)
-        inputs_column = sg.Column(inputs, justification='left', pad=10, visible=True)
-        labels_inputs = [labels_column, inputs_column]
-        return labels_inputs
-    
+    # Protected method(s)    
     def _show_inputs(self, program_details: ProgramDetails) -> dict[str, dict]:
         """
         Show the relevant input fields
