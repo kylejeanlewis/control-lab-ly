@@ -482,10 +482,10 @@ class MultiChannelPanel(Panel):
         font = (self.typeface, self.font_sizes[title_font_level])
         layout = super().getLayout(title, justification='center', font=font)
         channels = {}
-        if 'channels' not in dir(self.tool):
-            channels = {self.tool.channel: self.tool}
-        else:
+        if 'channels' in dir(self.tool):
             channels = self.tool.channels
+        else:
+            channels = {self.tool.channel: self.tool}
         if len(channels) == 0:
             return layout
         
