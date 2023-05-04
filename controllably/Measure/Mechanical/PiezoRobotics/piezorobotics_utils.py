@@ -5,8 +5,10 @@ This module holds the class for tools from PiezoRobotics.
 Classes:
     PiezoRobotics (Programmable)
 """
-# Local application imports
+# Standard library imports
 from __future__ import annotations
+
+# Local application imports
 from ...measure_utils import Programmable
 from .piezorobotics_device import PiezoRoboticsDevice
 from . import programs
