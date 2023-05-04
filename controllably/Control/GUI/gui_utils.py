@@ -445,6 +445,13 @@ class MultiChannelPanel(Panel):
     """
     
     def __init__(self, name:str = '', group:Optional[str] = None):
+        """
+        Instantiate the class
+
+        Args:
+            name (str, optional): name of panel. Defaults to ''.
+            group (Optional[str], optional): name of group. Defaults to None.
+        """
         super().__init__(name=name, group=group)
         return
     
