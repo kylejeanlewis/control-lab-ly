@@ -134,7 +134,7 @@ class LiquidMoverSetup(CompoundSetup):
             offset (tuple[float], optional): additional x,y,z offset from tool tip. Defaults to (0,0,0).
         """
         coordinates = np.array(coordinates) - np.array(offset)
-        if not self.mover.isFeasible(coordinates, transform=True, tool_offset=True):
+        if not self.mover.isFeasible(coordinates, transform_in=True, tool_offset=True):
             raise ValueError(f"Infeasible tool position! {coordinates}")
         self.mover.safeMoveTo(coordinates, ascent_speed=0.2*self.mover._speed_max, descent_speed=0.2*self.mover._speed_max)
         self.setFlag(at_rest=False)
@@ -188,8 +188,15 @@ class LiquidMoverSetup(CompoundSetup):
         Returns:
             tuple[float]: coordinates of top of tip rack well
         """
+        if 'eject' not in dir(self.liquid):
+            raise AttributeError("`attachTip` and `attachTipAt` methods not available.")
+        if self.liquid.isTipOn():
+            raise RuntimeError("Please eject current tip before attaching new tip.")
+        
         if start_tip is not None:
             self.updateStartTip(start_tip=start_tip, slot=slot)
+        well = self.deck.at(slot).wells_list[-len(self.positions[slot])]
+        print(well.name)
         next_tip_location, tip_length = self.positions[slot].pop(0)
         return self.attachTipAt(next_tip_location, tip_length=tip_length, channel=channel)
     
@@ -231,7 +238,7 @@ class LiquidMoverSetup(CompoundSetup):
         
         if not self.liquid.isTipOn():
             tip_length = self.liquid.tip_length
-            tip_offset = np.array((0,0,-tip_length))
+            tip_offset = np.array((0,0,-tip_length + self.liquid.tip_inset_mm))
             self.mover.implement_offset = self.mover.implement_offset - tip_offset
             self.liquid.tip_length = 0
             self.liquid.setFlag(tip_on=False)
@@ -279,6 +286,16 @@ class LiquidMoverSetup(CompoundSetup):
         Returns:
             tuple[float]: coordinates of top of bin well
         """
+        if 'eject' not in dir(self.liquid):
+            raise AttributeError("`ejectTip` and `ejectTipAt` methods not available.")
+        if not self.liquid.isTipOn():
+            tip_length = self.liquid.tip_length
+            tip_offset = np.array((0,0,-tip_length + self.liquid.tip_inset_mm))
+            self.mover.implement_offset = self.mover.implement_offset - tip_offset
+            self.liquid.tip_length = 0
+            self.liquid.setFlag(tip_on=False)
+            raise RuntimeError("There is currently no tip to eject.")
+        
         bin_location,_ = self.positions[slot][0]
         return self.ejectTipAt(bin_location, channel=channel)
     
@@ -312,7 +329,7 @@ class LiquidMoverSetup(CompoundSetup):
         self.liquid.eject()
         
         tip_length = self.liquid.tip_length
-        tip_offset = np.array((0,0,-tip_length))
+        tip_offset = np.array((0,0,-tip_length + self.liquid.tip_inset_mm))
         self.mover.implement_offset = self.mover.implement_offset - tip_offset
         self.liquid.tip_length = 0
         self.liquid.setFlag(tip_on=False)
@@ -397,7 +414,7 @@ class LiquidMoverSetup(CompoundSetup):
             print(f"Received: start_tip={start_tip}; slot={slot}")
             print("Please enter a compatible set of inputs.")
             return
-        self.positions[slot] = wells_list
+        self.positions[slot] = [(well.top, well.depth) for well in wells_list]
         for name in well_names:
             if name == start_tip:
                 break
