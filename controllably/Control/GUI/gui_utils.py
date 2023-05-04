@@ -231,6 +231,7 @@ class Panel(ABC):
         key_prefix: str, 
         font: tuple[str, int], 
         texts: Optional[list[str]] = None, 
+        tooltips: Optional[list[str]] = None, 
         **kwargs
     ) -> list[sg.Button]:
         """
@@ -242,11 +243,13 @@ class Panel(ABC):
             key_prefix (str): prefix of button key
             font (tuple[str, int]): (typeface, font size)
             texts (Optional[list[str]], optional): alternative text labels for buttons. Defaults to None.
-
+            tooltips (Optional[list[str]], optional): tooltip labels for buttons. Defaults to None.
+            
         Returns:
-            list: list of PySimpleGUI.Button objects
+            list[sg.Button]: list of buttons
         """
         texts = [] if texts is None else texts
+        tooltips = [] if tooltips is None else tooltips
         buttons = []
         specials = kwargs.pop('specials', {})
         for i,label in enumerate(labels):
@@ -256,12 +259,9 @@ class Panel(ABC):
             if label in specials.keys():
                 for k,v in specials[label].items():
                     kw[k] = v
-            if len(texts):
-                try:
-                    label = texts[i]
-                except IndexError:
-                    pass
-            buttons.append(sg.Button(label, size=size, key=key, font=font, **kw))
+            label = texts[i] if i<len(texts) else label
+            tooltip = tooltips[i] if i<len(tooltips) else None
+            buttons.append(sg.Button(label, size=size, key=key, font=font, tooltip=tooltip, **kw))
         return buttons
     
     @staticmethod
