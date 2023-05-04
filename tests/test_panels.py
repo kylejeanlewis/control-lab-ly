@@ -16,7 +16,7 @@ me = Sartorius('COM17')
 me.getInfo('BRL1000')
 me.reagent = "Ethanol"
 gui2 = LiquidPanel(liquid=me)
-gui2.runGUI()
+# gui2.runGUI()
 
 # %%
 from controllably.Transfer.Liquid import SyringeAssembly
@@ -32,10 +32,11 @@ me.aspirate(250, reagent='Ethanol', channel=1)
 me.aspirate(500, reagent='Water', channel=2)
 me.aspirate(750, reagent='IPA', channel=3)
 gui2 = LiquidPanel(liquid=me)
-gui2.runGUI()
+# gui2.runGUI()
 
 # %%
 gui = CompoundPanel(dict(
     mover=gui1, liquid=gui2
 ))
 gui.runGUI()
+# %%
