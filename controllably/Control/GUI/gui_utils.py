@@ -59,6 +59,7 @@ class Panel(ABC):
     - `close`: exit the application
     - `configure`: configure GUI defaults
     - `getButtons`: get a list of panel buttons
+    - `getInputs`: get the layout for the input section
     - `getWindow`: build `sg.Window` object
     - `pad`: add spacer in GUI
     - `parseInput`: parse inputs from GUI
@@ -262,6 +263,43 @@ class Panel(ABC):
                     pass
             buttons.append(sg.Button(label, size=size, key=key, font=font, **kw))
         return buttons
+    
+    @staticmethod
+    def getInputs(fields:list[str], key_prefix: str) -> list[sg.Column]:
+        """
+        Get the layout for the input section
+        
+        Args:
+            fields (list[str]): list of field names
+            key_prefix (str): prefix of button key
+
+        Returns:
+            list[sg.Column]: list of columns
+        """
+        # template for procedurally adding input fields
+        labels = []
+        inputs = []
+        for input_field in fields:
+            key_label = f'-{key_prefix}-{input_field.upper()}-LABEL-'
+            key_input = f'-{key_prefix}-{input_field.upper()}-VALUE-'
+            _label = sg.pin(
+                sg.Column(
+                    [[sg.Text(input_field.title(), key=key_label, visible=True)]],
+                    key=f'{key_label}BOX-', visible=True
+                )
+            )
+            _input = sg.pin(
+                sg.Column(
+                    [[sg.Input(size=(5,2), key=key_input, visible=True, tooltip='')]],
+                    key=f'{key_input}BOX-', visible=True
+                )
+            )
+            labels.append([_label])
+            inputs.append([_input])
+        labels_column = sg.Column(labels, justification='right', pad=10, visible=True)
+        inputs_column = sg.Column(inputs, justification='left', pad=10, visible=True)
+        labels_inputs = [labels_column, inputs_column]
+        return labels_inputs
 
     def getWindow(self, title:str = 'Application', **kwargs) -> sg.Window:
         """
