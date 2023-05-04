@@ -230,7 +230,7 @@ class LiquidHandler(ABC):
             bool: whether the action is successful
         """
         success = []
-        for _ in range(cycles):
+        for _ in range(int(cycles)):
             ret1 = self.aspirate(volume=volume, speed=speed, wait=wait, pause=False, reagent=reagent, channel=channel)
             ret2 = self.dispense(volume=volume, speed=speed, wait=wait, pause=False, force_dispense=True, channel=channel)
             success.extend([ret1,ret2])
@@ -273,7 +273,7 @@ class LiquidHandler(ABC):
         speed: Optional[float] = None, 
         wait: int = 0, 
         pause: bool = False, 
-        cycles: int = 1,
+        cycles: int = 0,
         reagent: Optional[str] = None, 
         channel: Optional[Union[int, tuple[int]]] = None,
         **kwargs
@@ -285,7 +285,7 @@ class LiquidHandler(ABC):
             speed (Optional[float], optional): speed to aspirate and dispense at. Defaults to None.
             wait (int, optional): time delay after each action. Defaults to 0.
             pause (bool, optional): whether to pause for user intervention. Defaults to False.
-            cycles (int, optional): number of cycles. Defaults to 1.
+            cycles (int, optional): number of cycles. Defaults to 0.
             reagent (Optional[str], optional): name of reagent. Defaults to None.
             channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
         
