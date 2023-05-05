@@ -1,9 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
-This module holds the class for mass balances.
+This module holds the class for force sensors.
 
 Classes:
-    MassBalance (Measurer)
+    ForceSensor (Measurer)
 
 Other constants and variables:
     CALIBRATION_FACTOR (float)
@@ -22,38 +22,38 @@ import serial # pip install pyserial
 from ..measure_utils import Measurer
 print(f"Import: OK <{__name__}>")
 
-CALIBRATION_FACTOR = 6.862879436681862
-"""Empirical factor by which to divide output reading by to get mass in mg"""
-COLUMNS = ('Time', 'Value', 'Factor', 'Baseline', 'Mass')
-"""Headers for output data from mass balance"""
+CALIBRATION_FACTOR = 6.862879436681862  # FIXME: needs to be calibrated
+"""Empirical factor by which to divide output reading by to get force in newtons"""
+COLUMNS = ('Time', 'Value', 'Factor', 'Baseline', 'Force')
+"""Headers for output data from force sensor"""
 
-class MassBalance(Measurer):
+class ForceSensor(Measurer):
     """
-    MassBalance provides methods to read out values from a precision mass balance
+    ForceSensor provides methods to read out values from a force sensor
 
     ### Constructor
     Args:
         `port` (str): COM port address
-        `calibration_factor` (float, optional): calibration factor of device readout to mg. Defaults to CALIBRATION_FACTOR.
+        `calibration_factor` (float, optional): calibration factor of device readout to newtons. Defaults to CALIBRATION_FACTOR.
         
     ### Attributes
-    - `baseline` (float): baseline readout at which zero mass is set
-    - `calibration_factor` (float): calibration factor of device readout to mg
-    - `precision` (int): number of decimal places to print mass value
+    - `baseline` (float): baseline readout at which zero newtons is set
+    - `calibration_factor` (float): calibration factor of device readout to newtons
+    - `precision` (int): number of decimal places to print force value
     
     ### Properties
-    - `mass` (float): mass of sample
+    - `force` (float): force experienced
     
     ### Methods
     - `clearCache`: clear most recent data and configurations
     - `disconnect`: disconnect from device
-    - `getMass`: get the mass of the sample by measuring the force response
+    - `getForce`: get the force response
     - `reset`: reset the device
     - `shutdown`: shutdown procedure for tool
     - `tare`: alias for `zero()`
     - `toggleFeedbackLoop`: start or stop feedback loop
     - `toggleRecord`: start or stop data recording
-    - `zero`: set the current reading as baseline (i.e. zero mass)
+    - `zero`: set the current reading as baseline (i.e. zero force)
     """
     
     _default_flags = {
@@ -70,22 +70,22 @@ class MassBalance(Measurer):
 
         Args:
             port (str): COM port address
-            calibration_factor (float, optional): calibration factor of device readout to mg. Defaults to CALIBRATION_FACTOR.
+            calibration_factor (float, optional): calibration factor of device readout to newtons. Defaults to CALIBRATION_FACTOR.
         """
         super().__init__(**kwargs)
         self.baseline = 0
         self.buffer_df = pd.DataFrame(columns=COLUMNS)
         self.calibration_factor = calibration_factor
         self.precision = 3
-        self._mass = 0
+        self._force = 0
         self._threads = {}
         self._connect(port)
         return
     
     # Properties
     @property
-    def mass(self) -> float:
-        return round(self._mass, self.precision)
+    def force(self) -> float:
+        return round(self._force, self.precision)
    
     def clearCache(self):
         """Clear most recent data and configurations"""
@@ -105,9 +105,9 @@ class MassBalance(Measurer):
         self.setFlag(connected=False)
         return
     
-    def getMass(self) -> str:
+    def getForce(self) -> str:
         """
-        Get the mass of the sample by measuring the force response
+        Get the force response
         
         Returns:
             str: device response
@@ -119,19 +119,16 @@ class MassBalance(Measurer):
         except ValueError:
             pass
         else:
-            self._mass = (value - self.baseline) / self.calibration_factor
+            self._force = (value - self.baseline) / self.calibration_factor
             if self.flags['record']:
                 values = [
                     now, 
                     value, 
                     self.calibration_factor, 
                     self.baseline, 
-                    self._mass
+                    self._force
                 ]
                 row = {k:v for k,v in zip(COLUMNS, values)}
-                # self.buffer_df = self.buffer_df.append(row, ignore_index=True)
-                # new_row_df = pd.DataFrame(row)
-                # self.buffer_df = pd.concat([self.buffer_df, new_row_df])
                 new_row_df = pd.DataFrame(row, index=[0])
                 self.buffer_df = pd.concat([self.buffer_df, new_row_df], ignore_index=True)
         return response
@@ -174,7 +171,7 @@ class MassBalance(Measurer):
         Start or stop data recording
 
         Args:
-            on (bool): whether to start recording temperature
+            on (bool): whether to start recording data
         """
         self.setFlag(record=on, get_feedback=on, pause_feedback=False)
         self.toggleFeedbackLoop(on=on)
@@ -182,7 +179,7 @@ class MassBalance(Measurer):
 
     def zero(self, wait:int = 5):
         """
-        Set current reading as baseline (i.e. zero mass)
+        Set current reading as baseline (i.e. zero force)
         
         Args:
             wait (int, optional): duration to wait while zeroing, in seconds. Defaults to 5.
@@ -241,7 +238,7 @@ class MassBalance(Measurer):
         while self.flags['get_feedback']:
             if self.flags['pause_feedback']:
                 continue
-            self.getMass()
+            self.getForce()
         print('Stop listening...')
         return
 
