@@ -129,9 +129,6 @@ class MassBalance(Measurer):
                     self._mass
                 ]
                 row = {k:v for k,v in zip(COLUMNS, values)}
-                # self.buffer_df = self.buffer_df.append(row, ignore_index=True)
-                # new_row_df = pd.DataFrame(row)
-                # self.buffer_df = pd.concat([self.buffer_df, new_row_df])
                 new_row_df = pd.DataFrame(row, index=[0])
                 self.buffer_df = pd.concat([self.buffer_df, new_row_df], ignore_index=True)
         return response
@@ -174,7 +171,7 @@ class MassBalance(Measurer):
         Start or stop data recording
 
         Args:
-            on (bool): whether to start recording temperature
+            on (bool): whether to start recording data
         """
         self.setFlag(record=on, get_feedback=on, pause_feedback=False)
         self.toggleFeedbackLoop(on=on)
