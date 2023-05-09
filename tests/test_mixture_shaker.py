@@ -1,13 +1,26 @@
 # %% 
 import init
+import time
 from controllably.Make.Mixture.QInstruments import BioShake
-me = BioShake('COM26')
+me = BioShake('COM27')
 
 # %%
-import numpy as np
-type(np.nan) == float
+me.shakeGoHome()
+me.getShakeState()
 # %%
-bool(int(2.000)%2)
+me.setElmLockPos()
+me.getElmState()
 # %%
-int(True)
+me.setShakeTargetSpeed(1500)
+# %%
+me.setShakeAcceleration(5)
+# %%
+me.shakeOn()
+time.sleep(7)
+print(me.getShakeState())
+print(me.getShakeActualSpeed())
+time.sleep(60)
+me.shakeOff()
+time.sleep(7)
+me.getShakeState()
 # %%
