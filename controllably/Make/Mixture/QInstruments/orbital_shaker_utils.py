@@ -8,7 +8,6 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 import numpy as np
-from threading import Thread
 import time
 from typing import Optional
 
@@ -16,7 +15,6 @@ from typing import Optional
 import serial   # pip install pyserial
 
 # Local application imports
-from ....misc import Helper
 from ...make_utils import Maker
 from .orbital_shaker_lib import ELMStateCode, ELMStateString, ShakeStateCode, ShakeStateString
 print(f"Import: OK <{__name__}>")
@@ -114,14 +112,22 @@ class BioShake(Maker):
         """
         return self._query("info")
         
-    def resetDevice(self):  # TODO
+    def resetDevice(self, timeout:int = 30):
         """
         Restarts the controller
         
         Note: This takes about 30 seconds for BS units and 5 for the Q1, CP models
+        
+        Args:
+            timeout (int, optional): number of seconds to wait before aborting. Defaults to 30.
         """
-        # TODO: add time.sleep for different models
         self._query("resetDevice")
+        start_time = time.perf_counter()
+        while self.getShakeState(verbose=False) != 3:
+            time.sleep(0.1)
+            if time.perf_counter() - start_time > timeout:
+                break
+        self.getShakeState()
         return
         
     def setBuzzer(self, duration:int):
@@ -147,18 +153,37 @@ class BioShake(Maker):
         return self._query("version")
     
     # ECO methods
-    def leaveEcoMode(self):
-        """Leaves the economical mode and switches into the normal operating state"""
+    def leaveEcoMode(self, timeout:int = 5):
+        """
+        Leaves the economical mode and switches into the normal operating state
+        
+        Args:
+            timeout (int, optional): number of seconds to wait before aborting. Defaults to 5.
+        """
         self._query("leaveEcoMode")
+        start_time = time.perf_counter()
+        while self.getShakeState(verbose=False) != 3:
+            time.sleep(0.1)
+            if time.perf_counter() - start_time > timeout:
+                break
+        self.getShakeState()
         return
     
-    def setEcoMode(self):
+    def setEcoMode(self, timeout:int = 5):
         """
         Switches the shaker into economical mode and reduces electricity consumption.
         
-        Note: all commands other than leaveEcoMode will return `e`
+        Note: all commands after this, other than leaveEcoMode, will return `e`
+        
+        Args:
+            timeout (int, optional): number of seconds to wait before aborting. Defaults to 5.
         """
-        self._query("setEcoMode")
+        response = self._query("setEcoMode")
+        start_time = time.perf_counter()
+        while not response:
+            if time.perf_counter() - start_time > timeout:
+                break
+            response = self._read()
         return
         
     # Shaking methods
@@ -298,9 +323,12 @@ class BioShake(Maker):
             return None
         return int(response)
     
-    def getShakeState(self) -> Optional[int]:
+    def getShakeState(self, verbose:bool = True) -> Optional[int]:
         """
         Returns shaker state as an integer
+        
+        Args:
+            verbose (bool, optional): whether to print out state. Defaults to True.
         
         Returns:
             Optional[int]: shaker state as integer
@@ -308,8 +336,8 @@ class BioShake(Maker):
         response = self._query_numeric("getShakeState")
         if response is np.nan:
             return None
-        code = f"ss{response}"
-        if code in ShakeStateCode._member_names_:
+        code = f"ss{int(response)}"
+        if verbose and code in ShakeStateCode._member_names_:
             print(ShakeStateCode[code].value)
         return int(response)
         
@@ -411,13 +439,22 @@ class BioShake(Maker):
         self._query("shakeEmergencyOff")
         return
         
-    def shakeGoHome(self):
+    def shakeGoHome(self, timeout:int = 5):
         """
         Move shaker to the home position and locks in place
         
         Note: Minimum response time is less than 4 sec (internal failure timeout)
+        
+        Args:
+            timeout (int, optional): number of seconds to wait before aborting. Defaults to 5.
         """
         self._query("shakeGoHome")
+        start_time = time.perf_counter()
+        while self.getShakeState(verbose=False) != 3:
+            time.sleep(0.1)
+            if time.perf_counter() - start_time > timeout:
+                break
+        self.getShakeState()
         return
         
     def shakeOff(self):
@@ -663,9 +700,12 @@ class BioShake(Maker):
         # TODO: add flags
         return state
     
-    def getElmState(self) -> Optional[int]:
+    def getElmState(self, verbose:bool = True) -> Optional[int]:
         """
         Returns the ELM status
+        
+        Args:
+            verbose (bool, optional): whether to print out state. Defaults to True.
         
         Returns:
             Optional[int]: ELM status as integer
@@ -673,8 +713,8 @@ class BioShake(Maker):
         response = self._query_numeric("getElmState")
         if response is np.nan:
             return None
-        code = f"es{response}"
-        if code in ELMStateCode._member_names_:
+        code = f"es{int(response)}"
+        if verbose and code in ELMStateCode._member_names_:
             print(ELMStateCode[code].value)
         return int(response)
     
@@ -690,9 +730,19 @@ class BioShake(Maker):
             print(ELMStateString[response].value)
         return response
     
-    def setElmLockPos(self):
-        """Close the ELM"""
-        self._query("setElmLockPos")
+    def setElmLockPos(self, timeout:int = 5):
+        """
+        Close the ELM
+        
+        Args:
+            timeout (int, optional): number of seconds to wait before aborting. Defaults to 5.
+        """
+        response = self._query("setElmLockPos")
+        start_time = time.perf_counter()
+        while not response:
+            if time.perf_counter() - start_time > timeout:
+                break
+            response = self._read()
         return
     
     def setElmSelftest(self, value:bool):
@@ -715,13 +765,21 @@ class BioShake(Maker):
         self._query(f"setElmStartupPosition{int(value)}")
         return
     
-    def setElmUnlockPos(self):
+    def setElmUnlockPos(self, timeout:int = 5):
         """
         Open the ELM
         
         Note: The ELM should only be opened when the tablar is in the home position.
+        
+        Args:
+            timeout (int, optional): number of seconds to wait before aborting. Defaults to 5.
         """
-        self._query("setElmUnlockPos")
+        response = self._query("setElmUnlockPos")
+        start_time = time.perf_counter()
+        while not response:
+            if time.perf_counter() - start_time > timeout:
+                break
+            response = self._read()
         return
     
     # General methods
@@ -767,34 +825,15 @@ class BioShake(Maker):
         Returns:
             str: response string
         """
-        # command_code = command[:2]
-        # if command_code not in STATUS_QUERIES:
-        #     if self.flags['get_feedback'] and not self.flags['pause_feedback']:
-        #         self.setFlag(pause_feedback=True)
-        #         time.sleep(timeout_s)
-        #     # self.getStatus()
-        #     # while self.isBusy():
-        #     #     self.getStatus()
-        #     if self.isBusy():
-        #         time.sleep(timeout_s)
-        
-        # start_time = time.perf_counter()
-        # self._write(command)
-        # response = ''
-        # while not self._is_expected_reply(response, command_code):
-        #     if time.perf_counter() - start_time > timeout_s:
-        #         break
-        #     response = self._read()
-        # # print(time.perf_counter() - start_time)
-        # if command_code in QUERIES:
-        #     response = response[2:]
-        # if command_code not in STATUS_QUERIES:
-        #     if get_position:
-        #         self.getPosition()
-        #     if resume_feedback:
-        #         self.setFlag(pause_feedback=False)
-        # return response
-        return
+        start_time = time.perf_counter()
+        self._write(command)
+        response = ''
+        while not response:
+            if time.perf_counter() - start_time > timeout_s:
+                break
+            response = self._read()
+        # print(time.perf_counter() - start_time)
+        return response
 
     def _query_numeric(self, command: str, timeout_s: float = 0.3) -> float:
         """
@@ -807,10 +846,10 @@ class BioShake(Maker):
             float: numeric response
         """
         response = self._query(command=command, timeout_s=timeout_s)
-        if response.isnumeric():
+        if response.replace('.','',1).replace('-','',1).isdigit():
             value = float(response)
             return value
-        print("Response value is non-numeric.")
+        print(f"Response value is non-numeric: {repr(response)}")
         return np.nan
 
     def _read(self) -> str:
