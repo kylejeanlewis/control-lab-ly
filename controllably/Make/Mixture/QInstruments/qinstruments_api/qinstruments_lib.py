@@ -1,16 +1,16 @@
 # %% -*- coding: utf-8 -*-
 """
-This module holds the references for tools from QInstruments.
+This module holds the references for devices from QInstruments.
 
 Classes:
-
-Other types:
-
-Other constants and variables:
+    ELMStateCode (Enum)
+    ELMStateString (Enum)
+    ErrorCodes_BS (Enum)
+    ErrorCodes_Q1_CP (Enum)
+    ShakeStateCode (Enum)
+    ShakeStateString (Enum)
 """
 # Standard library imports
-from collections import namedtuple
-from dataclasses import dataclass
 from enum import Enum
 print(f"Import: OK <{__name__}>")
 
