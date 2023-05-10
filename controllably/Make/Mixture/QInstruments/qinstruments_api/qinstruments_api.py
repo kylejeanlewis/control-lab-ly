@@ -19,11 +19,17 @@ from .qinstruments_lib import ELMStateCode, ELMStateString, ShakeStateCode, Shak
 print(f"Import: OK <{__name__}>")
 
 class QInstruments:
-    def __init__(self, port: str, verbose:bool = False, **kwargs):
+    def __init__(self, 
+        port: str, 
+        baudrate:int = 9600, 
+        timeout:int = 1, 
+        verbose:bool = False, 
+        **kwargs
+    ):
         self.connection_details = {}
         self.device = None
         self.verbose = verbose
-        self._connect(port)
+        self._connect(port=port, baudrate=baudrate, timeout=timeout)
         return
         
     # Initialization methods
