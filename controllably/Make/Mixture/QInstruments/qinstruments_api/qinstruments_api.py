@@ -461,7 +461,7 @@ class QInstruments:
         self.query("shakeOffNonZeroPos")
         return
         
-    def shakeOffWithDeenergizeSoleonid(self):   # FIXME: misspelling of Solenoid
+    def shakeOffWithDeEnergizeSolenoid(self):
         """
         Stops shaking within the defined deceleration time, go to the home position and locks in place for 1 second, 
         then unlock home position
