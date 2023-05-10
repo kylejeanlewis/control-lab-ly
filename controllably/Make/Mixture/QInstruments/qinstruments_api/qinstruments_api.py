@@ -382,7 +382,7 @@ class QInstruments:
     
     def setShakeDefaultDirection(self, counterclockwise:bool):
         """
-        Sets the default mixing direction after device start up
+        Permanently sets the default mixing direction after device start up
 
         Args:
             counterclockwise (bool): whether to set default mixing direction to counter clockwise
@@ -402,7 +402,7 @@ class QInstruments:
     
     def setShakeSpeedLimitMax(self, speed:int):
         """
-        Set upper limit for the target speed (between 0 to 3000)
+        Permanently set upper limit for the target speed (between 0 to 3000)
 
         Args:
             speed (int): upper limit for the target speed
@@ -412,7 +412,7 @@ class QInstruments:
     
     def setShakeSpeedLimitMin(self, speed:int):
         """
-        Set lower limit for the target speed (between 0 to 3000)
+        Permanently set lower limit for the target speed (between 0 to 3000)
         
         Note: Speed values below 200 RPM are possible, but not recommended
 
@@ -476,7 +476,7 @@ class QInstruments:
         return
         
     def shakeOn(self):
-        """Stops shaking within the defined deceleration time, go to the home position and locks in place"""
+        """Starts shaking with defined speed with defined acceleration time"""
         self.query("shakeOn")
         return
     
@@ -603,7 +603,7 @@ class QInstruments:
         
     def setTemp40Calibr(self, temperature_calibration_40:float):
         """
-        Sets the offset value at the 40°C calibration point in 1/10°C increments
+        Permanently sets the offset value at the 40°C calibration point in 1/10°C increments
 
         Args:
             temperature_calibration_40 (float): offset value (between 0°C and 99°C)
@@ -614,7 +614,7 @@ class QInstruments:
     
     def setTemp90Calibr(self, temperature_calibration_90:float):
         """
-        Sets the offset value at the 90°C calibration point in 1/10°C increments
+        Permanently sets the offset value at the 90°C calibration point in 1/10°C increments
 
         Args:
             temperature_calibration_90 (float): offset value (between 0°C and 99°C)
@@ -625,7 +625,7 @@ class QInstruments:
     
     def setTempLimiterMax(self, temperature_max:float):
         """
-        Sets the upper limit for the target temperature in 1/10°C increments
+        Permanently sets the upper limit for the target temperature in 1/10°C increments
 
         Args:
             temperature_max (float): upper limit for the target temperature (between -20.0°C and 99.9°C)
@@ -636,7 +636,7 @@ class QInstruments:
     
     def setTempLimiterMin(self, temperature_min:float):
         """
-        Sets the lower limit for the target temperature in 1/10°C increments
+        Permanently sets the lower limit for the target temperature in 1/10°C increments
 
         Args:
             temperature_min (float): lower limit for the target temperature (between -20.0°C and 99.9°C)
@@ -743,7 +743,7 @@ class QInstruments:
     
     def setElmSelftest(self, enable:bool):
         """
-        Set whether the ELM self-test is enabled at device startup
+        Permanently set whether the ELM self-test is enabled at device startup
 
         Args:
             enable (bool): whether the ELM self-test is enabled at device startup
@@ -753,7 +753,7 @@ class QInstruments:
         
     def setElmStartupPosition(self, unlock:bool):
         """
-        Set whether the ELM is unlocked after device startup
+        Permanently set whether the ELM is unlocked after device startup
 
         Args:
             unlock (bool): whether the ELM is unlocked after device startup
