@@ -2,7 +2,8 @@
 import init
 import time
 from controllably.Make.Mixture.QInstruments import BioShake
-me = BioShake('COM27')
+you = BioShake('COM27')
+me = you.device
 me.info()
 
 # %%
@@ -25,3 +26,10 @@ me.shakeOff()
 time.sleep(7)
 me.getShakeState()
 # %%
+me.getTempLimiterMax()
+# %%
+me.getTempLimiterMin()
+# %%
+me.getTempMax()
+# %%
+me.getTempMin()
