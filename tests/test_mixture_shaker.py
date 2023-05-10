@@ -3,6 +3,7 @@ import init
 import time
 from controllably.Make.Mixture.QInstruments import BioShake
 me = BioShake('COM27')
+me.info()
 
 # %%
 me.shakeGoHome()
