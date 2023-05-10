@@ -37,7 +37,7 @@ class Peltier(Maker):
             
     ### Attributes
     - `power_threshold` (float): minimum threshold under which temperature can be considered stable
-    - `set_point` (float): temperature set point
+    - `set_temperature` (float): temperature set point
     - `stabilize_buffer_time` (float): buffer time over which temperature can be considered stable
     - `temperature` (float): temperature at sample site
     - `tolerance` (float): tolerance above and below target temperature
@@ -93,7 +93,7 @@ class Peltier(Maker):
         self._threads = {}
         
         # Device read-outs
-        self.set_point = None
+        self.set_temperature = None
         self.temperature = None
         self._cold_point = None
         self._power = None
@@ -125,11 +125,11 @@ class Peltier(Maker):
         now = datetime.now()
         try:
             values = [float(v) for v in response.split(';')]
-            self.set_point, self.temperature, self._cold_point, self._power = values
+            self.set_temperature, self.temperature, self._cold_point, self._power = values
         except ValueError:
             pass
         else:
-            ready = (abs(self.set_point - self.temperature)<=self.tolerance)
+            ready = (abs(self.set_temperature - self.temperature)<=self.tolerance)
             if not ready:
                 pass
             elif not self._stabilize_time:
@@ -140,7 +140,7 @@ class Peltier(Maker):
             elif (self._power <= self.power_threshold) or (time.perf_counter()-self._stabilize_time >= self.stabilize_buffer_time):
                 print(response)
                 self.setFlag(temperature_reached=True)
-                print(f"Temperature of {self.set_point}°C reached!")
+                print(f"Temperature of {self.set_temperature}°C reached!")
             if self.flags['record']:
                 values = [now] + values
                 row = {k:v for k,v in zip(self._columns, values)}
@@ -158,7 +158,7 @@ class Peltier(Maker):
             time_s (float): duration in seconds
         """
         self.setTemperature(temperature)
-        print(f"Holding at {self.set_point}°C for {time_s} seconds")
+        print(f"Holding at {self.set_temperature}°C for {time_s} seconds")
         time.sleep(time_s)
         print(f"End of temperature hold")
         return
@@ -176,32 +176,32 @@ class Peltier(Maker):
         """Reset the device"""
         self.toggleRecord(False)
         self.clearCache()
-        self.setTemperature(set_point=25, blocking=False)
+        self.setTemperature(set_temperature=25, blocking=False)
         return
     
-    def setTemperature(self, set_point:int, blocking:bool = True):
+    def setTemperature(self, set_temperature:int, blocking:bool = True):
         """
         Set a temperature
 
         Args:
-            set_point (int): target temperature in degree Celsius
+            set_temperature (int): target temperature in degree Celsius
             blocking (bool, optional): whether to wait for temperature to reach set point. Defaults to True.
         """
         self.setFlag(pause_feedback=True)
         time.sleep(0.5)
         try:
-            self.device.write(bytes(f"{set_point}\n", 'utf-8'))
+            self.device.write(bytes(f"{set_temperature}\n", 'utf-8'))
         except AttributeError:
             pass
         else:
-            while self.set_point != float(set_point):
+            while self.set_temperature != float(set_temperature):
                 self.getTemperature()
-        print(f"New set temperature at {set_point}°C")
+        print(f"New set temperature at {set_temperature}°C")
         
         self._stabilize_time = None
         self.setFlag(temperature_reached=False, pause_feedback=False)
         if blocking:
-            print(f"Waiting for temperature to reach {self.set_point}°C")
+            print(f"Waiting for temperature to reach {self.set_temperature}°C")
         while not self.isReady():
             if not self.flags['get_feedback']:
                 self.getTemperature()

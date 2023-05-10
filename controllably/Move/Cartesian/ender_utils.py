@@ -70,23 +70,23 @@ class Ender(Gantry):
         print("Homed")
         return True
 
-    def setTemperature(self, set_point: float) -> bool:
+    def setTemperature(self, set_temperature: float) -> bool:
         """
         Set the temperature of the 3-D printer platform bed
 
         Args:
-            set_point (float): set point for platform temperature
+            set_temperature (float): set point for platform temperature
 
         Returns:
             bool: whether setting bed temperature was successful
         """
-        if set_point < self.temperature_range[0] or set_point > self.temperature_range[1]:
+        if set_temperature < self.temperature_range[0] or set_temperature > self.temperature_range[1]:
             print(f'Please select a temperature between {self.temperature_range[0]} and {self.temperature_range[1]}°C.')
             return False
-        set_point = round( min(max(set_point,0), 110) )
+        set_temperature = round( min(max(set_temperature,0), 110) )
         try:
-            print(f"New set temperature at {set_point}°C")
-            self.device.write(bytes(f'M140 S{set_point}\n', 'utf-8'))
+            print(f"New set temperature at {set_temperature}°C")
+            self.device.write(bytes(f'M140 S{set_temperature}\n', 'utf-8'))
         except Exception as e:
             print('Unable to heat stage!')
             if self.verbose:
