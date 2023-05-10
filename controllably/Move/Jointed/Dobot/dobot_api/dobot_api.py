@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Apr  6 12:51:41 2022
-
-@author: jjcheng3
+API from Dobot: [source](https://github.com/Dobot-Arm/TCP-IP-4Axis-Python)
 """
 
 import socket
