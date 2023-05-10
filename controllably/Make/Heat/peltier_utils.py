@@ -47,7 +47,7 @@ class Peltier(Maker):
     
     ### Methods
     - `clearCache`: clears and remove data in buffer
-    - `getTemperatures`: retrieve temperatures from device
+    - `getTemperature`: retrieve temperatures from device
     - `holdTemperature`: hold target temperature for desired duration
     - `isReady`: checks and returns whether target temperature has been reached
     - `reset`: reset the device
@@ -113,7 +113,7 @@ class Peltier(Maker):
         self.setFlag(pause_feedback=False)
         return
     
-    def getTemperatures(self) -> str:
+    def getTemperature(self) -> str:
         """
         Retrieve temperatures from device 
         Including the set temperature, hot temperature, cold temperature, and the power level
@@ -195,7 +195,7 @@ class Peltier(Maker):
             pass
         else:
             while self.set_point != float(set_point):
-                self.getTemperatures()
+                self.getTemperature()
         print(f"New set temperature at {set_point}°C")
         
         self._stabilize_time = None
@@ -204,7 +204,7 @@ class Peltier(Maker):
             print(f"Waiting for temperature to reach {self.set_point}°C")
         while not self.isReady():
             if not self.flags['get_feedback']:
-                self.getTemperatures()
+                self.getTemperature()
             time.sleep(0.1)
             if not blocking:
                 break
@@ -271,7 +271,7 @@ class Peltier(Maker):
             print(f"Connection opened to {port}")
             self.setFlag(connected=True)
             time.sleep(1)
-            print(self.getTemperatures())
+            print(self.getTemperature())
         self.device = device
         return
     
@@ -281,7 +281,7 @@ class Peltier(Maker):
         while self.flags['get_feedback']:
             if self.flags['pause_feedback']:
                 continue
-            self.getTemperatures()
+            self.getTemperature()
             time.sleep(0.1)
         print('Stop listening...')
         return
