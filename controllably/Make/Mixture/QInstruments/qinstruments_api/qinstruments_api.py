@@ -662,7 +662,7 @@ class QInstruments:
         return
     
     def tempOn(self):
-        """Switches on the temperature control feature and stops heating/cooling"""
+        """Switches on the temperature control feature and starts heating/cooling"""
         self.query("tempOn")
         return
     
