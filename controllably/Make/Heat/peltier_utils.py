@@ -13,6 +13,7 @@ from datetime import datetime
 import pandas as pd
 from threading import Thread
 import time
+from typing import Union
 
 # Third party imports
 import serial   # pip install pyserial
@@ -49,7 +50,7 @@ class Peltier(Maker):
     - `clearCache`: clears and remove data in buffer
     - `getTemperature`: retrieve temperatures from device
     - `holdTemperature`: hold target temperature for desired duration
-    - `isReady`: checks and returns whether target temperature has been reached
+    - `isAtTemperature`: checks and returns whether target temperature has been reached
     - `reset`: reset the device
     - `setTemperature`: set a target temperature
     - `shutdown`: shutdown procedure for tool
@@ -113,13 +114,13 @@ class Peltier(Maker):
         self.setFlag(pause_feedback=False)
         return
     
-    def getTemperature(self) -> str:
+    def getTemperature(self) -> Union[tuple, str]:
         """
         Retrieve temperatures from device 
         Including the set temperature, hot temperature, cold temperature, and the power level
         
         Returns:
-            str: response from device
+            Union[tuple, str]: response from device
         """
         response = self._read()
         now = datetime.now()
@@ -129,6 +130,7 @@ class Peltier(Maker):
         except ValueError:
             pass
         else:
+            response = tuple(values)
             ready = (abs(self.set_temperature - self.temperature)<=self.tolerance)
             if not ready:
                 pass
@@ -163,7 +165,7 @@ class Peltier(Maker):
         print(f"End of temperature hold")
         return
     
-    def isReady(self) -> bool:
+    def isAtTemperature(self) -> bool:
         """
         Checks and returns whether target temperature has been reached
 
@@ -176,33 +178,33 @@ class Peltier(Maker):
         """Reset the device"""
         self.toggleRecord(False)
         self.clearCache()
-        self.setTemperature(set_temperature=25, blocking=False)
+        self.setTemperature(temperature=25, blocking=False)
         return
     
-    def setTemperature(self, set_temperature:int, blocking:bool = True):
+    def setTemperature(self, temperature:int, blocking:bool = True):
         """
         Set a temperature
 
         Args:
-            set_temperature (int): target temperature in degree Celsius
+            temperature (int): target temperature in degree Celsius
             blocking (bool, optional): whether to wait for temperature to reach set point. Defaults to True.
         """
         self.setFlag(pause_feedback=True)
         time.sleep(0.5)
         try:
-            self.device.write(bytes(f"{set_temperature}\n", 'utf-8'))
+            self.device.write(bytes(f"{temperature}\n", 'utf-8'))
         except AttributeError:
             pass
         else:
-            while self.set_temperature != float(set_temperature):
+            while self.set_temperature != float(temperature):
                 self.getTemperature()
-        print(f"New set temperature at {set_temperature}°C")
+        print(f"New set temperature at {self.set_temperature}°C")
         
         self._stabilize_time = None
         self.setFlag(temperature_reached=False, pause_feedback=False)
         if blocking:
             print(f"Waiting for temperature to reach {self.set_temperature}°C")
-        while not self.isReady():
+        while not self.isAtTemperature():
             if not self.flags['get_feedback']:
                 self.getTemperature()
             time.sleep(0.1)
