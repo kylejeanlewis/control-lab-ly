@@ -28,6 +28,7 @@ class QInstruments:
     ):
         self.connection_details = {}
         self.device = None
+        self.model = ''
         self.verbose = verbose
         self._connect(port=port, baudrate=baudrate, timeout=timeout)
         return
@@ -721,7 +722,7 @@ class QInstruments:
         Returns:
             Optional[str]: ELM status as string
         """
-        response = self.query("getShakeStateAsString")
+        response = self.query("getElmStateAsString")
         if verbose and response in ELMStateString._member_names_:
             print(ELMStateString[response].value)
         return response
@@ -807,6 +808,7 @@ class QInstruments:
             numeric(bool, optional): whether to expect a numeric response. Defaults to False.
             slow (bool, optional): whether to expect a slow response. Defaults to False.
             timeout_s (float, optional): duration to wait before timeout. Defaults to 0.3.
+        
         Returns:
             Union[str, float]: response (string / float)
         """
@@ -816,10 +818,14 @@ class QInstruments:
         while not response:
             if time.perf_counter() - start_time > timeout_s:
                 break
+            time.sleep(0.3)
             if slow:
                 time.sleep(1)
             response = self.read()
         # print(time.perf_counter() - start_time)
+        if response.startswith('u ->'):
+            print(response)
+            raise AttributeError(f'{self.model} does not have the method: {command}')
         if not numeric:
             return response
         if response.replace('.','',1).replace('-','',1).isdigit():
@@ -843,7 +849,7 @@ class QInstruments:
                 print(e)
         else:
             response = response.decode('utf-8').strip()
-            if self.verbose:
+            if self.verbose and len(response):
                 print(response)
         return response
     
@@ -890,6 +896,7 @@ class QInstruments:
         device = None
         try:
             device = serial.Serial(port, baudrate, timeout=timeout)
+            self.device = device
         except Exception as e:
             print(f"Could not connect to {port}")
             if self.verbose:
@@ -897,6 +904,6 @@ class QInstruments:
         else:
             print(f"Connection opened to {port}")
             time.sleep(3)
-        self.device = device
+            self.model = self.getDescription()
         return
     
