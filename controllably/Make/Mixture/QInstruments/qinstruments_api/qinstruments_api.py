@@ -818,14 +818,15 @@ class QInstruments:
         while not response:
             if time.perf_counter() - start_time > timeout_s:
                 break
-            time.sleep(0.3)
+            time.sleep(timeout_s)
             if slow:
                 time.sleep(1)
             response = self.read()
         # print(time.perf_counter() - start_time)
         if response.startswith('u ->'):
-            print(response)
-            raise AttributeError(f'{self.model} does not have the method: {command}')
+            # print(response)
+            # raise AttributeError(f'{self.model} does not have the method: {command}')
+            print(f'{self.model} does not have the method: {command}')
         if not numeric:
             return response
         if response.replace('.','',1).replace('-','',1).isdigit():
