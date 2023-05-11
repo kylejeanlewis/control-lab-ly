@@ -21,17 +21,20 @@ class BioShake(Maker):
     _default_speed: int = 500
     _default_flags = {
         'elm_locked': True,
-        'shake_counterclockwise': True
+        'shake_counterclockwise': True,
+        'speed_reached': False,
+        'temperature_reached': False
     }
     def __init__(self, port: str, **kwargs):
         super().__init__(**kwargs)
         self.device: QInstruments = None
         self.model = ''
         
+        self.acceleration = self._default_acceleration
         self.shake_time_left = None
-        self._acceleration = self._default_acceleration
         self.speed = self._default_speed
         self.temperature = None
+        self.tolerance = 0.01
         
         self.limit_acceleration = None
         self.limit_speed = None
@@ -64,6 +67,15 @@ class BioShake(Maker):
     @verbose.deleter
     def verbose(self):
         del self._verbose
+        return
+    
+    def __defaults__(self):
+        """Retrieve the default and starting configuration of the device upon start up."""
+        self.isCounterClockwise()
+        self.isLocked()
+        self.limit_acceleration = ( self.device.getShakeAccelerationMin(), self.device.getShakeAccelerationMax() )
+        self.limit_speed = ( self.device.getShakeMinRpm(), self.device.getShakeMaxRpm() )
+        self.limit_temperature = ( self.device.getTempMin(), self.device.getTempMax() )
         return
     
     def __info__(self):
@@ -101,12 +113,12 @@ class BioShake(Maker):
         """
         return self.device.getVersion()
     
-    def getAcceleration(self) -> Optional[float]:
+    def getAcceleration(self) -> float:
         """
         Returns the acceleration/deceleration value
 
         Returns:
-            Optional[float]: acceleration/deceleration value
+            float: acceleration/deceleration value
         """
         response = self.device.getShakeAcceleration()
         self._acceleration = response if response is not None else self.acceleration
@@ -121,17 +133,9 @@ class BioShake(Maker):
         """
         return self.device.getErrorList()
 
-    def getHardwareDefaults(self):  # TODO: docs
-        self.isCounterClockwise()
-        self.isLocked()
-        self.limit_acceleration = ( self.device.getShakeAccelerationMin(), self.device.getShakeAccelerationMax() )
-        self.limit_speed = ( self.device.getShakeMinRpm(), self.device.getShakeMaxRpm() )
-        self.limit_temperature = ( self.device.getTempMin(), self.device.getTempMax() )
-        return
-    
-    def getShakeTimeLeft(self) -> Optional[float]:  # TODO
+    def getShakeTimeLeft(self) -> Optional[float]:
         """
-        Returns the remaining time in seconds if device was started with the command `shakeOnWithRuntime`
+        Returns the remaining shake time in seconds if device was started with the a defined duration
 
         Returns:
             Optional[float]: minimum target shake speed
@@ -140,39 +144,55 @@ class BioShake(Maker):
         self.shake_time_left = response
         return self.shake_time_left
     
-    def getSpeed(self) -> Optional[float]:  # TODO: docs
+    def getSpeed(self) -> tuple[float]:
         """
-        Returns the current mixing speed
+        Returns the set speed and current mixing speed in rpm
 
         Returns:
-            Optional[float]: current mixing speed
+            tuple[float]: set speed, current mixing speed
         """
         response = self.device.getShakeTargetSpeed()
         self.set_speed = response if response is not None else self.set_speed
         response = self.device.getShakeActualSpeed()
         self.speed = response if response is not None else self.speed
-        return self.speed
+        
+        flag = (self.set_speed == self.speed)
+        self.setFlag(speed_reached=flag)
+        return self.set_speed, self.speed
     
-    def getStatus(self, verbose:bool = True) -> tuple:  # TODO: docs
-        state_elm = self.device.getElmState(verbose=verbose)
-        state_shake = self.device.getShakeState(verbose=verbose)
-        state_temperature = self.device.getTempState()
-        return state_elm, state_shake, state_temperature
-    
-    def getTemperature(self) -> Optional[float]:    # TODO: docs
+    def getStatus(self, verbose:bool = True) -> tuple[Optional[int]]:
         """
-        Returns the current temperature in °C
+        Retrieve the status of the device's ELM, shaker, and temperature control
+
+        Args:
+            verbose (bool, optional): whether to print out state. Defaults to True.
 
         Returns:
-            Optional[float]: current temperature in °C
+            tuple[int]: ELM status, shaker status, temperature control status
+        """
+        state_elm = self.device.getElmState(verbose=verbose)
+        state_shake = self.device.getShakeState(verbose=verbose)
+        state_temperature = int(self.device.getTempState())
+        return state_elm, state_shake, state_temperature
+    
+    def getTemperature(self) -> tuple[float]:
+        """
+        Returns the set temperature and current temperature in °C
+
+        Returns:
+            tuple[float]: set temperature, current temperature
         """
         response = self.device.getTempTarget()
         self.set_temperature = response if response is not None else self.set_temperature
         response = self.device.getTempActual()
         self.temperature = response if response is not None else self.temperature
-        return self.temperature
+        
+        flag = (self.set_temperature == self.temperature)
+        self.setFlag(temperature_reached=flag)
+        return self.set_temperature, self.temperature
     
-    def getUserLimits(self):    # TODO: docs
+    def getUserLimits(self):
+        """Retrieve the user defined limits for speed and temperature"""
         self.range_speed = ( self.device.getShakeSpeedLimitMin(), self.device.getShakeSpeedLimitMax() )
         self.range_temperature = ( self.device.getTempLimiterMin(), self.device.getTempLimiterMax() )
         return
@@ -201,6 +221,24 @@ class BioShake(Maker):
             timeout (int, optional): number of seconds to wait before aborting. Defaults to 5.
         """
         return self.device.shakeGoHome(timeout=timeout)
+    
+    def isAtSpeed(self) -> bool:
+        """
+        Checks and returns whether target speed has been reached
+
+        Returns:
+            bool: whether target speed has been reached
+        """
+        return self.flags['speed_reached']
+    
+    def isAtTemperature(self) -> bool:
+        """
+        Checks and returns whether target temperature has been reached
+
+        Returns:
+            bool: whether target temperature has been reached
+        """
+        return self.flags['temperature_reached']
     
     def isCounterClockwise(self) -> bool:
         """
@@ -260,8 +298,11 @@ class BioShake(Maker):
         Args:
             counterclockwise (bool): whether to set mixing direction to counter clockwise
         """
-        self.setFlag(shake_counterclockwise=counterclockwise)
-        return self.device.setShakeDirection(counterclockwise=counterclockwise)
+        self.device.setShakeDirection(counterclockwise=counterclockwise)
+        response = self.device.getShakeDirection()
+        response = response if response is not None else self.flags['shake_counterclockwise']
+        self.setFlag(shake_counterclockwise=response)
+        return 
     
     def setSpeed(self, speed:int, default:bool = False):
         """
@@ -273,7 +314,7 @@ class BioShake(Maker):
             speed (int): target mixing speed
             default (bool, optional): whether to change the default speed. Defaults to False.
         """
-        lower_limit, upper_limit = self.limit_speed
+        lower_limit, upper_limit = self.range_speed
         if speed < 200:
             print("Speed values below 200 RPM are not recommended.")
             return
@@ -283,23 +324,46 @@ class BioShake(Maker):
                 self._default_speed = speed
         return self.device.setShakeTargetSpeed(speed=self.set_speed)
     
-    def setTemperature(self, temperature:float):
+    def setTemperature(self, temperature:float, blocking:bool = True):
         """
         Sets target temperature between TempMin and TempMax in 1/10°C increments
 
         Args:
             temperature (float): target temperature (between TempMin and TempMax)
+            blocking (bool, optional): whether to wait for temperature to reach set point. Defaults to True.
         """
-        lower_limit, upper_limit = self.limit_temperature
+        lower_limit, upper_limit = self.range_temperature
         if lower_limit <= temperature <= upper_limit:
             self.set_temperature = temperature
-        return self.device.setTempTarget(temperature=temperature)
+        self.device.setTempTarget(temperature=temperature)
+        
+        while self.set_temperature != self.device.getTempTarget():
+            self.getTemperature()
+        print(f"New set temperature at {self.set_temperature}°C")
+        self.setFlag(temperature_reached=False)
+        
+        if blocking:
+            print(f"Waiting for temperature to reach {self.set_temperature}°C")
+        while not self.isAtTemperature():
+            self.getTemperature()
+            time.sleep(0.1)
+            if not blocking:
+                break
+        return
     
-    def shake(self,             # TODO
+    def shake(self,
             speed: Optional[int] = None, 
             duration: Optional[int] = None, 
             acceleration: Optional[int] = None
         ):
+        """
+        Shake the plate at target speed, for specified duration
+
+        Args:
+            speed (Optional[int], optional): shaking speed. Defaults to None.
+            duration (Optional[int], optional): duration of shake. Defaults to None.
+            acceleration (Optional[int], optional): acceleration value. Defaults to None.
+        """
         acceleration = acceleration if acceleration else self._default_acceleration
         self.setAcceleration(acceleration=acceleration)
         speed = speed if speed else self._default_speed
@@ -312,6 +376,11 @@ class BioShake(Maker):
         
     def shutdown(self):
         """Shutdown procedure for tool"""
+        self.toggleTemperatureControl(on=False)
+        self.stop(emergency=False)
+        self.home()
+        self.toggleGrip(on=False)
+        time.sleep(2)
         self.device.disconnect()
         return 
 
@@ -414,7 +483,7 @@ class BioShake(Maker):
             print(f"Connection opened to {port}")
             self.model = device.model
             self.setFlag(connected=True)
-            self.getHardwareDefaults()
+            self.__defaults__()
         return
     
     def _query(self, 
