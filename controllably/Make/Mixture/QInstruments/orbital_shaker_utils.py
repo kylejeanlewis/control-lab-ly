@@ -484,6 +484,7 @@ class BioShake(Maker):
             self.model = device.model
             self.setFlag(connected=True)
             self.__defaults__()
+            self.getUserLimits()
         return
     
     def _query(self, 
