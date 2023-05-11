@@ -2,8 +2,10 @@
 import init
 import time
 from controllably.Make.Mixture.QInstruments import BioShake
-you = BioShake('COM27')
+from controllably.Make.Mixture.QInstruments.qinstruments_api import QInstruments
+you = BioShake('COM27', verbose=True)
 me = you.device
+# me = QInstruments('COM27', verbose=True)
 me.info()
 
 # %%
@@ -17,6 +19,7 @@ me.setShakeTargetSpeed(1500)
 # %%
 me.setShakeAcceleration(5)
 # %%
+# ELM must be locked before shakeOn
 me.shakeOn()
 time.sleep(7)
 print(me.getShakeState())
@@ -33,3 +36,4 @@ me.getTempLimiterMin()
 me.getTempMax()
 # %%
 me.getTempMin()
+# %%
