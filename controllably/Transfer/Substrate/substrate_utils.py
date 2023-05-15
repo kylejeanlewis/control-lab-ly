@@ -18,6 +18,8 @@ class Gripper(ABC):
     #### Abstract
     - `drop`: releases an object
     - `grab`: picks up an object
+    #### Public
+    - `toggleGrip`: grip or release the object
     """
     
     def __init__(self):
@@ -41,3 +43,16 @@ class Gripper(ABC):
         Returns:
             bool: whether action is successful
         """
+    
+    def toggleGrip(self, on:bool):
+        """
+        Grip or release the object
+
+        Args:
+            on (bool): whether to grip the object
+        """
+        if on:
+            self.grab()
+        else:
+            self.drop()
+        return
