@@ -19,6 +19,104 @@ from .qinstruments_lib import ELMStateCode, ELMStateString, ShakeStateCode, Shak
 print(f"Import: OK <{__name__}>")
 
 class QInstruments:
+    """
+    QInstruments surfaces available actions to control devices from QInstruments, including orbital shakers,
+    heat plates, and cold plates.
+    
+    ### Constructor
+    Args:
+        `port` (str): COM port address
+        `baudrate` (int, optional): baudrate. Defaults to 9600.
+        `timeout` (int, optional): timeout in seconds. Defaults to 1.
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+    
+    ### Attributes
+    - `connection_details` (dict): dictionary of connection details (e.g. COM port / IP address)
+    - `device` (Callable): device object that communicates with physical tool
+    - `flags` (dict[str, bool]): keywords paired with boolean flags
+    - `verbose` (bool): verbosity of class
+    
+    ### Methods
+    #### Initialization
+    - `disableBootScreen`: permanent deactivation of the boot screen startup text
+    - `disableCLED`: permanent deactivation of the LED indication lights
+    - `enableBootScreen`: permanent activation of the boot screen startup text
+    - `enableCLED`: permanent activation of the LED indication lights
+    - `flashLed`: user device LED flashes five times
+    - `getCLED`: returns the status LED state
+    - `getDescription`: returns model type
+    - `getErrorList`: returns a list with errors and warnings which can occur during processing
+    - `getSerial`: returns the device serial number
+    - `getVersion`: returns the firmware version number
+    - `info`: prints the boot screen text
+    - `resetDevice`: restarts the controller
+    - `setBuzzer`: ring the buzzer for duration in milliseconds
+    - `version`: returns the model type and firmware version number
+    #### ECO
+    - `leaveEcoMode`: leaves the economical mode and switches into the normal operating state
+    - `setEcoMode`: witches the shaker into economical mode and reduces electricity consumption
+    #### Shaking
+    - `getShakeAcceleration`: returns the acceleration/deceleration value
+    - `getShakeAccelerationMax`: get the maximum acceleration/deceleration time in seconds
+    - `getShakeAccelerationMin`: get the minimum acceleration/deceleration time in seconds
+    - `getShakeActualSpeed`: returns the current mixing speed
+    - `getShakeDefaultDirection`: returns the mixing direction when the device starts up
+    - `getShakeDirection`: returns the current mixing direction
+    - `getShakeMaxRpm`: returns the device specific maximum target speed (i.e. hardware limits)
+    - `getShakeMinRpm`: returns the device specific minimum target speed (i.e. hardware limits)
+    - `getShakeRemainingTime`: returns the remaining time in seconds if device was started with the command `shakeOnWithRuntime`
+    - `getShakeSpeedLimitMax`: returns the upper limit for the target speed
+    - `getShakeSpeedLimitMin`: returns the lower limit for the target speed
+    - `getShakeState`: returns shaker state as an integer
+    - `getShakeStateAsString`: returns shaker state as a string
+    - `getShakeTargetSpeed`: returns the target mixing speed
+    - `setShakeAcceleration`: sets the acceleration/deceleration value in seconds
+    - `setShakeDefaultDirection`: permanently sets the default mixing direction after device start up
+    - `setShakeDirection`: sets the mixing direction
+    - `setShakeSpeedLimitMax`: permanently set upper limit for the target speed (between 0 to 3000)
+    - `setShakeSpeedLimitMin`: permanently set lower limit for the target speed (between 0 to 3000)
+    - `setShakeTargetSpeed`: set the target mixing speed
+    - `shakeEmergencyOff`: stop the shaker immediately at an undefined position ignoring the defined deceleration time
+    - `shakeGoHome`: move shaker to the home position and locks in place
+    - `shakeOff`: stops shaking within the defined deceleration time, go to the home position and locks in place
+    - `shakeOffNonZeroPos`: tops shaking within the defined deceleration time, do not go to home position and do not lock in home position
+    - `shakeOffWithDeEnergizeSolenoid`: tops shaking within the defined deceleration time, go to the home position and locks in place for 1 second, then unlock home position
+    - `shakeOn`: tarts shaking with defined speed with defined acceleration time
+    - `shakeOnWithRuntime`: starts shaking with defined speed within defined acceleration time for given time value in seconds
+    #### Temperature
+    - `getTemp40Calibr`: returns the offset value at the 40°C calibration point
+    - `getTemp90Calibr`: returns the offset value at the 90°C calibration point
+    - `getTempActual`: returns the current temperature in celsius
+    - `getTempLimiterMax`: returns the upper limit for the target temperature in celsius
+    - `getTempLimiterMin`: returns the lower limit for the target temperature in celsius
+    - `getTempMax`: returns the device specific maximum target temperature in celsius (i.e. hardware limits)
+    - `getTempMin`: returns the device specific minimum target temperature in celsius (i.e. hardware limits)
+    - `getTempState`: returns the state of the temperature control feature
+    - `getTempTarget`: returns the target temperature
+    - `setTemp40Calibr`: permanently sets the offset value at the 40°C calibration point in 1/10°C increments
+    - `setTemp90Calibr`: permanently sets the offset value at the 90°C calibration point in 1/10°C increments
+    - `setTempLimiterMax`: permanently sets the upper limit for the target temperature in 1/10°C increments
+    - `setTempLimiterMin`: permanently sets the lower limit for the target temperature in 1/10°C increments
+    - `setTempTarget`: sets target temperature between TempMin and TempMax in 1/10°C increments
+    - `tempOff`: switches off the temperature control feature and stops heating/cooling
+    - `tempOn`: switches on the temperature control feature and starts heating/cooling
+    #### ELM
+    - `getElmSelftest`: returns whether the ELM self-test is enabled or disabled at device startup
+    - `getElmStartupPosition`: returns whether ELM is unlocked after device startup
+    - `getElmState`: returns the ELM status
+    - `getElmStateAsString`: returns the ELM status as a string
+    - `setElmLockPos`: close the ELM
+    - `setElmSelftest`: permanently set whether the ELM self-test is enabled at device startup
+    - `setElmStartupPosition`: permanently set whether the ELM is unlocked after device startup
+    - `setElmUnlockPos`: open the ELM
+    #### General
+    - `connect`: reconnect to device using existing connection details
+    - `disconnect`: disconnect from device
+    - `query`: write command to and read response from device
+    - `read`: read response from device
+    - `write`: write command to device
+    """
+    
     def __init__(self, 
         port: str, 
         baudrate:int = 9600, 
@@ -26,6 +124,15 @@ class QInstruments:
         verbose:bool = False, 
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            port (str): COM port address
+            baudrate (int, optional): baudrate. Defaults to 9600.
+            timeout (int, optional): timeout in seconds. Defaults to 1.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         self.connection_details = {}
         self.device = None
         self.model = ''
