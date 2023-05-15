@@ -95,7 +95,8 @@ class DobotGripper(Gripper):
     
 class TwoJawGrip(DobotGripper):
     """
-    TwoJawGrip provides methods to operate the Dobot jaw gripper
+    TwoJawGrip provides methods to operate the Dobot jaw gripper.
+    Channel map labels: `grab`
     
     ### Constructor
     Args:
@@ -154,7 +155,8 @@ class TwoJawGrip(DobotGripper):
 
 class VacuumGrip(DobotGripper):
     """
-    VacuumGrip provides methods to operate the Dobot vacuum grip
+    VacuumGrip provides methods to operate the Dobot vacuum grip.
+    Channel map labels: `pull`, `push`
     
     ### Constructor
     Args:
@@ -260,7 +262,6 @@ class VacuumGrip(DobotGripper):
         try:
             for channel in channels:
                 self.dashboard.DOExecute(channel, 0)
-            # self.dashboard.DOExecute(2,0)
             time.sleep(1)
         except (AttributeError, OSError):
             print('Tried to stop...')
