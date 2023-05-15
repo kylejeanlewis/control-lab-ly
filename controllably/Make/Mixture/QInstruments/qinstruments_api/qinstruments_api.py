@@ -821,12 +821,14 @@ class QInstruments:
             time.sleep(timeout_s)
             if slow:
                 time.sleep(1)
-            response = self.read()
+            response = self.read(slow=slow)
         # print(time.perf_counter() - start_time)
         if response.startswith('u ->'):
-            # print(response)
-            # raise AttributeError(f'{self.model} does not have the method: {command}')
+            raise AttributeError(f'{self.model} does not have the method: {command}')
             print(f'{self.model} does not have the method: {command}')
+            if numeric:
+                return np.nan
+            return ''
         if not numeric:
             return response
         if response.replace('.','',1).replace('-','',1).isdigit():
@@ -835,16 +837,22 @@ class QInstruments:
         print(f"Response value is non-numeric: {repr(response)}")
         return np.nan
 
-    def read(self) -> str:
+    def read(self, slow:bool = False) -> str:
         """
         Read response from device
+        
+        Args:
+            slow (bool, optional): whether to expect a slow response. Defaults to False. 
 
         Returns:
             str: response string
         """
         response = ''
         try:
-            response = self.device.read_all()   # response template: <response><\r><\n>
+            if slow:
+                response = self.device.read_all()   # response template: <response><\r><\n>
+            else:
+                response = self.device.readline()
         except Exception as e:
             if self.verbose:
                 print(e)
@@ -904,7 +912,7 @@ class QInstruments:
                 print(e)
         else:
             print(f"Connection opened to {port}")
-            time.sleep(3)
+            time.sleep(5)
             self.model = self.getDescription()
         return
     
