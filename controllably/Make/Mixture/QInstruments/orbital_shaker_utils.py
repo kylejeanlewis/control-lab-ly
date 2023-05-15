@@ -8,6 +8,7 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 import numpy as np
+from threading import Thread
 import time
 from typing import Optional, Union
 
@@ -20,6 +21,7 @@ class BioShake(Maker):
     _default_acceleration: int = 5
     _default_speed: int = 500
     _default_flags = {
+        'connected': False,
         'elm_locked': True,
         'shake_counterclockwise': True,
         'speed_reached': False,
@@ -30,7 +32,7 @@ class BioShake(Maker):
         self.device: QInstruments = None
         self.model = ''
         
-        self.acceleration = self._default_acceleration
+        self._acceleration = self._default_acceleration
         self.shake_time_left = None
         self.speed = self._default_speed
         self.temperature = None
@@ -44,7 +46,8 @@ class BioShake(Maker):
         self.set_speed = None
         self.set_temperature = None
         
-        self._verbose = kwargs.get('verbose', False)
+        self._threads = {}
+        self.verbose = kwargs.get('verbose', False)
         self._connect(port)
         return
     
@@ -156,7 +159,7 @@ class BioShake(Maker):
         response = self.device.getShakeActualSpeed()
         self.speed = response if response is not None else self.speed
         
-        flag = (self.set_speed == self.speed)
+        flag = (abs(self.speed - self.set_speed) <= 0.1*self.speed) if self.set_speed else False
         self.setFlag(speed_reached=flag)
         return self.set_speed, self.speed
     
@@ -193,8 +196,12 @@ class BioShake(Maker):
     
     def getUserLimits(self):
         """Retrieve the user defined limits for speed and temperature"""
-        self.range_speed = ( self.device.getShakeSpeedLimitMin(), self.device.getShakeSpeedLimitMax() )
-        self.range_temperature = ( self.device.getTempLimiterMin(), self.device.getTempLimiterMax() )
+        try:
+            self.range_temperature = ( self.device.getTempLimiterMin(), self.device.getTempLimiterMax() )
+            self.range_speed = ( self.device.getShakeSpeedLimitMin(), self.device.getShakeSpeedLimitMax() )
+        except AttributeError:
+            self.range_temperature = self.limit_temperature
+            self.range_speed = self.limit_speed
         return
 
     def holdTemperature(self, temperature:float, time_s:float):
@@ -229,6 +236,7 @@ class BioShake(Maker):
         Returns:
             bool: whether target speed has been reached
         """
+        self.getSpeed()
         return self.flags['speed_reached']
     
     def isAtTemperature(self) -> bool:
@@ -289,6 +297,8 @@ class BioShake(Maker):
             self._acceleration = acceleration
             if default:
                 self._default_acceleration = acceleration
+        # else:
+        #     raise ValueError(f"Acceleration out of range {self.limit_acceleration}: {acceleration}")
         return self.device.setShakeAcceleration(acceleration=self.acceleration)
     
     def setCounterClockwise(self, counterclockwise:bool):
@@ -322,6 +332,8 @@ class BioShake(Maker):
             self.set_speed = speed
             if default:
                 self._default_speed = speed
+        else:
+            raise ValueError(f"Speed out of range {self.range_speed}: {speed}")
         return self.device.setShakeTargetSpeed(speed=self.set_speed)
     
     def setTemperature(self, temperature:float, blocking:bool = True):
@@ -335,7 +347,9 @@ class BioShake(Maker):
         lower_limit, upper_limit = self.range_temperature
         if lower_limit <= temperature <= upper_limit:
             self.set_temperature = temperature
-        self.device.setTempTarget(temperature=temperature)
+            self.device.setTempTarget(temperature=temperature)
+        else:
+            raise ValueError(f"Temperature out of range {self.range_temperature}: {temperature}")
         
         while self.set_temperature != self.device.getTempTarget():
             self.getTemperature()
@@ -372,6 +386,21 @@ class BioShake(Maker):
         if not self.isLocked():
             self.toggleGrip(on=True)
         self.toggleShake(on=True, duration=duration)
+        
+        def checkSpeed():
+            start_time = time.perf_counter()
+            shake_time = time.perf_counter() - start_time
+            while not self.isAtSpeed():
+                shake_time = time.perf_counter() - start_time
+                if shake_time > self.acceleration:
+                    break
+                time.sleep(1)
+            if duration:
+                time.sleep(abs(duration - shake_time))
+            return self.isAtSpeed()
+        thread = Thread(target=checkSpeed)
+        thread.start()
+        self._threads['check_speed'] = thread
         return
         
     def shutdown(self):
@@ -436,6 +465,9 @@ class BioShake(Maker):
                 self.device.shakeOn()
             elif duration > 0:
                 self.device.shakeOnWithRuntime(duration=duration)
+            print(f"Speed: {self.set_speed}")
+            print(f"Accel: {self.acceleration}")
+            print(f"Time : {duration}")
         else:
             if home:
                 self.device.shakeOff()
@@ -476,11 +508,9 @@ class BioShake(Maker):
             device = QInstruments(port, baudrate, timeout=timeout)
             self.device = device
         except Exception as e:
-            print(f"Could not connect to {port}")
             if self.verbose:
                 print(e)
         else:
-            print(f"Connection opened to {port}")
             self.model = device.model
             self.setFlag(connected=True)
             self.__defaults__()
