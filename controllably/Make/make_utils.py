@@ -38,7 +38,7 @@ class Maker(ABC):
     - `setFlag`: set flags by using keyword arguments
     """
     
-    _default_flags: dict[str, bool] = {}
+    _default_flags: dict[str, bool] = {'busy': False, 'connected': False}
     def __init__(self, verbose:bool = False, **kwargs):
         """
         Instantiate the class
