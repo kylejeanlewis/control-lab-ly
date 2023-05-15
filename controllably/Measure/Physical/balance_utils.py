@@ -129,7 +129,11 @@ class MassBalance(Measurer):
                     self._mass
                 ]
                 row = {k:v for k,v in zip(COLUMNS, values)}
-                self.buffer_df = self.buffer_df.append(row, ignore_index=True)
+                # self.buffer_df = self.buffer_df.append(row, ignore_index=True)
+                # new_row_df = pd.DataFrame(row)
+                # self.buffer_df = pd.concat([self.buffer_df, new_row_df])
+                new_row_df = pd.DataFrame(row, index=[0])
+                self.buffer_df = pd.concat([self.buffer_df, new_row_df], ignore_index=True)
         return response
   
     def reset(self):
@@ -183,6 +187,10 @@ class MassBalance(Measurer):
         Args:
             wait (int, optional): duration to wait while zeroing, in seconds. Defaults to 5.
         """
+        if self.flags['record']:
+            print("Unable to zero while recording.")
+            print("Use `toggleRecord(False)` to stop recording.")
+            return
         temp_record_state = self.flags['record']
         temp_buffer_df = self.buffer_df.copy()
         self.reset()

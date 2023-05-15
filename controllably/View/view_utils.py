@@ -24,8 +24,7 @@ import cv2              # pip install opencv-python
 
 # Local application imports
 from ..misc import Helper
-from .image_utils import Image
-# from . import image_utils as Image
+from . import image_utils as Image
 print(f"Import: OK <{__name__}>")
 
 DIMENSION_THRESHOLD = 36
@@ -57,7 +56,7 @@ class Camera(ABC):
     - `device` (Callable): device object that communicates with physical tool
     - `feed` (Callable): connection to image feed
     - `flags` (dict[str, bool]): keywords paired with boolean flags
-    - `placeholder_image` (Image): placeholder image for when there is no feed available
+    - `placeholder_image` (np.ndarray): placeholder image for when there is no feed available
     - `record_folder` (str): filepath at which to store images and data
     - `record_timeout` (int): number of seconds to record images for
     - `rotation` (int): rotation angle for camera feed (multiples of 90 degrees)
@@ -82,7 +81,7 @@ class Camera(ABC):
     - `saveImage`: save image to file
     - `setFlag`: set flags by using keyword arguments
     - `shutdown`: shutdown procedure for tool
-    - `toggleRecord`: start or stop data recording
+    - `toggleRecord`: start or stop image capture and recording
     """
     
     _default_flags: dict[str, bool] = {
@@ -153,44 +152,37 @@ class Camera(ABC):
     
     def annotateAll(self, 
         df: pd.DataFrame, 
-        image: Optional[Image] = None, 
-        frame: Optional[np.ndarray] = None    
-    ) -> tuple[dict[str,tuple[int]], Image]:
+        frame: np.ndarray
+    ) -> tuple[dict[str,tuple[int]], np.ndarray]:
         """
         Annotate all detected targets
 
         Args:
-            df (pd.DataFrame): dataframe of detected targets details
-            image (Optional[Image], optional): image object. Defaults to None.
-            frame (Optional[np.ndarray], optional): frame array. Defaults to None.
+            df (pd.DataFrame): dataframe of detected targets detail
+            frame (np.ndarray): image array
 
         Returns:
-            tuple[dict[str,tuple[int]], Image]: ({target index: center positions}, image object)
+            tuple[dict[str,tuple[int]], np.ndarray]: ({target index: center positions}, image array)
         """
         data = {}
-        if (frame is None) == (image is None):
-            raise Exception('Please input either image or frame.')
-        elif frame is not None:
-            image = Image(frame)
-            
         for index in range(len(df)):
             dimensions = df.loc[index, ['x','y','w','h']].to_list()
             x,y,w,h = dimensions
             if w*h >= DIMENSION_THRESHOLD**2:                       # Compare area to threshold
-                image.annotate(index, (x,y,w,h), inplace=True)
+                frame = Image.annotate(frame=frame, index=index, dimensions=(x,y,w,h))
                 data[f'C{index+1}'] = (int(x+(w/2)), int(y+(h/2)))  # Center of target
-        return data, image
+        return data, frame
     
     def connect(self):
         """Establish connection with device"""
         return self._connect(**self.connection_details)
 
-    def detect(self, image:Image, scale:int, neighbors:int) -> pd.DataFrame:
+    def detect(self, frame:np.ndarray, scale:int, neighbors:int) -> pd.DataFrame:
         """
         Perform image detection
 
         Args:
-            image (Image): image to detect from
+            frame (np.ndarray): image array to detect from
             scale (int): scale at which to detect targets
             neighbors (int): minimum number of neighbors for targets
 
@@ -202,8 +194,8 @@ class Camera(ABC):
         """
         if self.classifier is None:
             raise RuntimeError('Please load a classifier first.')
-        image.grayscale(inplace=True)
-        detected_data = self.classifier.detect(frame=image.frame, scale=scale, neighbors=neighbors)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        detected_data = self.classifier.detect(frame=frame, scale=scale, neighbors=neighbors)
         return self._data_to_df(detected_data)
     
     def isConnected(self) -> bool:
@@ -224,10 +216,7 @@ class Camera(ABC):
         Args:
             classifier (Classifier): desired image classifier
         """
-        # try:
         self.classifier = classifier
-        # except SystemError:
-        #     print('Please select a classifier.')
         return
 
     def resetFlags(self):
@@ -280,7 +269,7 @@ class Camera(ABC):
         return
  
     # Image handling
-    def decodeImage(self, array:bytes) -> Image:
+    def decodeImage(self, array:bytes) -> np.ndarray:
         """
         Decode byte array of image
 
@@ -288,40 +277,27 @@ class Camera(ABC):
             array (bytes): byte array of image
 
         Returns:
-            Image: image of decoded byte array
+            np.ndarray: image array of decoded byte array
         """
-        frame = cv2.imdecode(array, cv2.IMREAD_COLOR)
-        return Image(frame)
+        return cv2.imdecode(array, cv2.IMREAD_COLOR)
     
-    def encodeImage(self, 
-        image: Optional[Image] = None, 
-        frame: Optional[np.ndarray] = None, 
-        extension: str = '.png'
-    ) -> bytes:
+    def encodeImage(self, frame:np.ndarray, extension:str = '.png') -> bytes:
         """
         Encode image into byte array
 
         Args:
-            image (Optional[Image], optional): image object to be encoded. Defaults to None.
-            frame (Optional[np.ndarray], optional): frame array to be encoded. Defaults to None.
+            frame (np.ndarray): image array to be encoded
             extension (str, optional): image format to encode to. Defaults to '.png'.
 
-        Raises:
-            ValueError: Please input either image or frame.
-
         Returns:
-            bytes: byte array of image / frame
+            bytes: byte array of image
         """
-        if (frame is None) == (image is None):
-            raise ValueError('Please input either image or frame.')
-        elif image is not None:
-            return image.encode(extension)
         return cv2.imencode(extension, frame)[1].tobytes()
     
     def getImage(self, 
         crosshair: bool = False, 
         resize: bool = False
-    ) -> tuple[bool, Image]:
+    ) -> tuple[bool, np.ndarray]:
         """
         Get image from camera feed
 
@@ -330,63 +306,51 @@ class Camera(ABC):
             resize (bool, optional): whether to resize the image. Defaults to False.
 
         Returns:
-            tuple[bool, Image]: (whether an image is obtained, image object)
+            tuple[bool, np.ndarray]: (whether an image is obtained, image array)
         """
         ret = False
-        image = self.placeholder_image
+        frame = self.placeholder_image
         try:
             ret, frame = self._read()
         except AttributeError:
             pass
         if ret:
-            image = Image(frame)
             if resize:
-                image.resize(self.cam_size, inplace=True)
-            image.rotate(self.rotation, inplace=True)
+                frame = cv2.resize(frame, self.cam_size)
+            frame = Image.rotate(frame=frame, angle=self.rotation)
         if crosshair:
-            image.crosshair(inplace=True)
-        return ret, image
+            frame = Image.crosshair(frame=frame)
+        return ret, frame
 
-    def loadImage(self, filename:str) -> Image:
+    def loadImage(self, filename:str) -> np.ndarray:
         """
-        Load image from file
+        Load an image from file
 
         Args:
             filename (str): image filename
 
         Returns:
-            Image: image from file
+            np.ndarray: image array from file
         """
-        frame = cv2.imread(filename)
-        return Image(frame)
+        return cv2.imread(filename)
     
     def saveImage(self, 
-        image: Optional[Image] = None, 
-        frame: Optional[np.ndarray] = None, 
+        frame: np.ndarray, 
         filename: str = 'image.png'
     ) -> bool:
         """
         Save image to file
 
         Args:
-            image (Optional[Image], optional): image object to be saved. Defaults to None.
-            frame (Optional[np.ndarray], optional): frame array to be saved. Defaults to None.
+            frame (np.ndarray): frame array to be saved
             filename (str, optional): filename to save to. Defaults to 'image.png'.
 
-        Raises:
-            ValueError: Please input either image or frame.
-
         Returns:
-            bool: whether the image is successfully saved
+            bool: whether the image array is successfully saved
         """
         if filename == 'image.png':
             now = datetime.now().strftime("%Y%m%d_%H-%M-%S")
             filename = f'image{now}.png'
-        
-        if (frame is None) == (image is None):
-            raise ValueError('Please input either image or frame.')
-        elif image is not None:
-            return image.save(filename)
         return cv2.imwrite(filename, frame)
     
     # Protected method(s)
@@ -429,10 +393,10 @@ class Camera(ABC):
             if self.flags['pause_record']:
                 continue
             now = datetime.now()
-            _, image = self.getImage()
-            self.saveImage(image, filename=f'{folder}/frames/frame_{frame_num:05}.png')
+            _, frame = self.getImage()
+            self.saveImage(frame=frame, filename=f'{folder}/frames/frame_{frame_num:05}.png')
             timestamps.append(now)
-            # frames.append(image.frame)
+            # frames.append(frame)
             frame_num += 1
             
             # Timer check
@@ -466,21 +430,17 @@ class Camera(ABC):
             filename (str, optional): name of placeholder image file. Defaults to class attribute `_placeholder_filename`.
             img_bytes (Optional[bytes], optional): byte array of placeholder image. Defaults to None.
             resize (bool, optional): whether to resize the image. Defaults to False.
-
-        Returns:
-            Image: image of placeholder
         """
-        image = None
+        frame = None
         if not len(filename) and img_bytes is None:
             img_bytes = pkgutil.get_data(self._package, self._placeholder_filename)
         if len(filename):
-            image = self.loadImage(filename)
+            frame = self.loadImage(filename)
         elif type(img_bytes) == bytes:
             array = np.asarray(bytearray(img_bytes), dtype="uint8")
-            image = self.decodeImage(array)
-        
+            frame = self.decodeImage(array)
         if resize:
-            image.resize(self.cam_size, inplace=True)
-        self.placeholder_image = image
+            frame = cv2.resize(frame, self.cam_size)
+        self.placeholder_image = frame
         return
  

@@ -220,12 +220,12 @@ class PiezoRoboticsDevice(Instrument):
         if command_code not in CommandCode._member_names_:
             raise Exception(f"Please select a valid command code from: {', '.join(CommandCode._member_names_)}")
         
-        start_time = time.time()
+        start_time = time.perf_counter()
         self._write(command)
         cache = []
         response = ''
         while response != 'OKC':
-            if timeout_s is not None and (time.time()-start_time) > timeout_s:
+            if timeout_s is not None and (time.perf_counter()-start_time) > timeout_s:
                 print('Timeout! Aborting run...')
                 break
             response = self._read()

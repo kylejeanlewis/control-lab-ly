@@ -124,12 +124,12 @@ class Spinner(Maker):
         self.speed = speed
         print(f"Duration   (channel {self.channel}): {time_s}s")
         interval = 1
-        start_time = time.time()
+        start_time = time.perf_counter()
         while(True):
             time.sleep(0.1)
-            if (interval <= time.time() - start_time):
+            if (interval <= time.perf_counter() - start_time):
                 interval += 1
-            if (time_s <= time.time() - start_time):
+            if (time_s <= time.perf_counter() - start_time):
                 break
         self._write(0)
         self.speed = 0

@@ -94,6 +94,7 @@ class Sartorius(LiquidHandler):
         'tip_on': False
     }
     implement_offset = (0,0,-250)
+    tip_inset_mm = 12
     def __init__(self, 
         port:str, 
         channel: int = 1, 
@@ -247,17 +248,18 @@ class Sartorius(LiquidHandler):
         if volume == 0:
             return ''
         print(f'Aspirating {volume} uL...')
-        start_aspirate = time.time()
+        start_aspirate = time.perf_counter()
         speed = self.speed.up if speed is None else speed
         
         if speed in self.speed_presets:
             if speed != self.speed.up:
-                self.setSpeed(speed=speed, up=True)
-                self.speed.up = speed
-            start_aspirate = time.time()
+                self.setSpeed(speed=speed, up=True, default=False)
+            start_aspirate = time.perf_counter()
             response = self._query(f'RI{steps}')
             move_time = steps*self.resolution / speed
-            time.sleep(move_time)
+            duration = time.perf_counter() - start_aspirate
+            if duration < (move_time):
+                time.sleep(move_time-duration)
             # if response != 'ok':
             #     return response
             
@@ -267,32 +269,34 @@ class Sartorius(LiquidHandler):
             print(speed_parameters)
             preset = speed_parameters.preset
             if preset is None:
-                raise RuntimeError('Target speed not possible.')
-            self.setSpeed(speed=preset, up=True)
-            self.speed.up = speed
-            start_aspirate = time.time()
+                # raise RuntimeError('Target speed not possible.')
+                print('Target speed not possible.')
+                return
+            self.setSpeed(speed=preset, up=True, default=False)
             
             steps_left = steps
             delay = speed_parameters.delay
             step_size = speed_parameters.step_size
             intervals = speed_parameters.intervals
+            start_aspirate = time.perf_counter()
             for i in range(intervals):
-                start_time = time.time()
+                start_time = time.perf_counter()
                 step = step_size if (i+1 != intervals) else steps_left
                 move_time = step*self.resolution / preset
-                response = self._query(f'RI{step}', resume_feedback=False)
+                response = self._query(f'RI{step}', resume_feedback=False, get_position=False)
                 # if response != 'ok':
                 #     print("Aspiration failed")
                 #     return response
                 steps_left -= step
-                duration = time.time() - start_time
+                duration = time.perf_counter() - start_time
                 if duration < (delay+move_time):
                     time.sleep(delay+move_time-duration)
         
         # Update values
-        print(f'Aspiration time: {time.time()-start_aspirate}s')
+        print(f'Aspiration time: {time.perf_counter()-start_aspirate}s')
         time.sleep(wait)
         self.setFlag(occupied=False, pause_feedback=False)
+        self.getPosition()
         self.volume += volume
         self.position += steps
         if reagent is not None:
@@ -355,17 +359,18 @@ class Sartorius(LiquidHandler):
         if volume == 0:
             return ''
         print(f'Dispensing {volume} uL...')
-        start_dispense = time.time()
+        start_dispense = time.perf_counter()
         speed = self.speed.down if speed is None else speed
 
         if speed in self.speed_presets:
             if speed != self.speed.down:
-                self.setSpeed(speed=speed, up=False)
-                self.speed.down = speed
-            start_dispense = time.time()
+                self.setSpeed(speed=speed, up=False, default=False)
+            start_dispense = time.perf_counter()
             response = self._query(f'RO{steps}')
             move_time = steps*self.resolution / speed
-            time.sleep(move_time)
+            duration = time.perf_counter() - start_dispense
+            if duration < (move_time):
+                time.sleep(move_time-duration)
             # if response != 'ok':
             #     return response
             
@@ -375,32 +380,34 @@ class Sartorius(LiquidHandler):
             print(speed_parameters)
             preset = speed_parameters.preset
             if preset is None:
-                raise RuntimeError('Target speed not possible.')
-            self.setSpeed(speed=preset, up=False)
-            self.speed.down = speed
-            start_dispense = time.time()
+                # raise RuntimeError('Target speed not possible.')
+                print('Target speed not possible.')
+                return
+            self.setSpeed(speed=preset, up=False, default=False)
         
             steps_left = steps
             delay = speed_parameters.delay
             step_size = speed_parameters.step_size
             intervals = speed_parameters.intervals
+            start_dispense = time.perf_counter()
             for i in range(intervals):
-                start_time = time.time()
+                start_time = time.perf_counter()
                 step = step_size if (i+1 != intervals) else steps_left
                 move_time = step*self.resolution / preset
-                response = self._query(f'RO{step}', resume_feedback=False)
+                response = self._query(f'RO{step}', resume_feedback=False, get_position=False)
                 # if response != 'ok':
                 #     print("Dispense failed")
                 #     return response
                 steps_left -= step
-                duration = time.time() - start_time
+                duration = time.perf_counter() - start_time
                 if duration < (delay+move_time):
                     time.sleep(delay+move_time-duration)
 
         # Update values
-        print(f'Dispense time: {time.time()-start_dispense}s')
+        print(f'Dispense time: {time.perf_counter()-start_dispense}s')
         time.sleep(wait)
         self.setFlag(occupied=False, pause_feedback=False)
+        self.getPosition()
         self.volume = max(self.volume - volume, 0)
         self.position -= steps
         if self.volume == 0 and blowout:
@@ -425,10 +432,6 @@ class Sartorius(LiquidHandler):
         self.position = self.home_position if home else 0
         time.sleep(1)
         return response
-    
-    def empty(self, **kwargs):
-        """Empty the pipette"""
-        return self.home()
     
     def getCapacitance(self) -> Union[int, str]:
         """
@@ -468,8 +471,8 @@ class Sartorius(LiquidHandler):
         self.capacity = info.capacity
         self.limits = (info.tip_eject_position, info.max_position)
         self.speed_presets = info.preset_speeds
-        self.speed.up = self.speed_presets[self.speed_code.up]
-        self.speed.down = self.speed_presets[self.speed_code.down]
+        self.speed.up = self.speed_presets[self.speed_code.up-1]
+        self.speed.down = self.speed_presets[self.speed_code.down-1]
         return
     
     def getPosition(self, **kwargs) -> int:
@@ -615,13 +618,14 @@ class Sartorius(LiquidHandler):
         self.zero()
         return self.home()
     
-    def setSpeed(self, speed:int, up:bool, **kwargs) -> str:
+    def setSpeed(self, speed:int, up:bool, default:bool = False, **kwargs) -> str:
         """
         Set the speed of the plunger
 
         Args:
             speed (int): speed of plunger
             up (bool): direction of travel
+            default (bool, optional): whether to set speed as a default. Defaults to False.
 
         Returns:
             str: device response
@@ -630,10 +634,14 @@ class Sartorius(LiquidHandler):
         print(f'Speed {speed_code}: {self.speed_presets[speed_code-1]} uL/s')
         direction = 'I' if up else 'O'
         self._query(f'S{direction}{speed_code}')
+        if not default:
+            return self._query(f'D{direction}')
         if up:
             self.speed_code.up = speed_code
+            self.speed.up = self.speed_presets[speed_code-1]
         else:
             self.speed_code.down = speed_code
+            self.speed.down = self.speed_presets[speed_code-1]
         return self._query(f'D{direction}')
     
     def shutdown(self):
@@ -772,7 +780,8 @@ class Sartorius(LiquidHandler):
     def _query(self, 
         command: str, 
         timeout_s: float = 0.3, 
-        resume_feedback: bool = False
+        resume_feedback: bool = False,
+        get_position: bool = True
     ) -> str:
         """
         Write command to and read response from device
@@ -781,7 +790,7 @@ class Sartorius(LiquidHandler):
             command (str): command string
             timeout_s (float, optional): duration to wait before timeout. Defaults to 0.3.
             resume_feedback (bool, optional): whether to resume reading from device. Defaults to False.
-
+            get_position (bool, optional): whether to get the position of the plunger. Defaults to True.
         Returns:
             str: response string
         """
@@ -790,22 +799,25 @@ class Sartorius(LiquidHandler):
             if self.flags['get_feedback'] and not self.flags['pause_feedback']:
                 self.setFlag(pause_feedback=True)
                 time.sleep(timeout_s)
-            self.getStatus()
-            while self.isBusy():
-                self.getStatus()
+            # self.getStatus()
+            # while self.isBusy():
+            #     self.getStatus()
+            if self.isBusy():
+                time.sleep(timeout_s)
         
-        start_time = time.time()
+        start_time = time.perf_counter()
         self._write(command)
         response = ''
         while not self._is_expected_reply(response, command_code):
-            if time.time() - start_time > timeout_s:
+            if time.perf_counter() - start_time > timeout_s:
                 break
             response = self._read()
-        # print(time.time() - start_time)
+        # print(time.perf_counter() - start_time)
         if command_code in QUERIES:
             response = response[2:]
         if command_code not in STATUS_QUERIES:
-            self.getPosition()
+            if get_position:
+                self.getPosition()
             if resume_feedback:
                 self.setFlag(pause_feedback=False)
         return response

@@ -110,9 +110,9 @@ class MoverPanel(Panel):
             sg.Column: Column object
         """
         font = (self.typeface, self.font_sizes[title_font_level])
-        layout = super().getLayout(f'{self.name} Control', justification='center', font=font)
+        layout = super().getLayout(f'{self.name.title()} Control', justification='center', font=font)
         
-        # yaw (alpha, about z-axis), pitch (beta, about x-axis), roll (gamma, about y-axis)
+        # yaw (alpha/a, about z-axis), pitch (beta/b, about x-axis), roll (gamma/c, about y-axis)
         axes = ['X','Y','Z','a','b','c']
         increments = ['-10','-1','-0.1',0,'+0.1','+1','+10']
         center_buttons = ['home']*2 + ['safe'] + ['zero']*3

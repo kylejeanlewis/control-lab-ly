@@ -133,18 +133,20 @@ class Peltier(Maker):
             if not ready:
                 pass
             elif not self._stabilize_time:
-                self._stabilize_time = time.time()
+                self._stabilize_time = time.perf_counter()
                 print(response)
             elif self.flags['temperature_reached']:
                 pass
-            elif (self._power <= self.power_threshold) or (time.time()-self._stabilize_time >= self.stabilize_buffer_time):
+            elif (self._power <= self.power_threshold) or (time.perf_counter()-self._stabilize_time >= self.stabilize_buffer_time):
                 print(response)
                 self.setFlag(temperature_reached=True)
                 print(f"Temperature of {self.set_point}°C reached!")
             if self.flags['record']:
                 values = [now] + values
                 row = {k:v for k,v in zip(self._columns, values)}
-                self.buffer_df = self.buffer_df.append(row, ignore_index=True)
+                # self.buffer_df = self.buffer_df.append(row, ignore_index=True)
+                new_row_df = pd.DataFrame(row)
+                self.buffer_df = pd.concat([self.buffer_df, new_row_df])
         return response
     
     def holdTemperature(self, temperature:float, time_s:float):
