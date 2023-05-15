@@ -618,14 +618,14 @@ class Sartorius(LiquidHandler):
         self.zero()
         return self.home()
     
-    def setSpeed(self, speed:int, up:bool, default:bool = True, **kwargs) -> str:
+    def setSpeed(self, speed:int, up:bool, default:bool = False, **kwargs) -> str:
         """
         Set the speed of the plunger
 
         Args:
             speed (int): speed of plunger
             up (bool): direction of travel
-            default (bool, optional): whether to set speed as a default. Defaults to True.
+            default (bool, optional): whether to set speed as a default. Defaults to False.
 
         Returns:
             str: device response
