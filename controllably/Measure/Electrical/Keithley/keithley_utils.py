@@ -65,6 +65,5 @@ class Keithley(Programmable):
             'ip_address': ip_address,
             'name': name
         }
-        self._ip_address = ip_address
         self.device = KeithleyDevice(ip_address=ip_address, name=name)
         return
