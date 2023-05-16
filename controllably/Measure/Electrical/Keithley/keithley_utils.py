@@ -27,6 +27,7 @@ class Keithley(Programmable):
     ### Methods
     - `disconnect`: disconnect from device
     """
+    
     model = 'keithley_'
     available_programs: tuple[str] = tuple(programs.PROGRAM_NAMES)      # FIXME
     possible_inputs: tuple[str] = tuple(programs.INPUTS_SET)            # FIXME
