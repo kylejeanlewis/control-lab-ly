@@ -217,7 +217,7 @@ class Programmable(Measurer):
     
     _default_datatype: Optional[Data] = None
     _default_program: Optional[Program] = None
-    _default_program_parser: dict[str, function] = {"parser": get_program_details}
+    _default_program_parser: function = get_program_details
     _default_flags = {
         'busy': False,
         'connected': False,
@@ -299,7 +299,7 @@ class Programmable(Measurer):
         Args:
             program_parser (Optional[function], optional): function that interprets the program class docstring. Defaults to None.
         """
-        self.program_parser = self._default_program_parser if program_parser is None else {"parser": program_parser}
+        self.program_parser = self._default_program_parser if program_parser is None else program_parser
         return
     
     def measure(self, parameters: Optional[dict] = None, channel:Union[int, tuple[int]] = 0, **kwargs):
@@ -389,8 +389,7 @@ class Programmable(Measurer):
         """
         if self.program_type is None:
             raise Exception('Load a program first.')
-        parser = self.program_parser["parser"]
-        details = parser(program_class=self.program_type, verbose=self.verbose)
+        details = self.program_parser(program_class=self.program_type, verbose=self.verbose)
         self.program_details: ProgramDetails = details
         return details
     
