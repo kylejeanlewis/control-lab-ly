@@ -1,6 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-This module holds the program class for tools from PiezoRobotics.
+This module holds the program class for tools from Keithley.
 
 Classes:
     IV_Scan (Program)
@@ -79,6 +79,14 @@ class IV_Scan(Program):
         verbose: bool = False, 
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            device (Device): device object
+            parameters (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         super().__init__(device=device, parameters=parameters, verbose=verbose, **kwargs)
         return
     
@@ -137,6 +145,14 @@ class OCV(Program):
         verbose: bool = False, 
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            device (Device): device object
+            parameters (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         super().__init__(device=device, parameters=parameters, verbose=verbose, **kwargs)
         return
     
@@ -200,6 +216,14 @@ class LSV(Program):
         verbose: bool = False, 
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            device (Device): device object
+            parameters (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         super().__init__(device=device, parameters=parameters, verbose=verbose, **kwargs)
         return
     
