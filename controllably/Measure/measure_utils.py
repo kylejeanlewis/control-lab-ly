@@ -193,7 +193,7 @@ class Programmable(Measurer):
     - `datatype` (Data): Data class
     - `program` (Program): instantiated Program class with parameters provided
     - `program_details` (ProgramDetails): program details such as inputs, defaults, and docstring
-    - `program_parser` (function): function to get the program details from the program class docstring
+    - `program_parser` (dict[str, function]): label and function to get the program details from the program class docstring
     - `program_type` (Program): Program class
     - `recent_parameters` (list[dict[str, ...]]): list of previously used parameters
     
