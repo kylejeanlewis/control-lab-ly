@@ -17,7 +17,7 @@ import pandas as pd
 from scipy.signal import argrelextrema
 
 # Third party imports
-from impedance.models.circuits.fitting import extract_circuit_elements
+from impedance.models.circuits.fitting import extract_circuit_elements  # pip install impedance
 
 # Local application imports
 from ..toolbox import intersection, perpendicular_bisector
