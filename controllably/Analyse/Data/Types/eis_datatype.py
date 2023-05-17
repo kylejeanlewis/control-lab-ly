@@ -22,13 +22,13 @@ from scipy.signal import argrelextrema
 import time
 
 # Third party imports
-from impedance import preprocessing # pip install impedance
+from impedance import preprocessing                                             # pip install impedance
 from impedance.models.circuits import CustomCircuit
 from impedance.models.circuits.fitting import rmse, extract_circuit_elements
-import plotly.express as px # pip install plotly-express
-import plotly.graph_objects as go # pip install plotly
+import plotly.express as px                                                     # pip install plotly-express
+import plotly.graph_objects as go                                               # pip install plotly
 from plotly.subplots import make_subplots
-import yaml # pip install pyyaml
+import yaml                                                                     # pip install pyyaml
 
 # Local application imports
 # from .circuit_datatype import CircuitDiagram
