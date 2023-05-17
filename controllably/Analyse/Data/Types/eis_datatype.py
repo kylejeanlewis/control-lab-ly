@@ -31,7 +31,8 @@ from plotly.subplots import make_subplots
 import yaml # pip install pyyaml
 
 # Local application imports
-from .circuit_datatype import CircuitDiagram
+# from .circuit_datatype import CircuitDiagram
+from . import circuit_datatype as cd
 print(f"Import: OK <{__name__}>")
 
 PACKAGE = __package__.split('.')[-1]
@@ -494,8 +495,10 @@ class ImpedanceSpectrum(object):
         Returns:
             str: string drawing of circuit diagram
         """
-        simplifiedCircuit = CircuitDiagram.simplifyCircuit(self.circuit.circuit, verbose=verbose)
-        self.diagram = CircuitDiagram.drawCircuit(*simplifiedCircuit)
+        # simplifiedCircuit = CircuitDiagram.simplifyCircuit(self.circuit.circuit, verbose=verbose)
+        # self.diagram = CircuitDiagram.drawCircuit(*simplifiedCircuit)
+        simplifiedCircuit = cd.simplify_circuit(self.circuit.circuit, verbose=verbose)
+        self.diagram = cd.draw_circuit(*simplifiedCircuit)
         if verbose and self.isFitted:
             print(self.diagram)
             print(self.circuit)
