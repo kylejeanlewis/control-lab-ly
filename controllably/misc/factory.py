@@ -30,7 +30,7 @@ import sys
 from typing import Callable, Optional
 
 # Third party imports
-import yaml # pip install pyyaml
+import yaml     # pip install pyyaml
 
 # Local application imports
 from . import helper

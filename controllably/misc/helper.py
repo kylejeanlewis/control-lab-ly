@@ -30,8 +30,8 @@ from typing import Callable, Optional
 import uuid
 
 # Third party imports
-import serial.tools.list_ports # pip install pyserial
-import yaml # pip install pyyaml
+import serial.tools.list_ports      # pip install pyserial
+import yaml                         # pip install pyyaml
 
 # Local application imports
 from . import decorators
