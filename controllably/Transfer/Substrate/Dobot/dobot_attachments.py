@@ -6,10 +6,6 @@ Classes:
     DobotGripper (Gripper)
     TwoJawGrip (DobotGripper)
     VacuumGrip (DobotGripper)
-
-Other constants and variables:
-    ATTACHMENT_NAMES (list)
-    METHODS_SET (list)
 """
 # Standard library imports
 from __future__ import annotations
@@ -268,12 +264,3 @@ class VacuumGrip(DobotGripper):
             print("Not connected to arm.")
             return False
         return True
-
-
-# FIXME: Do away with these objects below
-ATTACHMENTS = [TwoJawGrip, VacuumGrip]
-METHODS = [Helper.get_method_names(attachment) for attachment in ATTACHMENTS]
-ATTACHMENT_NAMES = [att.__name__ for att in ATTACHMENTS]
-"""List of attachment names"""
-METHODS_SET = sorted( list(set([item for sublist in METHODS for item in sublist])) )
-"""Sorted list of method names"""

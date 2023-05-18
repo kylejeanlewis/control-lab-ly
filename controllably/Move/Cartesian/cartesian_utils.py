@@ -180,7 +180,7 @@ class Gantry(Mover):
         self.connect()
         return super().reset()
     
-    def setSpeed(self, speed: int): # NOTE: waiting for PR #48
+    def setSpeed(self, speed: int):
         """
         Set the speed of the robot
 
