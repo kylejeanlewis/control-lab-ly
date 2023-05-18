@@ -104,7 +104,7 @@ class IV_Scan(Program):
             device.run()
             time.sleep(0.1*count)
         time.sleep(1)
-        self.data_df = device.read(bulk=True)
+        self.data_df = device.readAll()
         device.beep()
         device.getErrors()
         return
@@ -168,7 +168,7 @@ class OCV(Program):
         device.toggleOutput(on=True)
         device.run()
         time.sleep(0.1*count)
-        self.data_df = device.read(bulk=True)
+        self.data_df = device.readAll()
         device.beep()
         device.getErrors()
         return
