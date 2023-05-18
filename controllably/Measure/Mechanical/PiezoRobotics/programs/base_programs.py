@@ -7,8 +7,6 @@ Classes:
 
 Other constants and variables:
     FREQUENCIES (tuple)
-    INPUTS_SET (list)
-    PROGRAM_NAMES (list)
 """
 # Standard library imports
 from datetime import datetime
@@ -17,7 +15,7 @@ import time
 from typing import Optional, Protocol
 
 # Local application imports
-from ....program_utils import Program, get_program_details
+from ....program_utils import Program
 from ..piezorobotics_lib import FrequencyCode
 print(f"Import: OK <{__name__}>")
 
@@ -106,12 +104,3 @@ class DMA(Program):
                 self.data_df = pd.concat([self.data_df, df], ignore_index=True)
         device.toggleClamp(False)
         return
-
-
-# FIXME: Do away with these objects below
-PROGRAMS = [DMA]
-INPUTS = [item for item in [[key for key in get_program_details(prog).inputs] for prog in PROGRAMS]]
-PROGRAM_NAMES = [prog.__name__ for prog in PROGRAMS]
-"""List of program names"""
-INPUTS_SET = sorted( list(set([item for sublist in INPUTS for item in sublist])) )
-"""Sorted list of input parameters"""

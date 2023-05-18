@@ -116,13 +116,13 @@ class Peristaltic(Pump):
         pull_func = self.turnAntiClockwise if self.flags['output_clockwise'] else self.turnClockwise
         return pull_func(speed=speed)
         
-    def pullback(self, speed:int, pump_time:int, channel:Optional[int] = None, **kwargs) -> bool:
+    def pullback(self, speed:int = 300, pump_time:int = 1, channel:Optional[int] = None, **kwargs) -> bool:
         """
         Pullback liquid from tip
 
         Args:
-            speed (int): speed of pump rotation
-            pump_time (int): duration to run pump for
+            speed (int, optional): speed of pump rotation. Defaults to 300.
+            pump_time (int, optional): duration to run pump for. Defaults to 1.
             channel (Optional[int], optional): channel id. Defaults to None.
 
         Returns:
@@ -233,44 +233,4 @@ class Peristaltic(Pump):
             speed (int): speed of pump rotation
         """
         return self._write(f"{speed}\n")
-
-
-    ### NOTE: DEPRECATE
-    # def _push(self, speed:int, push_time:int, pullback_time:int, channel:int):
-    #     """
-    #     Dispense (aspirate) liquid from (into) syringe
-        
-    #     Args:
-    #         speed (int): speed of pump of rotation (<0 aspirate; >0 dispense)
-    #         push_time (int, or float): time to achieve desired volume
-    #         pullback_time (int, or float): time to pullback the peristaltic pump
-    #         channel (int): valve channel
-    #     """
-    #     run_time = pullback_time + push_time
-    #     interval = 0.1
-        
-    #     start_time = time.time()
-    #     self.setValve(open=True, channel=channel)
-    #     self._turn_pump(speed)
-        
-    #     while(True):
-    #         time.sleep(0.001)
-    #         if (interval <= time.time() - start_time):
-    #             interval += 0.1
-    #         if (run_time <= time.time() - start_time):
-    #             break
-        
-    #     start_time = time.time()
-    #     self.setValve(open=True, channel=channel)
-    #     self._turn_pump(-abs(speed))
-
-    #     while(True):
-    #         time.sleep(0.001)
-    #         if (interval <= time.time() - start_time):
-    #             interval += 0.1
-    #         if (pullback_time <= time.time() - start_time):
-    #             self._turn_pump(10)
-    #             self.setValve(open=False, channel=channel)
-    #             break
-    #     return
     

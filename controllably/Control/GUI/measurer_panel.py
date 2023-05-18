@@ -15,6 +15,7 @@ from typing import Protocol, Callable, Any
 import PySimpleGUI as sg # pip install PySimpleGUI
 
 # Local application imports
+from ... import modules
 from .gui_utils import Panel
 print(f"Import: OK <{__name__}>")
 
@@ -38,8 +39,7 @@ class ProgramDetails:
     tooltip: str = ''
 
 class Measurer(Protocol):
-    available_programs: tuple[str]      # FIXME
-    possible_inputs: tuple[str]         # FIXME
+    _place: str
     program_details: ProgramDetails
     program_type: Callable
     def loadProgram(self, *args, **kwargs):
@@ -61,6 +61,7 @@ class MeasurerPanel(Panel):
         
     ### Attributes
     - `current_program` (str): currently active program
+    - `input_map` (dict[int, Optional[str]]): enumerated map of program inputs
     
     ### Properties
     - `measurer` (Measurer): alias for `tool`
@@ -70,6 +71,7 @@ class MeasurerPanel(Panel):
     - `listenEvents`: listen to events and act on values
     """
     
+    _default_input_map: dict = {f"INPUT-{i:02}": None for i in range(20)}
     def __init__(self, 
         measurer: Measurer, 
         name: str = 'MEASURE', 
@@ -87,6 +89,7 @@ class MeasurerPanel(Panel):
         super().__init__(name=name, group=group, **kwargs)
         self.tool = measurer
         self.current_program = ''
+        self.input_map = self._default_input_map
         return
     
     # Properties
@@ -110,13 +113,15 @@ class MeasurerPanel(Panel):
         
         font = (self.typeface, self.font_sizes[title_font_level+1])
         # add dropdown for program list
+        programs = eval(f"modules.at.{self.measurer._place}.programs")
+        program_names = [p for p in programs]
         dropdown = sg.Combo(
-            values=self.measurer.available_programs, size=(20, 1), 
+            values=program_names, size=(20, 1), 
             key=self._mangle('-PROGRAMS-'), enable_events=True, readonly=True
         )
         
         # add template for procedurally adding input fields
-        labels_inputs = self.getInputs(fields=self.measurer.possible_inputs, key_prefix=self.name)
+        labels_inputs = self.getInputs(fields=[i for i in self.input_map], key_prefix=self.name, initial_visibility=False)
         
         # add run, clear, reset buttons
         layout = [
@@ -148,7 +153,7 @@ class MeasurerPanel(Panel):
         if event == self._mangle('-PROGRAMS-'):
             selected_program = values[self._mangle('-PROGRAMS-')]       # COMBO
             if selected_program != self.current_program:
-                self.measurer.loadProgram(selected_program)
+                self.measurer.loadProgram(eval(f"modules.at.{self.measurer._place}.programs.{selected_program}"))
                 update_part = self._show_inputs(self.measurer.program_details)
                 updates.update(update_part)
             self.current_program = selected_program
@@ -158,11 +163,12 @@ class MeasurerPanel(Panel):
             if self.measurer.program_type is not None:
                 print('Start measure')
                 parameters = {}
-                for input_field in self.measurer.program_details.inputs:
-                    key = self._mangle(f'-{input_field}-VALUE-')
-                    if key in values.keys():
-                        value = self.parseInput(values[key])
-                        parameters[input_field] = value
+                for key, input_field in self.input_map.items():
+                    if input_field is None:
+                        break
+                    key_input = self._mangle(f'-{key}-VALUE-')
+                    value = self.parseInput(values[key_input])
+                    parameters[input_field] = value
                 print(parameters)
                 self.measurer.measure(parameters=parameters)
             else:
@@ -191,15 +197,22 @@ class MeasurerPanel(Panel):
             dict: dictionary of updates
         """
         updates = {}
-        for input_field in self.measurer.possible_inputs:
-            key_label = self._mangle(f'-{input_field}-LABEL-')
-            key_input = self._mangle(f'-{input_field}-VALUE-')
+        self.input_map = self._default_input_map
+        for key_id, input_field in enumerate(program_details.inputs):
+            self.input_map[f"INPUT-{key_id:02}"] = input_field
+        
+        for key, input_field in self.input_map.items():
+            key_label = self._mangle(f'-{key}-LABEL-')
+            key_input = self._mangle(f'-{key}-VALUE-')
             updates[f'{key_label}BOX-'] = dict(visible=False)
             updates[f'{key_input}BOX-'] = dict(visible=False)
+            if input_field is None:
+                continue
             if input_field in program_details.inputs:
-                updates[key_label] = dict(tooltip=program_details.tooltip)
+                updates[key_label] = dict(tooltip=program_details.tooltip,
+                                          value=input_field.title())
                 updates[key_input] = dict(tooltip=program_details.tooltip, 
-                                          value=program_details.get(input_field,''))
+                                          value=program_details.defaults.get(input_field,''))
                 updates[f'{key_label}BOX-'] = dict(visible=True)
                 updates[f'{key_input}BOX-'] = dict(visible=True)
         return updates

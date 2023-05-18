@@ -264,13 +264,14 @@ class Panel(ABC):
         return buttons
     
     @staticmethod
-    def getInputs(fields:list[str], key_prefix: str) -> list[sg.Column]:
+    def getInputs(fields:list[str], key_prefix: str, initial_visibility:bool = True) -> list[sg.Column]:
         """
         Get the layout for the input section
         
         Args:
             fields (list[str]): list of field names
             key_prefix (str): prefix of button key
+            initial_visibility (bool, optional): whether the field is initially visible. Defaults to True.
 
         Returns:
             list[sg.Column]: list of columns
@@ -284,13 +285,13 @@ class Panel(ABC):
             _label = sg.pin(
                 sg.Column(
                     [[sg.Text(input_field.title(), key=key_label, visible=True)]],
-                    key=f'{key_label}BOX-', visible=True
+                    key=f'{key_label}BOX-', visible=initial_visibility
                 )
             )
             _input = sg.pin(
                 sg.Column(
                     [[sg.Input(size=(5,2), key=key_input, visible=True, tooltip='')]],
-                    key=f'{key_input}BOX-', visible=True
+                    key=f'{key_input}BOX-', visible=initial_visibility
                 )
             )
             labels.append([_label])
@@ -330,8 +331,8 @@ class Panel(ABC):
             print(e)
         return ele
     
-    @staticmethod
-    def parseInput(text:str) -> list[Union[float, str]]:
+    @classmethod
+    def parseInput(cls, text:str) -> Union[list, bool, float, str, None]:
         """
         Parse inputs from GUI
 
@@ -339,27 +340,37 @@ class Panel(ABC):
             text (str): input text read from GUI window
 
         Returns:
-            list[Union[float, str]]: variable output including floats, strings, and tuples
+            Union[list, bool, float, str, None]: variable output including floats, strings, and tuples
         """
+        text = text.strip()
+        if len(text) == 0:
+            return None
+        
+        array = []
         if ',' in text:
-            strings = text.split(',')
+            array = text.split(',')
         elif ';' in text:
-            strings = text.split(';')
-        else:
-            try:
-                text = float(text)
-                return text
-            finally:
-                # return text
-                pass
-        output = []
-        for text in strings:
-            try:
-                output.append(float(text))
-            except ValueError:
-                # output.append(text)
-                pass
-        return output
+            array = text.split(';')
+        if len(array):
+            new_array = []
+            for value in array:
+                new_array.append(cls.parseInput(value))
+            return new_array
+        
+        if text.replace('.','',1).replace('-','',1).isdigit():
+            if '.' in text:
+                return float(text)
+            else:
+                return int(text)
+        
+        if text == "True":
+            return True
+        if text == "False":
+            return False
+        
+        if text[0] in ("'", '"') and text[-1] in ("'", '"'):
+            return text[1:-1]
+        return text
     
     def runGUI(self, title:str = 'Application', maximize:bool = False):
         """

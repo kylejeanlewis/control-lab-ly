@@ -54,6 +54,7 @@ class RobotArm(Mover):
         'connected': False,
         'retract': False
     }
+    _place: str = '.'.join(__name__.split('.')[1:-1])
     def __init__(self, safe_height:Optional[float] = None, retract:bool = False, **kwargs):
         """
         Instantiate the class

@@ -78,7 +78,7 @@ class ModuleDirectory:
         return pprint.pformat(self._modules)
     
     @property
-    def at(self):
+    def at(self) -> DottableDict:
         return self._modules
     
     def get_class(self, dot_notation:str) -> Callable:

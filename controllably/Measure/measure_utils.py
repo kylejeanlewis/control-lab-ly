@@ -225,9 +225,8 @@ class Programmable(Measurer):
         'read': False,
         'stop_measure': False
     }
-    model = ''
-    available_programs: tuple[str] = ('',)      # FIXME
-    possible_inputs: tuple[str] = ('',)         # FIXME
+    _place: str = '.'.join(__name__.split('.')[1:-1])
+    model: str = ''
     def __init__(self, **kwargs):
         """Instantiate the class"""
         super().__init__(**kwargs)
