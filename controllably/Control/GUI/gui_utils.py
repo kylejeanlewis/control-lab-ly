@@ -13,11 +13,10 @@ Other constants and variables:
 # Standard library imports
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from collections import OrderedDict
 from typing import Optional, Union
 
 # Third party imports
-import PySimpleGUI as sg # pip install PySimpleGUI
+import PySimpleGUI as sg                                            # pip install PySimpleGUI
 from PySimpleGUI import WIN_CLOSED, WINDOW_CLOSE_ATTEMPTED_EVENT
 
 # Local application imports
