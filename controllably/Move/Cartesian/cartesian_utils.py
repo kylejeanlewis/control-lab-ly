@@ -49,6 +49,7 @@ class Gantry(Mover):
     - `shutdown`: shutdown procedure for tool
     """
     
+    _place: str = '.'.join(__name__.split('.')[1:-1])
     def __init__(self, 
         port: str, 
         limits: tuple[tuple[float]] = ((0, 0, 0), (0, 0, 0)), 

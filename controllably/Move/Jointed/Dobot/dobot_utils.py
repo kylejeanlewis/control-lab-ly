@@ -70,8 +70,7 @@ class Dobot(RobotArm):
     - `toggleCalibration`: enter or exit calibration mode, with a sharp point implement for alignment
     """
     
-    possible_attachments = ['TwoJawGrip', 'VacuumGrip']     ### FIXME: hard-coded
-    max_actions = 5                                         ### FIXME: hard-coded
+    _place: str = '.'.join(__name__.split('.')[1:-1])
     def __init__(self, ip_address:str, attachment_name:str = None, **kwargs):
         """
         Instantiate the class
