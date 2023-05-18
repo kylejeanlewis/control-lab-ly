@@ -20,10 +20,11 @@ import serial # pip install pyserial
 
 # Local application imports
 from ..liquid_utils import LiquidHandler, Speed
-from .sartorius_lib import ErrorCode, ModelInfo, StatusCode, SpeedParameters, Model
-from .sartorius_lib import STATUS_QUERIES, QUERIES
+from . import sartorius_lib as lib
 print(f"Import: OK <{__name__}>")
 
+QUERIES = lib.StatusQueryCode._member_names_ + lib.StaticQueryCode._member_names_
+"""List of all query codes"""
 STEP_RESOLUTION = 10
 """Minimum number of steps to have tolerable errors in volume"""
 
@@ -119,7 +120,7 @@ class Sartorius(LiquidHandler):
         self.response_time = response_time
         self.tip_threshold = tip_threshold
         
-        self.model_info: Model = None
+        self.model_info: lib.Model = None
         self.limits = (0,0)
         self.position = 0
         self.speed_code = Speed(3,3)
@@ -460,12 +461,12 @@ class Sartorius(LiquidHandler):
     def getInfo(self, model: Optional[str] = None):
         """Get details of the Sartorius pipette model"""
         model = self.__model__().split('-')[0] if model is None else model
-        if model not in ModelInfo._member_names_:
+        if model not in lib.ModelInfo._member_names_:
             print(f'Received: {model}')
             model = 'BRL0'
             print(f"Defaulting to: {'BRL0'}")
-            print(f"Valid models are: {', '.join(ModelInfo._member_names_)}")
-        info: Model = ModelInfo[model].value
+            print(f"Valid models are: {', '.join(lib.ModelInfo._member_names_)}")
+        info: lib.Model = lib.ModelInfo[model].value
         print(info)
         self.model_info = info
         self.capacity = info.capacity
@@ -497,17 +498,17 @@ class Sartorius(LiquidHandler):
             status = int(response)
         except ValueError:
             return response
-        if response not in [_status.value for _status in StatusCode]:
+        if response not in [_status.value for _status in lib.StatusCode]:
             return response
         
         self._status_code = status
         if status in [4,6,8]:
             self.setFlag(busy=True)
             if self.verbose:
-                print(StatusCode(status).name)
+                print(lib.StatusCode(status).name)
         elif status == 0:
             self.setFlag(busy=False)
-        return StatusCode(self._status_code).name
+        return lib.StatusCode(self._status_code).name
     
     def home(self) -> str:
         """
@@ -682,7 +683,7 @@ class Sartorius(LiquidHandler):
         return response
 
     # Protected method(s)
-    def _calculate_speed_parameters(self, volume:int, speed:int) -> SpeedParameters:
+    def _calculate_speed_parameters(self, volume:int, speed:int) -> lib.SpeedParameters:
         """
         Calculates the best parameters for volume and speed
 
@@ -706,10 +707,10 @@ class Sartorius(LiquidHandler):
             each_steps = volume/self.resolution/intervals
             each_delay = volume*(1/speed - 1/preset)/intervals
             area = 0.5 * (volume**2) * (1/self.resolution) * (1/intervals) * (1/speed - 1/preset)
-            outcomes[area] = SpeedParameters(preset, intervals, int(each_steps), each_delay)
+            outcomes[area] = lib.SpeedParameters(preset, intervals, int(each_steps), each_delay)
         if len(outcomes) == 0:
             print("No feasible speed parameters.")
-            return SpeedParameters(None, STEP_RESOLUTION, STEP_RESOLUTION, self.response_time)
+            return lib.SpeedParameters(None, STEP_RESOLUTION, STEP_RESOLUTION, self.response_time)
         print(f'Best parameters: {outcomes[min(outcomes)]}')
         return outcomes[min(outcomes)]
     
@@ -755,7 +756,7 @@ class Sartorius(LiquidHandler):
         Returns:
             bool: whether the response is an expected reply
         """
-        if response in ErrorCode._member_names_:
+        if response in lib.ErrorCode._member_names_:
             return True
         if command_code not in QUERIES and response == 'ok':
             return True
@@ -795,7 +796,7 @@ class Sartorius(LiquidHandler):
             str: response string
         """
         command_code = command[:2]
-        if command_code not in STATUS_QUERIES:
+        if command_code not in lib.StatusQueryCode._member_names_:
             if self.flags['get_feedback'] and not self.flags['pause_feedback']:
                 self.setFlag(pause_feedback=True)
                 time.sleep(timeout_s)
@@ -815,7 +816,7 @@ class Sartorius(LiquidHandler):
         # print(time.perf_counter() - start_time)
         if command_code in QUERIES:
             response = response[2:]
-        if command_code not in STATUS_QUERIES:
+        if command_code not in lib.StatusQueryCode._member_names_:
             if get_position:
                 self.getPosition()
             if resume_feedback:
@@ -840,8 +841,8 @@ class Sartorius(LiquidHandler):
         except Exception as e:
             if self.verbose:
                 print(e)
-        if response in ErrorCode._member_names_:
-            print(ErrorCode[response].value)
+        if response in lib.ErrorCode._member_names_:
+            print(lib.ErrorCode[response].value)
         return response
     
     def _set_channel_id(self, new_channel_id:int):
