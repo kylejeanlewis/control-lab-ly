@@ -694,7 +694,6 @@ class QInstruments:
         if response is np.nan:
             return None
         state = bool(int(response)%2)
-        # TODO: add flags
         return state
     
     def getTempTarget(self) -> Optional[float]:

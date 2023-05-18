@@ -214,15 +214,3 @@ def zip_inputs(primary_keyword:str, **kwargs) -> dict:
     kwargs_df = pd.DataFrame(kwargs)
     kwargs_df.set_index(primary_keyword, drop=False, inplace=True)
     return kwargs_df.to_dict('index')
-
-
-### NOTE: DEPRECATE
-def display_ports() -> list[str]:
-    """
-    Get available ports
-
-    Returns:
-        list: list of connected serial ports
-    """
-    print("'display_ports()' method to be deprecated. Use 'get_ports()' method instead.")
-    return get_ports()

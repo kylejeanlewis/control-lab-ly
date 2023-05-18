@@ -5,8 +5,10 @@ This module holds the class for tools from PiezoRobotics.
 Classes:
     PiezoRobotics (Programmable)
 """
-# Local application imports
+# Standard library imports
 from __future__ import annotations
+
+# Local application imports
 from ...measure_utils import Programmable
 from .piezorobotics_device import PiezoRoboticsDevice
 from . import programs
@@ -29,9 +31,8 @@ class PiezoRobotics(Programmable):
     """
     
     _default_program = programs.DMA
+    _place: str = '.'.join(__name__.split('.')[1:-1])
     model = 'piezorobotics_'
-    available_programs: tuple[str] = tuple(programs.PROGRAM_NAMES)      # FIXME
-    possible_inputs: tuple[str] = tuple(programs.INPUTS_SET)            # FIXME
     def __init__(self, port:str, channel=1, **kwargs):
         """
         Instantiate the class

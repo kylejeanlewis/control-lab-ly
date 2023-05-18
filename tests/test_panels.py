@@ -5,10 +5,12 @@ from controllably.Control.GUI import *
 # %%
 from controllably.Move.Cartesian import Primitiv
 from controllably.Move.Jointed.Dobot import M1Pro
+from controllably.Transfer.Substrate import Dobot
 # you = Primitiv('COM4')
 you = M1Pro('192.168.2.21')
 gui1 = MoverPanel(you, axes='XYZa')
 # gui.runGUI()
+gui1.runGUI()
 
 # %%
 from controllably.Transfer.Liquid.Sartorius import Sartorius
@@ -38,5 +40,14 @@ gui2 = LiquidPanel(liquid=me)
 gui = CompoundPanel(dict(
     mover=gui1, liquid=gui2
 ))
+gui.runGUI()
+# %%
+import init
+from controllably.Control.GUI import MeasurerPanel
+from controllably.Measure.Electrical.Keithley import Keithley
+
+
+me = Keithley()
+gui = MeasurerPanel(me)
 gui.runGUI()
 # %%

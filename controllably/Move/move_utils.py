@@ -88,8 +88,7 @@ class Mover(ABC):
     
     _default_flags: dict[str, bool] = {'busy': False, 'connected': False}
     _default_heights: dict[str, float] = {}
-    possible_attachments = ()                               ### FIXME: hard-coded
-    max_actions = 5                                         ### FIXME: hard-coded
+    _place: str = '.'.join(__name__.split('.')[1:-1])
     def __init__(self, 
         coordinates: tuple[float] = (0,0,0),
         deck: Layout.Deck = Layout.Deck(),

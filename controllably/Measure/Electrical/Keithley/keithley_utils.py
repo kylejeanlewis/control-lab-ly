@@ -5,8 +5,10 @@ This module holds the class for tools from Keithley.
 Classes:
     Keithley (Programmable)
 """
-# Local application imports
+# Standard library imports
 from __future__ import annotations
+
+# Local application imports
 from ...measure_utils import Programmable
 from .keithley_device import KeithleyDevice
 from . import programs
@@ -28,9 +30,8 @@ class Keithley(Programmable):
     - `disconnect`: disconnect from device
     """
     
-    model = 'keithley_'
-    available_programs: tuple[str] = tuple(programs.PROGRAM_NAMES)      # FIXME
-    possible_inputs: tuple[str] = tuple(programs.INPUTS_SET)            # FIXME
+    _place: str = '.'.join(__name__.split('.')[1:-1])
+    model: str = 'keithley_'
     def __init__(self, ip_address:str = '192.168.1.125', name:str = 'def', **kwargs):
         """
         Instantiate the class
