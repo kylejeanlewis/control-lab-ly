@@ -7,6 +7,7 @@ Functions:
     get_notification
 """
 # Standard library imports
+from __future__ import annotations
 from typing import Optional
 
 # Third party imports
@@ -60,6 +61,112 @@ def get_combo_box(message:str, options:Optional[list] = None, allow_input:bool =
             pass
     window.close()
     return selected
+
+def get_image_labeller(img:str = 'draw.png', data:bytes = None, img_size:tuple[int] = (400,400)):
+    """
+    WIP: Get new pop-up to annotate rectangles on image
+    
+    Adapted from https://github.com/PySimpleGUI/PySimpleGUI/blob/master/DemoPrograms/Demo_Graph_Drawing_And_Dragging_Figures.py
+
+    Args:
+        img (str, optional): filename of image. Defaults to 'draw.png'.
+        data (bytes, optional): encoded image data. Defaults to None.
+        img_size (tuple, optional): size of image. Defaults to (400,400).
+
+    Returns:
+        list: list of rectangle positions
+    """
+    col = [
+        [sg.Text('Choose what clicking a figure does')],
+        [sg.Radio('Draw Rectangles', group_id=1, key='-RECT-', size=(20,1), enable_events=True, default=True)],
+        [sg.Radio('Erase all', group_id=1, key='-CLEAR-', size=(20,1), enable_events=True)],
+        [sg.Button('Save & Close', size=(10,1), key='-SAVE-')],
+    ]
+
+    layout = [[
+                sg.Graph(
+                    canvas_size=img_size,
+                    graph_bottom_left=(0,0),
+                    graph_top_right=img_size,
+                    key="-GRAPH-",
+                    enable_events=True,
+                    drag_submits=True,
+                    right_click_menu=[[],['Erase item',]]
+                ), 
+                sg.Col(col, key='-COL-') 
+            ],
+            [sg.Text('', size=(60, 1), key='-INFO-')]
+        ]
+
+    window = sg.Window("Manually Annotate Targets", layout, finalize=True, modal=True)
+    graph: sg.Graph = window["-GRAPH-"]
+    info: sg.Text = window["-INFO-"]
+    try:
+        graph.draw_image(data=data, location=(0,img_size[1]))
+    except:
+        graph.draw_image(img, location=(0,img_size[1]))
+
+    dragging = False
+    start_point = end_point = prior_rect = None
+    
+    positions = []
+    while True:
+        event, values = window.read()
+        if event in ('-SAVE-', sg.WIN_CLOSED, sg.WINDOW_CLOSE_ATTEMPTED_EVENT, None):
+            break
+
+        elif not event.startswith('-GRAPH-'):
+            graph.set_cursor(cursor='left_ptr')
+
+        if event == "-GRAPH-":
+            x, y = values["-GRAPH-"]
+            if not dragging:
+                start_point = (x, y)
+                dragging = True
+                drag_figures = graph.get_figures_at_location((x,y))[1:]
+                lastxy = x,y
+            else:
+                end_point = (x, y)
+            if prior_rect:
+                graph.delete_figure(prior_rect)
+            delta_x, delta_y = x - lastxy[0], y - lastxy[1]
+            lastxy = x,y
+            if None not in (start_point, end_point):
+                if values['-RECT-']:
+                    prior_rect = graph.draw_rectangle(start_point, end_point, fill_color=None, line_color='green')
+                    
+                elif values['-CLEAR-']:
+                    positions = []
+                    graph.erase()
+                    try:
+                        graph.draw_image(data=data, location=(0,img_size[1]))
+                    except:
+                        graph.draw_image(img, location=(0,img_size[1]))
+                
+            info.update(value=f"mouse {values['-GRAPH-']}")
+        elif event.endswith('+UP'):  # The drawing has ended because mouse up
+            info.update(value=f"grabbed rectangle from {start_point} to {end_point}")
+            if values['-RECT-'] and start_point and end_point:
+                start_point = (start_point[0], img_size[1]-start_point[1])
+                end_point = (end_point[0], img_size[1]-end_point[1])
+                rect = {
+                    0: min(start_point[0], end_point[0]), 
+                    1: min(start_point[1], end_point[1]), 
+                    2: abs(start_point[0] - end_point[0]), 
+                    3: abs(start_point[1] - end_point[1])}
+                positions.append(rect)
+                point_x = (end_point[0] + start_point[0])/2
+                point_y = img_size[1] - (end_point[1] + start_point[1])/2
+                graph.draw_point((point_x, point_y), size=5, color='red')
+            start_point, end_point = None, None  # enable grabbing a new rect
+            dragging = False
+            prior_rect = None
+        elif event.endswith('+RIGHT+'):  # Right click
+            info.update(value=f"Right clicked location {values['-GRAPH-']}")
+        elif event.endswith('+MOTION+'):  # Right click
+            info.update(value=f"mouse freely moving {values['-GRAPH-']}")
+    window.close()
+    return positions
 
 def get_listbox(message:str, **kwargs) -> list:
     """
