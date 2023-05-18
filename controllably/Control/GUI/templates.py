@@ -8,7 +8,11 @@ Functions:
 """
 # Standard library imports
 from typing import Optional
+
+# Third party imports
 import PySimpleGUI as sg                # pip install PySimpleGUI
+
+# Local application imports
 print(f"Import: OK <{__name__}>")
 
 FONT = "Helvetica"
