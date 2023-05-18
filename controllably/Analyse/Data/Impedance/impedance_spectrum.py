@@ -1,6 +1,9 @@
 # %% -*- coding: utf-8 -*-
 """
+WIP: This module holds the ImpedanceSpectrum class for analysing EIS data
 
+Classes:
+    ImpedanceSpectrum
 """
 # Standard library imports
 import cmath
@@ -145,10 +148,10 @@ class ImpedanceSpectrum(object):
             self.circuit.load(loadCircuit)
             circuits = [self.circuit]
         else:
-            # json_string = pkgutil.get_data(__name__, 'eis_tests.json').decode('utf-8')
-            # test_circuits = json.loads(json_string)
-            yml = pkgutil.get_data(__name__, test_file).decode('utf-8')
-            test_circuits = yaml.safe_load(yml)
+            json_string = pkgutil.get_data(__name__, 'eis_tests.json').decode('utf-8')
+            test_circuits = json.loads(json_string)
+            # yml = pkgutil.get_data(__name__, test_file).decode('utf-8')
+            # test_circuits = yaml.safe_load(yml)
             
             circuits_dict = {c['name']: c['string'] for c in test_circuits['standard']}
             if len(test_circuits['custom']):
