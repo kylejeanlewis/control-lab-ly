@@ -1,6 +1,10 @@
 # %% -*- coding: utf-8 -*-
 """
+This module holds functions to generate panel templates.
 
+Functions:
+    get_computer_vision_controls
+    get_directory_selector
 """
 # Standard library imports
 from typing import Optional
@@ -11,42 +15,15 @@ FONT = "Helvetica"
 TEXT_SIZE = 10
 TITLE_SIZE = 12
 
-def get_directory_selector(field:str, file:bool = True, default:Optional[str] = None, **kwargs) -> sg.Column:
+def get_computer_vision_controls(**kwargs) -> sg.Column:
     """
-    Get file / folder selector control
-
-    Args:
-        field (str): name of field
-        file (bool, optional): whether to select a file. Defaults to True.
-        default (str, optional): default file / folder. Defaults to ''.
+    Get controls for Open CV detection
 
     Returns:
-        sg.Column: directory selector
+        sg.Column: computer vision controls
     """
-    selector = None
-    key = f"-{field.upper()} BROWSE-"
-    font = kwargs.get('font', (FONT, TEXT_SIZE))
-    size = kwargs.get('size', (8,1))
-    
-    if file:
-        default_folder = '/'.join(default.split('/')[:-1]) if default else None
-        selector = sg.FileBrowse(size=size, font=font, key=key, initial_folder=default_folder)
-    else:
-        selector = sg.FolderBrowse(size=size, font=font, key=key, initial_folder=default)
-    
-    column = [
-        [sg.Push()],
-        [
-            sg.Text(f"Choose {field} location: ", size=(20,1), justification='right'), 
-            sg.Input(default, size=(36,1), key=f"-{field.upper()} DIR-", enable_events=True), 
-            selector
-        ]
-    ]
-    return sg.Column(column)
-
-def get_computer_vision_controls(**kwargs) -> sg.Column:
-    font_text = kwargs.get('font', (FONT, TEXT_SIZE))
-    font_title = kwargs.get('font', (FONT, TITLE_SIZE))
+    font_text = kwargs.get('font_text', (FONT, TEXT_SIZE))
+    font_title = kwargs.get('font_title', (FONT, TITLE_SIZE))
     size_label = (20,1)
     size_overall = (64,1)
     size_radio = (int(size_overall[0]/8), 1)
@@ -91,6 +68,39 @@ def get_computer_vision_controls(**kwargs) -> sg.Column:
         [
             sg.Text("FG Noise Removal  ", size=size_label, justification='right', font=font_text), 
             sg.Slider((0,5), default_value=0, orientation='h', size=size_slider, key="-CLOSING SLIDER-")
+        ]
+    ]
+    return sg.Column(column)
+
+def get_directory_selector(field:str, file:bool = True, default:Optional[str] = None, **kwargs) -> sg.Column:
+    """
+    Get file / folder selector control
+
+    Args:
+        field (str): name of field
+        file (bool, optional): whether to select a file. Defaults to True.
+        default (str, optional): default file / folder. Defaults to ''.
+
+    Returns:
+        sg.Column: directory selector
+    """
+    selector = None
+    key = f"-{field.upper()} BROWSE-"
+    font = kwargs.get('font', (FONT, TEXT_SIZE))
+    size = kwargs.get('size', (8,1))
+    
+    if file:
+        default_folder = '/'.join(default.split('/')[:-1]) if default else None
+        selector = sg.FileBrowse(size=size, font=font, key=key, initial_folder=default_folder)
+    else:
+        selector = sg.FolderBrowse(size=size, font=font, key=key, initial_folder=default)
+    
+    column = [
+        [sg.Push()],
+        [
+            sg.Text(f"Choose {field} location: ", size=(20,1), justification='right'), 
+            sg.Input(default, size=(36,1), key=f"-{field.upper()} DIR-", enable_events=True), 
+            selector
         ]
     ]
     return sg.Column(column)
