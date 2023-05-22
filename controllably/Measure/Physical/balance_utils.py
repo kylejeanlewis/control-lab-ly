@@ -43,6 +43,7 @@ class MassBalance(Measurer):
     
     ### Properties
     - `mass` (float): mass of sample
+    - `port` (str): COM port address
     
     ### Methods
     - `clearCache`: clear most recent data and configurations
@@ -86,6 +87,10 @@ class MassBalance(Measurer):
     @property
     def mass(self) -> float:
         return round(self._mass, self.precision)
+    
+    @property
+    def port(self) -> str:
+        return self.connection_details.get('port', '')
    
     def clearCache(self):
         """Clear most recent data and configurations"""
@@ -129,9 +134,6 @@ class MassBalance(Measurer):
                     self._mass
                 ]
                 row = {k:v for k,v in zip(COLUMNS, values)}
-                # self.buffer_df = self.buffer_df.append(row, ignore_index=True)
-                # new_row_df = pd.DataFrame(row)
-                # self.buffer_df = pd.concat([self.buffer_df, new_row_df])
                 new_row_df = pd.DataFrame(row, index=[0])
                 self.buffer_df = pd.concat([self.buffer_df, new_row_df], ignore_index=True)
         return response
@@ -245,7 +247,7 @@ class MassBalance(Measurer):
         print('Stop listening...')
         return
 
-    def _read(self):
+    def _read(self) -> str:
         """
         Read response from device
 
