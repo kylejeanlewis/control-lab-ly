@@ -106,6 +106,13 @@ class LEDArray(Maker):
     }
     
     def __init__(self, port:str, channels:list[int] = [0], **kwargs):
+        """
+        Instantiate the class
+
+        Args:
+            port (str): COM port addressed
+            channels (list[int], optional): list of channels. Defaults to [0].
+        """
         super().__init__(**kwargs)
         self.channels = {chn: LED(chn) for chn in channels}
         self._threads = {}

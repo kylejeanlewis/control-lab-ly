@@ -1,15 +1,12 @@
 # %% -*- coding: utf-8 -*-
 """
-This module holds the class for mass balances.
+This module holds the class for pH meter probe from Sentron.
 
 Classes:
-    MassBalance (Measurer)
-
-Other constants and variables:
-    CALIBRATION_FACTOR (float)
-    COLUMNS (tuple)
+    SentronProbe (Measurer)
 """
 # Standard library imports
+from __future__ import annotations
 from datetime import datetime
 import pandas as pd
 from threading import Thread
@@ -19,42 +16,35 @@ import time
 import serial # pip install pyserial
 
 # Local application imports
-from ..measure_utils import Measurer
+from ...measure_utils import Measurer
 print(f"Import: OK <{__name__}>")
 
-CALIBRATION_FACTOR = 6.862879436681862
-"""Empirical factor by which to divide output reading by to get mass in mg"""
-COLUMNS = ('Time', 'Value', 'Factor', 'Baseline', 'Mass')
-"""Headers for output data from mass balance"""
+COLUMNS = ('Time', 'pH', 'Temperature')
+"""Headers for output data from pH meter"""
 
-class MassBalance(Measurer):
+class SentronProbe(Measurer):
     """
-    MassBalance provides methods to read out values from a precision mass balance
+    SentronProbe provides methods to read out values from a pH meter from Sentron
 
     ### Constructor
     Args:
         `port` (str): COM port address
-        `calibration_factor` (float, optional): calibration factor of device readout to mg. Defaults to CALIBRATION_FACTOR.
-        
+
     ### Attributes
-    - `baseline` (float): baseline readout at which zero mass is set
-    - `calibration_factor` (float): calibration factor of device readout to mg
     - `precision` (int): number of decimal places to print mass value
-    
+
     ### Properties
-    - `mass` (float): mass of sample
+    - `pH` (float): pH of sample
     - `port` (str): COM port address
+    - `temperature (float): temperature of sample
     
     ### Methods
     - `clearCache`: clear most recent data and configurations
     - `disconnect`: disconnect from device
-    - `getMass`: get the mass of the sample by measuring the force response
-    - `reset`: reset the device
+    - `getReadings`: get pH and temperature readings from tool
     - `shutdown`: shutdown procedure for tool
-    - `tare`: alias for `zero()`
     - `toggleFeedbackLoop`: start or stop feedback loop
     - `toggleRecord`: start or stop data recording
-    - `zero`: set the current reading as baseline (i.e. zero mass)
     """
     
     _default_flags = {
@@ -65,93 +55,83 @@ class MassBalance(Measurer):
         'read': True,
         'record': False
     }
-    def __init__(self, port:str, calibration_factor:float = CALIBRATION_FACTOR, **kwargs):
+    def __init__(self, port:str, **kwargs):
         """
         Instantiate the class
 
         Args:
             port (str): COM port address
-            calibration_factor (float, optional): calibration factor of device readout to mg. Defaults to CALIBRATION_FACTOR.
         """
         super().__init__(**kwargs)
-        self.baseline = 0
         self.buffer_df = pd.DataFrame(columns=COLUMNS)
-        self.calibration_factor = calibration_factor
         self.precision = 3
-        self._mass = 0
+        self._pH = 7
+        self._temperature = 0
         self._threads = {}
-        self._connect(port)
+        self._connect(port=port)
         return
     
     # Properties
     @property
-    def mass(self) -> float:
-        return round(self._mass, self.precision)
+    def pH(self) -> float:
+        return round(self._pH, self.precision)
     
     @property
     def port(self) -> str:
         return self.connection_details.get('port', '')
-   
+    
+    @property
+    def temperature(self) -> float:
+        return round(self._temperature, self.precision)
+    
     def clearCache(self):
         """Clear most recent data and configurations"""
-        self.setFlag(pause_feedback=True)
-        time.sleep(0.1)
-        self.buffer_df = pd.DataFrame(columns=COLUMNS)
-        self.setFlag(pause_feedback=False)
-        return
+        return super().clearCache()
     
     def disconnect(self):
         """Disconnect from device"""
-        try:
-            self.device.close()
-        except Exception as e:
-            if self.verbose:
-                print(e)
-        self.setFlag(connected=False)
+        self.device.close()
         return
     
-    def getMass(self) -> str:
+    def getReadings(self, wait:int = 10) -> str:
         """
-        Get the mass of the sample by measuring the force response
-        
+        Get pH and temperature readings from tool
+
+        Args:
+            wait (int, optional): duration to wait for the hardware to respond. Defaults to 10.
+
         Returns:
             str: device response
         """
-        response = self._read()
+        # self.device.write('ACT'.encode('utf-8'))    # Manual pp.36 sending the string 'ACT' queries the pH meter
+        # time.sleep(wait)                            # require a delay between writing to and reading from the pH meter 
+        # reading = self.device.read_until('\r\n')    # Reads data until the end of line; see pp. 36 of manual (or print whole string) to see data format
+        response = self._query(wait=wait)
         now = datetime.now()
         try:
-            value = int(response)
+            pH = float(response[26:33])
+            temperature = float(response[34:38])
         except ValueError:
             pass
         else:
-            self._mass = (value - self.baseline) / self.calibration_factor
+            self._pH = pH
+            self._temperature = temperature
             if self.flags['record']:
                 values = [
                     now, 
-                    value, 
-                    self.calibration_factor, 
-                    self.baseline, 
-                    self._mass
+                    self._pH, 
+                    self._temperature
                 ]
                 row = {k:v for k,v in zip(COLUMNS, values)}
                 new_row_df = pd.DataFrame(row, index=[0])
                 self.buffer_df = pd.concat([self.buffer_df, new_row_df], ignore_index=True)
+            print(f"pH = {pH:.3f}, temperature = {temperature:.1f}°C")
         return response
-  
-    def reset(self):
-        """Reset the device"""
-        super().reset()
-        self.baseline = 0
-        return
     
     def shutdown(self):
         """Shutdown procedure for tool"""
         self.toggleFeedbackLoop(on=False)
         return super().shutdown()
- 
-    def tare(self):
-        """Alias for `zero()`"""
-        return self.zero()
     
     def toggleFeedbackLoop(self, on:bool):
         """
@@ -181,40 +161,15 @@ class MassBalance(Measurer):
         self.setFlag(record=on, get_feedback=on, pause_feedback=False)
         self.toggleFeedbackLoop(on=on)
         return
-
-    def zero(self, wait:int = 5):
-        """
-        Set current reading as baseline (i.e. zero mass)
         
-        Args:
-            wait (int, optional): duration to wait while zeroing, in seconds. Defaults to 5.
-        """
-        if self.flags['record']:
-            print("Unable to zero while recording.")
-            print("Use `toggleRecord(False)` to stop recording.")
-            return
-        temp_record_state = self.flags['record']
-        temp_buffer_df = self.buffer_df.copy()
-        self.reset()
-        self.toggleRecord(True)
-        print(f"Zeroing... ({wait}s)")
-        time.sleep(wait)
-        self.toggleRecord(False)
-        self.baseline = self.buffer_df['Value'].mean()
-        self.clearCache()
-        self.buffer_df = temp_buffer_df.copy()
-        print("Zeroing complete.")
-        self.toggleRecord(temp_record_state)
-        return
-
     # Protected method(s)
-    def _connect(self, port:str, baudrate:int = 115200, timeout:int = 1):
+    def _connect(self, port:str, baudrate:int = 9600, timeout:int = 1):
         """
         Connection procedure for tool
 
         Args:
             port (str): COM port address
-            baudrate (int, optional): baudrate. Defaults to 115200.
+            baudrate (int, optional): baudrate. Defaults to 9600.
             timeout (int, optional): timeout in seconds. Defaults to 1.
         """
         self.connection_details = {
@@ -233,7 +188,6 @@ class MassBalance(Measurer):
             print(f"Connection opened to {port}")
             self.setFlag(connected=True)
             time.sleep(1)
-            self.zero()
         self.device = device
         return
     
@@ -243,10 +197,24 @@ class MassBalance(Measurer):
         while self.flags['get_feedback']:
             if self.flags['pause_feedback']:
                 continue
-            self.getMass()
+            self.getReadings()
         print('Stop listening...')
         return
+    
+    def _query(self, wait:float = 10) -> str:
+        """
+        Write command to and read response from device
 
+        Args:
+            wait (float, optional): duration, in seconds, to wait for response. Defaults to 10.
+
+        Returns:
+            str: response string
+        """
+        self.device.write('ACT'.encode('utf-8'))    # Manual pp.36 sending the string 'ACT' queries the pH meter
+        time.sleep(wait)                            # require a delay between writing to and reading from the pH meter 
+        return self._read()
+    
     def _read(self) -> str:
         """
         Read response from device
@@ -256,7 +224,7 @@ class MassBalance(Measurer):
         """
         response = ''
         try:
-            response = self.device.readline()
+            response = self.device.read_until('\r\n')
         except Exception as e:
             if self.verbose:
                 print(e)
@@ -265,4 +233,4 @@ class MassBalance(Measurer):
             if self.verbose:
                 print(response)
         return response
- 
+    
