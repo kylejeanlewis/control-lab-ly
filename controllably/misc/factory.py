@@ -36,7 +36,7 @@ import yaml     # pip install pyyaml
 from . import helper
 print(f"Import: OK <{__name__}>")
 
-HOME_PACKAGE = ('controllably','lab')
+HOME_PACKAGE = ('controllably','lab','leapfrog')
 """Names and aliases of base package"""
 
 class DottableDict(dict):
