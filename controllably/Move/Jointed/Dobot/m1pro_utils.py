@@ -64,7 +64,7 @@ class M1Pro(Dobot):
             **kwargs
         )
         self._speed_angular_max = 180
-        self.setHandedness(right_hand=right_handed, stretch=False)
+        self.setHandedness(right_hand=right_handed, stretch=True)
         self.home()
         return
     
@@ -164,16 +164,11 @@ class M1Pro(Dobot):
         Returns:
             bool: whether movement is successful
         """
-        set_value = None
-        if not right_hand and self.flags['right_handed'] != False:  # Set to left-handed: 0
-            set_value = 0
-        elif right_hand and self.flags['right_handed'] != True:     # Set to right-handed: 1
-            set_value = 1
-        else:
+        if right_hand == self.flags['right_handed']:
             return False
         
         try:
-            self.dashboard.SetArmOrientation(set_value,1,1,1)
+            self.dashboard.SetArmOrientation(int(right_hand),1,1,1)
         except (AttributeError, OSError):
             if self.verbose:
                 print("Not connected to arm!")
@@ -182,7 +177,7 @@ class M1Pro(Dobot):
             if stretch:
                 self.stretchArm()
                 time.sleep(1)
-        self.setFlag(right_handed=bool(set_value))
+        self.setFlag(right_handed=right_hand)
         return True
             
     def stretchArm(self) -> bool:
@@ -192,7 +187,12 @@ class M1Pro(Dobot):
         Returns:
             bool: whether movement is successful
         """
-        _,y,z = self.coordinates
-        y = 240 * math.copysign(1, y)
-        return self.moveCoordTo(coordinates=(320,y,z))
+        x,y,z = self.coordinates
+        y_stretch = math.copysign(240, y)
+        z_home = self.home_coordinates[2]
+        ret1 = self.moveCoordTo(coordinates=(x,y,z_home))
+        ret2 = self.moveCoordTo(coordinates=(320,y_stretch,z_home))
+        ret3 = self.moveCoordTo(coordinates=(x,y,z_home))
+        ret4 = self.moveCoordTo(coordinates=(x,y,z))
+        return all([ret1,ret2,ret3,ret4])
    
