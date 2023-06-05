@@ -199,6 +199,8 @@ class MakerPanel(MultiChannelPanel):
         default_map = {k:defaults.get(v,'') for k,v in self.input_map.items()}
         
         for key,default in default_map.items():
+            if default is None:
+                default = ''
             key_input = self._mangle(f'-{channel_id}-{key}-VALUE-')
             updates[key_input] = dict(value=default)
         return updates

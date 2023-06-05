@@ -378,9 +378,9 @@ class Panel(ABC):
             else:
                 return int(text)
         
-        if text == "True":
+        if text.title() == "True":
             return True
-        if text == "False":
+        if text.title() == "False":
             return False
         
         if text[0] in ("'", '"') and text[-1] in ("'", '"'):
