@@ -37,6 +37,7 @@ class Peltier(Maker):
         `tolerance` (float, optional): tolerance above and below target temperature. Defaults to 1.5.
             
     ### Attributes
+    - `buffer_df` (pd.DataFrame): buffer dataframe to store collected data
     - `power_threshold` (float): minimum threshold under which temperature can be considered stable
     - `set_temperature` (float): temperature set point
     - `stabilize_buffer_time` (float): buffer time over which temperature can be considered stable
@@ -48,6 +49,7 @@ class Peltier(Maker):
     
     ### Methods
     - `clearCache`: clears and remove data in buffer
+    - `execute`: alias for `holdTemperature()`
     - `getTemperature`: retrieve temperatures from device
     - `holdTemperature`: hold target temperature for desired duration
     - `isAtTemperature`: checks and returns whether target temperature has been reached
@@ -113,6 +115,18 @@ class Peltier(Maker):
         self.buffer_df = pd.DataFrame(columns=self._columns)
         self.setFlag(pause_feedback=False)
         return
+    
+    def execute(self, temperature:float, time_s:float, *args, **kwargs):
+        """
+        Alias for `holdTemperature()`
+        
+        Hold target temperature for desired duration
+
+        Args:
+            temperature (float): temperature in degree Celsius
+            time_s (float): duration in seconds
+        """
+        return self.holdTemperature(temperature=temperature, time_s=time_s)
     
     def getTemperature(self) -> Union[tuple, str]:
         """

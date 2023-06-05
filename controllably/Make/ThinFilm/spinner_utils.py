@@ -39,6 +39,7 @@ class Spinner(Maker):
     - `position` (np.ndarray): x,y,z position of spinner
     
     ### Methods
+    - `execute`: alias for `run()`
     - `run`: executes the soak and spin steps
     - `shutdown`: shutdown procedure for tool
     - `soak`: executes a soak step
@@ -79,6 +80,19 @@ class Spinner(Maker):
     @property
     def position(self) -> np.ndarray:
         return np.array(self._position)
+    
+    def execute(self, soak_time:int = 0, spin_speed:int = 2000, spin_time:int = 1, *args, **kwargs):
+        """
+        Alias for `run()`
+        
+        Execute the soak and spin steps
+
+        Args:
+            soak_time (int, optional): soak time. Defaults to 0.
+            spin_speed (int, optional): spin speed. Defaults to 2000.
+            spin_time (int, optional): spin time. Defaults to 1.
+        """
+        return self.run(soak_time=soak_time, spin_speed=spin_speed, spin_time=spin_time)
     
     def run(self, soak_time:int = 0, spin_speed:int = 2000, spin_time:int = 1, **kwargs):
         """
@@ -202,6 +216,7 @@ class SpinnerAssembly(Maker):
     
     ### Methods
     - `disconnect`: disconnect from device
+    - `execute`: alias for `run()`
     - `isBusy`: checks and returns whether any of the spinners are still busy
     - `isConnected`: checks and returns whether all spinners are connected
     - `run`: executes the soak and spin steps
@@ -241,6 +256,20 @@ class SpinnerAssembly(Maker):
         for channel in self.channels.values():
             channel.disconnect()
         return super().disconnect() 
+    
+    def execute(self, soak_time:int, spin_speed:int, spin_time:int, channel:int, *args, **kwargs):
+        """
+        Alias for `run()`
+        
+        Execute the soak and spin steps
+
+        Args:
+            soak_time (int): soak time
+            spin_speed (int): spin speed
+            spin_time (int): spin time
+            channel (int): channel id
+        """
+        return self.run(soak_time=soak_time, spin_speed=spin_speed, spin_time=spin_time, channel=channel)
         
     def isBusy(self) -> bool:
         """

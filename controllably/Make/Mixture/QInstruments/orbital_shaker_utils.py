@@ -44,6 +44,7 @@ class BioShake(Maker):
     - `verbose` (bool): verbosity of class
     
     ### Methods
+    - `execute`: alias for `holdTemperature()` and `shake()`
     - `getAcceleration`: returns the acceleration/deceleration value
     - `getErrors`: returns a list with errors and warnings which can occur during processing
     - `getShakeTimeLeft`: returns the remaining shake time in seconds if device was started with the a defined duration
@@ -181,6 +182,42 @@ class BioShake(Maker):
             str: device version
         """
         return self.device.getVersion()
+    
+    def execute(self, 
+            shake: bool,
+            temperature: Optional[float] = None, 
+            speed: Optional[int] = None, 
+            duration: Optional[int] = None, 
+            acceleration: Optional[int] = None, 
+            *args, **kwargs
+        ):
+        """
+        Alias for `holdTemperature()` and `shake()`
+        
+        Set target temperature, then shake the plate at target speed and hold target temperature for desired duration
+
+        Args:
+            shake (bool): whether to shake
+            temperature (Optional[float], optional): temperature in degree °C. Defaults to None.
+            speed (Optional[int], optional): shaking speed. Defaults to None.
+            duration (Optional[int], optional): duration of shake. Defaults to None.
+            acceleration (Optional[int], optional): acceleration value. Defaults to None.
+        """
+        # setTemperature
+        if temperature is not None:
+            self.setTemperature(temperature)
+        
+        # shake
+        if shake:
+            self.shake(speed=speed, duration=duration, acceleration=acceleration)
+        
+        # holdTemperature
+        if temperature is not None and duration:
+            print(f"Holding at {self.set_temperature}°C for {duration} seconds")
+            time.sleep(duration)
+            print(f"End of temperature hold")
+            # self.setTemperature(25, False)
+        return
     
     def getAcceleration(self) -> float:
         """
