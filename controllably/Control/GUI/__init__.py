@@ -5,7 +5,8 @@ for measurers, movers, and viewers.
 Classes:
     Panel (ABC)
     CompoundPanel (Panel)
-    LiquidPanel (Panel)
+    LiquidPanel (MultiChannelPanel)
+    MakerPanel (MultiChannelPanel)
     MeasurerPanel (Panel)
     MoverPanel (Panel)
     MultiChannelPanel (Panel)
@@ -13,6 +14,7 @@ Classes:
 """
 from .gui_utils import Panel, MultiChannelPanel
 from .compound_panel import CompoundPanel
+from .maker_panel import MakerPanel
 from .measurer_panel import MeasurerPanel
 from .mover_panel import MoverPanel
 from .transfer_liquid_panel import LiquidPanel
