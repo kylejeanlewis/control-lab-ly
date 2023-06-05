@@ -50,4 +50,26 @@ from controllably.Measure.Electrical.Keithley import Keithley
 me = Keithley()
 gui = MeasurerPanel(me)
 gui.runGUI()
+
+# %%
+import init
+from controllably.Control.GUI import MakerPanel
+from controllably.Make.Light import LEDArray
+me = LEDArray('COM4', channels=[0,1,2,3])
+me.__dict__
+gui = MakerPanel(me)
+gui.runGUI()
+
+# %%
+import init
+from controllably.Control.GUI import MakerPanel
+from controllably.Make.ThinFilm import SpinnerAssembly
+
+me = SpinnerAssembly(
+    ports=['COM13','COM14','COM15','COM16'], 
+    channels=[1,2,3,4], 
+    positions=[(50,0,0),(100,0,0),(150,0,0),(200,0,0)]
+)
+gui = MakerPanel(me)
+gui.runGUI()
 # %%
