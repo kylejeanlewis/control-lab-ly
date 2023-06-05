@@ -264,7 +264,15 @@ class Panel(ABC):
         return buttons
     
     @staticmethod
-    def getInputs(fields:list[str], key_prefix: str, initial_visibility:bool = True) -> list[sg.Column]:
+    def getInputs(
+            fields: list[str], 
+            key_prefix: str, 
+            initial_visibility: bool = True, 
+            label_map: Optional[dict] = None,
+            defaults: Optional[dict] = None,
+            tooltips: Optional[dict] = None,
+            **kwargs
+        ) -> list[sg.Column]:
         """
         Get the layout for the input section
         
@@ -272,6 +280,9 @@ class Panel(ABC):
             fields (list[str]): list of field names
             key_prefix (str): prefix of button key
             initial_visibility (bool, optional): whether the field is initially visible. Defaults to True.
+            label_map (Optional[dict], optional): text label for each field. Defaults to None.
+            defaults (Optional[dict], optional): default value for each field. Defaults to None.
+            tooltips (Optional[dict], optional): tooltip for each field. Defaults to None.
 
         Returns:
             list[sg.Column]: list of columns
@@ -282,15 +293,19 @@ class Panel(ABC):
         for input_field in fields:
             key_label = f'-{key_prefix}-{input_field.upper()}-LABEL-'
             key_input = f'-{key_prefix}-{input_field.upper()}-VALUE-'
+            label = label_map.get(input_field, input_field.title()) if type(label_map) is dict else input_field.title()
+            default = defaults.get(input_field, '') if type(defaults) is dict else ''
+            tooltip = tooltips.get(input_field, None) if type(tooltips) is dict else None
+            
             _label = sg.pin(
                 sg.Column(
-                    [[sg.Text(input_field.title(), key=key_label, visible=True)]],
+                    [[sg.Text(label, key=key_label, visible=True, tooltip=tooltip)]],
                     key=f'{key_label}BOX-', visible=initial_visibility
                 )
             )
             _input = sg.pin(
                 sg.Column(
-                    [[sg.Input(size=(5,2), key=key_input, visible=True, tooltip='')]],
+                    [[sg.Input(default, size=(5,2), key=key_input, visible=True, tooltip=tooltip)]],
                     key=f'{key_input}BOX-', visible=initial_visibility
                 )
             )
@@ -363,9 +378,9 @@ class Panel(ABC):
             else:
                 return int(text)
         
-        if text == "True":
+        if text.title() == "True":
             return True
-        if text == "False":
+        if text.title() == "False":
             return False
         
         if text[0] in ("'", '"') and text[-1] in ("'", '"'):

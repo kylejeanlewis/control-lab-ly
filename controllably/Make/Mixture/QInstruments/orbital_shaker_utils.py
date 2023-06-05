@@ -7,6 +7,8 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+from datetime import datetime
+import pandas as pd
 from threading import Thread
 import time
 from typing import Optional, Union
@@ -17,6 +19,8 @@ from .qinstruments_api import QInstruments
 print(f"Import: OK <{__name__}>")
 
 ACCELERATION_LIMIT = (1,30)
+COLUMNS = ('Time', 'Set', 'Actual')
+"""Headers for output data from BioShake device"""
 
 class BioShake(Maker):
     """
@@ -27,6 +31,7 @@ class BioShake(Maker):
         `port` (str): COM port address
     
     ### Attributes
+    - `buffer_df` (pd.DataFrame): buffer dataframe to store collected data
     - `device` (Callable): device object that communicates with physical tool
     - `limits` (dict[str, tuple]): hardware limits for device
     - `model` (str): device model description
@@ -44,6 +49,8 @@ class BioShake(Maker):
     - `verbose` (bool): verbosity of class
     
     ### Methods
+    - `clearCache`: clears and remove data in buffer
+    - `execute`: alias for `holdTemperature()` and `shake()`
     - `getAcceleration`: returns the acceleration/deceleration value
     - `getErrors`: returns a list with errors and warnings which can occur during processing
     - `getShakeTimeLeft`: returns the remaining shake time in seconds if device was started with the a defined duration
@@ -66,17 +73,23 @@ class BioShake(Maker):
     - `shutdown`: shutdown procedure for tool
     - `stop`: stop the shaker immediately at an undefined position, ignoring the defined deceleration time if in an emergency
     - `toggleECO`: toggle the economical mode to save energy and decrease abrasion 
+    - `toggleFeedbackLoop`: start or stop feedback loop
     - `toggleGrip`: grip or release the object
+    - `toggleRecord`: start or stop data recording
     - `toggleShake`: starts/stops shaking with defined speed with defined acceleration/deceleration time
     - `toggleTemperature`: switches on/off the temperature control feature and starts/stops heating/cooling
     """
     
     _default_acceleration: int = 5
     _default_speed: int = 500
+    _default_temperature: float = 25
     _default_flags = {
         'busy': False,
         'connected': False,
         'elm_locked': True,
+        'get_feedback': False,
+        'pause_feedback': False,
+        'record': False,
         'shake_counterclockwise': True,
         'speed_reached': False,
         'temperature_reached': False
@@ -89,25 +102,27 @@ class BioShake(Maker):
             port (str): COM port address
         """
         super().__init__(**kwargs)
+        self.buffer_df = pd.DataFrame(columns=list(COLUMNS))
         self.device: QInstruments = None
         self.model = ''
-        self.set_speed = None
-        self.set_temperature = None
+        self.set_speed = self._default_speed
+        self.set_temperature = self._default_temperature
         self.shake_time_left = None
         self.speed = self._default_speed
-        self.temperature = None
-        self.tolerance = 0.01
+        self.temperature = self._default_temperature
+        self.tolerance = 0.05
         
         self.limits = {
-            'acceleration': (0,0),
-            'speed': (0,0),
-            'temperature': (0,0)
+            'acceleration': (0,9999),
+            'speed': (0,9999),
+            'temperature': (0,9999)
         }
         self.ranges = {
-            'speed': (0,0),
-            'temperature': (0,0)
+            'speed': (0,9999),
+            'temperature': (0,9999)
         }
         self._acceleration = self._default_acceleration
+        self._columns = list(COLUMNS)
         self._threads = {}
         self._connect(port)
         self.verbose = kwargs.get('verbose', False)
@@ -142,6 +157,8 @@ class BioShake(Maker):
         """Retrieve the default and starting configuration of the device upon start up"""
         self.isCounterClockwise()
         self.isLocked()
+        if not self.isConnected():
+            return
         self.limits['acceleration'] = ( self.device.getShakeAccelerationMin(), self.device.getShakeAccelerationMax() )
         self.limits['speed'] = ( self.device.getShakeMinRpm(), self.device.getShakeMaxRpm() )
         self.limits['temperature'] = ( self.device.getTempMin(), self.device.getTempMax() )
@@ -181,6 +198,50 @@ class BioShake(Maker):
             str: device version
         """
         return self.device.getVersion()
+    
+    def clearCache(self):
+        """Clears and remove data in buffer"""
+        self.setFlag(pause_feedback=True)
+        time.sleep(0.1)
+        self.buffer_df = pd.DataFrame(columns=self._columns)
+        self.setFlag(pause_feedback=False)
+        return
+    
+    def execute(self, 
+            shake: bool,
+            temperature: Optional[float] = None, 
+            speed: Optional[int] = None, 
+            duration: Optional[int] = None, 
+            acceleration: Optional[int] = None, 
+            *args, **kwargs
+        ):
+        """
+        Alias for `holdTemperature()` and `shake()`
+        
+        Set target temperature, then shake the plate at target speed and hold target temperature for desired duration
+
+        Args:
+            shake (bool): whether to shake
+            temperature (Optional[float], optional): temperature in degree °C. Defaults to None.
+            speed (Optional[int], optional): shaking speed. Defaults to None.
+            duration (Optional[int], optional): duration of shake. Defaults to None.
+            acceleration (Optional[int], optional): acceleration value. Defaults to None.
+        """
+        # setTemperature
+        if temperature is not None:
+            self.setTemperature(temperature)
+        
+        # shake
+        if shake:
+            self.shake(speed=speed, duration=duration, acceleration=acceleration)
+        
+        # holdTemperature
+        if temperature is not None and duration:
+            print(f"Holding at {self.set_temperature}°C for {duration} seconds")
+            time.sleep(duration)
+            print(f"End of temperature hold")
+            # self.setTemperature(25, False)
+        return
     
     def getAcceleration(self) -> float:
         """
@@ -251,6 +312,7 @@ class BioShake(Maker):
         Returns:
             tuple[float]: set temperature, current temperature
         """
+        now = datetime.now()
         response = self.device.getTempTarget()
         self.set_temperature = response if response is not None else self.set_temperature
         response = self.device.getTempActual()
@@ -258,16 +320,25 @@ class BioShake(Maker):
         
         flag = (abs(self.temperature - self.set_temperature) <= self.tolerance*self.set_temperature) if self.set_temperature else False
         self.setFlag(temperature_reached=flag)
+        
+        if self.flags['record']:
+            values = [now, self.set_temperature, self.temperature]
+            row = {k:v for k,v in zip(self._columns, values)}
+            # self.buffer_df = self.buffer_df.append(row, ignore_index=True)
+            new_row_df = pd.DataFrame(row)
+            self.buffer_df = pd.concat([self.buffer_df, new_row_df])
         return self.set_temperature, self.temperature
     
     def getUserLimits(self):
         """Retrieve the user defined limits for speed and temperature"""
+        if not self.isConnected():
+            return
         try:
             self.ranges['temperature'] = ( self.device.getTempLimiterMin(), self.device.getTempLimiterMax() )
             self.ranges['speed'] = ( self.device.getShakeSpeedLimitMin(), self.device.getShakeSpeedLimitMax() )
         except AttributeError:
-            self.ranges['temperature'] = self.limits.get('temperature', (0,0))
-            self.ranges['speed'] = self.limits.get('speed', (0,0))
+            self.ranges['temperature'] = self.limits.get('temperature', (0,9999))
+            self.ranges['speed'] = self.limits.get('speed', (0,9999))
         return
 
     def holdTemperature(self, temperature:float, time_s:float):
@@ -281,7 +352,7 @@ class BioShake(Maker):
         self.setTemperature(temperature)
         print(f"Holding at {self.set_temperature}°C for {time_s} seconds")
         time.sleep(time_s)
-        print(f"End of temperature hold")
+        print(f"End of temperature hold ({time_s}s)")
         return
     
     def home(self, timeout:int = 5):
@@ -347,6 +418,8 @@ class BioShake(Maker):
         Args:
             timeout (int, optional): number of seconds to wait before aborting. Defaults to 30.
         """
+        self.toggleRecord(False)
+        self.clearCache()
         self.device.resetDevice(timeout=timeout)
         return
 
@@ -377,7 +450,7 @@ class BioShake(Maker):
         """
         self.device.setShakeDirection(counterclockwise=counterclockwise)
         response = self.device.getShakeDirection()
-        response = response if response is not None else self.flags['shake_counterclockwise']
+        response = response if response is not None else counterclockwise
         self.setFlag(shake_counterclockwise=response)
         return 
     
@@ -416,12 +489,12 @@ class BioShake(Maker):
         limits = self.ranges.get('temperature', (0,99))
         lower_limit, upper_limit = limits
         if lower_limit <= temperature <= upper_limit:
-            self.set_temperature = temperature
+            self.set_temperature = float(temperature)
             self.device.setTempTarget(temperature=temperature)
         else:
             raise ValueError(f"Temperature out of range {limits}: {temperature}")
         
-        while self.set_temperature != self.device.getTempTarget():
+        while self.set_temperature != float(temperature):
             self.getTemperature()
         print(f"New set temperature at {self.set_temperature}°C")
         self.setFlag(temperature_reached=False)
@@ -467,6 +540,7 @@ class BioShake(Maker):
                 time.sleep(1)
             if duration:
                 time.sleep(abs(duration - shake_time))
+                print(f"End of shake ({duration}s)")
             return self.isAtSpeed()
         thread = Thread(target=checkSpeed)
         thread.start()
@@ -506,6 +580,24 @@ class BioShake(Maker):
         else:
             self.device.leaveEcoMode(timeout=timeout)
         return
+    
+    def toggleFeedbackLoop(self, on:bool):
+        """
+        Start or stop feedback loop
+
+        Args:
+            on (bool): whether to start loop to continuously read from device
+        """
+        self.setFlag(get_feedback=on)
+        if on:
+            if 'feedback_loop' in self._threads:
+                self._threads['feedback_loop'].join()
+            thread = Thread(target=self._loop_feedback)
+            thread.start()
+            self._threads['feedback_loop'] = thread
+        else:
+            self._threads['feedback_loop'].join()
+        return
      
     def toggleGrip(self, on:bool):
         """
@@ -518,6 +610,17 @@ class BioShake(Maker):
             self.device.setElmLockPos()
         else:
             self.device.setElmUnlockPos()
+        return
+    
+    def toggleRecord(self, on:bool):
+        """
+        Start or stop data recording
+
+        Args:
+            on (bool): whether to start recording temperature
+        """
+        self.setFlag(record=on, get_feedback=on, pause_feedback=False)
+        self.toggleFeedbackLoop(on=on)
         return
     
     def toggleShake(self, on:bool, duration:Optional[int] = None, home:bool = True):
@@ -582,9 +685,21 @@ class BioShake(Maker):
                 print(e)
         else:
             self.model = device.model
-            self.setFlag(connected=True)
-            self.__defaults__()
-            self.getUserLimits()
+            self.setFlag(connected=self.device.flags.get('connected', False))
+            if self.isConnected():
+                self.__defaults__()
+                self.getUserLimits()
+        return
+    
+    def _loop_feedback(self):
+        """Loop to constantly read from device"""
+        print('Listening...')
+        while self.flags['get_feedback']:
+            if self.flags['pause_feedback']:
+                continue
+            self.getTemperature()
+            time.sleep(0.1)
+        print('Stop listening...')
         return
     
     def _query(self, 
