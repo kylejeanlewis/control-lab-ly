@@ -34,6 +34,7 @@ class QInstruments:
     - `connection_details` (dict): dictionary of connection details (e.g. COM port / IP address)
     - `device` (Callable): device object that communicates with physical tool
     - `flags` (dict[str, bool]): keywords paired with boolean flags
+    - `model` (str): device model
     - `verbose` (bool): verbosity of class
     
     ### Methods
@@ -114,9 +115,11 @@ class QInstruments:
     - `disconnect`: disconnect from device
     - `query`: write command to and read response from device
     - `read`: read response from device
+    - `setFlag`: set flags by using keyword arguments
     - `write`: write command to device
     """
     
+    _default_flags: dict[str, bool] = {'busy': False, 'connected': False}
     def __init__(self, 
         port: str, 
         baudrate:int = 9600, 
@@ -135,6 +138,7 @@ class QInstruments:
         """
         self.connection_details = {}
         self.device = None
+        self.flags = self._default_flags.copy()
         self.model = ''
         self.verbose = verbose
         self._connect(port=port, baudrate=baudrate, timeout=timeout)
@@ -967,6 +971,20 @@ class QInstruments:
             if self.verbose and len(response):
                 print(response)
         return response
+    
+    def setFlag(self, **kwargs):
+        """
+        Set flags by using keyword arguments
+
+        Kwargs:
+            key, value: (flag name, boolean) pairs
+        """
+        if not all([type(v)==bool for v in kwargs.values()]):
+            raise ValueError("Ensure all assigned flag values are boolean.")
+        self.flags.update(kwargs)
+        # for key, value in kwargs.items():
+        #     self.flags[key] = value
+        return
     
     def write(self, command:str) -> bool:
         """
