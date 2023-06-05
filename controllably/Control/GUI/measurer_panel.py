@@ -102,7 +102,6 @@ class MeasurerPanel(Panel):
         Build `sg.Column` object
 
         Args:
-            title (str, optional): title of layout. Defaults to 'Panel'.
             title_font_level (int, optional): index of font size from levels in font_sizes. Defaults to 0.
 
         Returns:
