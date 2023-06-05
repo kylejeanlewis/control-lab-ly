@@ -13,9 +13,9 @@ Classes:
 """
 from .gui_utils import Panel, MultiChannelPanel
 from .compound_panel import CompoundPanel
-from .liquid_panel import LiquidPanel
 from .measurer_panel import MeasurerPanel
 from .mover_panel import MoverPanel
+from .transfer_liquid_panel import LiquidPanel
 from .viewer_panel import ViewerPanel
 
 from controllably import include_this_module
