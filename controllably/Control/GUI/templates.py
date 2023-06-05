@@ -82,7 +82,7 @@ def get_directory_selector(field:str, file:bool = True, default:Optional[str] = 
 
     Args:
         field (str): name of field
-        file (bool, optional): whether to select a file. Defaults to True.
+        file (bool, optional): whether to select a file, else folder. Defaults to True.
         default (str, optional): default file / folder. Defaults to ''.
 
     Returns:
