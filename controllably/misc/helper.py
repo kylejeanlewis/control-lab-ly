@@ -226,10 +226,10 @@ def safety_measures(func:Callable) -> Callable:
 def zip_inputs(primary_keyword:str, **kwargs) -> dict:
     """
     Checks and zips multiple keyword arguments of lists into dictionary
-
+    
     Args:
         primary_keyword (str): primary keyword to be used as key
-        
+    
     Kwargs:
         key, list[...]: {keyword, list of values} pairs
 
