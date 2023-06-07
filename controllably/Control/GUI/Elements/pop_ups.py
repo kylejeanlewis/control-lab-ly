@@ -1,9 +1,11 @@
 # %% -*- coding: utf-8 -*-
 """
-This module holds functions to generate panel templates.
+This module holds pop-up functions.
 
 Functions:
     get_combo_box
+    get_image_labeller
+    get_listbox
     get_notification
 """
 # Standard library imports

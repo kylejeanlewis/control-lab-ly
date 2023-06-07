@@ -11,8 +11,8 @@ from typing import Protocol, Callable
 import PySimpleGUI as sg # pip install PySimpleGUI
 
 # Local application imports
-from ...misc import Helper
-from .gui_utils import Panel
+from ....misc import Helper
+from ..gui_utils import Panel
 print(f"Import: OK <{__name__}>")
 
 class LoaderPanel(Panel):
