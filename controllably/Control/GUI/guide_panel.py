@@ -24,13 +24,12 @@ from ... import modules, Helper
 from .gui_utils import Panel
 print(f"Import: OK <{__name__}>")
 
+DEFAULT_TEXT = "Select an item to view its documentation."
 HOME = "controllably"
-ICON_CLASS = ''
-ICON_FUNCTION = ''
-ICON_MODULE = ''
-PLACEHOLDER_METHOD = "<Methods>"
+PLACEHOLDER_METHOD = "< Methods >"
 
 class Guide(Panel):
+    _default_flags = {'revealed': False}
     def __init__(self, name: str = 'Guide', **kwargs):
         super().__init__(name=name, **kwargs)
         return
@@ -41,14 +40,15 @@ class Guide(Panel):
         tree_data = sg.TreeData()
         tree_data,_ = self._update_tree(
             tree_data = tree_data,
-            index = 0,
+            index = 1,
             parent_name = '', 
             modules_dictionary = modules._modules
         )
         selection = [
             [sg.Tree(
                 data = tree_data,
-                headings = ['index', ],
+                headings = ['index', 'doc'],
+                visible_column_map = [True, False],
                 num_rows = 20,
                 col0_width = 30,
                 key = "-TREE-",
@@ -59,9 +59,10 @@ class Guide(Panel):
             )],
             [
                 sg.Combo(
-                ['<Methods>'], '<Methods>', key="-METHODS-", size=(45,1), enable_events=True
+                [PLACEHOLDER_METHOD], PLACEHOLDER_METHOD, key="-METHODS-", size=(40,1), enable_events=True
                 ),
-                sg.Button("Show All", key="-GET-ALL-", size=(15,1), enable_events=True)
+                sg.Button("Show All", key="-GET-ALL-", size=(10,1), enable_events=True),
+                sg.Button("Expand", key="-TOGGLE-REVEAL-", size=(10,1), enable_events=True)
             ]
         ]
         layout = [
@@ -76,6 +77,8 @@ class Guide(Panel):
     
     def listenEvents(self, event: str, values: dict[str, str]) -> dict[str, str]:
         updates = {}
+        
+        # 1. Select object from Tree
         if event == '-TREE-':
             fullname = values.get('-TREE-', [''])[0]
             tree: sg.Tree = self.window['-TREE-']
@@ -88,32 +91,58 @@ class Guide(Panel):
                 updates['-METHODS-'] = dict(values=methods, value=methods[0])
             else:
                 updates['-METHODS-'] = dict(values=[PLACEHOLDER_METHOD], value=PLACEHOLDER_METHOD)
-            self._update_html(doc)
-            # updates['-MULTILINE-'] = dict(value=doc)
-                
-        if event == '-METHODS-' and values['-METHODS-'] != PLACEHOLDER_METHOD:
-            fullname = values.get('-TREE-', [''])[0]
-            tree: sg.Tree = self.window['-TREE-']
-            tree_data: sg.TreeData = tree.TreeData
-            method = eval(f"modules.at{fullname}.{values['-METHODS-']}")
-            doc = inspect.getdoc(method)
-            self._update_html(doc)
-            # updates['-MULTILINE-'] = dict(value=doc)
+            self._render_html(doc)
         
+        # 2. Select method from Combo
+        if event == '-METHODS-':
+            if values['-METHODS-'] != PLACEHOLDER_METHOD and len(values['-TREE-']):
+                fullname = values['-TREE-'][0]
+                tree: sg.Tree = self.window['-TREE-']
+                tree_data: sg.TreeData = tree.TreeData
+                method = eval(f"modules.at{fullname}.{values['-METHODS-']}")
+                doc = inspect.getdoc(method)
+                self._render_html(doc)
+            elif len(values['-TREE-']):
+                pass
+            else:
+                self._render_html(self._convert_md_to_html(DEFAULT_TEXT))
+        
+        # 3. Show all button
         if event == '-GET-ALL-':
             self._import_all()
             tree_data = sg.TreeData()
             tree_data,_ = self._update_tree(
                 tree_data = tree_data,
-                index = 0,
+                index = 1,
                 parent_name = '', 
                 modules_dictionary = modules._modules
             )
             updates['-TREE-'] = dict(values=tree_data)
+            updates['-METHODS-'] = dict(values=[PLACEHOLDER_METHOD], value=PLACEHOLDER_METHOD)
+            updates['-TOGGLE-REVEAL-'] = dict(text='Expand')
+            self._render_html(self._convert_md_to_html(DEFAULT_TEXT))
+        
+        # 4. Reveal button
+        if event == '-TOGGLE-REVEAL-':
+            tree: sg.Tree = self.window['-TREE-']
+            revealed = self.flags.get('revealed', False)
+            if revealed:
+                self._collapse_tree(tree)
+                updates['-TOGGLE-REVEAL-'] = dict(text='Expand')
+            else:
+                self._expand_tree(tree)
+                updates['-TOGGLE-REVEAL-'] = dict(text='Collapse')
+            self.setFlag(revealed = (not revealed))
         return updates
     
     # Protected methods
-    def _get_html(self, md_text:str) -> str:
+    def _collapse_tree(self, tree: sg.Tree):
+        for key in tree.TreeData.tree_dict:
+            tree_node_id = tree.KeyToID[key] if key in tree.KeyToID else None
+            tree.Widget.item(tree_node_id, open=False)
+        return
+    
+    def _convert_md_to_html(self, md_text:str) -> str:
         sub_headers = (
             "Args", 
             "Classes", 
@@ -128,15 +157,26 @@ class Guide(Panel):
         lines = [l.replace('   ','- ') for l in lines]
         
         md_text = "\n".join(lines)
+        md_text = md_text.replace('<', '&lt;')
+        md_text = md_text.replace('>', '&gt;')
         md_text = md_text.replace('`', '*')
         md_text = md_text.replace('Parameters:', 'Parameters')
         for header in sub_headers:
             md_text = md_text.replace(f'{header}:', f'**{header}**\n')
         
+        h3,h4,p = self.font_sizes[0:3]
         html = markdown.markdown(md_text)
-        html = html.replace('<p>', '<p style="font-size: 12px;">')
-        html = html.replace('<ul>', '<ul style="font-size: 12px;">')
+        html = html.replace('<h3>', f'<h3 style="font-size: {h3}px;">')
+        html = html.replace('<h4>', f'<h4 style="font-size: {h4}px;">')
+        html = html.replace('<p>', f'<p style="font-size: {p}px;">')
+        html = html.replace('<ul>', f'<ul style="font-size: {p}px;">')
         return html
+    
+    def _expand_tree(self, tree: sg.Tree):
+        for key in tree.TreeData.tree_dict:
+            tree_node_id = tree.KeyToID[key] if key in tree.KeyToID else None
+            tree.Widget.item(tree_node_id, open=True)
+        return
     
     def _import_all(self):
         root_dir = __file__.split(HOME)[0] + HOME
@@ -151,8 +191,9 @@ class Guide(Panel):
                         print(f"Unable to import {dot_notation}")
         return
     
-    def _update_html(self, md_text:str):
-        html = self._get_html(md_text=md_text)
+    def _render_html(self, md_text:str):
+        print(md_text)
+        html = self._convert_md_to_html(md_text=md_text)
         html_widget = self.window['-MULTILINE-'].Widget
         parser = html_parser.HTMLTextParser()
         def set_html(widget, html, strip=True):
@@ -163,7 +204,6 @@ class Guide(Panel):
             widget.tag_delete(widget.tag_names)
             parser.w_set_html(widget, html, strip=strip)
             widget.config(state=prev_state)
-        
         set_html(html_widget, html)
         return
     
@@ -173,7 +213,7 @@ class Guide(Panel):
         parent_name: str, 
         modules_dictionary: dict
     ) -> tuple[sg.TreeData, int]:
-        for k, v in list(modules_dictionary.items()):
+        for k, v in sorted(modules_dictionary.items()):
             fullname = '.'.join([parent_name, k])
             if isinstance(v, dict):
                 doc = v.get("_doc_", "< No documentation >")
@@ -187,6 +227,7 @@ class Guide(Panel):
                 doc = inspect.getdoc(obj)
                 tree_data.insert(parent_name, fullname, k, values=[index,doc])
                 index += 1
+        self.setFlag(revealed=False)
         return tree_data, index
     
 def guide_me():
