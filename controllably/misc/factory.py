@@ -319,3 +319,6 @@ def unregister(dot_notation:str):
                 del d[k]
     remove_empty_dicts(modules._modules)
     return
+
+__where__ = "misc.Factory"
+include_this_module(get_local_only=True)

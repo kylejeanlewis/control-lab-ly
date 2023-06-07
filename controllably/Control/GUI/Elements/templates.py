@@ -108,3 +108,7 @@ def get_directory_selector(field:str, file:bool = True, default:Optional[str] = 
         ]
     ]
     return sg.Column(column)
+
+__where__ = "Control.GUI.Elements.Templates"
+from controllably import include_this_module
+include_this_module(get_local_only=True)

@@ -229,3 +229,7 @@ def get_notification(message:str = 'Note!'):
             break
     window.close()
     return
+
+__where__ = "Control.GUI.Elements.Popups"
+from controllably import include_this_module
+include_this_module(get_local_only=True)

@@ -490,3 +490,7 @@ class Deck:
         self._slots.pop(str(index))
         self.exclusion_zones.pop(str(index))
         return
+
+__where__ = "misc.Layout"
+from .factory import include_this_module
+include_this_module(get_local_only=True)
