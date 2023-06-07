@@ -29,12 +29,40 @@ HOME = "controllably"
 PLACEHOLDER_METHOD = "< Methods >"
 
 class Guide(Panel):
+    """
+    Guide Panel class
+
+    ### Constructor
+    Args:
+        `name` (str, optional): name of panel. Defaults to 'Guide'.
+
+    ### Methods
+    - `getLayout`: build `sg.Column` object
+    - `listenEvents`: listen to events and act on values
+    """
+    
     _default_flags = {'revealed': False}
     def __init__(self, name: str = 'Guide', **kwargs):
+        """
+        Instantiate the class
+
+        Args:
+            name (str, optional): name of panel. Defaults to 'Guide'.
+        """
         super().__init__(name=name, **kwargs)
         return
     
     def getLayout(self, title_font_level: int = 0, **kwargs) -> sg.Column:
+        """
+        Build `sg.Column` object
+
+        Args:
+            title (str, optional): title of layout. Defaults to 'Panel'.
+            title_font_level (int, optional): index of font size from levels in font_sizes. Defaults to 0.
+
+        Returns:
+            sg.Column: Column object
+        """
         font = (self.typeface, self.font_sizes[title_font_level])
         layout = super().getLayout('Guide', justification='center', font=font, **kwargs)
         tree_data = sg.TreeData()
@@ -76,8 +104,17 @@ class Guide(Panel):
         return layout
     
     def listenEvents(self, event: str, values: dict[str, str]) -> dict[str, str]:
+        """
+        Listen to events and act on values
+
+        Args:
+            event (str): event triggered
+            values (dict[str, str]): dictionary of values from window
+
+        Returns:
+            dict: dictionary of updates
+        """
         updates = {}
-        
         # 1. Select object from Tree
         if event == '-TREE-':
             fullname = values.get('-TREE-', [''])[0]
@@ -91,7 +128,8 @@ class Guide(Panel):
                 updates['-METHODS-'] = dict(values=methods, value=methods[0])
             else:
                 updates['-METHODS-'] = dict(values=[PLACEHOLDER_METHOD], value=PLACEHOLDER_METHOD)
-            self._render_html(doc)
+            html = self._convert_md_to_html(md_text=doc)
+            self._render_html(html)
         
         # 2. Select method from Combo
         if event == '-METHODS-':
@@ -101,11 +139,13 @@ class Guide(Panel):
                 tree_data: sg.TreeData = tree.TreeData
                 method = eval(f"modules.at{fullname}.{values['-METHODS-']}")
                 doc = inspect.getdoc(method)
-                self._render_html(doc)
+                html = self._convert_md_to_html(md_text=doc)
+                self._render_html(html)
             elif len(values['-TREE-']):
                 pass
             else:
-                self._render_html(DEFAULT_TEXT)
+                html = self._convert_md_to_html(md_text=DEFAULT_TEXT)
+                self._render_html(html)
         
         # 3. Show all button
         if event == '-GET-ALL-':
@@ -120,7 +160,8 @@ class Guide(Panel):
             updates['-TREE-'] = dict(values=tree_data)
             updates['-METHODS-'] = dict(values=[PLACEHOLDER_METHOD], value=PLACEHOLDER_METHOD)
             updates['-TOGGLE-REVEAL-'] = dict(text='Expand')
-            self._render_html(DEFAULT_TEXT)
+            html = self._convert_md_to_html(md_text=DEFAULT_TEXT)
+            self._render_html(html)
         
         # 4. Reveal button
         if event == '-TOGGLE-REVEAL-':
@@ -137,12 +178,27 @@ class Guide(Panel):
     
     # Protected methods
     def _collapse_tree(self, tree: sg.Tree):
+        """
+        Fully collapse the tree view
+
+        Args:
+            tree (sg.Tree): tree to be collapse
+        """
         for key in tree.TreeData.tree_dict:
             tree_node_id = tree.KeyToID[key] if key in tree.KeyToID else None
             tree.Widget.item(tree_node_id, open=False)
         return
     
     def _convert_md_to_html(self, md_text:str) -> str:
+        """
+        Convert the Markdown to HTML
+
+        Args:
+            md_text (str): Markdown string to be converted
+
+        Returns:
+            str: HTML string
+        """
         sub_headers = (
             "Args", 
             "Classes", 
@@ -174,12 +230,21 @@ class Guide(Panel):
         return html
     
     def _expand_tree(self, tree: sg.Tree):
+        """
+        Fully expand the tree view
+
+        Args:
+            tree (sg.Tree): tree to be expanded
+        """
         for key in tree.TreeData.tree_dict:
             tree_node_id = tree.KeyToID[key] if key in tree.KeyToID else None
             tree.Widget.item(tree_node_id, open=True)
         return
     
     def _import_all(self):
+        """
+        Import all the modules in the package
+        """
         root_dir = __file__.split(HOME)[0] + HOME
         for root, _, files in os.walk(root_dir):
             if "__init__.py" in files and "templates" not in root:
@@ -192,8 +257,13 @@ class Guide(Panel):
                         print(f"Unable to import {dot_notation}")
         return
     
-    def _render_html(self, md_text:str):
-        html = self._convert_md_to_html(md_text=md_text)
+    def _render_html(self, html:str):
+        """
+        Render the HTML string in the widget
+
+        Args:
+            html (str): HTML string to be rendered
+        """
         html_widget = self.window['-MULTILINE-'].Widget
         parser = html_parser.HTMLTextParser()
         def set_html(widget, html, strip=True):
@@ -213,6 +283,18 @@ class Guide(Panel):
         parent_name: str, 
         modules_dictionary: dict
     ) -> tuple[sg.TreeData, int]:
+        """
+        Update the tree data
+
+        Args:
+            tree_data (sg.TreeData): tree data
+            index (int): object index
+            parent_name (str): name of parent node
+            modules_dictionary (dict): modules dictionary
+
+        Returns:
+            tuple[sg.TreeData, int]: tree data; next index
+        """
         search_order = sorted(modules_dictionary.items())
         search_order = [p for p in search_order if not isinstance(p[1], dict)] + [p for p in search_order if isinstance(p[1], dict)]
         for k, v in search_order:
@@ -233,7 +315,7 @@ class Guide(Panel):
         return tree_data, index
     
 def guide_me():
-    """Start guide"""
+    """Start guide to view documentation"""
     gui = Guide()
     gui.runGUI()
     return
