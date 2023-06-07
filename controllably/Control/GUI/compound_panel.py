@@ -1,6 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-This module holds the base class compound panels.
+This module holds the base class for compound panels.
 
 Classes:
     CompoundPanel (Panel)
