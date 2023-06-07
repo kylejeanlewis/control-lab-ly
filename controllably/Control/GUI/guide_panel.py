@@ -75,9 +75,10 @@ class Guide(Panel):
         selection = [
             [sg.Tree(
                 data = tree_data,
-                headings = ['index', 'doc'],
-                visible_column_map = [True, False],
+                headings = ['type', 'index', 'doc'],
+                visible_column_map = [True, True, False],
                 num_rows = 20,
+                row_height = round(self.font_sizes[2] / 0.6),
                 col0_width = 30,
                 key = "-TREE-",
                 show_expanded = False,
@@ -96,8 +97,8 @@ class Guide(Panel):
         layout = [
             [layout],
             [
-                sg.Column(selection, vertical_alignment='top'), 
-                sg.Multiline(key="-MULTILINE-", size=(60,22), disabled=True)
+                sg.Column(selection, vertical_alignment='center'), 
+                sg.Multiline(key="-MULTILINE-", size=(60,24), disabled=True)
             ]
         ]
         layout = sg.Column(layout, vertical_alignment='top')
@@ -120,8 +121,8 @@ class Guide(Panel):
             fullname = values.get('-TREE-', [''])[0]
             tree: sg.Tree = self.window['-TREE-']
             tree_data: sg.TreeData = tree.TreeData
-            doc = tree_data.tree_dict[fullname].values[1]
-            if tree_data.tree_dict[fullname].values[0]:
+            doc = tree_data.tree_dict[fullname].values[2]
+            if tree_data.tree_dict[fullname].values[0] == "class":
                 obj = eval(f"modules.at{fullname}")
                 methods = [PLACEHOLDER_METHOD] + Helper.get_method_names(obj)
                 methods = [m for m in methods if not m.startswith('_')] + [m for m in methods if m.startswith('_')]
@@ -299,17 +300,20 @@ class Guide(Panel):
         search_order = [p for p in search_order if not isinstance(p[1], dict)] + [p for p in search_order if isinstance(p[1], dict)]
         for k, v in search_order:
             fullname = '.'.join([parent_name, k])
+            obj_type = ''
             if isinstance(v, dict):
                 doc = v.get("_doc_", "< No documentation >")
                 doc = doc if doc.strip() else "< No documentation >"
-                tree_data.insert(parent_name, fullname, k, values=['',doc])
+                tree_data.insert(parent_name, fullname, k, values=[obj_type, '', doc])
                 tree_data, index = self._update_tree(tree_data, index, fullname, v)
             elif isinstance(v, str):
                 continue
             else:
                 obj = eval(f"modules.at{fullname}")
                 doc = inspect.getdoc(obj)
-                tree_data.insert(parent_name, fullname, k, values=[index,doc])
+                obj_type = "function" if inspect.isfunction(obj) else obj_type
+                obj_type = "class" if inspect.isclass(obj) else obj_type
+                tree_data.insert(parent_name, fullname, k, values=[obj_type, index, doc])
                 index += 1
         self.setFlag(revealed=False)
         return tree_data, index
