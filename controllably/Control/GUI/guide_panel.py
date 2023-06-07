@@ -147,6 +147,7 @@ class Guide(Panel):
             "Args", 
             "Classes", 
             "Functions", 
+            "Kwargs",
             "Modules",
             "Other constants and variables",
             "Other types",
@@ -154,7 +155,7 @@ class Guide(Panel):
             "Returns",
         )
         lines = md_text.split('\n')
-        lines = [l.replace('   ','- ') for l in lines if l.strip()]
+        lines = [l.replace('   ','- ') for l in lines]# if l.strip()]
         
         md_text = "\n".join(lines)
         md_text = md_text.replace('<', '&lt;')
