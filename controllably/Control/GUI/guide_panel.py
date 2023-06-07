@@ -13,6 +13,7 @@ from __future__ import annotations
 import importlib
 import inspect
 import markdown
+import os
 from tkhtmlview import html_parser
 from typing import Optional, Protocol
 
@@ -21,10 +22,10 @@ import PySimpleGUI as sg # pip install PySimpleGUI
 
 # Local application imports
 from ... import modules, Helper
-from ...misc import Factory
 from .gui_utils import Panel
 print(f"Import: OK <{__name__}>")
 
+HOME = "controllably"
 ICON_CLASS = ''
 ICON_FUNCTION = ''
 ICON_MODULE = ''
@@ -39,32 +40,12 @@ class Guide(Panel):
         font = (self.typeface, self.font_sizes[title_font_level])
         layout = super().getLayout('Guide', justification='center', font=font, **kwargs)
         tree_data = sg.TreeData()
-        index = 0
-        
-        def add_objects_in_modules(parent_name, d):
-            nonlocal index, tree_data
-            for k, v in list(d.items()):
-                fullname = '.'.join([parent_name, k])
-                doc = "<No documentation>"
-                if isinstance(v, dict):
-                    for root in Factory.HOME_PACKAGES:
-                        try:
-                            mod = importlib.import_module(name=f'{root}{fullname}')
-                        except ModuleNotFoundError:
-                            pass
-                        else:
-                            doc = inspect.getdoc(mod)
-                            doc = doc if doc is not None else "<No documentation>"
-                            break
-                    tree_data.insert(parent_name, fullname, k, values=['',doc])
-                    add_objects_in_modules(fullname, v)
-                else:
-                    obj = eval(f"modules.at{fullname}")
-                    doc = inspect.getdoc(obj)
-                    tree_data.insert(parent_name, fullname, k, values=[index,doc])
-                    index += 1
-                    
-        add_objects_in_modules('', modules._modules)
+        tree_data,_ = self._update_tree(
+            tree_data = tree_data,
+            index = 0,
+            parent_name = '', 
+            modules_dictionary = modules._modules
+        )
         selection = [
             [sg.Tree(
                 data = tree_data,
@@ -77,9 +58,12 @@ class Guide(Panel):
                 expand_x = True,
                 expand_y = True,
             )],
-            [sg.Combo(
-                ['<Methods>'], '<Methods>', key="-METHODS-", size=(60,1), enable_events=True
-            )]
+            [
+                sg.Combo(
+                ['<Methods>'], '<Methods>', key="-METHODS-", size=(45,1), enable_events=True
+                ),
+                sg.Button("Show All", key="-GET-ALL-", size=(15,1), enable_events=True)
+            ]
         ]
         layout = [
             [layout],
@@ -105,8 +89,8 @@ class Guide(Panel):
                 updates['-METHODS-'] = dict(values=methods, value=methods[0])
             else:
                 updates['-METHODS-'] = dict(values=[PLACEHOLDER_METHOD], value=PLACEHOLDER_METHOD)
-            # updates['-MULTILINE-'] = dict(value=doc)
             self._update_html(doc)
+            # updates['-MULTILINE-'] = dict(value=doc)
                 
         if event == '-METHODS-' and values['-METHODS-'] != PLACEHOLDER_METHOD:
             fullname = values.get('-TREE-', [''])[0]
@@ -114,11 +98,60 @@ class Guide(Panel):
             tree_data: sg.TreeData = tree.TreeData
             method = eval(f"modules.at{fullname}.{values['-METHODS-']}")
             doc = inspect.getdoc(method)
-            # updates['-MULTILINE-'] = dict(value=doc)
             self._update_html(doc)
+            # updates['-MULTILINE-'] = dict(value=doc)
+        
+        if event == '-GET-ALL-':
+            self._import_all()
+            tree_data = sg.TreeData()
+            tree_data,_ = self._update_tree(
+                tree_data = tree_data,
+                index = 0,
+                parent_name = '', 
+                modules_dictionary = modules._modules
+            )
+            updates['-TREE-'] = dict(values=tree_data)
         return updates
     
     # Protected methods
+    def _get_html(self, md_text:str) -> str:
+        sub_headers = (
+            "Args", 
+            "Classes", 
+            "Functions", 
+            "Modules",
+            "Other constants and variables",
+            "Other types",
+            "Raises", 
+            "Returns",
+        )
+        lines = md_text.split('\n')
+        lines = [l.replace('   ','- ') for l in lines]
+        
+        md_text = "\n".join(lines)
+        md_text = md_text.replace('`', '*')
+        md_text = md_text.replace('Parameters:', 'Parameters')
+        for header in sub_headers:
+            md_text = md_text.replace(f'{header}:', f'**{header}**\n')
+        
+        html = markdown.markdown(md_text)
+        html = html.replace('<p>', '<p style="font-size: 12px;">')
+        html = html.replace('<ul>', '<ul style="font-size: 12px;">')
+        return html
+    
+    def _import_all(self):
+        root_dir = __file__.split(HOME)[0] + HOME
+        for root, _, files in os.walk(root_dir):
+            if "__init__.py" in files and "templates" not in root:
+                files.remove("__init__.py")
+                if any([f for f in files if f.endswith(".py")]):
+                    dot_notation = root.replace(root_dir,HOME).replace("\\",".")
+                    try:
+                        importlib.import_module(dot_notation)
+                    except (ModuleNotFoundError, ImportError):
+                        print(f"Unable to import {dot_notation}")
+        return
+    
     def _update_html(self, md_text:str):
         html = self._get_html(md_text=md_text)
         html_widget = self.window['-MULTILINE-'].Widget
@@ -135,19 +168,26 @@ class Guide(Panel):
         set_html(html_widget, html)
         return
     
-    def _get_html(self, md_text:str) -> str:
-        md_text = md_text.replace('`', '*')
-        md_text = md_text.replace('\n    ', '\n- ')
-        md_text = md_text.replace('Args:', '**Args:**')
-        md_text = md_text.replace('Returns:', '**Returns:**')
-        md_text = md_text.replace('Raises:', '**Raises:**')
-        print(md_text)
-        html = markdown.markdown(md_text)
-        html = html.replace('<p>', '<p style="font-size: 12px;">')
-        html = html.replace('<ul>', '<ul style="font-size: 12px;">')
-        html = html.replace('\n', '<br>')
-        print(html)
-        return html
+    def _update_tree(self, 
+        tree_data: sg.TreeData, 
+        index: int, 
+        parent_name: str, 
+        modules_dictionary: dict
+    ) -> tuple[sg.TreeData, int]:
+        for k, v in list(modules_dictionary.items()):
+            fullname = '.'.join([parent_name, k])
+            if isinstance(v, dict):
+                doc = v.get("_doc_", "<No documentation>")
+                tree_data.insert(parent_name, fullname, k, values=['',doc])
+                tree_data, index = self._update_tree(tree_data, index, fullname, v)
+            elif isinstance(v, str):
+                continue
+            else:
+                obj = eval(f"modules.at{fullname}")
+                doc = inspect.getdoc(obj)
+                tree_data.insert(parent_name, fullname, k, values=[index,doc])
+                index += 1
+        return tree_data, index
     
 def guide_me():
     """Start guide"""
