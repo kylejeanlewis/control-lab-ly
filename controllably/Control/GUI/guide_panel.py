@@ -15,7 +15,6 @@ import inspect
 import markdown
 import os
 from tkhtmlview import html_parser
-from typing import Optional, Protocol
 
 # Third party imports
 import PySimpleGUI as sg # pip install PySimpleGUI
