@@ -14,7 +14,7 @@ from typing import Callable, Protocol
 import PySimpleGUI as sg    # pip install PySimpleGUI
 
 # Local application imports
-from ..gui_utils import MultiChannelPanel
+from ..multichannel_panel import MultiChannelPanel
 print(f"Import: OK <{__name__}>")
 
 class Liquid(Protocol):
