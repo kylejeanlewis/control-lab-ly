@@ -9,8 +9,6 @@ Classes:
 Functions:
     get_class
     get_details
-    get_machine_addresses
-    get_plans
     include_this_module
     load_components
     register
@@ -33,7 +31,6 @@ from typing import Callable, Optional
 import yaml     # pip install pyyaml
 
 # Local application imports
-from . import helper
 print(f"Import: OK <{__name__}>")
 
 HOME_PACKAGES = ['controllably','lab']
@@ -75,7 +72,21 @@ class ModuleDirectory:
     _modules: DottableDict = field(default_factory=DottableDict, init=False)
     
     def __repr__(self) -> str:
-        return pprint.pformat(self._modules)
+        printable_mod = self._modules.copy()
+        def remove_docs(d):
+            """
+            Purge empty dictionaries from nested dictionary
+
+            Args:
+                d (dict): dictionary to be purged
+            """
+            for k, v in list(d.items()):
+                if isinstance(v, dict):
+                    remove_docs(v)
+                if k == "_doc_":
+                    del d[k]
+        remove_docs(printable_mod)
+        return pprint.pformat(printable_mod)
     
     @property
     def at(self) -> DottableDict:
@@ -162,42 +173,6 @@ def get_details(configs:dict, addresses:Optional[dict] = None) -> dict:
                     settings[key] = np.array(value['array'])
 
         configs[name] = details
-    return configs
-
-def get_machine_addresses(registry:dict) -> dict:
-    """
-    Get the appropriate addresses for current machine
-
-    Args:
-        registry (str): dictionary of yaml file with com port addresses and camera ids
-
-    Returns:
-        dict: dictionary of com port addresses and camera ids for current machine
-    """
-    node_id = helper.get_node()
-    addresses = registry.get('machine_id',{}).get(node_id,{})
-    if len(addresses) == 0:
-        print("\nAppend machine id and camera ids/port addresses to registry file")
-        print(yaml.dump(registry))
-        raise Exception(f"Machine not yet registered. (Current machine id: {node_id})")
-    return addresses
-
-def get_plans(config_file:str, registry_file:Optional[str] = None, package:Optional[str] = None) -> dict:
-    """
-    Read configuration file (yaml) and get details
-
-    Args:
-        config_file (str): filename of configuration file
-        registry_file (Optional[str], optional): filename of registry file. Defaults to None.
-        package (Optional[str], optional): name of package to look in. Defaults to None.
-
-    Returns:
-        dict: dictionary of configuration parameters
-    """
-    configs = helper.read_yaml(config_file, package)
-    registry = helper.read_yaml(registry_file, package)
-    addresses = get_machine_addresses(registry=registry)
-    configs = get_details(configs, addresses=addresses)
     return configs
 
 def include_this_module(

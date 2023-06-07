@@ -109,7 +109,7 @@ def load_setup(config_file:str, registry_file:Optional[str] = None) -> dict:
     Returns:
         dict: dictionary of loaded devices
     """
-    config = factory.get_plans(config_file=config_file, registry_file=registry_file)
+    config = helper.get_plans(config_file=config_file, registry_file=registry_file)
     setup = factory.load_components(config=config)
     shortcuts = config.get('SHORTCUTS',{})
     

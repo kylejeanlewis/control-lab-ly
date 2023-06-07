@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 # Local application imports
-from ..misc import Factory, Layout
+from ..misc import Factory, Helper, Layout
 print(f"Import: OK <{__name__}>")
 
 class CompoundSetup(ABC):
@@ -77,7 +77,7 @@ class CompoundSetup(ABC):
         self.flags = self._default_flags.copy()
         self.positions = {}
         self.verbose = verbose
-        self._config = Factory.get_plans(config) if config is not None else component_config
+        self._config = Helper.get_plans(config) if config is not None else component_config
 
         self._connect(diagnostic=diagnostic)
         self.loadDeck(layout_file=layout, layout_dict=layout_dict)
