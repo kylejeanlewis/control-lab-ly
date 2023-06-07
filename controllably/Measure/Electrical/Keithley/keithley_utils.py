@@ -22,7 +22,7 @@ class Keithley(Programmable):
     Args:
         `ip_address` (str): IP address of device. Defaults to '192.168.1.125'.
         `name` (str): name of device. Defaults to 'def'.
-        
+    
     ### Properties
     - `ip_address` (str): IP address of device
     

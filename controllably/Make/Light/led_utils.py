@@ -28,7 +28,7 @@ class LED:
     ### Constructor
     Args:
         `channel` (int): channel id
-        
+    
     ### Attributes
     - `channel` (int): channel id
     - `update_power` (bool): whether to update the LED's power

@@ -26,7 +26,7 @@ class CompoundPanel(Panel):
         `ensemble` (dict[str, Panel]): dictionary of individual sub-panels
         `name` (str, optional): name of panel. Defaults to ''.
         `group` (Optional[str], optional): name of group. Defaults to None.
-        
+    
     ### Attributes
     - `panels` (dict[str, Panel]): dictionary of individual sub-panels
     

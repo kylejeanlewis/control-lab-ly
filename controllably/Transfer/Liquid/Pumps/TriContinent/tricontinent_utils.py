@@ -31,7 +31,7 @@ class TriContinent(Pump):
         `capacity` (Union[int, tuple[int]]): capacity (capacities)
         `output_right` (Union[bool, tuple[bool]]): whether liquid is pumped out to the right for channel(s)
         `name` (Union[str, tuple[str]], optional): name of the pump(s). Defaults to ''.
-        
+    
     ### Attributes
     - `channels` (dict[int, TriContinentPump]): dictionary of {channel id, TriContinentPump object}
     - `current_channel` (TriContinentPump): currently active pump

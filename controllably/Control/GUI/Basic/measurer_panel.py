@@ -58,7 +58,7 @@ class MeasurerPanel(Panel):
         `measurer` (Measurer): Measurer object
         `name` (str, optional): name of panel. Defaults to 'MEASURE'.
         `group` (str, optional): name of group. Defaults to 'measurer'.
-        
+    
     ### Attributes
     - `current_program` (str): currently active program
     - `input_map` (dict[int, Optional[str]]): enumerated map of program inputs

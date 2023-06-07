@@ -31,7 +31,7 @@ class MakerPanel(MultiChannelPanel):
         `maker` (Maker): Maker object
         `name` (str, optional): name of panel. Defaults to 'MAKER'.
         `group` (str, optional): name of group. Defaults to 'maker'.
-        
+    
     ### Attributes
     - `input_map` (dict[int, Optional[str]]): enumerated map of program inputs
     

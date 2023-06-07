@@ -35,7 +35,7 @@ class Panel(ABC):
         `font_sizes` (tuple[int], optional): list of font sizes. Defaults to (14,12,10,8,6).
         `theme` (str, optional): name of theme. Defaults to 'LightGreen'.
         `typeface` (str, optional): name of typeface. Defaults to "Helvetica".
-
+    
     ### Attributes
     #### Class
     - `font_sizes` (tuple[int]): list of font sizes

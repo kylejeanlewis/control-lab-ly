@@ -22,7 +22,7 @@ class PiezoRobotics(Programmable):
     Args:
         `port` (str): COM port address
         `channel` (int, optional): channel id. Defaults to 1.
-        
+    
     ### Properties
     - `port` (str): COM port address
     

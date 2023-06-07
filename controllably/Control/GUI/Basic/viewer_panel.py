@@ -33,7 +33,7 @@ class ViewerPanel(Panel):
         `viewer` (Viewer): Viewer object
         `name` (str, optional): name of panel. Defaults to 'VIEW'.
         `group` (str, optional): name of group. Defaults to 'viewer'.
-
+    
     ### Attributes
     - `display_box` (str): element id
     

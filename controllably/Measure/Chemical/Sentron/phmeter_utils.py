@@ -29,7 +29,7 @@ class SentronProbe(Measurer):
     ### Constructor
     Args:
         `port` (str): COM port address
-
+    
     ### Attributes
     - `precision` (int): number of decimal places to print mass value
 

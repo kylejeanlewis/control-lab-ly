@@ -35,7 +35,7 @@ class MassBalance(Measurer):
     Args:
         `port` (str): COM port address
         `calibration_factor` (float, optional): calibration factor of device readout to mg. Defaults to CALIBRATION_FACTOR.
-        
+    
     ### Attributes
     - `baseline` (float): baseline readout at which zero mass is set
     - `calibration_factor` (float): calibration factor of device readout to mg

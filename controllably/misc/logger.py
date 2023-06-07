@@ -21,7 +21,7 @@ class Logger:
     ### Constructor
     Args:
         `name` (str): name of logger
-        
+    
     ### Attributes
     - `all_logs` (list[str]): list of all logs
     - `logs` (dict): logs by group

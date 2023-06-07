@@ -41,7 +41,7 @@ class DMA(Program):
         `device` (Device): device object
         `parameters` (Optional[dict], optional): dictionary of kwargs. Defaults to None.
         `verbose` (bool, optional): verbosity of class. Defaults to False.
-
+    
     ### Attributes
     - `data_df` (pd.DataFrame): data collected from device when running the program
     - `device` (Device): device object

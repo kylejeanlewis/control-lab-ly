@@ -43,7 +43,7 @@ class Dobot(RobotArm):
     Args:
         `ip_address` (str): IP address of Dobot
         `attachment_name` (str, optional): name of attachment. Defaults to None.
-
+    
     ### Attributes
     - `attachment` (DobotAttachment): attached Dobot tool
     

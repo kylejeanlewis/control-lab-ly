@@ -35,7 +35,7 @@ class ForceSensor(Measurer):
     Args:
         `port` (str): COM port address
         `calibration_factor` (float, optional): calibration factor of device readout to newtons. Defaults to CALIBRATION_FACTOR.
-        
+    
     ### Attributes
     - `baseline` (float): baseline readout at which zero newtons is set
     - `calibration_factor` (float): calibration factor of device readout to newtons

@@ -210,7 +210,7 @@ class SpinnerAssembly(Maker):
         `ports` (list[str]): COM port addresses
         `channels` (list[int]): channel ids
         `positions` (list[tuple[float]]): x,y,z positions of spinners
-
+    
     ### Attributes
     - `channels` (dict[int, Spinner]): dictionary of {channel id, `Spinner` objects}
     

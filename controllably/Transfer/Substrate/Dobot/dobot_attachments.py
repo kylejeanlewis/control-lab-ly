@@ -98,7 +98,7 @@ class TwoJawGrip(DobotGripper):
     Args:
         `dashboard` (Optional[Callable], optional): connection to status and signal control. Defaults to None.
         `channel_map` (Optional[dict], optional): mapping of digital I/O channel(s). Defaults to None.
-        
+    
     ### Methods
     - `drop`: releases an object by opening the gripper
     - `grab`: picks up an object by closing the gripper
@@ -158,7 +158,7 @@ class VacuumGrip(DobotGripper):
     Args:
         `dashboard` (Optional[Callable], optional): connection to status and signal control. Defaults to None.
         `channel_map` (Optional[dict], optional): mapping of digital I/O channel(s). Defaults to None.
-        
+    
     ### Methods
     - `drop`: releases an object by pushing out air
     - `grab`: picks up an object by pulling in air

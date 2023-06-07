@@ -24,7 +24,7 @@ class RobotArm(Mover):
     Args:
         `safe_height` (Optional[float], optional): height at which obstacles can be avoided. Defaults to None.
         `retract` (bool, optional): whether to retract arm before movement. Defaults to False.
-
+    
     ### Properties
     - `speed_angular` (float): angular speed of the robot
 

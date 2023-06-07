@@ -151,7 +151,7 @@ class Labware:
         `bottom_left_coordinates` (tuple[float]): coordinates of bottom left corner of Labware (i.e. reference point)
         `labware_file` (str): filepath of Labware JSON file
         `package` (Optional[str], optional): name of package to look in. Defaults to None.
-        
+    
     ### Attributes
     - `details` (dict): dictionary read from Labware file
     - `name` (str): name of Labware

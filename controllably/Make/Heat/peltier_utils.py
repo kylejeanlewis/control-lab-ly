@@ -35,7 +35,7 @@ class Peltier(Maker):
         `power_threshold` (float, optional): minimum threshold under which temperature can be considered stable. Defaults to 20.
         `stabilize_buffer_time` (float, optional): buffer time over which temperature can be considered stable. Defaults to 10.
         `tolerance` (float, optional): tolerance above and below target temperature. Defaults to 1.5.
-            
+    
     ### Attributes
     - `buffer_df` (pd.DataFrame): buffer dataframe to store collected data
     - `power_threshold` (float): minimum threshold under which temperature can be considered stable

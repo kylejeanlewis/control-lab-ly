@@ -93,7 +93,7 @@ class Frequency:
     Args:
         `low` (float): frequency lower bound. Defaults to FrequencyCode.FREQ_01
         `high` (float): frequency upper bound. Defaults to FrequencyCode.FREQ_54
-        
+    
     ### Attributes
     - `low` (float): frequency lower bound. Defaults to FrequencyCode.FREQ_01
     - `high` (float): frequency upper bound. Defaults to FrequencyCode.FREQ_54

@@ -49,7 +49,7 @@ class MoverPanel(Panel):
         `name` (str, optional): name of panel. Defaults to 'MOVE'.
         `group` (str, optional): name of group. Defaults to 'mover'.
         `axes` (Union[list, str], optional): available axes of motion. Defaults to 'XYZabc'.
-        
+    
     ### Attributes
     - `attachment_methods` (list[str]): list of methods available to attachment
     - `axes` (list[str]): list of available axes of motion
