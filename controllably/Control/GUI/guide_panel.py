@@ -105,7 +105,7 @@ class Guide(Panel):
             elif len(values['-TREE-']):
                 pass
             else:
-                self._render_html(self._convert_md_to_html(DEFAULT_TEXT))
+                self._render_html(DEFAULT_TEXT)
         
         # 3. Show all button
         if event == '-GET-ALL-':
@@ -120,7 +120,7 @@ class Guide(Panel):
             updates['-TREE-'] = dict(values=tree_data)
             updates['-METHODS-'] = dict(values=[PLACEHOLDER_METHOD], value=PLACEHOLDER_METHOD)
             updates['-TOGGLE-REVEAL-'] = dict(text='Expand')
-            self._render_html(self._convert_md_to_html(DEFAULT_TEXT))
+            self._render_html(DEFAULT_TEXT)
         
         # 4. Reveal button
         if event == '-TOGGLE-REVEAL-':
@@ -192,7 +192,6 @@ class Guide(Panel):
         return
     
     def _render_html(self, md_text:str):
-        print(md_text)
         html = self._convert_md_to_html(md_text=md_text)
         html_widget = self.window['-MULTILINE-'].Widget
         parser = html_parser.HTMLTextParser()
@@ -213,7 +212,9 @@ class Guide(Panel):
         parent_name: str, 
         modules_dictionary: dict
     ) -> tuple[sg.TreeData, int]:
-        for k, v in sorted(modules_dictionary.items()):
+        search_order = sorted(modules_dictionary.items())
+        search_order = [p for p in search_order if not isinstance(p[1], dict)] + [p for p in search_order if isinstance(p[1], dict)]
+        for k, v in search_order:
             fullname = '.'.join([parent_name, k])
             if isinstance(v, dict):
                 doc = v.get("_doc_", "< No documentation >")
