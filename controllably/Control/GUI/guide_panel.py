@@ -154,7 +154,7 @@ class Guide(Panel):
             "Returns",
         )
         lines = md_text.split('\n')
-        lines = [l.replace('   ','- ') for l in lines]
+        lines = [l.replace('   ','- ') for l in lines if l.strip()]
         
         md_text = "\n".join(lines)
         md_text = md_text.replace('<', '&lt;')
