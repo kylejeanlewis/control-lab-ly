@@ -15,8 +15,8 @@ from typing import Optional, Protocol, Union
 import PySimpleGUI as sg # pip install PySimpleGUI
 
 # Local application imports
-from ...misc import Helper, modules
-from .gui_utils import Panel
+from ....misc import Helper, modules
+from ..gui_utils import Panel
 print(f"Import: OK <{__name__}>")
 
 MAX_FUNCTION_BUTTONS = 7

@@ -15,8 +15,8 @@ from typing import Protocol, Callable, Any
 import PySimpleGUI as sg # pip install PySimpleGUI
 
 # Local application imports
-from ... import modules
-from .gui_utils import Panel
+from .... import modules
+from ..gui_utils import Panel
 print(f"Import: OK <{__name__}>")
 
 @dataclass

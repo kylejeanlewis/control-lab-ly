@@ -14,7 +14,7 @@ from typing import Protocol
 import PySimpleGUI as sg # pip install PySimpleGUI
 
 # Local application imports
-from .gui_utils import MultiChannelPanel
+from ..gui_utils import MultiChannelPanel
 print(f"Import: OK <{__name__}>")
 
 class Maker(Protocol):
