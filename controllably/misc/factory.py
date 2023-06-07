@@ -17,7 +17,7 @@ Functions:
     unregister
 
 Other constants and variables:
-    HOME_PACKAGE (tuple)
+    HOME_PACKAGES (list)
     modules (ModuleDirectory)
 """
 # Standard library imports
@@ -36,7 +36,7 @@ import yaml     # pip install pyyaml
 from . import helper
 print(f"Import: OK <{__name__}>")
 
-HOME_PACKAGE = ('controllably','lab','leapfrog')
+HOME_PACKAGES = ['controllably','lab']
 """Names and aliases of base package"""
 
 class DottableDict(dict):
@@ -109,7 +109,7 @@ class ModuleDirectory:
         keys = keys[:-1]
         temp = self._modules
         for key in keys:
-            if key in HOME_PACKAGE:
+            if key in HOME_PACKAGES:
                 continue
             temp = temp[key]
         return temp
@@ -213,10 +213,13 @@ def include_this_module(
         module_name (Optional[str], optional): dot notation name of module. Defaults to None.
         get_local_only (bool, optional): whether to only include objects defined in caller py file. Defaults to True.
     """
+    module_doc = "<No documentation>"
+    frm = inspect.stack()[1]
+    current_mod = inspect.getmodule(frm[0])
+    doc = inspect.getdoc(current_mod)
+    module_doc = module_doc if doc is None else doc
     if module_name is None:
-        frm = inspect.stack()[1]
-        mod = inspect.getmodule(frm[0])
-        module_name = mod.__name__
+        module_name = current_mod.__name__
     
     objs = inspect.getmembers(sys.modules[module_name])
     __where__ = [obj for name,obj in objs if name == "__where__"]
@@ -230,8 +233,8 @@ def include_this_module(
     for name,obj in objs:
         if name == inspect.stack()[0][3]:
             continue
-        mod = obj.__module__ if where is None else where
-        register(obj, '.'.join(mod.split('.')[:-1]))
+        mod_name = obj.__module__ if where is None else where
+        register(obj, '.'.join(mod_name.split('.')[:-1]), module_docs=module_doc)
     return
 
 def load_components(config:dict) -> dict:
@@ -255,22 +258,27 @@ def load_components(config:dict) -> dict:
         components[name] = _class(**settings)
     return components
 
-def register(new_object:Callable, where:str):
+def register(new_object:Callable, where:str, module_docs:Optional[str] = None):
     """
     Register the object into target location within structure
 
     Args:
         new_object (Callable): new Callable object (Class or function) to be registered
         where (str): location within structure to register the object in
+        module_docs (Optional[str], optional): module documentation. Defaults to None.
     """
+    module_docs = "<No documentation>" if module_docs is None else module_docs
     keys = where.split('.')
     temp = modules._modules
     for key in keys:
-        if key in HOME_PACKAGE:
+        if key in HOME_PACKAGES:
             continue
         if key not in temp:
             temp[key] = DottableDict()
         temp = temp[key]
+    if "_doc_" not in temp:
+        temp["_doc_"] = module_docs
+    
     name = new_object.__name__
     if name in temp:
         overwrite = input(f"An object with the same name ({name}) already exists, Overwrite? [y/n]")
@@ -291,7 +299,7 @@ def unregister(dot_notation:str):
     keys, name = keys[:-1], keys[-1]
     temp = modules._modules
     for key in keys:
-        if key in HOME_PACKAGE:
+        if key in HOME_PACKAGES:
             continue
         temp = temp[key]
     temp.pop(name)
