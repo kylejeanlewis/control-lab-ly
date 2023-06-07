@@ -26,7 +26,7 @@ class M1Pro(Dobot):
         `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to 100.
         `home_coordinates` (tuple[float], optional): home coordinates for the robot. Defaults to (0,300,100).
     
-    ## Methods
+    ### Methods
     - `home`: make the robot go home
     - `isFeasible`: checks and returns whether the target coordinate is feasible
     - `moveCoordBy`: relative Cartesian movement and tool orientation, using robot coordinates

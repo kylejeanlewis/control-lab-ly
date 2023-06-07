@@ -52,7 +52,7 @@ class Sartorius(LiquidHandler):
     - `tip_length` (float): length of pipette tip
     - `tip_threshold` (int): threshold above which a conductive pipette tip is considered to be attached
     
-    ## Properties
+    ### Properties
     - `capacitance` (int): capacitance as measured at the end of the pipette
     - `home_position` (int): home position of pipette
     - `port` (str): COM port address

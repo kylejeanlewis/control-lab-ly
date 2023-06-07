@@ -176,7 +176,7 @@ class OCV(Program):
 
 class LSV(Program):
     """
-    I-V Scan program
+    Linear Sweep Voltammetry Scan program
 
     ### Constructor
     Args:
