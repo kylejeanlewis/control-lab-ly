@@ -213,7 +213,7 @@ def include_this_module(
         module_name (Optional[str], optional): dot notation name of module. Defaults to None.
         get_local_only (bool, optional): whether to only include objects defined in caller py file. Defaults to True.
     """
-    module_doc = "<No documentation>"
+    module_doc = "< No documentation >"
     frm = inspect.stack()[1]
     current_mod = inspect.getmodule(frm[0])
     doc = inspect.getdoc(current_mod)
@@ -267,7 +267,7 @@ def register(new_object:Callable, where:str, module_docs:Optional[str] = None):
         where (str): location within structure to register the object in
         module_docs (Optional[str], optional): module documentation. Defaults to None.
     """
-    module_docs = "<No documentation>" if module_docs is None else module_docs
+    module_docs = "< No documentation >" if module_docs is None else module_docs
     keys = where.split('.')
     temp = modules._modules
     for key in keys:

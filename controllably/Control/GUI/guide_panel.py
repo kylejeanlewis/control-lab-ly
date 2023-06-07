@@ -176,7 +176,8 @@ class Guide(Panel):
         for k, v in list(modules_dictionary.items()):
             fullname = '.'.join([parent_name, k])
             if isinstance(v, dict):
-                doc = v.get("_doc_", "<No documentation>")
+                doc = v.get("_doc_", "< No documentation >")
+                doc = doc if doc.strip() else "< No documentation >"
                 tree_data.insert(parent_name, fullname, k, values=['',doc])
                 tree_data, index = self._update_tree(tree_data, index, fullname, v)
             elif isinstance(v, str):
