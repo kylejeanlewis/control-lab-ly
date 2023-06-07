@@ -1,6 +1,6 @@
 # %%
 import init
-from controllably.Control.GUI import MoverPanel
+from controllably.Control.GUI.Basic import MoverPanel
 from controllably.Move.Cartesian import Primitiv
 from controllably.Move.Jointed.Dobot import M1Pro
 from controllably.Transfer.Substrate import Dobot
@@ -12,7 +12,7 @@ gui1.runGUI()
 
 # %%
 import init
-from controllably.Control.GUI import LiquidPanel
+from controllably.Control.GUI.Basic import LiquidPanel
 from controllably.Transfer.Liquid.Sartorius import Sartorius
 me = Sartorius('COM17')
 me.getInfo('BRL1000')
@@ -22,7 +22,7 @@ gui2 = LiquidPanel(liquid=me)
 
 # %%
 import init
-from controllably.Control.GUI import LiquidPanel
+from controllably.Control.GUI.Basic import LiquidPanel
 from controllably.Transfer.Liquid import SyringeAssembly
 from controllably.Transfer.Liquid.Pumps import Peristaltic
 pump = Peristaltic('COM8')
@@ -47,7 +47,7 @@ gui = CompoundPanel(dict(
 gui.runGUI()
 # %%
 import init
-from controllably.Control.GUI import MeasurerPanel
+from controllably.Control.GUI.Basic import MeasurerPanel
 from controllably.Measure.Electrical.Keithley import Keithley
 
 me = Keithley()
@@ -56,7 +56,7 @@ gui.runGUI()
 
 # %%
 import init
-from controllably.Control.GUI import MakerPanel
+from controllably.Control.GUI.Basic import MakerPanel
 from controllably.Make.Light import LEDArray
 me = LEDArray('COM4', channels=[0,1,2,3])
 me.__dict__
@@ -65,7 +65,7 @@ gui.runGUI()
 
 # %%
 import init
-from controllably.Control.GUI import MakerPanel
+from controllably.Control.GUI.Basic import MakerPanel
 from controllably.Make.ThinFilm import SpinnerAssembly
 
 me = SpinnerAssembly(
@@ -78,7 +78,7 @@ gui.runGUI()
 
 # %%
 import init
-from controllably.Control.GUI import MakerPanel
+from controllably.Control.GUI.Basic import MakerPanel
 from controllably.Make.Mixture.QInstruments import BioShake
 me = BioShake('COM27', verbose=False)
 gui = MakerPanel(me)
@@ -87,7 +87,6 @@ gui.runGUI()
 # %%
 import init
 from controllably.Move.Cartesian import Primitiv
-
 from controllably import guide_me
 guide_me()
 
