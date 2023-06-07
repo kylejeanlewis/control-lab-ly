@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 import cv2 # pip install opencv-python
 
 # Local application imports
-from ..image_utils import Image
+from .. import image_utils as Image
 print(f"Import: OK <{__name__}>")
 
 class Classifier(ABC):
