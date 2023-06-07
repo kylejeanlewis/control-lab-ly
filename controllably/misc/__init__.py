@@ -8,7 +8,7 @@ Modules:
 
 Classes:
     Logger
-    
+
 Functions:
     create_configs
     create_setup

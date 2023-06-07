@@ -735,6 +735,8 @@ class Mover(ABC):
         """
         Get robot coordinates and orientation.
         
+        TO BE DEPRECATED: Use `position` attribute instead.
+        
         Returns:
             tuple, tuple: x,y,z coordinates; a,b,c angles
         """
@@ -744,6 +746,8 @@ class Mover(ABC):
     def getToolPosition(self):
         """
         Retrieve coordinates of tool tip/end of implement.
+        
+        TO BE DEPRECATED: Use `tool_position` attribute instead.
 
         Returns:
             tuple, tuple: x,y,z coordinates; a,b,c angles
@@ -754,6 +758,8 @@ class Mover(ABC):
     def getUserPosition(self):
         """
         Retrieve user-defined workspace coordinates.
+        
+        TO BE DEPRECATED: Use `user_position` attribute instead.
 
         Returns:
             tuple, tuple: x,y,z coordinates; a,b,c angles
@@ -763,7 +769,9 @@ class Mover(ABC):
     
     def getWorkspacePosition(self):
         """
-        Alias for getUserPosition
+        Alias for getUserPosition.
+        
+        TO BE DEPRECATED: Use `workspace_position` attribute instead.
 
         Returns:
             tuple, tuple: x,y,z coordinates; a,b,c angles

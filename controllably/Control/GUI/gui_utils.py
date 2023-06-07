@@ -5,7 +5,7 @@ This module holds the base class for control panels as well as multichannel pane
 Classes:
     Panel (ABC)
     MultiChannelPanel (Panel)
-    
+
 Other constants and variables:
     HEIGHT (int): height of screen size in number of pixels
     WIDTH (int): width of screen size in number of pixels

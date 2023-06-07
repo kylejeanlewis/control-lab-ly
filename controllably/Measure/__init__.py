@@ -7,7 +7,7 @@ Classes:
     Program (ABC)
     Programmable (Measurer)
     ProgramDetails (dataclass)
-    
+
 Functions:
     get_program_details
 """
