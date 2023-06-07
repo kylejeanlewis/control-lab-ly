@@ -87,13 +87,6 @@ gui.runGUI()
 # %%
 import init
 from controllably.Move.Cartesian import Primitiv
-# from controllably.Move.Jointed.Dobot import M1Pro
-# from controllably.Transfer.Substrate import Dobot
-# from controllably.Make.ThinFilm import SpinnerAssembly
-# from controllably.Make.Mixture.QInstruments import BioShake
-# from controllably.Measure.Electrical.Keithley import Keithley
-# from controllably.Transfer.Liquid import SyringeAssembly
-# from controllably.Transfer.Liquid.Pumps import Peristaltic
 
 from controllably import guide_me
 guide_me()
