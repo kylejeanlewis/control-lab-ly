@@ -24,7 +24,7 @@ import cv2              # pip install opencv-python
 
 # Local application imports
 from ..misc import Helper
-from . import image_utils as Image
+from . import image as Image
 print(f"Import: OK <{__name__}>")
 
 DIMENSION_THRESHOLD = 36
