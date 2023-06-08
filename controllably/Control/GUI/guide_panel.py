@@ -16,6 +16,7 @@ import inspect
 import markdown
 import os
 from tkhtmlview import html_parser
+from typing import Callable
 
 # Third party imports
 import PySimpleGUI as sg # pip install PySimpleGUI
@@ -28,6 +29,14 @@ print(f"Import: OK <{__name__}>")
 DEFAULT_TEXT = "Select an item to view its documentation."
 HOME = "controllably"
 PLACEHOLDER_METHOD = "< Methods >"
+MODULE_MAP = dict(
+    factory = "Factory",
+    helper = "Helper",
+    image = "Image",
+    layout = "Layout",
+    pop_ups = "Popups",
+    templates = "Templates",
+)
 
 class Guide(Panel):
     """
@@ -90,17 +99,28 @@ class Guide(Panel):
             )],
             [
                 sg.Combo(
-                [PLACEHOLDER_METHOD], PLACEHOLDER_METHOD, key="-METHODS-", size=(40,1), enable_events=True
+                    [PLACEHOLDER_METHOD], PLACEHOLDER_METHOD, 
+                    key="-METHODS-", size=(40,1), enable_events=True
                 ),
                 sg.Button("Show All", key="-TOGGLE-ALL-", size=(10,1), enable_events=True),
                 sg.Button("Expand", key="-TOGGLE-REVEAL-", size=(10,1), enable_events=True)
             ]
         ]
+        output = [
+            [sg.Multiline(
+                key="-MULTILINE-", size=(60,22), disabled=True,
+                write_only=True
+            )],
+            [sg.Multiline(
+                key="-INPUT-", size=(60,1), disabled=True,
+                write_only=True, no_scrollbar=True, pad=(1,3)
+            )]
+        ]
         layout = [
             [layout],
             [
                 sg.Column(selection, vertical_alignment='center'), 
-                sg.Multiline(key="-MULTILINE-", size=(60,24), disabled=True)
+                sg.Column(output, vertical_alignment='center')
             ]
         ]
         layout = sg.Column(layout, vertical_alignment='top')
@@ -124,13 +144,25 @@ class Guide(Panel):
             tree: sg.Tree = self.window['-TREE-']
             tree_data: sg.TreeData = tree.TreeData
             doc = tree_data.tree_dict[fullname].values[2]
-            if tree_data.tree_dict[fullname].values[0] == "class":
-                obj = eval(f"modules.at{fullname}")
-                methods = [PLACEHOLDER_METHOD] + Helper.get_method_names(obj)
-                methods = [m for m in methods if not m.startswith('_')] + [m for m in methods if m.startswith('_')]
-                updates['-METHODS-'] = dict(values=methods, value=methods[0])
-            else:
-                updates['-METHODS-'] = dict(values=[PLACEHOLDER_METHOD], value=PLACEHOLDER_METHOD)
+            object_type = tree_data.tree_dict[fullname].values[0]
+            methods = [PLACEHOLDER_METHOD]
+            ref = ''
+            if object_type:
+                obj: Callable = eval(f"modules.at{fullname}")
+                mod = obj.__module__.split('.')
+                if 'misc' in mod:
+                    mod.remove('misc')
+                import_path = '.'.join(mod[:-1])
+                last = mod.pop()
+                if last in MODULE_MAP:
+                    ref = f"from {import_path} import {MODULE_MAP[last]}; {MODULE_MAP[last]}.{obj.__name__}"
+                else:
+                    ref = f"from {import_path} import {obj.__name__}"
+                if object_type == 'class':
+                    methods = [PLACEHOLDER_METHOD] + Helper.get_method_names(obj)
+                    methods = [m for m in methods if not m.startswith('_')] + [m for m in methods if m.startswith('_')]
+            updates['-INPUT-'] = dict(value=ref)
+            updates['-METHODS-'] = dict(values=methods, value=methods[0])
             html = self._convert_md_to_html(md_text=doc)
             self._render_html(html)
         
