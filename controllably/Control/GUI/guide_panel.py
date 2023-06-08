@@ -27,8 +27,9 @@ from .gui_utils import Panel
 print(f"Import: OK <{__name__}>")
 
 DEFAULT_TEXT = "Select an item to view its documentation."
+DEFAULT_METHOD = "< Methods >"
+DEFAULT_REFERENCE = "< Import reference >"
 HOME = "controllably"
-PLACEHOLDER_METHOD = "< Methods >"
 MODULE_MAP = dict(
     factory = "Factory",
     helper = "Helper",
@@ -99,8 +100,8 @@ class Guide(Panel):
             )],
             [
                 sg.Combo(
-                    [PLACEHOLDER_METHOD], PLACEHOLDER_METHOD, 
-                    key="-METHODS-", size=(40,1), enable_events=True
+                    [DEFAULT_METHOD], DEFAULT_METHOD, 
+                    key="-METHODS-", size=(40,1), enable_events=True, expand_y=True
                 ),
                 sg.Button("Show All", key="-TOGGLE-ALL-", size=(10,1), enable_events=True),
                 sg.Button("Expand", key="-TOGGLE-REVEAL-", size=(10,1), enable_events=True)
@@ -108,19 +109,19 @@ class Guide(Panel):
         ]
         output = [
             [sg.Multiline(
-                key="-MULTILINE-", size=(60,22), disabled=True,
-                write_only=True
+                default_text=DEFAULT_TEXT, key="-MULTILINE-", size=(70,22), 
+                disabled=True, write_only=True, expand_y=True
             )],
             [sg.Multiline(
-                key="-INPUT-", size=(60,1), disabled=True,
-                write_only=True, no_scrollbar=True, pad=(1,3)
+                default_text=DEFAULT_REFERENCE, key="-INPUT-", size=(70,1),
+                disabled=True, write_only=True, no_scrollbar=True, expand_y=True
             )]
         ]
         layout = [
             [layout],
             [
                 sg.Column(selection, vertical_alignment='center'), 
-                sg.Column(output, vertical_alignment='center')
+                sg.Column(output, vertical_alignment='center', expand_y=True)
             ]
         ]
         layout = sg.Column(layout, vertical_alignment='top')
@@ -145,8 +146,8 @@ class Guide(Panel):
             tree_data: sg.TreeData = tree.TreeData
             doc = tree_data.tree_dict[fullname].values[2]
             object_type = tree_data.tree_dict[fullname].values[0]
-            methods = [PLACEHOLDER_METHOD]
-            ref = ''
+            methods = [DEFAULT_METHOD]
+            ref = DEFAULT_REFERENCE
             if object_type:
                 obj: Callable = eval(f"modules.at{fullname}")
                 mod = obj.__module__.split('.')
@@ -156,10 +157,12 @@ class Guide(Panel):
                 last = mod.pop()
                 if last in MODULE_MAP:
                     ref = f"from {import_path} import {MODULE_MAP[last]}; {MODULE_MAP[last]}.{obj.__name__}"
+                elif obj.__name__ == 'guide_me':
+                    ref = f"from {HOME} import {obj.__name__}"
                 else:
                     ref = f"from {import_path} import {obj.__name__}"
                 if object_type == 'class':
-                    methods = [PLACEHOLDER_METHOD] + Helper.get_method_names(obj)
+                    methods = [DEFAULT_METHOD] + Helper.get_method_names(obj)
                     methods = [m for m in methods if not m.startswith('_')] + [m for m in methods if m.startswith('_')]
             updates['-INPUT-'] = dict(value=ref)
             updates['-METHODS-'] = dict(values=methods, value=methods[0])
@@ -168,7 +171,7 @@ class Guide(Panel):
         
         # 2. Select method from Combo
         if event == '-METHODS-':
-            if values['-METHODS-'] != PLACEHOLDER_METHOD and len(values['-TREE-']):
+            if values['-METHODS-'] != DEFAULT_METHOD and len(values['-TREE-']):
                 fullname = values['-TREE-'][0]
                 tree: sg.Tree = self.window['-TREE-']
                 tree_data: sg.TreeData = tree.TreeData
@@ -191,7 +194,7 @@ class Guide(Panel):
             label = "Show All" if shown_all else "Show Current"
             updates['-TOGGLE-ALL-'] = dict(text=label)
             updates['-TREE-'] = dict(values=tree_data)
-            updates['-METHODS-'] = dict(values=[PLACEHOLDER_METHOD], value=PLACEHOLDER_METHOD)
+            updates['-METHODS-'] = dict(values=[DEFAULT_METHOD], value=DEFAULT_METHOD)
             updates['-TOGGLE-REVEAL-'] = dict(text='Expand')
             html = self._convert_md_to_html(md_text=DEFAULT_TEXT)
             self._render_html(html)
