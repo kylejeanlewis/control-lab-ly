@@ -280,7 +280,7 @@ def unregister(dot_notation:str):
     temp.pop(name)
     
     # Clean up empty dictionaries
-    def remove_empty_dicts(d):
+    def remove_empty_dicts(d: dict):
         """
         Purge empty dictionaries from nested dictionary
 
@@ -292,6 +292,8 @@ def unregister(dot_notation:str):
                 remove_empty_dicts(v)
             if not v:
                 del d[k]
+        if list(d.keys()) == ['_doc_']:
+            del d['_doc_']
     remove_empty_dicts(modules._modules)
     return
 
