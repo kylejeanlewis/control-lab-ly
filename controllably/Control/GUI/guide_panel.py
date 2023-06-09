@@ -150,17 +150,7 @@ class Guide(Panel):
             ref = DEFAULT_REFERENCE
             if object_type:
                 obj: Callable = eval(f"modules.at{fullname}")
-                mod = obj.__module__.split('.')
-                if 'misc' in mod:
-                    mod.remove('misc')
-                import_path = '.'.join(mod[:-1])
-                last = mod.pop()
-                if last in MODULE_MAP:
-                    ref = f"from {import_path} import {MODULE_MAP[last]}; {MODULE_MAP[last]}.{obj.__name__}"
-                elif obj.__name__ == 'guide_me':
-                    ref = f"from {HOME} import {obj.__name__}"
-                else:
-                    ref = f"from {import_path} import {obj.__name__}"
+                ref = self._get_import_path(obj=obj)
                 if object_type == 'class':
                     methods = [DEFAULT_METHOD] + Helper.get_method_names(obj)
                     methods = [m for m in methods if not m.startswith('_')] + [m for m in methods if m.startswith('_')]
@@ -317,6 +307,20 @@ class Guide(Panel):
                 index += 1
         self.setFlag(tree_expanded=False)
         return tree_data, index
+    
+    def _get_import_path(self, obj: Callable):
+        mod = obj.__module__.split('.')
+        if 'misc' in mod:
+            mod.remove('misc')
+        import_path = '.'.join(mod[:-1])
+        last = mod.pop()
+        if last in MODULE_MAP:
+            ref = f"from {import_path} import {MODULE_MAP[last]}; {MODULE_MAP[last]}.{obj.__name__}"
+        elif obj.__name__ == 'guide_me':
+            ref = f"from {HOME} import {obj.__name__}"
+        else:
+            ref = f"from {import_path} import {obj.__name__}"
+        return ref
     
     def _import_all(self):
         """
