@@ -113,7 +113,7 @@ class MeasurerPanel(Panel):
         font = (self.typeface, self.font_sizes[title_font_level+1])
         # add dropdown for program list
         programs = eval(f"modules.at.{self.measurer._place}.programs")
-        program_names = [p for p in programs]
+        program_names = [p for p in programs if p != "_doc_"]
         dropdown = sg.Combo(
             values=program_names, size=(20, 1), 
             key=self._mangle('-PROGRAMS-'), enable_events=True, readonly=True

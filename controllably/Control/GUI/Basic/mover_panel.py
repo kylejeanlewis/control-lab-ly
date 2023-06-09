@@ -314,7 +314,7 @@ class MoverPanel(Panel):
         button_labels = [f'FN{i+1}' for i in range(MAX_FUNCTION_BUTTONS)]  # Placeholder buttons
         if 'attachment' in dir(self.mover):
             attachments = eval(f"modules.at.{self.mover._place}.attachments")
-            attachment_names = [a for a in attachments]
+            attachment_names = [a for a in attachments if a != "_doc_"]
             
             show_section = True
             default_value = self.mover.attachment.__class__.__name__ if self.mover.attachment is not None else 'None'
