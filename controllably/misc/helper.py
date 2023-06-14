@@ -109,7 +109,9 @@ def get_node() -> str:
     Returns:
         str: machine unique identifier
     """
-    return str(uuid.getnode())
+    node_id = str(uuid.getnode())
+    print(f"Current machine id: {node_id}")
+    return node_id
 
 def get_plans(config_file:str, registry_file:Optional[str] = None, package:Optional[str] = None) -> dict:
     """
