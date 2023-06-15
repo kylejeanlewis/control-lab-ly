@@ -15,7 +15,7 @@ User-friendly package that enables flexible automation an reconfigurable setups 
 
 ## Device support
 - Make
-  - (QInstruments) Bioshake Orbital Shaker
+  - (QInstruments) BioShake Orbital Shaker
   - Multi-channel LED array \[Arduino\]
   - Multi-channel spin-coater \[Arduino\]
   - Peltier device \[Arduino\]
