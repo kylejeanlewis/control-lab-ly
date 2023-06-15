@@ -60,7 +60,7 @@ Use the built-in guide to read the documentation for the package.
 from controllably import guide_me
 guide_me()
 ```
-![Screenshot of the documentation guide](./assets/Documentation%20guide.png)
+![Screenshot of the documentation guide](https://raw.githubusercontent.com/kylejeanlewis/repo-readme-assets/main/control-lab-le/v1-1-0/assets/Documentation%20guide.png)
 
 Alternatively, details for each class / module / package can be explored by using the `help` function.
 ```python
@@ -267,7 +267,7 @@ MyDevice:
 User-defined plugins can be easily written and integrated into Control.lab.ly. All available classes and functions can be found in `lab.modules`.
 ```python
 lab.guide_me()                              # Use guide to view imported objects
-lab.modules.at.Make.Something.Good.MyClass  # Access the the class 
+lab.modules.at.Make.Something.Good.MyClass  # Access the class 
 ```
 
 #### 4.1 Registering a Class or Function
