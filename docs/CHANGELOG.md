@@ -6,7 +6,7 @@
 - Integration for mass balance from Sartorius
 
 ## Version 1.1.0
-Bug fixes and minor feature enhancements. First released 15 Jun 2023.
+Bug fixes and feature enhancements. First released 15 Jun 2023.
 ### Added
 - `ForceSensor` - DIY force sensor (#55)
 - `BioShake` - orbital shaker from QInstruments (#56)
