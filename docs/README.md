@@ -22,7 +22,7 @@ User-friendly package that enables flexible automation an reconfigurable setups 
 - Measure
   - (Keithley) 2450 Source Measure Unit (SMU) Instrument
   - (PiezoRobotics) Dynamic Mechanical Analyser (DMA)
-  - (Sentron) SI series pH meters
+  - (Sentron) SI series pH meters - *full functionality in development*
   - Precision mass balance \[Arduino\]
 - Move
   - (Creality) Ender-3
@@ -39,7 +39,7 @@ User-friendly package that enables flexible automation an reconfigurable setups 
   - Web cameras \[General\]
 
 ## Installation
-Control.lab.ly can be found on PyPI and can be installed easily with `pip install`.
+Control.lab.ly can be found on PyPI and can be easily installed with `pip install`.
 ```shell
 $ pip install control-lab-ly
 ```
@@ -55,11 +55,12 @@ mover.safeMoveTo((x,y,z))
 ```
 
 ### View documentation
-To view documentation, use the built-in **guide**.
+Use the built-in guide to read the documentation for the package.
 ```python
 from controllably import guide_me
 guide_me()
 ```
+![Screenshot of the documentation guide](./assets/Documentation%20guide.png)
 
 Alternatively, details for each class / module / package can be explored by using the `help` function.
 ```python
@@ -219,13 +220,14 @@ To load a `Deck` from the layout file, use the `loadDeck()` function of a `Mover
 from configs.MySetup import setup, LAYOUT_FILE
 setup.Mover.loadDeck(LAYOUT_FILE)
 ``` 
-> `LAYOUT_FILE` is what has been defined in `layout.json` (see [**Section 1.2**](#12-layoutjson))
+> `LAYOUT_FILE` contains the details that has been defined in `layout.json` (see [**Section 1.2**](#12-layoutjson))
 
 #### 2.2 Loading a Labware
 To load a `Labware` onto the deck, use the `load_labware()` method of the `Deck` object.
 ```python
 setup.Mover.deck.load_labware(...)
 ``` 
+> This package uses the same Labware files as those provided by [Opentrons](https://opentrons.com/), which can be found [here](https://labware.opentrons.com/), and custom Labware files can be created [here](https://labware.opentrons.com/create/). Labware files are JSON files that specifies the external and internal dimensions of a Labware block / object.
 
 
 ### 3. Managing project addresses
