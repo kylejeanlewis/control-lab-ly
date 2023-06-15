@@ -83,7 +83,7 @@ Optionally, you can set the safety policy for the session. This feature allows t
 ```python
 lab.set_safety('high')  # Notifies; Pauses for input before every move action
 lab.set_safety('low')   # Notifies; Waits for countdown before every move action
-lab.set_safety(None)    # Movement actions carry out without delay
+lab.set_safety(None)    # Carries out movement actions without delay
 
 # Import control-lab-ly classes only after setting the safety policy
 ```
