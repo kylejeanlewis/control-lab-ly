@@ -308,7 +308,16 @@ class Guide(Panel):
         self.setFlag(tree_expanded=False)
         return tree_data, index
     
-    def _get_import_path(self, obj: Callable):
+    def _get_import_path(self, obj: Callable) -> str:
+        """
+        Get the import path (dot notation) of the object
+
+        Args:
+            obj (Callable): object to be queried
+
+        Returns:
+            str: dot notation of the import path
+        """
         mod = obj.__module__.split('.')
         if 'misc' in mod:
             mod.remove('misc')
