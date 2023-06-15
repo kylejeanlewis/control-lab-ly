@@ -1,5 +1,5 @@
 """
-This sub-package imports the classes for mechanical measurement tools from Keithley.
+This sub-package imports the classes for electrical measurement tools from Keithley.
 
 Modules:
     programs

@@ -24,7 +24,7 @@ import cv2              # pip install opencv-python
 
 # Local application imports
 from ..misc import Helper
-from . import image_utils as Image
+from . import image as Image
 print(f"Import: OK <{__name__}>")
 
 DIMENSION_THRESHOLD = 36
@@ -233,8 +233,9 @@ class Camera(ABC):
         """
         if not all([type(v)==bool for v in kwargs.values()]):
             raise ValueError("Ensure all assigned flag values are boolean.")
-        for key, value in kwargs.items():
-            self.flags[key] = value
+        self.flags.update(kwargs)
+        # for key, value in kwargs.items():
+        #     self.flags[key] = value
         return
     
     def shutdown(self):

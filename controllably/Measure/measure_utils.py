@@ -42,7 +42,7 @@ class Measurer(ABC):
     - `verbose` (bool): verbosity of class
     
     ### Properties
-    - `instrument`: Alias for `device`
+    - `instrument` (Callable): Alias for `device`
     
     ### Methods
     #### Abstract
@@ -165,8 +165,9 @@ class Measurer(ABC):
         """
         if not all([type(v)==bool for v in kwargs.values()]):
             raise ValueError("Ensure all assigned flag values are boolean.")
-        for key, value in kwargs.items():
-            self.flags[key] = value
+        self.flags.update(kwargs)
+        # for key, value in kwargs.items():
+        #     self.flags[key] = value
         return
     
     def shutdown(self):
@@ -193,12 +194,12 @@ class Programmable(Measurer):
     - `datatype` (Data): Data class
     - `program` (Program): instantiated Program class with parameters provided
     - `program_details` (ProgramDetails): program details such as inputs, defaults, and docstring
-    - `program_parser` (function): function to get the program details from the program class docstring
     - `program_type` (Program): Program class
     - `recent_parameters` (list[dict[str, ...]]): list of previously used parameters
     
     ### Properties
-    - `instrument`: alias for `device`
+    - `instrument` (Callable): alias for `device`
+    - `program_parser` (Callable): function to get the program details from the program class docstring
     
     ### Methods
     #### Abstract
@@ -225,22 +226,30 @@ class Programmable(Measurer):
         'read': False,
         'stop_measure': False
     }
-    model = ''
-    available_programs: tuple[str] = ('',)      # FIXME
-    possible_inputs: tuple[str] = ('',)         # FIXME
+    _place: str = '.'.join(__name__.split('.')[1:-1])
+    model: str = ''
     def __init__(self, **kwargs):
         """Instantiate the class"""
         super().__init__(**kwargs)
         self.data: Optional[Data] = None
         self.datatype: Optional[Data] = self._default_datatype
         self.program: Optional[Program] = None
-        self.program_parser = self._default_program_parser
+        self._program_parser = self._default_program_parser
         self.program_type: Optional[Program] = self._default_program
         
         self.program_details = ProgramDetails()
         self.recent_parameters = []
         self._measure_method_docstring = self.measure.__doc__
         return
+    
+    # Properties
+    @property
+    def program_parser(self) -> Callable:
+        return self._program_parser.get('parser', lambda x:x)
+    @program_parser.setter
+    def program_parser(self, func: Callable):
+        self._program_parser['parser'] = func
+        return 
           
     def clearCache(self):
         """Clear most recent data and configurations """
@@ -299,7 +308,7 @@ class Programmable(Measurer):
         Args:
             program_parser (Optional[function], optional): function that interprets the program class docstring. Defaults to None.
         """
-        self.program_parser = self._default_program_parser if program_parser is None else {"parser": program_parser}
+        self._program_parser = self._default_program_parser if program_parser is None else {"parser": program_parser}
         return
     
     def measure(self, parameters: Optional[dict] = None, channel:Union[int, tuple[int]] = 0, **kwargs):
@@ -389,8 +398,7 @@ class Programmable(Measurer):
         """
         if self.program_type is None:
             raise Exception('Load a program first.')
-        parser = self.program_parser["parser"]
-        details = parser(program_class=self.program_type, verbose=self.verbose)
+        details = self.program_parser(program_class=self.program_type, verbose=self.verbose)
         self.program_details: ProgramDetails = details
         return details
     

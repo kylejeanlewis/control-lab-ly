@@ -13,11 +13,6 @@ Classes:
 Other types:
     PresetSpeeds (namedtuple)
     SpeedParameters (namedtuple)
-
-Other constants and variables:
-    QUERIES (list)  
-    STATIC_QUERIES (list)
-    STATUS_QUERIES (list)
 """
 # Standard library imports
 from collections import namedtuple
@@ -73,23 +68,17 @@ class StatusCode(Enum):
     Drive_Busy      = 4
     Running_Busy    = 6
     General_Error   = 8
-
+    
 class StaticQueryCode(Enum):
-    Version         = 'DV'
-    Model           = 'DM'
-    Cycles          = 'DX'
-    Speed_In        = 'DI'
-    Speed_Out       = 'DO'
-    Resolution      = 'DR'
+    DV  = 'Version'
+    DM  = 'Model'
+    DX  = 'Cycles'
+    DI  = 'Speed In'
+    DO  = 'Speed_Out'
+    DR  = 'Resolution'
     
 class StatusQueryCode(Enum):
-    Status          = 'DS'
-    Errors          = 'DE'
-    Position        = 'DP'
-    Liquid_Sensor   = 'DN'
-
-
-# FIXME: Do away with these objects below
-STATIC_QUERIES  = [static_query.value for static_query in StaticQueryCode]
-STATUS_QUERIES  = [status_query.value for status_query in StatusQueryCode]
-QUERIES         = STATUS_QUERIES + STATIC_QUERIES
+    DS  = 'Status'
+    DE  = 'Errors'
+    DP  = 'Position'
+    DN  = 'Liquid Sensor'

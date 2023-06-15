@@ -1,6 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-This module holds the class for thermal cameras.
+WIP: This module holds the class for thermal cameras.
 
 Classes:
     Thermal (Camera)

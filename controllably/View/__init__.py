@@ -9,7 +9,7 @@ Classes:
     Camera (ABC)
 """
 from .view_utils import Camera
-from . import image_utils as Image
+from . import image as Image
 
 from controllably import include_this_module
 include_this_module(get_local_only=False)

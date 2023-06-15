@@ -43,8 +43,7 @@ def create_configs():
     if not os.path.exists(dst):
         print("Creating configs folder...\n")
         copytree(src=src, dst=dst)
-        node_id = helper.get_node()
-        print(f"Current machine id: {node_id}")
+        helper.get_node()
     return
 
 def create_setup(setup_name:Optional[str] = None):
@@ -70,6 +69,7 @@ def create_setup(setup_name:Optional[str] = None):
     if not os.path.exists(dst):
         print(f"Creating setup folder ({setup_name})...\n")
         copytree(src=src, dst=dst)
+        helper.get_node()
     return
 
 def load_deck(device:Callable, layout_file:str, get_absolute_filepath:bool = True) -> Callable:
@@ -109,7 +109,7 @@ def load_setup(config_file:str, registry_file:Optional[str] = None) -> dict:
     Returns:
         dict: dictionary of loaded devices
     """
-    config = factory.get_plans(config_file=config_file, registry_file=registry_file)
+    config = helper.get_plans(config_file=config_file, registry_file=registry_file)
     setup = factory.load_components(config=config)
     shortcuts = config.get('SHORTCUTS',{})
     

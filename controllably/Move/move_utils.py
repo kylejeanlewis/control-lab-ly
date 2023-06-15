@@ -88,8 +88,7 @@ class Mover(ABC):
     
     _default_flags: dict[str, bool] = {'busy': False, 'connected': False}
     _default_heights: dict[str, float] = {}
-    possible_attachments = ()                               ### FIXME: hard-coded
-    max_actions = 5                                         ### FIXME: hard-coded
+    _place: str = '.'.join(__name__.split('.')[1:-1])
     def __init__(self, 
         coordinates: tuple[float] = (0,0,0),
         deck: Layout.Deck = Layout.Deck(),
@@ -582,8 +581,9 @@ class Mover(ABC):
         """
         if not all([type(v)==bool for v in kwargs.values()]):
             raise ValueError("Ensure all assigned flag values are boolean.")
-        for key, value in kwargs.items():
-            self.flags[key] = value
+        self.flags.update(kwargs)
+        # for key, value in kwargs.items():
+        #     self.flags[key] = value
         return
     
     def setHeight(self, overwrite:bool = False, **kwargs):
@@ -735,6 +735,8 @@ class Mover(ABC):
         """
         Get robot coordinates and orientation.
         
+        TO BE DEPRECATED: Use `position` attribute instead.
+        
         Returns:
             tuple, tuple: x,y,z coordinates; a,b,c angles
         """
@@ -744,6 +746,8 @@ class Mover(ABC):
     def getToolPosition(self):
         """
         Retrieve coordinates of tool tip/end of implement.
+        
+        TO BE DEPRECATED: Use `tool_position` attribute instead.
 
         Returns:
             tuple, tuple: x,y,z coordinates; a,b,c angles
@@ -754,6 +758,8 @@ class Mover(ABC):
     def getUserPosition(self):
         """
         Retrieve user-defined workspace coordinates.
+        
+        TO BE DEPRECATED: Use `user_position` attribute instead.
 
         Returns:
             tuple, tuple: x,y,z coordinates; a,b,c angles
@@ -763,7 +769,9 @@ class Mover(ABC):
     
     def getWorkspacePosition(self):
         """
-        Alias for getUserPosition
+        Alias for getUserPosition.
+        
+        TO BE DEPRECATED: Use `workspace_position` attribute instead.
 
         Returns:
             tuple, tuple: x,y,z coordinates; a,b,c angles

@@ -28,7 +28,7 @@ class LED:
     ### Constructor
     Args:
         `channel` (int): channel id
-        
+    
     ### Attributes
     - `channel` (int): channel id
     - `update_power` (bool): whether to update the LED's power
@@ -89,6 +89,7 @@ class LEDArray(Maker):
     - `port` (str): COM port address
     
     ### Methods
+    - `execute`: alias for `setPower()`
     - `getPower`: get power level(s) of channel(s)
     - `getTimedChannels`: get channels that are still timed
     - `isBusy`: checks and returns whether the LED array is still busy
@@ -106,6 +107,13 @@ class LEDArray(Maker):
     }
     
     def __init__(self, port:str, channels:list[int] = [0], **kwargs):
+        """
+        Instantiate the class
+
+        Args:
+            port (str): COM port addressed
+            channels (list[int], optional): list of channels. Defaults to [0].
+        """
         super().__init__(**kwargs)
         self.channels = {chn: LED(chn) for chn in channels}
         self._threads = {}
@@ -117,6 +125,19 @@ class LEDArray(Maker):
     @property
     def port(self) -> str:
         return self.connection_details.get('port', '')
+    
+    def execute(self, value:int, time_s:int = 0, channel:Optional[int] = None, *args, **kwargs):
+        """
+        Alias for `setPower()`
+        
+        Set the power value(s) for channel(s)
+
+        Args:
+            value (int): 8-bit integer for LED power (i.e. 0~255)
+            time_s (int, optional): duration in seconds. Defaults to 0.
+            channel (Optional[int], optional): channel id. Defaults to None.
+        """
+        return self.setPower(value=value, time_s=time_s, channel=channel)
     
     def getPower(self, channel:Optional[int] = None) -> list[int]:
         """

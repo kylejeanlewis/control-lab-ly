@@ -1,1 +1,2 @@
 include docs/*.md
+include docs/assets/*.png

@@ -149,7 +149,9 @@ def rotate(frame:np.ndarray, angle:int) -> np.ndarray:
         frame = cv2.rotate(frame, rotateCodes.get(angle))
     return frame
 
-
+__where__ = "View.Image"
+from controllably import include_this_module
+include_this_module(get_local_only=True)
 
 # NOTE: DEPRECATED
 

@@ -2,10 +2,38 @@
 
 ## Unreleased
 *Items under development*
-### 1.1.0
-- Integration for orbital shaker \[QInstruments\]
-- Integration for pH meter probe \[Sentron\]
-- Integration for force sensor
+### 1.2.0
+- Integration for mass balance from Sartorius
+
+## Version 1.1.0
+Bug fixes and feature enhancements. First released 15 Jun 2023.
+### Added
+- `ForceSensor` - DIY force sensor (#55)
+- `BioShake` - orbital shaker from QInstruments (#56)
+- `SentronProbe` - pH meter probe from Sentron (#75)
+- `Maker`
+  - added `execute()` abstract method and implemented in subclasses
+- GUI
+  - `Guide` - documentation guide
+  - `MakerPanel` - daptive GUI controls for `Maker` objects (#87)
+### Changed
+- `M1Pro`
+  - fix issue with changing handedness (#86)
+- `Peltier`
+  - rename `getTemperatures()` to `getTemperature()`
+  - rename `isReady()` to `isAtTemperature()`
+  - rename `set_point` to `set_temperature`
+- `Ender`
+  - rename `set_point` to `set_temperature`
+- `TriContinent`
+  - rename `step_limit` to `limits`
+- Refactor and reorganize `GUI` code
+- Refactor code in `helper` and `factory`
+- Updated documentation
+### Removed
+- `Analyse` sub-package removed
+- `Control.Schedule` sub-package removed
+- Unnecessary commented-out blocks of code
 
 
 ## Version 1.0.1
