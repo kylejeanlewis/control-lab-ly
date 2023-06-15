@@ -122,7 +122,8 @@ class M1Pro(Dobot):
         #     return False
         
         grad = abs(y/(x+1E-6))
-        if grad > 0.75 or x < 0:
+        gradient_threshold = 0.1
+        if grad > gradient_threshold or x < 0:
             right_hand = (y>0)
             self.setHandedness(right_hand=right_hand, stretch=True) 
         return not self.deck.is_excluded(self._transform_out(coordinates, tool_offset=True))
