@@ -20,6 +20,7 @@ class Maker(ABC):
         `verbose` (bool, optional): verbosity of class. Defaults to False.
     
     ### Attributes
+    - `channel` (int): channel id
     - `connection_details` (dict): dictionary of connection details (e.g. COM port / IP address)
     - `device` (Callable): device object that communicates with physical tool
     - `flags` (dict[str, bool]): keywords paired with boolean flags
@@ -27,6 +28,7 @@ class Maker(ABC):
     
     ### Methods
     #### Abstract
+    - `execute`: execute task
     - `shutdown`: shutdown procedure for tool
     - `_connect`: connection procedure for tool
     #### Public
@@ -38,7 +40,7 @@ class Maker(ABC):
     - `setFlag`: set flags by using keyword arguments
     """
     
-    _default_flags: dict[str, bool] = {}
+    _default_flags: dict[str, bool] = {'busy': False, 'connected': False}
     def __init__(self, verbose:bool = False, **kwargs):
         """
         Instantiate the class
@@ -46,6 +48,7 @@ class Maker(ABC):
         Args:
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
+        self.channel = 0
         self.connection_details = {}
         self.device = None
         self.flags = self._default_flags.copy()
@@ -54,6 +57,10 @@ class Maker(ABC):
     
     def __del__(self):
         self.shutdown()
+        
+    @abstractmethod
+    def execute(self, *args, **kwargs):
+        """Execute task"""
         
     @abstractmethod
     def shutdown(self):
@@ -118,7 +125,8 @@ class Maker(ABC):
         """
         if not all([type(v)==bool for v in kwargs.values()]):
             raise ValueError("Ensure all assigned flag values are boolean.")
-        for key, value in kwargs.items():
-            self.flags[key] = value
+        self.flags.update(kwargs)
+        # for key, value in kwargs.items():
+        #     self.flags[key] = value
         return
     

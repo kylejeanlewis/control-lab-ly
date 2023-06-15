@@ -9,15 +9,13 @@ Classes:
 Functions:
     get_class
     get_details
-    get_machine_addresses
-    get_plans
     include_this_module
     load_components
     register
     unregister
 
 Other constants and variables:
-    HOME_PACKAGE (tuple)
+    HOME_PACKAGES (list)
     modules (ModuleDirectory)
 """
 # Standard library imports
@@ -30,13 +28,12 @@ import sys
 from typing import Callable, Optional
 
 # Third party imports
-import yaml # pip install pyyaml
+import yaml     # pip install pyyaml
 
 # Local application imports
-from . import helper
 print(f"Import: OK <{__name__}>")
 
-HOME_PACKAGE = ('controllably','lab')
+HOME_PACKAGES = ['controllably','lab']
 """Names and aliases of base package"""
 
 class DottableDict(dict):
@@ -75,10 +72,24 @@ class ModuleDirectory:
     _modules: DottableDict = field(default_factory=DottableDict, init=False)
     
     def __repr__(self) -> str:
-        return pprint.pformat(self._modules)
+        printable_mod = self._modules.copy()
+        def remove_docs(d):
+            """
+            Purge empty dictionaries from nested dictionary
+
+            Args:
+                d (dict): dictionary to be purged
+            """
+            for k, v in list(d.items()):
+                if isinstance(v, dict):
+                    remove_docs(v)
+                if k == "_doc_":
+                    del d[k]
+        remove_docs(printable_mod)
+        return pprint.pformat(printable_mod)
     
     @property
-    def at(self):
+    def at(self) -> DottableDict:
         return self._modules
     
     def get_class(self, dot_notation:str) -> Callable:
@@ -109,7 +120,7 @@ class ModuleDirectory:
         keys = keys[:-1]
         temp = self._modules
         for key in keys:
-            if key in HOME_PACKAGE:
+            if key in HOME_PACKAGES:
                 continue
             temp = temp[key]
         return temp
@@ -164,42 +175,6 @@ def get_details(configs:dict, addresses:Optional[dict] = None) -> dict:
         configs[name] = details
     return configs
 
-def get_machine_addresses(registry:dict) -> dict:
-    """
-    Get the appropriate addresses for current machine
-
-    Args:
-        registry (str): dictionary of yaml file with com port addresses and camera ids
-
-    Returns:
-        dict: dictionary of com port addresses and camera ids for current machine
-    """
-    node_id = helper.get_node()
-    addresses = registry.get('machine_id',{}).get(node_id,{})
-    if len(addresses) == 0:
-        print("\nAppend machine id and camera ids/port addresses to registry file")
-        print(yaml.dump(registry))
-        raise Exception(f"Machine not yet registered. (Current machine id: {node_id})")
-    return addresses
-
-def get_plans(config_file:str, registry_file:Optional[str] = None, package:Optional[str] = None) -> dict:
-    """
-    Read configuration file (yaml) and get details
-
-    Args:
-        config_file (str): filename of configuration file
-        registry_file (Optional[str], optional): filename of registry file. Defaults to None.
-        package (Optional[str], optional): name of package to look in. Defaults to None.
-
-    Returns:
-        dict: dictionary of configuration parameters
-    """
-    configs = helper.read_yaml(config_file, package)
-    registry = helper.read_yaml(registry_file, package)
-    addresses = get_machine_addresses(registry=registry)
-    configs = get_details(configs, addresses=addresses)
-    return configs
-
 def include_this_module(
     where: Optional[str] = None, 
     module_name: Optional[str] = None, 
@@ -213,10 +188,13 @@ def include_this_module(
         module_name (Optional[str], optional): dot notation name of module. Defaults to None.
         get_local_only (bool, optional): whether to only include objects defined in caller py file. Defaults to True.
     """
+    module_doc = "< No documentation >"
+    frm = inspect.stack()[1]
+    current_mod = inspect.getmodule(frm[0])
+    doc = inspect.getdoc(current_mod)
+    module_doc = module_doc if doc is None else doc
     if module_name is None:
-        frm = inspect.stack()[1]
-        mod = inspect.getmodule(frm[0])
-        module_name = mod.__name__
+        module_name = current_mod.__name__
     
     objs = inspect.getmembers(sys.modules[module_name])
     __where__ = [obj for name,obj in objs if name == "__where__"]
@@ -230,8 +208,8 @@ def include_this_module(
     for name,obj in objs:
         if name == inspect.stack()[0][3]:
             continue
-        mod = obj.__module__ if where is None else where
-        register(obj, '.'.join(mod.split('.')[:-1]))
+        mod_name = obj.__module__ if where is None else where
+        register(obj, '.'.join(mod_name.split('.')[:-1]), module_docs=module_doc)
     return
 
 def load_components(config:dict) -> dict:
@@ -255,22 +233,27 @@ def load_components(config:dict) -> dict:
         components[name] = _class(**settings)
     return components
 
-def register(new_object:Callable, where:str):
+def register(new_object:Callable, where:str, module_docs:Optional[str] = None):
     """
     Register the object into target location within structure
 
     Args:
         new_object (Callable): new Callable object (Class or function) to be registered
         where (str): location within structure to register the object in
+        module_docs (Optional[str], optional): module documentation. Defaults to None.
     """
+    module_docs = "< No documentation >" if module_docs is None else module_docs
     keys = where.split('.')
     temp = modules._modules
     for key in keys:
-        if key in HOME_PACKAGE:
+        if key in HOME_PACKAGES:
             continue
         if key not in temp:
             temp[key] = DottableDict()
         temp = temp[key]
+    if "_doc_" not in temp:
+        temp["_doc_"] = module_docs
+    
     name = new_object.__name__
     if name in temp:
         overwrite = input(f"An object with the same name ({name}) already exists, Overwrite? [y/n]")
@@ -291,13 +274,13 @@ def unregister(dot_notation:str):
     keys, name = keys[:-1], keys[-1]
     temp = modules._modules
     for key in keys:
-        if key in HOME_PACKAGE:
+        if key in HOME_PACKAGES:
             continue
         temp = temp[key]
     temp.pop(name)
     
     # Clean up empty dictionaries
-    def remove_empty_dicts(d):
+    def remove_empty_dicts(d: dict):
         """
         Purge empty dictionaries from nested dictionary
 
@@ -309,5 +292,10 @@ def unregister(dot_notation:str):
                 remove_empty_dicts(v)
             if not v:
                 del d[k]
+        if list(d.keys()) == ['_doc_']:
+            del d['_doc_']
     remove_empty_dicts(modules._modules)
     return
+
+__where__ = "misc.Factory"
+include_this_module(get_local_only=True)

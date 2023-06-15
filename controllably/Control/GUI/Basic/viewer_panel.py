@@ -15,7 +15,7 @@ import cv2              # pip install opencv-python
 import PySimpleGUI as sg # pip install PySimpleGUI
 
 # Local application imports
-from .gui_utils import Panel
+from ..gui_utils import Panel
 print(f"Import: OK <{__name__}>")
 
 class Viewer(Protocol):
@@ -33,7 +33,7 @@ class ViewerPanel(Panel):
         `viewer` (Viewer): Viewer object
         `name` (str, optional): name of panel. Defaults to 'VIEW'.
         `group` (str, optional): name of group. Defaults to 'viewer'.
-
+    
     ### Attributes
     - `display_box` (str): element id
     

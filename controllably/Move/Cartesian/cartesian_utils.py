@@ -49,6 +49,7 @@ class Gantry(Mover):
     - `shutdown`: shutdown procedure for tool
     """
     
+    _place: str = '.'.join(__name__.split('.')[1:-1])
     def __init__(self, 
         port: str, 
         limits: tuple[tuple[float]] = ((0, 0, 0), (0, 0, 0)), 
@@ -180,7 +181,7 @@ class Gantry(Mover):
         self.connect()
         return super().reset()
     
-    def setSpeed(self, speed: int): # NOTE: waiting for PR #48
+    def setSpeed(self, speed: int):
         """
         Set the speed of the robot
 

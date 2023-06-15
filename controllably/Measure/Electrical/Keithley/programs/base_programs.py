@@ -1,15 +1,11 @@
 # %% -*- coding: utf-8 -*-
 """
-This module holds the program class for tools from PiezoRobotics.
+This module holds the program class for tools from Keithley.
 
 Classes:
     IV_Scan (Program)
     LSV (Program)
     OCV (Program)
-
-Other constants and variables:
-    INPUTS_SET (list)
-    PROGRAM_NAMES (list)
 """
 # Standard library imports
 import pandas as pd
@@ -17,7 +13,7 @@ import time
 from typing import Optional, Protocol
 
 # Local application imports
-from ....program_utils import Program, get_program_details
+from ....program_utils import Program
 from ..keithley_lib import SenseDetails, SourceDetails
 print(f"Import: OK <{__name__}>")
 
@@ -79,6 +75,14 @@ class IV_Scan(Program):
         verbose: bool = False, 
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            device (Device): device object
+            parameters (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         super().__init__(device=device, parameters=parameters, verbose=verbose, **kwargs)
         return
     
@@ -100,7 +104,7 @@ class IV_Scan(Program):
             device.run()
             time.sleep(0.1*count)
         time.sleep(1)
-        self.data_df = device.read(bulk=True)
+        self.data_df = device.readAll()
         device.beep()
         device.getErrors()
         return
@@ -137,6 +141,14 @@ class OCV(Program):
         verbose: bool = False, 
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            device (Device): device object
+            parameters (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         super().__init__(device=device, parameters=parameters, verbose=verbose, **kwargs)
         return
     
@@ -156,7 +168,7 @@ class OCV(Program):
         device.toggleOutput(on=True)
         device.run()
         time.sleep(0.1*count)
-        self.data_df = device.read(bulk=True)
+        self.data_df = device.readAll()
         device.beep()
         device.getErrors()
         return
@@ -164,14 +176,14 @@ class OCV(Program):
 
 class LSV(Program):
     """
-    I-V Scan program
+    Linear Sweep Voltammetry Scan program
 
     ### Constructor
     Args:
         `device` (Device): device object
         `parameters` (Optional[dict], optional): dictionary of kwargs. Defaults to None.
         `verbose` (bool, optional): verbosity of class. Defaults to False.
-
+    
     ### Attributes
     - `data_df` (pd.DataFrame): data collected from device when running the program
     - `device` (Device): device object
@@ -200,6 +212,14 @@ class LSV(Program):
         verbose: bool = False, 
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            device (Device): device object
+            parameters (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         super().__init__(device=device, parameters=parameters, verbose=verbose, **kwargs)
         return
     
@@ -294,14 +314,5 @@ class LSV(Program):
         )
         device.start(sequential_commands=False)
         return
-
-
-# FIXME: Do away with these objects below
-PROGRAMS = [IV_Scan, OCV, LSV]
-INPUTS = [item for item in [[key for key in get_program_details(prog).inputs] for prog in PROGRAMS]]
-PROGRAM_NAMES = [prog.__name__ for prog in PROGRAMS]
-"""List of program names"""
-INPUTS_SET = sorted( list(set([item for sublist in INPUTS for item in sublist])) )
-"""Sorted list of input parameters"""
 
 # %%

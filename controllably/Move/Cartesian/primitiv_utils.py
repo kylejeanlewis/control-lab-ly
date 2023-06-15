@@ -26,7 +26,7 @@ class Primitiv(Gantry):
         `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to -80.
         `max_speed` (float, optional): maximum travel speed. Defaults to 250.
     
-    ### Methods:
+    ### Methods
     - `home`: make the robot go home
     """
     def __init__(self, 

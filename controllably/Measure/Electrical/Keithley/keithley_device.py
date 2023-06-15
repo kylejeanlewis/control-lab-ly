@@ -27,7 +27,7 @@ class KeithleyDevice(Instrument):
     Args:
         `ip_address` (str): IP address of device
         `name` (str, optional): name of device. Defaults to 'def'.
-        
+    
     ### Attributes
     - `active_buffer` (str): name of active buffer in Keithley
     - `name` (str): name of device
@@ -194,7 +194,7 @@ class KeithleyDevice(Instrument):
     
     def getErrors(self) -> list[str]:
         """
-        Gget error messages from device
+        Get error messages from device
         
         Returns:
             list[str]: list of error messages from device

@@ -95,7 +95,7 @@ class SenseDetails:
         `range_limit` (Union[str, float, None]): sensing range. Defaults to 'DEFault'.
         `four_point` (bool): whether to use four-point probe measurement. Defaults to True.
         `count` (int): number of readings to measure for each condition. Defaults to 1.
-        
+    
     ### Attributes
     - `count` (int): number of readings to measure for each condition
     - `four_point` (bool): whether to use four-point probe measurement
@@ -162,7 +162,7 @@ class SourceDetails:
         `function_type` (Optional[str]): name of function, choice from current and voltage. Defaults to None.
         `range_limit` (Union[str, float, None]): sourcing range. Defaults to None.
         `measure_limit` (Union[str, float, None]): limit imposed on the measurement range. Defaults to 'DEFault'.
-        
+    
     ### Attributes
     - `function_type` (Optional[str]): name of function
     - `measure_limit` (Union[str, float, None]): limit imposed on the measurement range

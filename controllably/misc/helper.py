@@ -4,8 +4,10 @@ This module holds the helper functions in Control.lab.ly.
 
 Functions:
     create_folder
+    get_machine_addresses
     get_method_names
     get_node
+    get_plans
     get_ports
     is_overrun
     pretty_print_duration
@@ -30,11 +32,12 @@ from typing import Callable, Optional
 import uuid
 
 # Third party imports
-import serial.tools.list_ports # pip install pyserial
-import yaml # pip install pyyaml
+import serial.tools.list_ports      # pip install pyserial
+import yaml                         # pip install pyyaml
 
 # Local application imports
 from . import decorators
+from . import factory
 print(f"Import: OK <{__name__}>")
 
 safety_countdown = 3
@@ -60,6 +63,24 @@ def create_folder(parent_folder:Optional[str] = None, child_folder:Optional[str]
     if not os.path.exists(folder):
         os.makedirs(folder)
     return main_folder
+
+def get_machine_addresses(registry:dict) -> dict:
+    """
+    Get the appropriate addresses for current machine
+
+    Args:
+        registry (str): dictionary of yaml file with com port addresses and camera ids
+
+    Returns:
+        dict: dictionary of com port addresses and camera ids for current machine
+    """
+    node_id = get_node()
+    addresses = registry.get('machine_id',{}).get(node_id,{})
+    if len(addresses) == 0:
+        print("\nAppend machine id and camera ids/port addresses to registry file")
+        print(yaml.dump(registry))
+        raise Exception(f"Machine not yet registered. (Current machine id: {node_id})")
+    return addresses
     
 def get_method_names(obj:Callable) -> list[str]:
     """
@@ -88,7 +109,27 @@ def get_node() -> str:
     Returns:
         str: machine unique identifier
     """
-    return str(uuid.getnode())
+    node_id = str(uuid.getnode())
+    print(f"Current machine id: {node_id}")
+    return node_id
+
+def get_plans(config_file:str, registry_file:Optional[str] = None, package:Optional[str] = None) -> dict:
+    """
+    Read configuration file (yaml) and get details
+
+    Args:
+        config_file (str): filename of configuration file
+        registry_file (Optional[str], optional): filename of registry file. Defaults to None.
+        package (Optional[str], optional): name of package to look in. Defaults to None.
+
+    Returns:
+        dict: dictionary of configuration parameters
+    """
+    configs = read_yaml(config_file, package)
+    registry = read_yaml(registry_file, package)
+    addresses = get_machine_addresses(registry=registry)
+    configs = factory.get_details(configs, addresses=addresses)
+    return configs
 
 def get_ports() -> list[str]:
     """
@@ -187,10 +228,10 @@ def safety_measures(func:Callable) -> Callable:
 def zip_inputs(primary_keyword:str, **kwargs) -> dict:
     """
     Checks and zips multiple keyword arguments of lists into dictionary
-
+    
     Args:
         primary_keyword (str): primary keyword to be used as key
-        
+    
     Kwargs:
         key, list[...]: {keyword, list of values} pairs
 
@@ -215,14 +256,5 @@ def zip_inputs(primary_keyword:str, **kwargs) -> dict:
     kwargs_df.set_index(primary_keyword, drop=False, inplace=True)
     return kwargs_df.to_dict('index')
 
-
-### NOTE: DEPRECATE
-def display_ports() -> list[str]:
-    """
-    Get available ports
-
-    Returns:
-        list: list of connected serial ports
-    """
-    print("'display_ports()' method to be deprecated. Use 'get_ports()' method instead.")
-    return get_ports()
+__where__ = "misc.Helper"
+factory.include_this_module(get_local_only=True)

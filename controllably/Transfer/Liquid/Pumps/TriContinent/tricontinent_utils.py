@@ -31,14 +31,14 @@ class TriContinent(Pump):
         `capacity` (Union[int, tuple[int]]): capacity (capacities)
         `output_right` (Union[bool, tuple[bool]]): whether liquid is pumped out to the right for channel(s)
         `name` (Union[str, tuple[str]], optional): name of the pump(s). Defaults to ''.
-        
+    
     ### Attributes
     - `channels` (dict[int, TriContinentPump]): dictionary of {channel id, TriContinentPump object}
     - `current_channel` (TriContinentPump): currently active pump
     - `name` (str): name of current pump
     - `capacity` (int): syringe capacity of current pump
     - `resolution` (float): volume resolution of current pump (i.e. uL per step)
-    - `step_limit` (int): maximum allowable position of current pump
+    - `limits` (int): maximum allowable position of current pump
     - `position` (int): position of plunger for current pump
     
     ### Properties
@@ -117,7 +117,7 @@ class TriContinent(Pump):
         self.name = ''
         self.capacity = 0
         self.resolution = 1
-        self.step_limit = 1
+        self.limits = 1
         
         self.position = 0
         for channel in self.channels:
@@ -141,7 +141,7 @@ class TriContinent(Pump):
     
     @property
     def volume(self) -> float:
-        return self.position/self.step_limit * self.capacity
+        return self.position/self.limits * self.capacity
     
     # Decorators
     def _single_action(func: Callable) -> Callable:
@@ -211,7 +211,7 @@ class TriContinent(Pump):
         Returns:
             str: command string
         """
-        steps = min(int(volume/self.resolution), self.step_limit-self.position)
+        steps = min(int(volume/self.resolution), self.limits-self.position)
         volume = steps * self.resolution
         self.queue([
             self.setStartSpeed(start_speed),
@@ -300,7 +300,7 @@ class TriContinent(Pump):
         Returns:
             str: command string
         """
-        steps = min(int(volume/self.resolution), self.step_limit)
+        steps = min(int(volume/self.resolution), self.limits)
         volume = steps * self.resolution
         self.queue([
             self.setStartSpeed(start_speed),
@@ -349,9 +349,9 @@ class TriContinent(Pump):
         Returns:
             str: command string
         """
-        self.position = self.step_limit
+        self.position = self.limits
         self.current_pump.position = self.position
-        return f"IA{self.step_limit}"
+        return f"IA{self.limits}"
 
     def getPosition(self, channel:Optional[int] = None) -> int:
         """
@@ -639,7 +639,7 @@ class TriContinent(Pump):
         self.name = pump.name
         self.capacity = pump.capacity
         self.resolution = pump.resolution
-        self.step_limit = pump.step_limit
+        self.limits = pump.limits
         self.position = pump.position
         return
  

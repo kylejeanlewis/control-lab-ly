@@ -7,23 +7,24 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+import inspect
 import numpy as np
-from typing import Callable, Optional, Protocol, Union
+from typing import Optional, Protocol, Union
 
 # Third party imports
 import PySimpleGUI as sg # pip install PySimpleGUI
 
 # Local application imports
-from ...misc import Factory, Helper
-from .gui_utils import Panel
+from ....misc import Helper, modules
+from ..gui_utils import Panel
 print(f"Import: OK <{__name__}>")
 
+MAX_FUNCTION_BUTTONS = 7
+
 class Mover(Protocol):
-    # attachment: Callable
+    _place: str
     heights: dict
     home_coordinates: tuple
-    max_actions: int
-    possible_attachments: list
     tool_position: tuple(np.ndarray, np.ndarray)
     def home(self, *args, **kwargs):
         ...
@@ -35,8 +36,6 @@ class Mover(Protocol):
         ...
     def rotateTo(self, *args, **kwargs):
         ...
-    # def toggleAttachment(self, *args, **kwargs):
-    #     ...
     def _transform_out(self, *args, **kwargs):
         ...
         
@@ -50,13 +49,13 @@ class MoverPanel(Panel):
         `name` (str, optional): name of panel. Defaults to 'MOVE'.
         `group` (str, optional): name of group. Defaults to 'mover'.
         `axes` (Union[list, str], optional): available axes of motion. Defaults to 'XYZabc'.
-        
+    
     ### Attributes
     - `attachment_methods` (list[str]): list of methods available to attachment
     - `axes` (list[str]): list of available axes of motion
     - `buttons` (dict[str, tuple[str, float]]) : dictionary of {button id, (axes, value)}
     - `current_attachment` (str): name of current attachment
-    - `methods_fn_key_map` (dict[str, str]): dictionary of {button id, button label} 
+    - `method_map` (dict[str, str]): dictionary of {button id, button label} 
     
     ### Properties
     - `mover` (Mover): alias for `tool`
@@ -89,7 +88,7 @@ class MoverPanel(Panel):
         self.buttons = {}
         self.current_attachment = ''
         self.attachment_methods = []
-        self.methods_fn_key_map = {}
+        self.method_map = {}
         
         self.flags['update_position'] = True
         return
@@ -251,8 +250,8 @@ class MoverPanel(Panel):
             tool_position = cache_position
             
         # 7. Function buttons for attachment
-        if event in self.methods_fn_key_map:
-            fn_name = self.methods_fn_key_map[event].lower()
+        if event in self.method_map:
+            fn_name = self.method_map[event].lower()
             print(fn_name)
             action = getattr(self.mover.attachment, fn_name, None)
             if callable(action):
@@ -260,17 +259,29 @@ class MoverPanel(Panel):
                 
         # 8. Select attachment
         if event == self._mangle('-ATTACH-'):
-            selected_attachment = values[self._mangle('-ATTACH-')]         # COMBO
-            if selected_attachment != self.current_attachment:
-                if selected_attachment == 'None':
+            selected_attachment = values[self._mangle('-ATTACH-')]                                      # Drop-down list
+            if selected_attachment != self.current_attachment:                                          # Only when there is a change
+                if selected_attachment == 'None':                                                       # If None selected, remove attachment
                     selected_attachment = ''
                     self.mover.toggleAttachment(False)
                     self.attachment_methods = []
                     update_part = self._toggle_buttons(False)
-                else:
-                    selected_attachment_class = Factory.get_class(f"Transfer.Substrate.Dobot.{selected_attachment}")     ### FIXME: hard-coded
+                else:                                                                                   # Find and attach selected attachment
+                    selected_attachment_class = eval(
+                        f"modules.at.{self.mover._place}.attachments.{selected_attachment}"
+                    )
                     self.mover.toggleAttachment(True, selected_attachment_class)
-                    self.attachment_methods = [method for method in Helper.get_method_names(self.mover.attachment) if not method.startswith('_')]
+                    methods = []
+                    for method in Helper.get_method_names(self.mover.attachment):                       # Find methods to surface as function buttons
+                        if method.startswith('_'):
+                            continue
+                        signature = inspect.signature(getattr(self.mover.attachment, method))
+                        parameters = dict(signature.parameters)
+                        parameters.pop('self', None)
+                        if any([(p.default == inspect.Parameter.empty) for p in list(parameters.values())]):
+                            continue
+                        methods.append(method)
+                    self.attachment_methods = methods
                     fn_buttons = [l.title() for l in self.attachment_methods]
                     update_part = self._toggle_buttons(True, fn_buttons)
                 updates.update(update_part)
@@ -300,12 +311,15 @@ class MoverPanel(Panel):
         show_buttons = False
         alt_texts = []
         fn_layout = []
-        button_labels = [f'FN{i+1}' for i in range(max(self.mover.max_actions,5))]  # Placeholder buttons
+        button_labels = [f'FN{i+1}' for i in range(MAX_FUNCTION_BUTTONS)]  # Placeholder buttons
         if 'attachment' in dir(self.mover):
+            attachments = eval(f"modules.at.{self.mover._place}.attachments")
+            attachment_names = [a for a in attachments if a != "_doc_"]
+            
             show_section = True
             default_value = self.mover.attachment.__class__.__name__ if self.mover.attachment is not None else 'None'
             dropdown = sg.Combo(
-                values=self.mover.possible_attachments+['None'], default_value=default_value,
+                values=['None']+attachment_names, default_value=default_value,
                 size=(20, 1), key=self._mangle('-ATTACH-'), enable_events=True, readonly=True
             )
             dropdown_column = sg.Column([[dropdown]], justification='center')
@@ -316,7 +330,7 @@ class MoverPanel(Panel):
                 self.current_attachment = self.mover.attachment.__class__.__name__
                 self.attachment_methods = [method for method in Helper.get_method_names(self.mover.attachment) if not method.startswith('_')]
                 alt_texts = [l.title() for l in self.attachment_methods]
-                self.methods_fn_key_map = {f'-{self.name}-{k}-':v for k,v in zip(button_labels, alt_texts)}
+                self.method_map = {f'-{self.name}-{k}-':v for k,v in zip(button_labels, alt_texts)}
         buttons = self.getButtons(button_labels, (5,2), self.name, font, texts=alt_texts)
         buttons = [sg.pin(button) for button in buttons]
         buttons_column = sg.Column([buttons], justification='center', visible=show_buttons, key=self._mangle('-FN-BUTTONS-'))
@@ -327,7 +341,7 @@ class MoverPanel(Panel):
      
     def _toggle_buttons(self, on:bool, active_buttons:Optional[list[str]] = None) -> dict[str, dict]:
         """
-        Toggle between shown the function buttons for attachment
+        Toggle between showing the function buttons for attachment
 
         Args:
             on (bool): whether to show buttons
@@ -337,7 +351,7 @@ class MoverPanel(Panel):
             dict: dictionary of updates
         """
         updates = {}
-        self.methods_fn_key_map = {}
+        self.method_map = {}
         # Hide all buttons
         if not on:
             updates[self._mangle('-FN-BUTTONS-')] = dict(visible=False)
@@ -350,10 +364,10 @@ class MoverPanel(Panel):
         for i,method in enumerate(active_buttons):
             key_button = self._mangle(f'-FN{i+1}-')
             updates[key_button] = dict(visible=True, text=method)
-            self.methods_fn_key_map[key_button] = method
+            self.method_map[key_button] = method
         
         # Hide remaining buttons
-        for j in range(i+1, max(self.mover.max_actions,5)):
+        for j in range(len(active_buttons), MAX_FUNCTION_BUTTONS):
             key_button = self._mangle(f'-FN{j+1}-')
             updates[key_button] = dict(visible=False, text=f'FN{j+1}')
         return updates

@@ -26,7 +26,7 @@ class M1Pro(Dobot):
         `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to 100.
         `home_coordinates` (tuple[float], optional): home coordinates for the robot. Defaults to (0,300,100).
     
-    ## Methods
+    ### Methods
     - `home`: make the robot go home
     - `isFeasible`: checks and returns whether the target coordinate is feasible
     - `moveCoordBy`: relative Cartesian movement and tool orientation, using robot coordinates
@@ -64,7 +64,7 @@ class M1Pro(Dobot):
             **kwargs
         )
         self._speed_angular_max = 180
-        self.setHandedness(right_hand=right_handed, stretch=False)
+        self.setHandedness(right_hand=right_handed, stretch=True)
         self.home()
         return
     
@@ -122,7 +122,8 @@ class M1Pro(Dobot):
         #     return False
         
         grad = abs(y/(x+1E-6))
-        if grad > 0.75 or x < 0:
+        gradient_threshold = 0.1
+        if grad > gradient_threshold or x < 0:
             right_hand = (y>0)
             self.setHandedness(right_hand=right_hand, stretch=True) 
         return not self.deck.is_excluded(self._transform_out(coordinates, tool_offset=True))
@@ -164,16 +165,11 @@ class M1Pro(Dobot):
         Returns:
             bool: whether movement is successful
         """
-        set_value = None
-        if not right_hand and self.flags['right_handed'] != False:  # Set to left-handed: 0
-            set_value = 0
-        elif right_hand and self.flags['right_handed'] != True:     # Set to right-handed: 1
-            set_value = 1
-        else:
+        if right_hand == self.flags['right_handed']:
             return False
         
         try:
-            self.dashboard.SetArmOrientation(set_value,1,1,1)
+            self.dashboard.SetArmOrientation(int(right_hand),1,1,1)
         except (AttributeError, OSError):
             if self.verbose:
                 print("Not connected to arm!")
@@ -182,7 +178,7 @@ class M1Pro(Dobot):
             if stretch:
                 self.stretchArm()
                 time.sleep(1)
-        self.setFlag(right_handed=bool(set_value))
+        self.setFlag(right_handed=right_hand)
         return True
             
     def stretchArm(self) -> bool:
@@ -192,7 +188,12 @@ class M1Pro(Dobot):
         Returns:
             bool: whether movement is successful
         """
-        _,y,z = self.coordinates
-        y = 240 * math.copysign(1, y)
-        return self.moveCoordTo(coordinates=(320,y,z))
+        x,y,z = self.coordinates
+        y_stretch = math.copysign(240, y)
+        z_home = self.home_coordinates[2]
+        ret1 = self.moveCoordTo(coordinates=(x,y,z_home))
+        ret2 = self.moveCoordTo(coordinates=(320,y_stretch,z_home))
+        ret3 = self.moveCoordTo(coordinates=(x,y,z_home))
+        ret4 = self.moveCoordTo(coordinates=(x,y,z))
+        return all([ret1,ret2,ret3,ret4])
    

@@ -1,11 +1,10 @@
 # %% -*- coding: utf-8 -*-
 """
-This module holds the base class for control panels as well as multichannel panels.
+This module holds the base class for control panels.
 
 Classes:
     Panel (ABC)
-    MultiChannelPanel (Panel)
-    
+
 Other constants and variables:
     HEIGHT (int): height of screen size in number of pixels
     WIDTH (int): width of screen size in number of pixels
@@ -13,11 +12,10 @@ Other constants and variables:
 # Standard library imports
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from collections import OrderedDict
 from typing import Optional, Union
 
 # Third party imports
-import PySimpleGUI as sg # pip install PySimpleGUI
+import PySimpleGUI as sg                                            # pip install PySimpleGUI
 from PySimpleGUI import WIN_CLOSED, WINDOW_CLOSE_ATTEMPTED_EVENT
 
 # Local application imports
@@ -37,7 +35,7 @@ class Panel(ABC):
         `font_sizes` (tuple[int], optional): list of font sizes. Defaults to (14,12,10,8,6).
         `theme` (str, optional): name of theme. Defaults to 'LightGreen'.
         `typeface` (str, optional): name of typeface. Defaults to "Helvetica".
-
+    
     ### Attributes
     #### Class
     - `font_sizes` (tuple[int]): list of font sizes
@@ -265,13 +263,25 @@ class Panel(ABC):
         return buttons
     
     @staticmethod
-    def getInputs(fields:list[str], key_prefix: str) -> list[sg.Column]:
+    def getInputs(
+            fields: list[str], 
+            key_prefix: str, 
+            initial_visibility: bool = True, 
+            label_map: Optional[dict] = None,
+            defaults: Optional[dict] = None,
+            tooltips: Optional[dict] = None,
+            **kwargs
+        ) -> list[sg.Column]:
         """
         Get the layout for the input section
         
         Args:
             fields (list[str]): list of field names
             key_prefix (str): prefix of button key
+            initial_visibility (bool, optional): whether the field is initially visible. Defaults to True.
+            label_map (Optional[dict], optional): text label for each field. Defaults to None.
+            defaults (Optional[dict], optional): default value for each field. Defaults to None.
+            tooltips (Optional[dict], optional): tooltip for each field. Defaults to None.
 
         Returns:
             list[sg.Column]: list of columns
@@ -282,16 +292,20 @@ class Panel(ABC):
         for input_field in fields:
             key_label = f'-{key_prefix}-{input_field.upper()}-LABEL-'
             key_input = f'-{key_prefix}-{input_field.upper()}-VALUE-'
+            label = label_map.get(input_field, input_field.title()) if type(label_map) is dict else input_field.title()
+            default = defaults.get(input_field, '') if type(defaults) is dict else ''
+            tooltip = tooltips.get(input_field, None) if type(tooltips) is dict else None
+            
             _label = sg.pin(
                 sg.Column(
-                    [[sg.Text(input_field.title(), key=key_label, visible=True)]],
-                    key=f'{key_label}BOX-', visible=True
+                    [[sg.Text(label, key=key_label, visible=True, tooltip=tooltip)]],
+                    key=f'{key_label}BOX-', visible=initial_visibility
                 )
             )
             _input = sg.pin(
                 sg.Column(
-                    [[sg.Input(size=(5,2), key=key_input, visible=True, tooltip='')]],
-                    key=f'{key_input}BOX-', visible=True
+                    [[sg.Input(default, size=(5,2), key=key_input, visible=True, tooltip=tooltip)]],
+                    key=f'{key_input}BOX-', visible=initial_visibility
                 )
             )
             labels.append([_label])
@@ -331,8 +345,8 @@ class Panel(ABC):
             print(e)
         return ele
     
-    @staticmethod
-    def parseInput(text:str) -> list[Union[float, str]]:
+    @classmethod
+    def parseInput(cls, text:str) -> Union[list, bool, float, str, None]:
         """
         Parse inputs from GUI
 
@@ -340,27 +354,37 @@ class Panel(ABC):
             text (str): input text read from GUI window
 
         Returns:
-            list[Union[float, str]]: variable output including floats, strings, and tuples
+            Union[list, bool, float, str, None]: variable output including floats, strings, and tuples
         """
+        text = text.strip()
+        if len(text) == 0:
+            return None
+        
+        array = []
         if ',' in text:
-            strings = text.split(',')
+            array = text.split(',')
         elif ';' in text:
-            strings = text.split(';')
-        else:
-            try:
-                text = float(text)
-                return text
-            finally:
-                # return text
-                pass
-        output = []
-        for text in strings:
-            try:
-                output.append(float(text))
-            except ValueError:
-                # output.append(text)
-                pass
-        return output
+            array = text.split(';')
+        if len(array):
+            new_array = []
+            for value in array:
+                new_array.append(cls.parseInput(value))
+            return new_array
+        
+        if text.replace('.','',1).replace('-','',1).isdigit():
+            if '.' in text:
+                return float(text)
+            else:
+                return int(text)
+        
+        if text.title() == "True":
+            return True
+        if text.title() == "False":
+            return False
+        
+        if text[0] in ("'", '"') and text[-1] in ("'", '"'):
+            return text[1:-1]
+        return text
     
     def runGUI(self, title:str = 'Application', maximize:bool = False):
         """
@@ -391,8 +415,9 @@ class Panel(ABC):
         """
         if not all([type(v)==bool for v in kwargs.values()]):
             raise ValueError("Ensure all assigned flag values are boolean.")
-        for key, value in kwargs.items():
-            self.flags[key] = value
+        self.flags.update(kwargs)
+        # for key, value in kwargs.items():
+        #     self.flags[key] = value
         return
 
     # Protected method(s)
@@ -424,89 +449,3 @@ class Panel(ABC):
             str: mangled text
         """
         return f'-{self.name}{text}'
-    
-
-class MultiChannelPanel(Panel):
-    """
-    Abstract Base Class (ABC) for Multi-Channel Panel objects (i.e. GUI panels for tools with multiple channels).
-    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
-
-    ### Constructor
-    Args:
-        `name` (str, optional): name of panel. Defaults to ''.
-        `group` (Optional[str], optional): name of group. Defaults to None.
-    
-    ### Methods
-    #### Abstract
-    - `getChannelPanel`: get the panel layout for a single channel
-    - `listenEvents`: listen to events and act on values
-    #### Public
-    - `getLayout`: build `sg.Column` object
-    """
-    
-    def __init__(self, name:str = '', group:Optional[str] = None):
-        """
-        Instantiate the class
-
-        Args:
-            name (str, optional): name of panel. Defaults to ''.
-            group (Optional[str], optional): name of group. Defaults to None.
-        """
-        super().__init__(name=name, group=group)
-        return
-    
-    @abstractmethod
-    def getChannelPanel(self, channel_id:int, tool:object, **kwargs) -> sg.Column:
-        """
-        Get the panel layout for a single channel
-
-        Args:
-            channel_id (int): channel index
-            tool (object): tool object
-
-        Returns:
-            sg.Column: Column object
-        """
-        
-    def getLayout(self, title:str = 'Tool Control', title_font_level:int = 1, **kwargs) -> sg.Column:
-        """
-        Build `sg.Column` object
-
-        Args:
-            title (str, optional): title of layout. Defaults to 'Tool Control'.
-            title_font_level (int, optional): index of font size from levels in `font_sizes`. Defaults to 1.
-
-        Returns:
-            sg.Column: Column object
-        """
-        font = (self.typeface, self.font_sizes[title_font_level])
-        layout = super().getLayout(title, justification='center', font=font)
-        channels = {}
-        if 'channels' in dir(self.tool):
-            channels = self.tool.channels
-        else:
-            channels = {self.tool.channel: self.tool}
-        if len(channels) == 0:
-            return layout
-        
-        channel_panels = []
-        for channel_id, tool in channels.items():
-            _layout = self.getChannelPanel(channel_id, tool)
-            channel_panels.append((channel_id, _layout))
-        if len(channel_panels) == 1:
-            panel = channel_panels[0][1]
-        else:
-            tabs = [sg.Tab(key, [[_layout]], expand_x=True) for key,_layout in channel_panels]
-            panel = sg.TabGroup(
-                [tabs], tab_location='topleft', key=f'-{self.name}-TABS-', 
-                expand_x=True, expand_y=True
-            )
-        
-        suite = sg.Column([[panel]], vertical_alignment='top')
-        layout = [
-            [layout],
-            [sg.Push()],
-            [suite]
-        ]
-        layout = sg.Column(layout, vertical_alignment='top')
-        return layout

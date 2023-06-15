@@ -11,7 +11,7 @@ me.setTemperature(35, blocking=False)
 # %%
 me.toggleRecord(False)
 # %%
-me.getTemperatures()
+me.getTemperature()
 # %%
 me.setTemperature(25, blocking=False)
 # %%

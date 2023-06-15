@@ -151,7 +151,7 @@ class Labware:
         `bottom_left_coordinates` (tuple[float]): coordinates of bottom left corner of Labware (i.e. reference point)
         `labware_file` (str): filepath of Labware JSON file
         `package` (Optional[str], optional): name of package to look in. Defaults to None.
-        
+    
     ### Attributes
     - `details` (dict): dictionary read from Labware file
     - `name` (str): name of Labware
@@ -490,3 +490,7 @@ class Deck:
         self._slots.pop(str(index))
         self.exclusion_zones.pop(str(index))
         return
+
+__where__ = "misc.Layout"
+from .factory import include_this_module
+include_this_module(get_local_only=True)

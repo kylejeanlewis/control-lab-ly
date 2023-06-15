@@ -343,7 +343,7 @@ class SyringeAssembly(LiquidHandler):
         return self.pump.isConnected()
 
     @_multi_channel
-    def pullback(self, channel:Optional[Union[int, tuple[int]]] = None,): # FIXME
+    def pullback(self, channel:Optional[Union[int, tuple[int]]] = None,):
         """
         Pullback liquid from tip
 
@@ -354,7 +354,7 @@ class SyringeAssembly(LiquidHandler):
             bool: whether the action is successful
         """
         syringe = self.syringes[channel]
-        return self.pump.pullback(speed=300, pump_time=syringe.pullback_time, channel=channel)
+        return self.pump.pullback(pump_time=syringe.pullback_time, channel=channel)
     
     @_multi_channel
     def rinse(self, 

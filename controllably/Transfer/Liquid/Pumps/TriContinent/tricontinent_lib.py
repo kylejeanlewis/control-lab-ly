@@ -51,13 +51,13 @@ class TriContinentPump:
     - `channel` (int): channel id
     - `command` (str): command string
     - `init_status` (bool): whether the pump has been initialised
+    - `limits` (int): maximum allowable position
     - `model` (str): TriContinent pump model name
     - `name` (str): name of the pump
     - `output_right` (bool): whether liquid is pumped out to the right
     - `position` (int): position of plunger
     - `reagent` (str): name of reagent in pump
     - `resolution` (float): volume resolution of pump (i.e. uL per step)
-    - `step_limit` (int): maximum allowable position
     
     ### Properties
     - `status` (str): pump device status
@@ -70,8 +70,8 @@ class TriContinentPump:
     output_right: bool
     name: str = ''
     reagent: str = ''
+    limits: int = field(init=False)
     resolution: float = field(init=False)
-    step_limit: int = field(init=False)
     
     busy: bool = field(default=False, init=False)
     init_status: bool = field(default=False, init=False)
@@ -81,8 +81,8 @@ class TriContinentPump:
     _status_code: str = field(default='', init=False)
     
     def __post_init__(self):
-        self.step_limit = int(''.join(filter(str.isdigit, self.model)))
-        self.resolution = self.capacity / self.step_limit
+        self.limits = int(''.join(filter(str.isdigit, self.model)))
+        self.resolution = self.capacity / self.limits
         if len(self.name) == 0:
             self.name = f"Pump {self.channel}"
         return
@@ -100,4 +100,4 @@ class TriContinentPump:
     
     @property
     def volume(self) -> float:
-        return self.position/self.step_limit * self.capacity
+        return self.position/self.limits * self.capacity

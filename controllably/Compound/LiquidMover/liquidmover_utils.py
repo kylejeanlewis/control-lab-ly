@@ -60,7 +60,7 @@ class LiquidMoverSetup(CompoundSetup):
         `layout_dict` (Optional[dict], optional): dictionary of layout. Defaults to None.
         `components` (Optional[dict], optional): dictionary of components. Defaults to None.
         `tip_approach_height` (float, optional): height in mm from which to approach tip rack during pick up. Defaults to 20.
-        
+    
     ### Attributes
     - `tip_approach_height` (float): height in mm from which to approach tip rack during tip pickup
     

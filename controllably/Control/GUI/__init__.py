@@ -5,18 +5,16 @@ for measurers, movers, and viewers.
 Classes:
     Panel (ABC)
     CompoundPanel (Panel)
-    LiquidPanel (Panel)
-    MeasurerPanel (Panel)
-    MoverPanel (Panel)
+    Guide(Panel)
     MultiChannelPanel (Panel)
-    ViewerPanel (Panel)
+
+Functions:
+    guide_me
 """
-from .gui_utils import Panel, MultiChannelPanel
+from .gui_utils import Panel
 from .compound_panel import CompoundPanel
-from .liquid_panel import LiquidPanel
-from .measurer_panel import MeasurerPanel
-from .mover_panel import MoverPanel
-from .viewer_panel import ViewerPanel
+from .guide_panel import Guide, guide_me
+from .multichannel_panel import MultiChannelPanel
 
 from controllably import include_this_module
 include_this_module(get_local_only=False)

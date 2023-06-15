@@ -35,7 +35,7 @@ class MassBalance(Measurer):
     Args:
         `port` (str): COM port address
         `calibration_factor` (float, optional): calibration factor of device readout to mg. Defaults to CALIBRATION_FACTOR.
-        
+    
     ### Attributes
     - `baseline` (float): baseline readout at which zero mass is set
     - `calibration_factor` (float): calibration factor of device readout to mg
@@ -43,6 +43,7 @@ class MassBalance(Measurer):
     
     ### Properties
     - `mass` (float): mass of sample
+    - `port` (str): COM port address
     
     ### Methods
     - `clearCache`: clear most recent data and configurations
@@ -86,6 +87,10 @@ class MassBalance(Measurer):
     @property
     def mass(self) -> float:
         return round(self._mass, self.precision)
+    
+    @property
+    def port(self) -> str:
+        return self.connection_details.get('port', '')
    
     def clearCache(self):
         """Clear most recent data and configurations"""
@@ -129,9 +134,6 @@ class MassBalance(Measurer):
                     self._mass
                 ]
                 row = {k:v for k,v in zip(COLUMNS, values)}
-                # self.buffer_df = self.buffer_df.append(row, ignore_index=True)
-                # new_row_df = pd.DataFrame(row)
-                # self.buffer_df = pd.concat([self.buffer_df, new_row_df])
                 new_row_df = pd.DataFrame(row, index=[0])
                 self.buffer_df = pd.concat([self.buffer_df, new_row_df], ignore_index=True)
         return response
@@ -174,7 +176,7 @@ class MassBalance(Measurer):
         Start or stop data recording
 
         Args:
-            on (bool): whether to start recording temperature
+            on (bool): whether to start recording data
         """
         self.setFlag(record=on, get_feedback=on, pause_feedback=False)
         self.toggleFeedbackLoop(on=on)
@@ -245,7 +247,7 @@ class MassBalance(Measurer):
         print('Stop listening...')
         return
 
-    def _read(self):
+    def _read(self) -> str:
         """
         Read response from device
 

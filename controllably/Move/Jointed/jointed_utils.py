@@ -24,7 +24,7 @@ class RobotArm(Mover):
     Args:
         `safe_height` (Optional[float], optional): height at which obstacles can be avoided. Defaults to None.
         `retract` (bool, optional): whether to retract arm before movement. Defaults to False.
-
+    
     ### Properties
     - `speed_angular` (float): angular speed of the robot
 
@@ -54,6 +54,7 @@ class RobotArm(Mover):
         'connected': False,
         'retract': False
     }
+    _place: str = '.'.join(__name__.split('.')[1:-1])
     def __init__(self, safe_height:Optional[float] = None, retract:bool = False, **kwargs):
         """
         Instantiate the class

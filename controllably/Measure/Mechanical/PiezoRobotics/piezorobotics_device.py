@@ -34,7 +34,7 @@ class PiezoRoboticsDevice(Instrument):
     Args:
         `port` (str): COM port address
         `channel` (int, optional): channel id. Defaults to 1.
-        
+    
     ### Attributes
     - `channel` (int): channel id
     
