@@ -394,5 +394,5 @@ class Guide(Panel):
 def guide_me():
     """Start guide to view documentation"""
     gui = Guide()
-    gui.runGUI()
+    gui.runGUI('Documentation')
     return
