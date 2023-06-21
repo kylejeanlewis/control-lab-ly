@@ -81,5 +81,5 @@ class Primitiv(Gantry):
             # Start grbl 
             self._write("\r\n\r\n")
             time.sleep(2)
-            self.device.flushInput()
+            self.device.reset_input_buffer()
         return

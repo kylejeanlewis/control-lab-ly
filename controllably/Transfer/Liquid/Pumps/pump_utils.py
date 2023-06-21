@@ -87,7 +87,7 @@ class Pump(LiquidHandler):
                 print(e)
         else:
             time.sleep(2)   # Wait for grbl to initialize
-            device.flushInput()
+            device.reset_input_buffer()
             print(f"Connection opened to {port}")
             self.setFlag(connected=True)
         self.device = device
