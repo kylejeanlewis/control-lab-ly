@@ -12,7 +12,8 @@ me = Primitiv(
     verbose=True
 )
 me.__dict__
-
+me.connection_details['timeout'] = 5
+me.reconnect()
 # %%
 gui = MoverPanel(me, axes='XYZ')
 gui.runGUI()
@@ -20,7 +21,13 @@ gui.runGUI()
 # %%
 me.home()
 # %%
+me.moveTo((-20,-450,-150))
+# %%
+me.home()
+# %%
 me.moveTo((-150,-50,-50))
+# %%
+me.moveTo((-50,-50,-50))
 # %%
 me.move('z',-20)
 # %%
@@ -29,6 +36,8 @@ me.moveBy((50,-50,-50))
 me.safeMoveTo((-120,-40,-90))
 # %%
 me.moveTo((-120,-40,-90))
+# %%
+me.moveTo((-190,-10,-10))
 # %%
 me.home()
 # %%
