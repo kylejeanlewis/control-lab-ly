@@ -1,5 +1,5 @@
 # %%
-import init
+from .. import init
 from controllably.Transfer.Liquid.Pumps import Peristaltic
 
 me = Peristaltic('COM28')
