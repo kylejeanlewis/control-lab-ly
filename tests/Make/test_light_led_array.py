@@ -1,5 +1,5 @@
 # %% 
-import init
+from .. import init
 from controllably.Make.Light import LEDArray
 me = LEDArray('COM4', channels=[0,1,2,3])
 me.__dict__
