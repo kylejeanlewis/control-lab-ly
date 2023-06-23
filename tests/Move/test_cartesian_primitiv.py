@@ -1,7 +1,7 @@
 # %%
-import init
+from .. import init
 from controllably.Move.Cartesian import Primitiv
-from controllably.Control.GUI import MoverPanel
+from controllably.Control.GUI.Basic import MoverPanel
 
 gui = MoverPanel(Primitiv('COM5'))
 # gui.runGUI()

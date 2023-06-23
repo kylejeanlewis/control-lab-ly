@@ -1,7 +1,7 @@
-# %%
-import init
+ # %%
+from .. import init
 from controllably.Move.Jointed.Dobot import M1Pro
-from controllably.Control.GUI import MoverPanel
+from controllably.Control.GUI.Basic import MoverPanel
 from controllably import Helper, Factory
 
 details = Factory.get_details(Helper.read_yaml('configs/m1pro.yaml'))['mover']

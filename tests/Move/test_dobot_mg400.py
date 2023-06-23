@@ -1,7 +1,7 @@
 # %%
-import init
+from .. import init
 from controllably.Move.Jointed.Dobot import MG400
-from controllably.Control.GUI import MoverPanel
+from controllably.Control.GUI.Basic import MoverPanel
 from controllably.Transfer.Substrate.Dobot import TwoJawGrip
 
 gui = MoverPanel(MG400('192.168.2.6'), axes='XYZa')

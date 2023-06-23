@@ -1,7 +1,7 @@
 # %%
-import init
+from .. import init
 from controllably.Move.Cartesian import Ender
-from controllably.Control.GUI import MoverPanel
+from controllably.Control.GUI.Basic import MoverPanel
 
 gui = MoverPanel(Ender('COM4'))
 # gui.runGUI()
