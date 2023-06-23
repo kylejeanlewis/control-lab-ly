@@ -1,5 +1,5 @@
 # %%
-import init
+from .. import init
 import numpy as np
 from controllably.Compound.LiquidMover import LiquidMoverSetup
 from controllably import Helper, Factory
