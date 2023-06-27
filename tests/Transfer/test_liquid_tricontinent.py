@@ -1,5 +1,5 @@
 # %%
-from .. import init
+import init
 from controllably.Transfer.Liquid.Pumps.TriContinent import TriContinent
 me = TriContinent(
     'COM23', 

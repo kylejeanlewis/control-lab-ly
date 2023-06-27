@@ -1,5 +1,5 @@
 # %%
-from .. import init
+import init
 from controllably.Transfer.Liquid import SyringeAssembly
 from controllably.Transfer.Liquid.Pumps import Peristaltic
 

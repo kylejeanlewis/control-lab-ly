@@ -1,5 +1,5 @@
 # %%
-from .. import init
+import init
 from controllably.Transfer.Liquid.Sartorius import Sartorius
 
 me = Sartorius('COM17')

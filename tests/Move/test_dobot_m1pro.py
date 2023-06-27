@@ -1,10 +1,10 @@
  # %%
-from .. import init
+import init
 from controllably.Move.Jointed.Dobot import M1Pro
 from controllably.Control.GUI.Basic import MoverPanel
 from controllably import Helper, Factory
 
-details = Factory.get_details(Helper.read_yaml('configs/m1pro.yaml'))['mover']
+details = Factory.get_details(Helper.read_yaml('../configs/m1pro.yaml'))['mover']
 gui = MoverPanel(M1Pro(**details['settings']), axes='XYZa')
 # gui.runGUI()
 me = gui.tool

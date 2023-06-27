@@ -1,5 +1,5 @@
 # %%
-from .. import init
+import init
 from controllably.Make.ThinFilm import SpinnerAssembly
 
 me = SpinnerAssembly(

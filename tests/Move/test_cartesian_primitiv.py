@@ -1,5 +1,5 @@
 # %%
-from .. import init
+import init
 from controllably.Move.Cartesian import Primitiv
 from controllably.Control.GUI.Basic import MoverPanel
 

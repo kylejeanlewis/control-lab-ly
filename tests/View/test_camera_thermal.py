@@ -1,5 +1,5 @@
 # %%
-from .. import init
+import init
 from controllably.Control.GUI.Basic import ViewerPanel
 from controllably.View.Thermal import Thermal
 

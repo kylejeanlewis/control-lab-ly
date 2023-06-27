@@ -1,5 +1,5 @@
 # %% 
-from .. import init
+import init
 from controllably.Make.Heat import Peltier
 me = Peltier('COM26')
 # %%

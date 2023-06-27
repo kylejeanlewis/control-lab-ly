@@ -1,5 +1,5 @@
 # %%
-from .. import init
+import init
 from controllably.Move.Jointed.Dobot import MG400
 from controllably.Control.GUI.Basic import MoverPanel
 from controllably.Transfer.Substrate.Dobot import TwoJawGrip

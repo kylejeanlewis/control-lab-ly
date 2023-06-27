@@ -5,7 +5,7 @@ from controllably.Transfer.Liquid.Pumps import Peristaltic
 from controllably.Compound.LiquidMover import LiquidMoverSetup
 from controllably import Helper, Factory
 
-details = Factory.get_details(Helper.read_yaml('configs/spin_printer.yaml'))['setup']
+details = Factory.get_details(Helper.read_yaml('../configs/spin_printer.yaml'))['setup']
 you = SyringeAssembly(
     pump=Peristaltic('COM28'),
     capacities=[2000]*5,

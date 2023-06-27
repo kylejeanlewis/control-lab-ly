@@ -1,5 +1,5 @@
 # %% 
-from .. import init
+import init
 import time
 from controllably.Make.Mixture.QInstruments import BioShake
 you = BioShake('COM27', verbose=True)
