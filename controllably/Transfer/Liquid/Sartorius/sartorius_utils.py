@@ -872,10 +872,10 @@ class Sartorius(LiquidHandler):
         Returns:
             bool: whether command was sent successfully
         """
-        if self.verbose:
-            print(command)
         fstring = f'{self.channel}{command}º\r' # command template: <PRE><ADR><CODE><DATA><LRC><POST>
         # bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
+        if self.verbose:
+            print(fstring)
         try:
             # Typical timeout wait is 400ms
             self.device.write(fstring.encode('utf-8'))

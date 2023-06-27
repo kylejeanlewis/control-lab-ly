@@ -291,10 +291,10 @@ class PiezoRoboticsDevice(Instrument):
         Returns:
             bool: whether command was sent successfully
         """
-        if self.verbose:
-            print(command)
         fstring = f'DMA,SN{self.channel},{command},END' # command template: <PRE>,<SN>,<CODE>,<OPTIONS>,<POST>
         # bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
+        if self.verbose:
+            print(fstring)
         try:
             self.device.write(fstring.encode('utf-8'))
         except AttributeError:

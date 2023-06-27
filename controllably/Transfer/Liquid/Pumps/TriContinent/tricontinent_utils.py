@@ -843,9 +843,9 @@ class TriContinent(Pump):
         Returns:
             bool: whether command was sent successfully
         """
-        if self.verbose:
-            print(command)
         fstring = f'/{self.channel}{command}\r' # command template: <PRE><ADR><STRING><POST>
+        if self.verbose:
+            print(fstring)
         try:
             # Typical timeout wait is 2s
             self.device.write(fstring.encode('utf-8'))

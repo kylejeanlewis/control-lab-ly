@@ -193,8 +193,11 @@ class Spinner(Maker):
         Args:
             speed (int): spin speed in rpm
         """
+        fstring = f"{speed}\n", 'utf-8'
+        if self.verbose:
+            print(fstring)
         try:
-            self.device.write(bytes(f"{speed}\n", 'utf-8'))
+            self.device.write(fstring.encode('utf-8'))
         except AttributeError:
             pass
         print(f"Spin speed (channel {self.channel}): {speed}")

@@ -996,10 +996,10 @@ class QInstruments:
         Returns:
             bool: whether command was sent successfully
         """
-        if self.verbose:
-            print(command)
         fstring = f'{command}\r' # command template: <long_form><\r> | <short_form><\r>
         # bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
+        if self.verbose:
+            print(fstring)
         try:
             # Typical timeout wait is 400ms
             self.device.write(fstring.encode('utf-8'))

@@ -103,6 +103,8 @@ class Pump(LiquidHandler):
         Returns:
             bool: whether command was sent successfully
         """
+        if self.verbose:
+            print(command)
         try:
             self.device.write(command.encode('utf-8'))
         except Exception as e:
