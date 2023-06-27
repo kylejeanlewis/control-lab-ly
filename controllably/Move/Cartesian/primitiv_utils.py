@@ -13,6 +13,7 @@ from typing import Optional
 # Local application imports
 from ...misc import Helper
 from .cartesian_utils import Gantry
+from .grbl_lib import AlarmCode, ErrorCode
 print(f"Import: OK <{__name__}>")
 
 class Primitiv(Gantry):
@@ -28,6 +29,8 @@ class Primitiv(Gantry):
     
     ### Methods
     - `home`: make the robot go home
+    - `getStatus`: get the current status of the tool
+    - `stop`: stop movement immediately
     """
     def __init__(self, 
         port: str, 
@@ -48,6 +51,21 @@ class Primitiv(Gantry):
         super().__init__(port=port, limits=limits, safe_height=safe_height, max_speed=max_speed, **kwargs)
         return
     
+    def getStatus(self) -> list[str]:
+        """
+        Get the current status of the tool
+
+        Returns:
+            list[str]: status output
+        """
+        responses = self._query('?\n')
+        print(responses)
+        for r in responses:
+            if '<' in r and '>' in r:
+                status_string = r.strip()
+                return status_string[1:-1].split('|')
+        return ['busy']
+    
     @Helper.safety_measures
     def home(self) -> bool:
         """Make the robot go home"""
@@ -59,16 +77,21 @@ class Primitiv(Gantry):
     def setSpeed(self, speed: int):
         print("`setSpeed` method not available in `Primitiv` class")
         return super().setSpeed(speed)
+    
+    def stop(self):
+        """Stop movement immediately"""
+        self._query("!\n")
+        return
 
     # Protected method(s)
-    def _connect(self, port:str, baudrate:int = 115200, timeout:Optional[int] = None):
+    def _connect(self, port:str, baudrate:int = 115200, timeout:Optional[int] = 0.1):
         """
         Connection procedure for tool
 
         Args:
             port (str): COM port address
             baudrate (int, optional): baudrate. Defaults to 115200.
-            timeout (int, optional): timeout in seconds. Defaults to 1.
+            timeout (Optional[int], optional): timeout in seconds. Defaults to 0.1.
         """
         super()._connect(port, baudrate, timeout)
         try:
@@ -83,3 +106,44 @@ class Primitiv(Gantry):
             time.sleep(2)
             self.device.reset_input_buffer()
         return
+    
+    def _get_settings(self) -> list[str]:
+        """
+        Get hardware settings
+
+        Returns:
+            list[str]: hardware settings
+        """
+        responses = self._query("$$\n")
+        return responses
+
+    # def _handle_alarms_and_errors(self, response:str):
+    #     """
+    #     Handle the alarms and errors arising from the tool
+        
+    #     Args:
+    #         response (str): string response from the tool
+    #     """
+    #     if 'reset' in response.lower():
+    #         self.reset()
+    #         self.home()
+            
+    #     if 'ALARM' not in response and 'error' not in response:
+    #         return
+    #     code_int = response.strip().split(":")[1]
+    #     code_int = int(code_int) if code_int.isnumeric() else code_int
+        
+    #     # Alarms
+    #     if 'ALARM' in response:
+    #         code = f'ac{code_int:02}'
+    #         if code_int in (1,3,8,9):
+    #             self.home()
+    #         if code in AlarmCode._member_names_:
+    #             print(AlarmCode[code].value)
+        
+    #     # Errors
+    #     if 'error' in response:
+    #         code = f'er{code_int:02}'
+    #         if code in ErrorCode._member_names_:
+    #             print(ErrorCode[code].value)
+    #     return
