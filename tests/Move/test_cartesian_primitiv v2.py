@@ -1,28 +1,20 @@
 # %%
-from .. import init
-from controllably import Factory, Helper
+import init
+from controllably import Factory, Helper, guide_me
 from controllably.Move.Cartesian import Primitiv
 from controllably.Transfer.Liquid.Sartorius import Sartorius
 
+from controllably.Compound.LiquidMover import LiquidMoverSetup
 from controllably.Control.GUI import CompoundPanel
 from controllably.Control.GUI.Basic import MoverPanel, LiquidPanel
 
 # %%
-details = Factory.get_details(Helper.read_yaml('configs/primitiv2.yaml'))
+details = Factory.get_details(Helper.read_yaml('../configs/primitiv2.yaml'))
 me = Primitiv(**details['mover']['settings'])
 me.__dict__
-gui1 = MoverPanel(me, axes='XYZ')
 
 # %%
-you = Sartorius(**details['liquid']['settings'])
-you.__dict__
-gui2 = LiquidPanel(you)
-
-# %%
-gui = CompoundPanel(dict(
-    Mover=gui1,
-    Liquid=gui2
-))
+gui = MoverPanel(me, axes='XYZ')
 gui.runGUI()
 
 # %%
@@ -54,6 +46,3 @@ me._query("$$")
 # %%
 me.device.write("$$\n".encode("utf-8"))
 me.device.readlines()
-# %%
-
-# %%
