@@ -17,6 +17,8 @@ me = us.mover
 you = us.liquid
 me.__dict__
 # %%
+spin = me.deck.at('spincoater')
+# %%
 us.attachTip(tip_length=50.8)
 me.__dict__
 # %%
@@ -26,8 +28,6 @@ me.__dict__
 us.ejectTip()
 me.__dict__
 # %%
-gui1 = MoverPanel(me, axes='XYZ')
-gui1.runGUI()
 # %%
 gui1 = MoverPanel(me, axes='XYZ')
 gui2 = LiquidPanel(you)
@@ -36,3 +36,5 @@ gui = CompoundPanel(dict(
     Liquid=gui2
 ))
 gui.runGUI()
+
+# %%
