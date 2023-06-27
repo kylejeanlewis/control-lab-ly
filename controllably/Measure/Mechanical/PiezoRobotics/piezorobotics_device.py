@@ -202,6 +202,7 @@ class PiezoRoboticsDevice(Instrument):
         else:
             print(f"Connection opened to {port}")
             self.setFlag(connected=True)
+            self.initialise()
         self.device = device
         return
     
