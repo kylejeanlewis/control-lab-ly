@@ -83,10 +83,10 @@ class DMA(Program):
         device = self.device
         repeat = self.parameters.get('repeat', 1)
         device.toggleClamp(False)
-        device.initialise(
-            low_frequency=self.parameters.get('low_frequency', FREQUENCIES[0]), 
-            high_frequency=self.parameters.get('high_frequency', FREQUENCIES[-1])
-        )
+        # device.initialise(
+        #     low_frequency=self.parameters.get('low_frequency', FREQUENCIES[0]), 
+        #     high_frequency=self.parameters.get('high_frequency', FREQUENCIES[-1])
+        # )
         
         if self.parameters.get('pause', True):
             input("Please load sample. Press 'Enter' to proceed")

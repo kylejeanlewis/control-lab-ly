@@ -38,6 +38,7 @@ class Sartorius(LiquidHandler):
         `channel` (int, optional): channel id. Defaults to 1.
         `offset` (tuple[float], optional): x,y,z offset of tip. Defaults to (0,0,0).
         `response_time` (float, optional): delay between sending a command and receiving a response, in seconds. Defaults to 1.03.
+        `tip_inset_mm` (float, optional): length of pipette that is inserted into the pipette tip. Defaults to 12.
         `tip_threshold` (int, optional): threshold above which a conductive pipette tip is considered to be attached. Defaults to 276.
     
     ### Attributes
@@ -49,6 +50,7 @@ class Sartorius(LiquidHandler):
     - `response_time` (float): delay between sending a command and receiving a response, in seconds
     - `speed_code` (Speed): codes for aspirate and dispense speeds
     - `speed_presets` (PresetSpeeds): preset speeds available
+    - `tip_inset_mm` (float): length of pipette that is inserted into the pipette tip
     - `tip_length` (float): length of pipette tip
     - `tip_threshold` (int): threshold above which a conductive pipette tip is considered to be attached
     
@@ -95,12 +97,12 @@ class Sartorius(LiquidHandler):
         'tip_on': False
     }
     implement_offset = (0,0,-250)
-    tip_inset_mm = 12
     def __init__(self, 
         port:str, 
         channel: int = 1, 
         offset: tuple[float] = (0,0,0),
         response_time: float = 1.03,
+        tip_inset_mm: int = 12,
         tip_threshold: int = 276,
         **kwargs
     ):
@@ -112,6 +114,7 @@ class Sartorius(LiquidHandler):
             channel (int, optional): channel id. Defaults to 1.
             offset (tuple[float], optional): x,y,z offset of tip. Defaults to (0,0,0).
             response_time (float, optional): delay between sending a command and receiving a response, in seconds. Defaults to 1.03.
+            tip_inset_mm (float, optional): length of pipette that is inserted into the pipette tip. Defaults to 12.
             tip_threshold (int, optional): threshold above which a conductive pipette tip is considered to be attached. Defaults to 276.
         """
         super().__init__(**kwargs)
@@ -119,6 +122,7 @@ class Sartorius(LiquidHandler):
         self.offset = offset
         self.response_time = response_time
         self.tip_threshold = tip_threshold
+        self.tip_inset_mm = tip_inset_mm
         
         self.model_info: lib.Model = None
         self.limits = (0,0)
@@ -432,6 +436,8 @@ class Sartorius(LiquidHandler):
         response = self._query(command)
         self.position = self.home_position if home else 0
         time.sleep(1)
+        if not self.flags['conductive_tips']:
+            self.setFlag(tip_on=False)
         return response
     
     def getCapacitance(self) -> Union[int, str]:
@@ -872,10 +878,10 @@ class Sartorius(LiquidHandler):
         Returns:
             bool: whether command was sent successfully
         """
-        if self.verbose:
-            print(command)
         fstring = f'{self.channel}{command}º\r' # command template: <PRE><ADR><CODE><DATA><LRC><POST>
         # bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
+        if self.verbose:
+            print(fstring)
         try:
             # Typical timeout wait is 400ms
             self.device.write(fstring.encode('utf-8'))

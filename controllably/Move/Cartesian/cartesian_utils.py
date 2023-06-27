@@ -181,17 +181,20 @@ class Gantry(Mover):
         self.connect()
         return super().reset()
     
-    def setSpeed(self, speed: int):
+    def setSpeed(self, speed: int) -> tuple[bool, float]:
         """
         Set the speed of the robot
 
         Args:
             speed (int): speed in mm/s
+        
+        Returns:
+            tuple[bool, float]: whether speed has changed; speed
         """
         print(f'Speed: {speed} mm/s')
-        self._speed_fraction = (speed/self._speed_max)
-        speed = int(self._speed_max*self._speed_fraction * 60)   # get speed in mm/min
-        self._query(f"G01 F{speed}\n")  # feed rate (i.e. speed) in mm/min
+        # self._speed_fraction = (speed/self._speed_max)
+        # speed = int(self._speed_max*self._speed_fraction * 60)   # get speed in mm/min
+        # self._query(f"G01 F{speed}\n")  # feed rate (i.e. speed) in mm/min
         return False, self.speed
     
     def shutdown(self):
@@ -228,7 +231,7 @@ class Gantry(Mover):
         self.device = device
         return
 
-    def _query(self, command:str) -> str:
+    def _query(self, command:str) -> list[str]:
         """
         Write command to and read response from device
 
@@ -236,18 +239,19 @@ class Gantry(Mover):
             command (str): command string to send to device
 
         Returns:
-            str: response string from device
+            list[str]: list of response string(s) from device
         """
-        response = ''
+        responses = [b'']
         self._write(command)
         try:
-            response = self.device.readline()
+            responses = self.device.readlines()
         except Exception as e:
             if self.verbose:
                 print(e)
         else:
-            print(response)
-        return response
+            print(responses)
+        # self._handle_alarms_and_errors(response=response.decode())
+        return [r.decode().strip() for r in responses]
 
     def _write(self, command:str) -> bool:
         """
@@ -259,6 +263,7 @@ class Gantry(Mover):
         Returns:
             bool: whether the command is sent successfully
         """
+        command = f"{command}\n" if not command.endswith('\n') else command
         if self.verbose:
             print(command)
         try:

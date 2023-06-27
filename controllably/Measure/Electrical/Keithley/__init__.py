@@ -8,6 +8,7 @@ Classes:
     Keithley (Programmable)
 """
 from .keithley_utils import Keithley
+from .keithley_device import KeithleyDevice
 from . import programs
 
 from controllably import include_this_module
