@@ -1,17 +1,16 @@
 # %%
-import init
+from init import library
 from controllably import Factory, Helper, guide_me
-from controllably.Move.Cartesian import Primitiv
-from controllably.Transfer.Liquid.Sartorius import Sartorius
-
 from controllably.Compound.LiquidMover import LiquidMoverSetup
 from controllably.Control.GUI import CompoundPanel
 from controllably.Control.GUI.Basic import MoverPanel, LiquidPanel
 
 # %%
-details = Factory.get_details(Helper.read_yaml('../configs/primitiv2.yaml'))
+details = Factory.get_details(Helper.read_yaml(library['configs']['open_pipette']))
 us = LiquidMoverSetup(**details['setup']['settings'])
-us.loadDeck(r'C:\Users\leongcj\Desktop\Astar_git\control-lab-le\library\deck\layoutL3.json')
+us.liquid.getInfo('BRL200')
+# %%
+us.loadDeck(library['deck']['layoutL3'])
 us.__dict__
 me = us.mover
 you = us.liquid
