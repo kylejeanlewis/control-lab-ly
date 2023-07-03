@@ -14,6 +14,7 @@ Functions:
     read_json
     read_yaml
     safety_measures (decorator)
+    update_root_directory
     zip_inputs
 
 Other constants and variables:
@@ -26,6 +27,7 @@ from datetime import datetime
 import json
 import os
 import pandas as pd
+from pathlib import Path
 import pkgutil
 import time
 from typing import Callable, Optional
@@ -225,6 +227,21 @@ def safety_measures(func:Callable) -> Callable:
     """
     return decorators.safety_measures(mode=safety_mode, countdown=safety_countdown)(func=func)
 
+def update_root_directory(d: dict, repo:str):
+    """
+    Updates relative filepaths in library with root directory
+
+    Args:
+        d (dict): library of relative filepaths
+        repo (str): name of repository
+    """
+    root = str(Path().absolute()).split(repo)[0].replace('\\','/')
+    for k,v in list(d.items()):
+        if isinstance(v, dict):
+            update_root_directory(v, repo)
+        elif type(v) == str:
+            d[k] = v.replace(repo, f"{root}{repo}")
+            
 def zip_inputs(primary_keyword:str, **kwargs) -> dict:
     """
     Checks and zips multiple keyword arguments of lists into dictionary
