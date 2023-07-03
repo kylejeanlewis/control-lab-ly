@@ -1,0 +1,9 @@
+Keeping up with Control-lab-ly updates
+
+1. Create /src folder
+
+2. Copy the entire /controllably folder into /src
+(i.e. /src/controllably)
+
+3. Use the following command to install an editable version of Control-lab-ly
+$ python -m pip install -e .
