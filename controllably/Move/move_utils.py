@@ -172,7 +172,7 @@ class Mover(ABC):
         Returns:
             bool: whether the target coordinate is feasible
         """
-        return not self.deck.is_excluded(self._transform_out(coordinates, tool_offset=True))
+        return not self.deck.isExcluded(self._transform_out(coordinates, tool_offset=True))
     
     @abstractmethod
     def moveBy(self, 
@@ -472,7 +472,7 @@ class Mover(ABC):
             layout_file (Optional[str], optional): filename of layout .json file. Defaults to None.
             layout_dict (Optional[dict], optional): dictionary of layout. Defaults to None.
         """
-        self.deck.load_layout(layout_file=layout_file, layout_dict=layout_dict)
+        self.deck.loadLayout(layout_file=layout_file, layout_dict=layout_dict)
         return
     
     def move(self, axis:str, value:float, speed:Optional[float] = None, **kwargs) -> bool:

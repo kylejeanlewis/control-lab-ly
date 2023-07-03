@@ -387,11 +387,11 @@ class LiquidMoverSetup(CompoundSetup):
         """
         diameter = well.diameter
         if safe_move:
-            self.align(coordinates=well.from_top((0,0,-10)))
+            self.align(coordinates=well.fromTop((0,0,-10)))
         else:
             speed = self.mover.speed
             self.mover.setSpeed(speed=0.2*self.mover._speed_max)
-            self.mover.moveTo(coordinates=well.from_top((0,0,-10)))
+            self.mover.moveTo(coordinates=well.fromTop((0,0,-10)))
             self.mover.setSpeed(speed=speed)
         for axis in ('x','y'):
             self.mover.move(axis, diameter/2, speed=0.2*self.mover._speed_max)

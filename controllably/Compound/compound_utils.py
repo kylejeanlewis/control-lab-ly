@@ -115,7 +115,7 @@ class CompoundSetup(ABC):
         Returns:
             bool: whether the coordinates is feasible
         """
-        return not self.deck.is_excluded(coordinates)
+        return not self.deck.isExcluded(coordinates)
     
     def loadDeck(self, layout_file:Optional[str] = None, layout_dict:Optional[dict] = None):
         """
@@ -125,9 +125,9 @@ class CompoundSetup(ABC):
             layout_file (Optional[str], optional): filename of layout .json file. Defaults to None.
             layout_dict (Optional[dict], optional): dictionary of layout. Defaults to None.
         """
-        self.deck.load_layout(layout_file=layout_file, layout_dict=layout_dict)
+        self.deck.loadLayout(layout_file=layout_file, layout_dict=layout_dict)
         for name in self.deck.names:
-            self.positions[name] = [(well.top, well.depth) for well in self.deck.get_slot(name=name).wells_list]
+            self.positions[name] = [(well.top, well.depth) for well in self.deck.getSlot(name=name).wells_list]
         return
     
     def resetFlags(self):

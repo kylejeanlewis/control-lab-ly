@@ -126,7 +126,7 @@ class M1Pro(Dobot):
         if grad > gradient_threshold or x < 0:
             right_hand = (y>0)
             self.setHandedness(right_hand=right_hand, stretch=True) 
-        return not self.deck.is_excluded(self._transform_out(coordinates, tool_offset=True))
+        return not self.deck.isExcluded(self._transform_out(coordinates, tool_offset=True))
     
     def moveCoordBy(self, 
         vector: tuple[float] = (0,0,0), 

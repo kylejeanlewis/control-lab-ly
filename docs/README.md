@@ -223,9 +223,9 @@ setup.Mover.loadDeck(LAYOUT_FILE)
 > `LAYOUT_FILE` contains the details that has been defined in `layout.json` (see [**Section 1.2**](#12-layoutjson))
 
 #### 2.2 Loading a Labware
-To load a `Labware` onto the deck, use the `load_labware()` method of the `Deck` object.
+To load a `Labware` onto the deck, use the `loadLabware()` method of the `Deck` object.
 ```python
-setup.Mover.deck.load_labware(...)
+setup.Mover.deck.loadLabware(...)
 ``` 
 > This package uses the same Labware files as those provided by [Opentrons](https://opentrons.com/), which can be found [here](https://labware.opentrons.com/), and custom Labware files can be created [here](https://labware.opentrons.com/create/). Labware files are JSON files that specifies the external and internal dimensions of a Labware block / object.
 

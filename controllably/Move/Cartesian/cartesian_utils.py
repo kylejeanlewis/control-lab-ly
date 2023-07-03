@@ -126,7 +126,7 @@ class Gantry(Mover):
         l_bound, u_bound = self.limits
         
         if all(np.greater_equal(coordinates, l_bound)) and all(np.less_equal(coordinates, u_bound)):
-            return not self.deck.is_excluded(self._transform_out(coordinates, tool_offset=True))
+            return not self.deck.isExcluded(self._transform_out(coordinates, tool_offset=True))
         print(f"Range limits reached! {self.limits}")
         return False
 
