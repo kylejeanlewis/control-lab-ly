@@ -1,15 +1,11 @@
 # %%
-import init
+from init import library
 from controllably import Factory, Helper, guide_me
 from controllably.Move.Cartesian import Primitiv
-from controllably.Transfer.Liquid.Sartorius import Sartorius
-
-from controllably.Compound.LiquidMover import LiquidMoverSetup
-from controllably.Control.GUI import CompoundPanel
-from controllably.Control.GUI.Basic import MoverPanel, LiquidPanel
+from controllably.Control.GUI.Basic import MoverPanel
 
 # %%
-details = Factory.get_details(Helper.read_yaml('../configs/primitiv2.yaml'))
+details = Factory.get_details(Helper.read_yaml(library['configs']['primitiv2']))
 me = Primitiv(**details['mover']['settings'])
 me.__dict__
 
