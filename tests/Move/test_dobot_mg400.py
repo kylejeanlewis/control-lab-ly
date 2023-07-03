@@ -4,7 +4,10 @@ from controllably.Move.Jointed.Dobot import MG400
 from controllably.Control.GUI.Basic import MoverPanel
 from controllably.Transfer.Substrate.Dobot import TwoJawGrip
 
-gui = MoverPanel(MG400('192.168.2.6'), axes='XYZa')
+# %%
+me = MG400('192.109.209.8') #LAN2
+# %%
+gui = MoverPanel(MG400('192.168.2.9'), axes='XYZa')
 # gui.runGUI()
 me = gui.tool
 me.__dict__
