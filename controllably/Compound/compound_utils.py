@@ -117,7 +117,7 @@ class CompoundSetup(ABC):
         """
         return not self.deck.isExcluded(coordinates)
     
-    def loadDeck(self, layout_file:Optional[str] = None, layout_dict:Optional[dict] = None):
+    def loadDeck(self, layout_file:Optional[str] = None, layout_dict:Optional[dict] = None, **kwargs):
         """
         Load Labware objects onto the deck from file or dictionary
         
@@ -125,7 +125,7 @@ class CompoundSetup(ABC):
             layout_file (Optional[str], optional): filename of layout .json file. Defaults to None.
             layout_dict (Optional[dict], optional): dictionary of layout. Defaults to None.
         """
-        self.deck.loadLayout(layout_file=layout_file, layout_dict=layout_dict)
+        self.deck.loadLayout(layout_file=layout_file, layout_dict=layout_dict, **kwargs)
         for name in self.deck.names:
             self.positions[name] = [(well.top, well.depth) for well in self.deck.getSlot(name=name).wells_list]
         return

@@ -10,6 +10,7 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 import numpy as np
+from pathlib import Path
 from typing import Optional, Union
 
 # Local application imports
@@ -369,19 +370,20 @@ class Deck:
     - `removeLabware`: remove Labware in slot using slot id or name
     """
     
-    def __init__(self, layout_file:Optional[str] = None, package:Optional[str] = None):
+    def __init__(self, layout_file:Optional[str] = None, package:Optional[str] = None, repository:Optional[str] = None):
         """
         Instantiate the class
 
         Args:
             layout_file (Optional[str], optional): filepath of deck layout JSON file. Defaults to None.
             package (Optional[str], optional): name of package to look in. Defaults to None.
+            repository (Optional[str], optional): name of repository to look in. Defaults to None.
         """
         self.details = {}
         self._slots = {}
         self.names = {}
         self.exclusion_zones = {}
-        self.loadLayout(layout_file=layout_file, package=package)
+        self.loadLayout(layout_file=layout_file, package=package, repository=repository)
         pass
     
     def __repr__(self) -> str:
@@ -487,7 +489,8 @@ class Deck:
         layout_file: Optional[str] = None, 
         layout_dict: Optional[dict] = None, 
         package: Optional[str] = None, 
-        labware_package: Optional[str] = None
+        labware_package: Optional[str] = None,
+        repository: str = 'control-lab-le'
     ):
         """
         Load deck layout from layout file
@@ -497,6 +500,7 @@ class Deck:
             layout_dict (Optional[dict], optional): layout details. Defaults to None.
             package (Optional[str], optional): name of package to look in for layout file. Defaults to None.
             labware_package (Optional[str], optional): name of package to look in for Labware file. Defaults to None.
+            repository (str, optional): name of repository to look in. Defaults to 'control-lab-le'.
 
         Raises:
             Exception: lease input either `layout_file` or `layout_dict`
@@ -505,17 +509,18 @@ class Deck:
             return
         elif layout_file is not None and layout_dict is not None:
             raise Exception("Please input either `layout_file` or `layout_dict`.")
-            print()
         elif layout_file is not None:
             self.details = helper.read_json(json_file=layout_file, package=package)
         else:
             self.details = layout_dict
         
         slots = self.details.get('slots', {})
+        root = str(Path().absolute()).split(repository)[0].replace('\\','/')
         for slot in sorted(list(slots)):
             info = slots[slot]
             name = info.get('name')
             labware_file = info.get('filepath','')
+            labware_file = labware_file if Path(labware_file).is_absolute() else f"{root}{repository}/{labware_file.split(repository)[1]}"
             exclusion_height = info.get('exclusion_height', -1)
             exclusion_height = exclusion_height if exclusion_height >= 0 else None
             self.loadLabware(slot=slot, name=name, exclusion_height=exclusion_height, labware_file=labware_file, package=labware_package)

@@ -335,7 +335,7 @@ class LiquidMoverSetup(CompoundSetup):
         self.liquid.setFlag(tip_on=False)
         return coordinates
     
-    def loadDeck(self, layout_file:Optional[str] = None, layout_dict:Optional[dict] = None):
+    def loadDeck(self, layout_file:Optional[str] = None, layout_dict:Optional[dict] = None, **kwargs):
         """
         Load Labware objects onto the deck from file or dictionary
         
@@ -343,8 +343,8 @@ class LiquidMoverSetup(CompoundSetup):
             layout_file (Optional[str], optional): filename of layout .json file. Defaults to None.
             layout_dict (Optional[dict], optional): dictionary of layout. Defaults to None.
         """
-        super().loadDeck(layout_file=layout_file, layout_dict=layout_dict)
-        self.mover.loadDeck(layout_file=layout_file, layout_dict=layout_dict)
+        super().loadDeck(layout_file=layout_file, layout_dict=layout_dict, **kwargs)
+        self.mover.loadDeck(layout_file=layout_file, layout_dict=layout_dict, **kwargs)
         return
     
     def reset(self):

@@ -464,7 +464,7 @@ class Mover(ABC):
             print(f"{self.__class__} is not connected. Details: {self.connection_details}")
         return self.flags.get('connected', False)
  
-    def loadDeck(self, layout_file:Optional[str] = None, layout_dict:Optional[dict] = None):
+    def loadDeck(self, layout_file:Optional[str] = None, layout_dict:Optional[dict] = None, **kwargs):
         """
         Load Labware objects onto the deck from file or dictionary
         
@@ -472,7 +472,7 @@ class Mover(ABC):
             layout_file (Optional[str], optional): filename of layout .json file. Defaults to None.
             layout_dict (Optional[dict], optional): dictionary of layout. Defaults to None.
         """
-        self.deck.loadLayout(layout_file=layout_file, layout_dict=layout_dict)
+        self.deck.loadLayout(layout_file=layout_file, layout_dict=layout_dict, **kwargs)
         return
     
     def move(self, axis:str, value:float, speed:Optional[float] = None, **kwargs) -> bool:
