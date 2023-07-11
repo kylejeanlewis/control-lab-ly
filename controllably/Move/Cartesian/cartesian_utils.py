@@ -7,6 +7,7 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+from abc import abstractmethod
 import numpy as np
 import time
 from typing import Optional
@@ -38,6 +39,7 @@ class Gantry(Mover):
     
     ### Methods
     #### Abstract
+    - `getSettings`: get hardware settings
     - `home`: make the robot go home
     #### Public
     - `disconnect`: disconnect from device
@@ -77,6 +79,15 @@ class Gantry(Mover):
         self._connect(port)
         self.home()
         return
+    
+    @abstractmethod
+    def getSettings(self) -> list[str]:
+        """
+        Get hardware settings
+
+        Returns:
+            list[str]: hardware settings
+        """
     
     # Properties
     @property

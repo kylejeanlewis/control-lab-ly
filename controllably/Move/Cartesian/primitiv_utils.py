@@ -28,8 +28,9 @@ class Primitiv(Gantry):
         `max_speed` (float, optional): maximum travel speed. Defaults to 250.
     
     ### Methods
-    - `home`: make the robot go home
+    - `getSettings`: get hardware settings
     - `getStatus`: get the current status of the tool
+    - `home`: make the robot go home
     - `stop`: stop movement immediately
     """
     def __init__(self, 
@@ -50,6 +51,17 @@ class Primitiv(Gantry):
         """
         super().__init__(port=port, limits=limits, safe_height=safe_height, max_speed=max_speed, **kwargs)
         return
+    
+    def getSettings(self) -> list[str]:
+        """
+        Get hardware settings
+
+        Returns:
+            list[str]: hardware settings
+        """
+        responses = self._query("$$\n")
+        print(responses)
+        return responses
     
     def getStatus(self) -> list[str]:
         """
@@ -106,16 +118,6 @@ class Primitiv(Gantry):
             time.sleep(2)
             self.device.reset_input_buffer()
         return
-    
-    def _get_settings(self) -> list[str]:
-        """
-        Get hardware settings
-
-        Returns:
-            list[str]: hardware settings
-        """
-        responses = self._query("$$\n")
-        return responses
 
     # def _handle_alarms_and_errors(self, response:str):
     #     """

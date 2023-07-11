@@ -29,6 +29,7 @@ class Ender(Gantry):
     
     ### Methods
     - `setTemperature`: set the temperature of the 3-D printer platform bed
+    - `getSettings`: get hardware settings
     - `home`: make the robot go home
     """
     
@@ -52,6 +53,17 @@ class Ender(Gantry):
         super().__init__(port=port, limits=limits, safe_height=safe_height, max_speed=max_speed, **kwargs)
         self.home_coordinates = (0,0,self.heights['safe'])
         return
+    
+    def getSettings(self) -> list[str] :
+        """
+        Get hardware settings
+
+        Returns:
+            list[str]: hardware settings
+        """
+        responses = self._query('M503\n')
+        print(responses)
+        return responses
 
     @Helper.safety_measures
     def home(self) -> bool:
