@@ -261,6 +261,9 @@ class PiezoRoboticsDevice(Instrument):
     def _read(self) -> str:
         """
         Read response from device
+        
+        Raises:
+            RuntimeError: errors from device
 
         Returns:
             str: response string
@@ -279,6 +282,7 @@ class PiezoRoboticsDevice(Instrument):
                 print(response)
             if response in ErrorCode._member_names_:
                 print(ErrorCode[response].value)
+                raise RuntimeError(ErrorCode[response].value)
         return response
     
     def _write(self, command:str) -> bool:
