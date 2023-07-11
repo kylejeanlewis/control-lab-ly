@@ -39,7 +39,8 @@ class M1Pro(Dobot):
         'busy': False,
         'connected': False,
         'retract': False, 
-        'right_handed': None
+        'right_handed': False,
+        'stretched': False
     }
     def __init__(self, 
         ip_address: str, 
@@ -64,7 +65,7 @@ class M1Pro(Dobot):
             **kwargs
         )
         self._speed_angular_max = 180
-        self.setHandedness(right_hand=right_handed, stretch=True)
+        self.setHandedness(right_hand=right_handed, stretch=False)
         self.home()
         return
     
@@ -122,7 +123,7 @@ class M1Pro(Dobot):
         #     return False
         
         grad = abs(y/(x+1E-6))
-        gradient_threshold = 0.1
+        gradient_threshold = 0.25
         if grad > gradient_threshold or x < 0:
             right_hand = (y>0)
             self.setHandedness(right_hand=right_hand, stretch=True) 
@@ -176,9 +177,9 @@ class M1Pro(Dobot):
         else:
             time.sleep(2)
             if stretch:
-                self.stretchArm()
+                # self.stretchArm()
                 time.sleep(1)
-        self.setFlag(right_handed=right_hand)
+            self.setFlag(right_handed=right_hand)
         return True
             
     def stretchArm(self) -> bool:
@@ -188,6 +189,8 @@ class M1Pro(Dobot):
         Returns:
             bool: whether movement is successful
         """
+        if self.flags['stretched']:
+            return False
         x,y,z = self.coordinates
         y_stretch = math.copysign(240, y)
         z_home = self.home_coordinates[2]
@@ -195,5 +198,6 @@ class M1Pro(Dobot):
         ret2 = self.moveCoordTo(coordinates=(320,y_stretch,z_home))
         ret3 = self.moveCoordTo(coordinates=(x,y,z_home))
         ret4 = self.moveCoordTo(coordinates=(x,y,z))
+        self.setFlag(stretched=True)
         return all([ret1,ret2,ret3,ret4])
    
