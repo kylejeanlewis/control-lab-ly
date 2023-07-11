@@ -447,11 +447,11 @@ class Deck:
         for key, value in self.exclusion_zones.items():
             l_bound, u_bound = value
             if key == 'boundary':
-                if any(np.less_equal(coordinates, l_bound)) and any(np.greater_equal(coordinates, u_bound)):
+                if any(np.less(coordinates, l_bound)) and any(np.greater(coordinates, u_bound)):
                     print(f"Deck limits reached! {value}")
                     return True
                 continue
-            if all(np.greater_equal(coordinates, l_bound)) and all(np.less_equal(coordinates, u_bound)):
+            if all(np.greater(coordinates, l_bound)) and all(np.less(coordinates, u_bound)):
                 name = [k for k,v in self.names.items() if str(v)==key][0] if key in self.names.values() else f'Labware in Slot {key}'
                 print(f"{name} is in the way! {value}")
                 return True
