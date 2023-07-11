@@ -193,7 +193,7 @@ class Spinner(Maker):
         Args:
             speed (int): spin speed in rpm
         """
-        fstring = f"{speed}\n", 'utf-8'
+        fstring = f"{speed}\n"
         if self.verbose:
             print(fstring)
         try:
