@@ -550,7 +550,8 @@ class Mover(ABC):
         coordinates = np.array(coordinates)
         orientation = np.array(orientation)
         
-        ret = self.move('z', max(0, self.home_coordinates[2]-self.coordinates[2]), speed=ascent_speed)
+        safe_height = self.home_coordinates[2] if 'safe' in self.heights else self.heights['safe']
+        ret = self.move('z', max(0, safe_height-self.coordinates[2]), speed=ascent_speed)
         success.append(ret)
         
         intermediate_position = self.tool_position if tool_offset else self.user_position
@@ -580,10 +581,9 @@ class Mover(ABC):
             key, value: (flag name, boolean) pairs
         """
         if not all([type(v)==bool for v in kwargs.values()]):
-            raise ValueError("Ensure all assigned flag values are boolean.")
+            print(kwargs)
+            # raise ValueError("Ensure all assigned flag values are boolean.")
         self.flags.update(kwargs)
-        # for key, value in kwargs.items():
-        #     self.flags[key] = value
         return
     
     def setHeight(self, overwrite:bool = False, **kwargs):
