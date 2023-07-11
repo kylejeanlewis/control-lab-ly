@@ -3,7 +3,7 @@ import init
 from controllably.Move.Cartesian import Ender
 from controllably.Control.GUI.Basic import MoverPanel
 
-gui = MoverPanel(Ender('COM4'))
+gui = MoverPanel(Ender('COM18', limits=((0,0,0),(100,100,70)), max_speed=10))
 # gui.runGUI()
 me = gui.tool
 me.verbose = True
