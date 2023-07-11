@@ -8,7 +8,7 @@ from controllably.Control.GUI.Basic import MoverPanel, LiquidPanel
 # %%
 details = Factory.get_details(Helper.read_yaml(library['configs']['open_pipette']))
 us = LiquidMoverSetup(**details['setup']['settings'])
-us.liquid.getInfo('BRL200')
+# us.liquid.getInfo('BRL200')
 # %%
 us.loadDeck(library['deck']['layoutL3'])
 us.__dict__
