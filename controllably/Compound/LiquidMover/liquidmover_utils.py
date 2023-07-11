@@ -138,6 +138,7 @@ class LiquidMoverSetup(CompoundSetup):
             raise ValueError(f"Infeasible tool position! {coordinates}")
         self.mover.safeMoveTo(coordinates, ascent_speed=0.2*self.mover._speed_max, descent_speed=0.2*self.mover._speed_max)
         self.setFlag(at_rest=False)
+        time.sleep(1)
         return
     
     def aspirateAt(self, 
@@ -364,15 +365,20 @@ class LiquidMoverSetup(CompoundSetup):
         self.setFlag(at_rest=True)
         return
     
-    def returnTip(self) -> tuple[float]:
+    def returnTip(self, insert_mm:int = 18) -> tuple[float]:
         """
         Return current tip to its original rack position
+        
+        Args:
+            insert_mm (int, optional): length of tip to insert into rack before ejecting. Defaults to 18.
 
         Returns:
             tuple[float]: coordinates of eject tip location
         """
         coordinates = self.__dict__.pop('_temp_tip_home')
-        return self.ejectTipAt(coordinates=(*coordinates[:2],coordinates[2]-18))
+        coordinates = self.ejectTipAt(coordinates=(*coordinates[:2],coordinates[2]-insert_mm))
+        rack_coordinates = (*coordinates[:2],coordinates[2]+insert_mm)
+        return rack_coordinates
     
     def touchTip(self, well:Well, safe_move:bool = False) -> tuple[float]:
         """
