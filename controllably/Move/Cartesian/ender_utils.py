@@ -7,6 +7,8 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+import time
+from typing import Union
 
 # Local application imports
 from ...misc import Helper
@@ -59,6 +61,9 @@ class Ender(Gantry):
         """
         super().__init__(port=port, limits=limits, safe_height=safe_height, max_speed=max_speed, **kwargs)
         self.home_coordinates = (0,0,self.heights['safe'])
+        self.set_temperature = None
+        self.temperature = None
+        self.tolerance = 1.5
         return
     
     def getSettings(self) -> list[str] :
@@ -80,28 +85,16 @@ class Ender(Gantry):
         Returns:
             Union[tuple, str]: response from device
         """
-        # response = self._read()
-        # now = datetime.now()
-        # try:
-        #     values = [float(v) for v in response.split(';')]
-        #     self.set_temperature, self.temperature, self._cold_point, self._power = values
-        # except ValueError:
-        #     pass
-        # else:
-        #     response = tuple(values)
-        #     ready = (abs(self.set_temperature - self.temperature)<=self.tolerance)
-        #     if not ready:
-        #         pass
-        #     elif not self._stabilize_time:
-        #         self._stabilize_time = time.perf_counter()
-        #         print(response)
-        #     elif self.flags['temperature_reached']:
-        #         pass
-        #     elif (self._power <= self.power_threshold) or (time.perf_counter()-self._stabilize_time >= self.stabilize_buffer_time):
-        #         print(response)
-        #         self.setFlag(temperature_reached=True)
-        #         print(f"Temperature of {self.set_temperature}°C reached!")
-        # return response
+        responses = self._query('M105')  # Use 'M155 S<seconds>' to auto-report temperatures in S-second intervals. S0 to disable.
+        temperatures = [r for r in responses if '@' in r]
+        bed_temperatures = temperatures[-1].split(':')[2].split(' ')[:2]
+        temperature, set_temperature = bed_temperatures
+        self.temperature = float(temperature)
+        self.set_temperature = float(set_temperature[1:])
+        
+        ready = (abs(self.set_temperature - self.temperature)<=self.tolerance)
+        self.setFlag(temperature_reached=ready)
+        return (self.temperature, self.set_temperature)
     
     def holdTemperature(self, temperature:float, time_s:float):
         """
@@ -143,33 +136,31 @@ class Ender(Gantry):
         """
         return self.flags['temperature_reached']
 
-    def setTemperature(self, set_temperature: float):
+    def setTemperature(self, set_temperature: float, blocking:bool = True):
         """
         Set the temperature of the 3-D printer platform bed
 
         Args:
             set_temperature (float): set point for platform temperature
+            blocking (bool, optional): whether to wait for temperature to reach set point. Defaults to True.
         """
         if set_temperature < self.temperature_range[0] or set_temperature > self.temperature_range[1]:
             print(f'Please select a temperature between {self.temperature_range[0]} and {self.temperature_range[1]}°C.')
             return False
         set_temperature = round( min(max(set_temperature,0), 110) )
+        command = f'M190 R{set_temperature}\n' if blocking else f'M140 S{set_temperature}\n'
+        
+        print(f"New set temperature at {set_temperature}°C")
+        if blocking:
+            print(f"Waiting for temperature to reach {self.set_temperature}°C")
         try:
-            self.device.write(bytes(f'M140 S{set_temperature}\n', 'utf-8'))
+            self._query(command)
         except Exception as e:
             print('Unable to heat stage!')
             if self.verbose:
                 print(e)
             return
-        print(f"New set temperature at {set_temperature}°C")
-        
-        self._stabilize_time = None
-        self.setFlag(temperature_reached=False)
-        if blocking:
-            print(f"Waiting for temperature to reach {self.set_temperature}°C")
-        while not self.isAtTemperature():
+        else:
             self.getTemperature()
-            time.sleep(0.1)
-            if not blocking:
-                break
+        self.setFlag(temperature_reached=blocking)
         return
