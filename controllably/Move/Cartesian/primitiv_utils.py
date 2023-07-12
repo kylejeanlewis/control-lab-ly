@@ -86,10 +86,6 @@ class Primitiv(Gantry):
         print("Homed")
         return True
     
-    def setSpeed(self, speed: int):
-        print("`setSpeed` method not available in `Primitiv` class")
-        return super().setSpeed(speed)
-    
     def stop(self):
         """Stop movement immediately"""
         self._query("!\n")

@@ -78,6 +78,7 @@ class Gantry(Mover):
         
         self._connect(port)
         self.home()
+        self.setSpeed(self._speed_max)
         return
     
     @abstractmethod
@@ -176,7 +177,7 @@ class Gantry(Mover):
         
         self._query("G90\n")
         for move in moves:
-            self._query(f"G0 {move}\n")
+            self._query(f"G01 {move}\n")
         self._query("G90\n")
         
         distances = abs(self.coordinates - coordinates)
@@ -203,10 +204,10 @@ class Gantry(Mover):
             tuple[bool, float]: whether speed has changed; speed
         """
         print(f'Speed: {speed} mm/s')
-        # self._speed_fraction = (speed/self._speed_max)
-        # speed = int(self._speed_max*self._speed_fraction * 60)   # get speed in mm/min
-        # self._query(f"G01 F{speed}\n")  # feed rate (i.e. speed) in mm/min
-        return False, self.speed
+        self._speed_fraction = (speed/self._speed_max)
+        speed = int(self._speed_max*self._speed_fraction * 60)   # get speed in mm/min
+        self._query(f"G01 F{speed}\n")  # feed rate (i.e. speed) in mm/min
+        return True, self.speed
     
     def shutdown(self):
         """Shutdown procedure for tool"""
