@@ -4,9 +4,10 @@ import time
 from controllably.Make.ThinFilm import SpinnerAssembly, Spinner
 #%%
 me = SpinnerAssembly(
-    ports=['COM37','COM38','COM39','COM40'], 
-    channels=[1,2,3,4], 
-    positions=[[57.5,42.5,128], [132.5,42.5,128],[207.5,42.5,128],[282.5,42.5,128]]
+    ports = ['COM37','COM38','COM39','COM40'], 
+    channels = [1,2,3,4], 
+    positions = [[57.5,42.5,128], [132.5,42.5,128],[207.5,42.5,128],[282.5,42.5,128]],
+    verbose = True
 )
 me.__dict__
 # %%
