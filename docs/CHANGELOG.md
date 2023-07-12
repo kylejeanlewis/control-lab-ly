@@ -10,6 +10,7 @@ Bug fixes and patches. First released 30 Jun 2023.
 ### Added
 - import `Device` classes in init files to view documentation
 - added library for GRBL status and error codes
+- add `update_root_direcctory()` function to Helper
 ### Changed
 - fix bug with adding new rows into Dataframes
 - initialise `PiezoRoboticsDevice` upon connection
@@ -25,6 +26,22 @@ Bug fixes and patches. First released 30 Jun 2023.
 - update `Primitiv` class
   - add `getStatus()` and `stop()` methods
   - add `_get_settings()` method
+- update methods in `Deck`, `Labware`, and `Well` to camelCase
+- update `Deck.isExcluded()` to apply strict inequalities when determining out-of-range coordinates
+- update `LiquidMover` to insert a portion of tip into rack before ejecting
+- update `Spinner`
+  - fix bug with sending commands
+  - added `_query()` method
+  - pass verbosity to individual spinners
+- update `PiezoRoboticsDevice` to raise errors when encountering them
+- update `Mover`
+  - modify`setFlag()` to print kwargs instead of raising error if assigned values are not boolean
+  - use `safe_height` (if defined) instead of z-coordinate of home in `safeMoveTo()`
+  - added `getSettings()` method
+- fix bug in `M1Pro.setHandedness()`
+- update `Ender`
+  - added `getTemperature()`, `holdTemperature()`, `isAtTemperature()` methods
+  - modified `setTemperature()` to use Marlin code to wait for temperature
 
 
 ## Version 1.1.0
