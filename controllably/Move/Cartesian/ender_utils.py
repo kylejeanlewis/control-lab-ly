@@ -152,7 +152,7 @@ class Ender(Gantry):
         
         print(f"New set temperature at {set_temperature}°C")
         if blocking:
-            print(f"Waiting for temperature to reach {self.set_temperature}°C")
+            print(f"Waiting for temperature to reach {set_temperature}°C")
         try:
             self._query(command)
         except Exception as e:
