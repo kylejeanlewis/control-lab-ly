@@ -199,7 +199,7 @@ class Spinner(Maker):
         responses = [b'']
         self._write(command)
         try:
-            responses = self.device.readlines()
+            responses = self.device.readline()
         except Exception as e:
             if self.verbose:
                 print(e)
