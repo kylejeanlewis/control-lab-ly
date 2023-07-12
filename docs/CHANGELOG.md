@@ -5,7 +5,7 @@
 ### 1.2.0
 - Integration for mass balance from Sartorius
 
-## Version 1.1.1
+## Version 1.1.2
 ### Changed
 - fix bug with `Cartesian` changing speeds
 
