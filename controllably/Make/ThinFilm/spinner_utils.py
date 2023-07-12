@@ -134,7 +134,7 @@ class Spinner(Maker):
             speed (int): spin speed in rpm
             time_s (int): spin time in seconds
         """
-        self._write(speed)
+        self._query(speed)
         self.speed = speed
         print(f"Duration   (channel {self.channel}): {time_s}s")
         interval = 1
@@ -145,7 +145,7 @@ class Spinner(Maker):
                 interval += 1
             if (time_s <= time.perf_counter() - start_time):
                 break
-        self._write(0)
+        self._query(0)
         self.speed = 0
         return
 
@@ -184,6 +184,28 @@ class Spinner(Maker):
         thread = Thread(target=self.run, name=f'maker_diag_{self.channel}')
         thread.start()
         time.sleep(1)
+        return
+    
+    def _query(self, command:str) ->list[str]:
+        """
+        Write command to and read response from device
+
+        Args:
+            command (str): command string to send to device
+
+        Returns:
+            list[str]: list of response string(s) from device
+        """
+        responses = [b'']
+        self._write(command)
+        try:
+            responses = self.device.readlines()
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        else:
+            if self.verbose:
+                print(responses)
         return
     
     def _write(self, speed:int):
@@ -234,9 +256,9 @@ class SpinnerAssembly(Maker):
     }
     
     def __init__(self, 
-        ports:list[str], 
-        channels:list[int], 
-        positions:list[tuple[float]], 
+        ports: list[str], 
+        channels: list[int], 
+        positions: list[tuple[float]],
         **kwargs
     ):
         """
@@ -251,7 +273,7 @@ class SpinnerAssembly(Maker):
         self.channels = {}
         self._threads = {}
         
-        self._connect(port=ports, channel=channels, position=positions)
+        self._connect(port=ports, channel=channels, position=positions, verbose=self.verbose)
         return
 
     def disconnect(self):
