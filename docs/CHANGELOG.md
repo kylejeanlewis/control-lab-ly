@@ -6,7 +6,12 @@
 - Integration for mass balance from Sartorius
 
 ## Version 1.1.1
-Bug fixes and patches. First released 30 Jun 2023.
+### Changed
+- fix bug with `Cartesian` changing speeds
+
+
+## Version 1.1.1
+Bug fixes and patches. First released 12 Jul 2023.
 ### Added
 - import `Device` classes in init files to view documentation
 - added library for GRBL status and error codes
