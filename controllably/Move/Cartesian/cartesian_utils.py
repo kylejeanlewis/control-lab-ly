@@ -260,7 +260,8 @@ class Gantry(Mover):
             if self.verbose:
                 print(e)
         else:
-            print(responses)
+            if self.verbose:
+                print(responses)
         # self._handle_alarms_and_errors(response=response.decode())
         return [r.decode().strip() for r in responses]
 
