@@ -1,6 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-This module holds the class for movement tools based on Creality's Ender-3.
+This module holds the class for movement tools based on Creality's Ender-3. (Marlin firmware)
 
 Classes:
     Ender (Gantry)

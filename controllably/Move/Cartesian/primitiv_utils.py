@@ -1,6 +1,6 @@
 # %% -*- coding: utf-8 -*-
 """
-This module holds the class for movement tools based on Primitiv.
+This module holds the class for movement tools based on Primitiv. (Grbl firmware)
 
 Classes:
     Primitiv (Gantry)
