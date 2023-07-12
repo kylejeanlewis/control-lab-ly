@@ -27,9 +27,6 @@ import pprint
 import sys
 from typing import Callable, Optional
 
-# Third party imports
-import yaml     # pip install pyyaml
-
 # Local application imports
 print(f"Import: OK <{__name__}>")
 

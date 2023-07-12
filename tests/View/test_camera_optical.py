@@ -1,6 +1,6 @@
 # %%
 import init
-from controllably.Control.GUI import ViewerPanel
+from controllably.Control.GUI.Basic import ViewerPanel
 from controllably.View.Optical import Optical
 
 gui = ViewerPanel(Optical(0))

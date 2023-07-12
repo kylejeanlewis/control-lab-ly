@@ -87,7 +87,7 @@ class Pump(LiquidHandler):
                 print(e)
         else:
             time.sleep(2)   # Wait for grbl to initialize
-            device.flushInput()
+            device.reset_input_buffer()
             print(f"Connection opened to {port}")
             self.setFlag(connected=True)
         self.device = device
@@ -103,6 +103,8 @@ class Pump(LiquidHandler):
         Returns:
             bool: whether command was sent successfully
         """
+        if self.verbose:
+            print(command)
         try:
             self.device.write(command.encode('utf-8'))
         except Exception as e:

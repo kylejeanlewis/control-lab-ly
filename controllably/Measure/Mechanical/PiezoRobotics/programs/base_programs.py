@@ -56,7 +56,7 @@ class DMA(Program):
     ### Parameters:
         low_frequency (float): lower frequency limit to test
         high_frequency (float): upper frequency limit to test
-        sample_thickness (float): thickness of measured sample. Defaults to 1E-3.
+        sample_thickness (float): thickness of measured sample in [m]. Defaults to 1E-3.
         repeat (int): number of times to run the measurement. Defaults to 1.
         pause (bool): whether to pause for loading samples. Defaults to True.
     """
@@ -83,10 +83,10 @@ class DMA(Program):
         device = self.device
         repeat = self.parameters.get('repeat', 1)
         device.toggleClamp(False)
-        device.initialise(
-            low_frequency=self.parameters.get('low_frequency', FREQUENCIES[0]), 
-            high_frequency=self.parameters.get('high_frequency', FREQUENCIES[-1])
-        )
+        # device.initialise(
+        #     low_frequency=self.parameters.get('low_frequency', FREQUENCIES[0]), 
+        #     high_frequency=self.parameters.get('high_frequency', FREQUENCIES[-1])
+        # )
         
         if self.parameters.get('pause', True):
             input("Please load sample. Press 'Enter' to proceed")

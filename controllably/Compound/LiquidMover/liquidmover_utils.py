@@ -138,6 +138,7 @@ class LiquidMoverSetup(CompoundSetup):
             raise ValueError(f"Infeasible tool position! {coordinates}")
         self.mover.safeMoveTo(coordinates, ascent_speed=0.2*self.mover._speed_max, descent_speed=0.2*self.mover._speed_max)
         self.setFlag(at_rest=False)
+        time.sleep(1)
         return
     
     def aspirateAt(self, 
@@ -335,7 +336,7 @@ class LiquidMoverSetup(CompoundSetup):
         self.liquid.setFlag(tip_on=False)
         return coordinates
     
-    def loadDeck(self, layout_file:Optional[str] = None, layout_dict:Optional[dict] = None):
+    def loadDeck(self, layout_file:Optional[str] = None, layout_dict:Optional[dict] = None, **kwargs):
         """
         Load Labware objects onto the deck from file or dictionary
         
@@ -343,8 +344,8 @@ class LiquidMoverSetup(CompoundSetup):
             layout_file (Optional[str], optional): filename of layout .json file. Defaults to None.
             layout_dict (Optional[dict], optional): dictionary of layout. Defaults to None.
         """
-        super().loadDeck(layout_file=layout_file, layout_dict=layout_dict)
-        self.mover.loadDeck(layout_file=layout_file, layout_dict=layout_dict)
+        super().loadDeck(layout_file=layout_file, layout_dict=layout_dict, **kwargs)
+        self.mover.loadDeck(layout_file=layout_file, layout_dict=layout_dict, **kwargs)
         return
     
     def reset(self):
@@ -364,15 +365,20 @@ class LiquidMoverSetup(CompoundSetup):
         self.setFlag(at_rest=True)
         return
     
-    def returnTip(self) -> tuple[float]:
+    def returnTip(self, insert_mm:int = 18) -> tuple[float]:
         """
         Return current tip to its original rack position
+        
+        Args:
+            insert_mm (int, optional): length of tip to insert into rack before ejecting. Defaults to 18.
 
         Returns:
             tuple[float]: coordinates of eject tip location
         """
         coordinates = self.__dict__.pop('_temp_tip_home')
-        return self.ejectTipAt(coordinates=(*coordinates[:2],coordinates[2]-18))
+        coordinates = self.ejectTipAt(coordinates=(*coordinates[:2],coordinates[2]-insert_mm))
+        rack_coordinates = (*coordinates[:2],coordinates[2]+insert_mm)
+        return rack_coordinates
     
     def touchTip(self, well:Well, safe_move:bool = False) -> tuple[float]:
         """
@@ -387,11 +393,11 @@ class LiquidMoverSetup(CompoundSetup):
         """
         diameter = well.diameter
         if safe_move:
-            self.align(coordinates=well.from_top((0,0,-10)))
+            self.align(coordinates=well.fromTop((0,0,-10)))
         else:
             speed = self.mover.speed
             self.mover.setSpeed(speed=0.2*self.mover._speed_max)
-            self.mover.moveTo(coordinates=well.from_top((0,0,-10)))
+            self.mover.moveTo(coordinates=well.fromTop((0,0,-10)))
             self.mover.setSpeed(speed=speed)
         for axis in ('x','y'):
             self.mover.move(axis, diameter/2, speed=0.2*self.mover._speed_max)

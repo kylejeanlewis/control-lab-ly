@@ -297,6 +297,7 @@ class Dobot(RobotArm):
     def reset(self):
         """Reset the robot"""
         try:
+            self.dashboard.DisableRobot()
             self.dashboard.ClearError()
             self.dashboard.EnableRobot()
         except (AttributeError, OSError):
@@ -407,8 +408,15 @@ class Dobot(RobotArm):
         else:
             self.device = Device(dashboard, feedback)
             self.reset()
+        
+        try:
             self.dashboard.User(0)
             self.dashboard.Tool(0)
+        except OSError as e:
+            print(e)
+        except AttributeError as e:
+            print(e)
+        else:
             self.setSpeed(speed=100)
             self.setFlag(connected=True)
         return

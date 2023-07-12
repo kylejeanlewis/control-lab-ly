@@ -39,10 +39,10 @@ class Measurer(ABC):
     - `connection_details` (dict): dictionary of connection details (e.g. COM port / IP address)
     - `device` (Callable): device object that communicates with physical tool
     - `flags` (dict[str, bool]): keywords paired with boolean flags
-    - `verbose` (bool): verbosity of class
     
     ### Properties
     - `instrument` (Callable): Alias for `device`
+    - `verbose` (bool): verbosity of class
     
     ### Methods
     #### Abstract
@@ -105,6 +105,23 @@ class Measurer(ABC):
     @instrument.setter
     def instrument(self, device:Callable):
         self.device = device
+        return
+    
+    @property
+    def verbose(self) -> bool:
+        return self._verbose
+    @verbose.setter
+    def verbose(self, value:bool):
+        self._verbose = bool(value)
+        try:
+            self.device.verbose = self._verbose
+        except AttributeError:
+            pass
+        return
+    @verbose.deleter
+    def verbose(self):
+        del self._verbose
+        return
     
     def connect(self):
         """Establish connection with device"""

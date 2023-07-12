@@ -28,7 +28,7 @@ share/python-wheels/
 MANIFEST
 src/
 *.pypirc
-cmd.txt
+packaging.txt
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -130,3 +130,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Local files and folders
+/library

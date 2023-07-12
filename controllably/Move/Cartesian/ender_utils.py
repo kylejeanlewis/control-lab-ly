@@ -1,12 +1,14 @@
 # %% -*- coding: utf-8 -*-
 """
-This module holds the class for movement tools based on Creality's Ender-3.
+This module holds the class for movement tools based on Creality's Ender-3. (Marlin firmware)
 
 Classes:
     Ender (Gantry)
 """
 # Standard library imports
 from __future__ import annotations
+import time
+from typing import Union
 
 # Local application imports
 from ...misc import Helper
@@ -28,10 +30,18 @@ class Ender(Gantry):
     - `temperature_range` (tuple): range of temperature that can be set for the platform bed
     
     ### Methods
-    - `setTemperature`: set the temperature of the 3-D printer platform bed
+    - `getSettings`: get hardware settings
+    - `holdTemperature`: hold target temperature for desired duration
     - `home`: make the robot go home
+    - `isAtTemperature`: checks and returns whether target temperature has been reached
+    - `setTemperature`: set the temperature of the 3-D printer platform bed
     """
     
+    _default_flags: dict[str, bool] = {
+        'busy': False, 
+        'connected': False, 
+        'temperature_reached': False
+    }
     temperature_range = (0,110)
     def __init__(self, 
         port: str, 
@@ -51,6 +61,53 @@ class Ender(Gantry):
         """
         super().__init__(port=port, limits=limits, safe_height=safe_height, max_speed=max_speed, **kwargs)
         self.home_coordinates = (0,0,self.heights['safe'])
+        self.set_temperature = None
+        self.temperature = None
+        self.tolerance = 1.5
+        return
+    
+    def getSettings(self) -> list[str] :
+        """
+        Get hardware settings
+
+        Returns:
+            list[str]: hardware settings
+        """
+        responses = self._query('M503\n')
+        print(responses)
+        return responses
+    
+    def getTemperature(self) -> Union[tuple, str]:
+        """
+        Retrieve temperatures from device 
+        Including the set temperature, hot temperature, cold temperature, and the power level
+        
+        Returns:
+            Union[tuple, str]: response from device
+        """
+        responses = self._query('M105')  # Use 'M155 S<seconds>' to auto-report temperatures in S-second intervals. S0 to disable.
+        temperatures = [r for r in responses if '@' in r]
+        bed_temperatures = temperatures[-1].split(':')[2].split(' ')[:2]
+        temperature, set_temperature = bed_temperatures
+        self.temperature = float(temperature)
+        self.set_temperature = float(set_temperature[1:])
+        
+        ready = (abs(self.set_temperature - self.temperature)<=self.tolerance)
+        self.setFlag(temperature_reached=ready)
+        return (self.temperature, self.set_temperature)
+    
+    def holdTemperature(self, temperature:float, time_s:float):
+        """
+        Hold target temperature for desired duration
+
+        Args:
+            temperature (float): temperature in degree Celsius
+            time_s (float): duration in seconds
+        """
+        self.setTemperature(temperature)
+        print(f"Holding at {self.set_temperature}°C for {time_s} seconds")
+        time.sleep(time_s)
+        print(f"End of temperature hold")
         return
 
     @Helper.safety_measures
@@ -69,27 +126,41 @@ class Ender(Gantry):
         self.coordinates = self.home_coordinates
         print("Homed")
         return True
+    
+    def isAtTemperature(self) -> bool:
+        """
+        Checks and returns whether target temperature has been reached
 
-    def setTemperature(self, set_temperature: float) -> bool:
+        Returns:
+            bool: whether target temperature has been reached
+        """
+        return self.flags['temperature_reached']
+
+    def setTemperature(self, set_temperature: float, blocking:bool = True):
         """
         Set the temperature of the 3-D printer platform bed
 
         Args:
             set_temperature (float): set point for platform temperature
-
-        Returns:
-            bool: whether setting bed temperature was successful
+            blocking (bool, optional): whether to wait for temperature to reach set point. Defaults to True.
         """
         if set_temperature < self.temperature_range[0] or set_temperature > self.temperature_range[1]:
             print(f'Please select a temperature between {self.temperature_range[0]} and {self.temperature_range[1]}°C.')
             return False
         set_temperature = round( min(max(set_temperature,0), 110) )
+        command = f'M190 R{set_temperature}\n' if blocking else f'M140 S{set_temperature}\n'
+        
+        print(f"New set temperature at {set_temperature}°C")
+        if blocking:
+            print(f"Waiting for temperature to reach {set_temperature}°C")
         try:
-            print(f"New set temperature at {set_temperature}°C")
-            self.device.write(bytes(f'M140 S{set_temperature}\n', 'utf-8'))
+            self._query(command)
         except Exception as e:
             print('Unable to heat stage!')
             if self.verbose:
                 print(e)
-            return False
-        return True
+            return
+        else:
+            self.getTemperature()
+        self.setFlag(temperature_reached=blocking)
+        return

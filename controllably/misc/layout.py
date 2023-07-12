@@ -10,6 +10,7 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 import numpy as np
+from pathlib import Path
 from typing import Optional, Union
 
 # Local application imports
@@ -41,9 +42,9 @@ class Well:
     - `top` (np.ndarray): top of well
     
     ### Methods
-    - `from_bottom`: offset from bottom of well
-    - `from_middle`: offset from middle of well
-    - `from_top`: offset from top of well
+    - `fromBottom`: offset from bottom of well
+    - `fromMiddle`: offset from middle of well
+    - `fromTop`: offset from top of well
     """
     
     def __init__(self, 
@@ -104,7 +105,7 @@ class Well:
         depth = self.details.get('depth', 0)
         return self.center + np.array((0,0,depth))
     
-    def from_bottom(self, offset:tuple[float]) -> np.ndarray:
+    def fromBottom(self, offset:tuple[float]) -> np.ndarray:
         """
         Offset from bottom of well
 
@@ -116,7 +117,7 @@ class Well:
         """
         return self.bottom + np.array(offset)
     
-    def from_middle(self, offset:tuple[float]) -> np.ndarray:
+    def fromMiddle(self, offset:tuple[float]) -> np.ndarray:
         """
         Offset from middle of well
 
@@ -128,7 +129,7 @@ class Well:
         """
         return self.middle + np.array(offset)
     
-    def from_top(self, offset:tuple[float]) -> np.ndarray:
+    def fromTop(self, offset:tuple[float]) -> np.ndarray:
         """
         Offset from top of well
 
@@ -139,6 +140,45 @@ class Well:
             tuple: top of well with offset
         """
         return self.top + np.array(offset)
+    
+    def from_bottom(self, offset:tuple[float]) -> np.ndarray:
+        """
+        Offset from bottom of well
+
+        Args:
+            offset (tuple): x,y,z offset
+
+        Returns:
+            tuple: bottom of well with offset
+        """
+        print("'from_bottom()' method to be deprecated. Use 'fromBottom()' instead.")
+        return self.fromBottom(offset=offset)
+    
+    def from_middle(self, offset:tuple[float]) -> np.ndarray:
+        """
+        Offset from middle of well
+
+        Args:
+            offset (tuple): x,y,z offset
+
+        Returns:
+            tuple: middle of well with offset
+        """
+        print("'from_middle()' method to be deprecated. Use 'fromMiddle()' instead.")
+        return self.fromMiddle(offset=offset)
+    
+    def from_top(self, offset:tuple[float]) -> np.ndarray:
+        """
+        Offset from top of well
+
+        Args:
+            offset (tuple): x,y,z offset
+
+        Returns:
+            tuple: top of well with offset
+        """
+        print("'from_top()' method to be deprecated. Use 'fromTop()' instead.")
+        return self.fromTop(offset=offset)
 
 
 class Labware:
@@ -170,8 +210,8 @@ class Labware:
     - `wells_list` (list[Well]): Labware wells as list
     
     ### Methods
-    - `at`: alias for `get_well()`
-    - `get_well`: get `Well` using its name
+    - `at`: alias for `getWell()`
+    - `getWell`: get `Well` using its name
     """
     
     def __init__(self, 
@@ -260,7 +300,7 @@ class Labware:
     def at(self, name:str) -> Well:
         """
         Get `Well` using its name.
-        Alias for `get_well()`.
+        Alias for `getWell()`.
 
         Args:
             name (str): name of well
@@ -268,7 +308,19 @@ class Labware:
         Returns:
             Well: `Well` object
         """
-        return self.get_well(name=name)
+        return self.getWell(name=name)
+    
+    def getWell(self, name:str) -> Well:
+        """
+        Get `Well` using its name
+
+        Args:
+            name (str): name of well
+
+        Returns:
+            Well: `Well` object
+        """
+        return self.wells.get(name)
     
     def get_well(self, name:str) -> Well:
         """
@@ -280,7 +332,8 @@ class Labware:
         Returns:
             Well: `Well` object
         """
-        return self.wells.get(name)
+        print("'get_well()' method to be deprecated. Use 'getWell()' instead.")
+        return self.getWell(name=name)
     
     # Protected method(s)
     def _load_wells(self):
@@ -309,27 +362,28 @@ class Deck:
     - `slots` (dict[str, Labware]): loaded Labware in slots
     
     ### Methods
-    - `at`: alias for `get_slot()`, with mixed input
-    - `get_slot`: get Labware in slot using slot id or name
-    - `is_excluded`: checks and returns whether the coordinates are in an excluded region
-    - `load_labware`: load Labware into slot
-    - `load_layout`: load deck layout from layout file
-    - `remove_labware`: remove Labware in slot using slot id or name
+    - `at`: alias for `getSlot()`, with mixed input
+    - `getSlot`: get Labware in slot using slot id or name
+    - `isExcluded`: checks and returns whether the coordinates are in an excluded region
+    - `loadLabware`: load Labware into slot
+    - `loadLayout`: load deck layout from layout file
+    - `removeLabware`: remove Labware in slot using slot id or name
     """
     
-    def __init__(self, layout_file:Optional[str] = None, package:Optional[str] = None):
+    def __init__(self, layout_file:Optional[str] = None, package:Optional[str] = None, repository:Optional[str] = None):
         """
         Instantiate the class
 
         Args:
             layout_file (Optional[str], optional): filepath of deck layout JSON file. Defaults to None.
             package (Optional[str], optional): name of package to look in. Defaults to None.
+            repository (Optional[str], optional): name of repository to look in. Defaults to None.
         """
         self.details = {}
         self._slots = {}
         self.names = {}
         self.exclusion_zones = {}
-        self.load_layout(layout_file=layout_file, package=package)
+        self.loadLayout(layout_file=layout_file, package=package, repository=repository)
         pass
     
     def __repr__(self) -> str:
@@ -344,7 +398,7 @@ class Deck:
     def at(self, slot:Union[int, str]) -> Optional[Labware]:
         """
         Get Labware in slot using slot id or name, with mixed input.
-        Alias for `get_slot()`.
+        Alias for `getSlot()`.
 
         Args:
             slot (Union[int, str]): id or name of slot
@@ -353,13 +407,13 @@ class Deck:
             Optional[Labware]: Labware in slot
         """
         if type(slot) == int:
-            return self.get_slot(index=slot)
+            return self.getSlot(index=slot)
         elif type(slot) == str:
-            return self.get_slot(name=slot)
+            return self.getSlot(name=slot)
         print("Input a valid slot id or name of Labware in slot.")
         return
     
-    def get_slot(self, index:Optional[int] = None, name:Optional[str] = None) -> Optional[Labware]:
+    def getSlot(self, index:Optional[int] = None, name:Optional[str] = None) -> Optional[Labware]:
         """
         Get Labware in slot using slot id or name
 
@@ -379,7 +433,7 @@ class Deck:
             index = self.names.get(name)
         return self._slots.get(str(index))
     
-    def is_excluded(self, coordinates:tuple[float]) -> bool:
+    def isExcluded(self, coordinates:tuple[float]) -> bool:
         """
         Checks and returns whether the coordinates are in an excluded region.
 
@@ -393,17 +447,17 @@ class Deck:
         for key, value in self.exclusion_zones.items():
             l_bound, u_bound = value
             if key == 'boundary':
-                if any(np.less_equal(coordinates, l_bound)) and any(np.greater_equal(coordinates, u_bound)):
+                if any(np.less(coordinates, l_bound)) and any(np.greater(coordinates, u_bound)):
                     print(f"Deck limits reached! {value}")
                     return True
                 continue
-            if all(np.greater_equal(coordinates, l_bound)) and all(np.less_equal(coordinates, u_bound)):
+            if all(np.greater(coordinates, l_bound)) and all(np.less(coordinates, u_bound)):
                 name = [k for k,v in self.names.items() if str(v)==key][0] if key in self.names.values() else f'Labware in Slot {key}'
                 print(f"{name} is in the way! {value}")
                 return True
         return False
     
-    def load_labware(self, 
+    def loadLabware(self, 
         slot: int, 
         labware_file: str, 
         package: Optional[str] = None, 
@@ -430,12 +484,13 @@ class Deck:
             self.exclusion_zones[str(slot)] = (bottom_left_coordinates, top_right_coordinates)
         return
     
-    def load_layout(
+    def loadLayout(
         self, 
         layout_file: Optional[str] = None, 
         layout_dict: Optional[dict] = None, 
         package: Optional[str] = None, 
-        labware_package: Optional[str] = None
+        labware_package: Optional[str] = None,
+        repository: str = 'control-lab-le'
     ):
         """
         Load deck layout from layout file
@@ -445,6 +500,7 @@ class Deck:
             layout_dict (Optional[dict], optional): layout details. Defaults to None.
             package (Optional[str], optional): name of package to look in for layout file. Defaults to None.
             labware_package (Optional[str], optional): name of package to look in for Labware file. Defaults to None.
+            repository (str, optional): name of repository to look in. Defaults to 'control-lab-le'.
 
         Raises:
             Exception: lease input either `layout_file` or `layout_dict`
@@ -453,23 +509,24 @@ class Deck:
             return
         elif layout_file is not None and layout_dict is not None:
             raise Exception("Please input either `layout_file` or `layout_dict`.")
-            print()
         elif layout_file is not None:
             self.details = helper.read_json(json_file=layout_file, package=package)
         else:
             self.details = layout_dict
         
         slots = self.details.get('slots', {})
+        root = str(Path().absolute()).split(repository)[0].replace('\\','/')
         for slot in sorted(list(slots)):
             info = slots[slot]
             name = info.get('name')
             labware_file = info.get('filepath','')
+            labware_file = labware_file if Path(labware_file).is_absolute() else f"{root}{repository}/{labware_file.split(repository)[1]}"
             exclusion_height = info.get('exclusion_height', -1)
             exclusion_height = exclusion_height if exclusion_height >= 0 else None
-            self.load_labware(slot=slot, name=name, exclusion_height=exclusion_height, labware_file=labware_file, package=labware_package)
+            self.loadLabware(slot=slot, name=name, exclusion_height=exclusion_height, labware_file=labware_file, package=labware_package)
         return
 
-    def remove_labware(self, index:Optional[int] = None, name:Optional[str] = None):
+    def removeLabware(self, index:Optional[int] = None, name:Optional[str] = None):
         """
         Remove Labware in slot using slot id or name
 
@@ -490,6 +547,92 @@ class Deck:
         self._slots.pop(str(index))
         self.exclusion_zones.pop(str(index))
         return
+    
+    def get_slot(self, index:Optional[int] = None, name:Optional[str] = None) -> Optional[Labware]:
+        """
+        Get Labware in slot using slot id or name
+
+        Args:
+            index (Optional[int], optional): slot id number. Defaults to None.
+            name (Optional[str], optional): nickname of Labware. Defaults to None.
+
+        Raises:
+            ValueError: Please input either slot id or name
+
+        Returns:
+            Optional[Labware]: Labware in slot
+        """
+        print("'get_slot()' method to be deprecated. Use 'getSlot()' instead.")
+        return self.getSlot(index=index, name=name)
+    
+    def is_excluded(self, coordinates:tuple[float]) -> bool:
+        """
+        Checks and returns whether the coordinates are in an excluded region.
+
+        Args:
+            coordinates (tuple[float]): target coordinates
+
+        Returns:
+            bool: whether the coordinates are in an excluded region
+        """
+        print("'is_excluded()' method to be deprecated. Use 'isExcluded()' instead.")
+        return self.isExcluded(coordinates=coordinates)
+    
+    def load_labware(self, 
+        slot: int, 
+        labware_file: str, 
+        package: Optional[str] = None, 
+        name: Optional[str] = None, 
+        exclusion_height: Optional[float] = None
+    ):
+        """
+        Load Labware into slot
+
+        Args:
+            slot (int): slot id
+            labware_file (str): filepath Labware JSON file
+            package (Optional[str], optional): name of package to look in. Defaults to None.
+            name (Optional[str], optional): nickname of Labware. Defaults to None.
+            exclusion_height (Optional[float], optional): height clearance from top of Labware. Defaults to None.
+        """
+        print("'load_labware()' method to be deprecated. Use 'loadLabware()' instead.")
+        return self.loadLabware(slot=slot, labware_file=labware_file, package=package, name=name, exclusion_height=exclusion_height)
+    
+    def load_layout(
+        self, 
+        layout_file: Optional[str] = None, 
+        layout_dict: Optional[dict] = None, 
+        package: Optional[str] = None, 
+        labware_package: Optional[str] = None
+    ):
+        """
+        Load deck layout from layout file
+
+        Args:
+            layout_file (Optional[str], optional): filepath of deck layout JSON file. Defaults to None.
+            layout_dict (Optional[dict], optional): layout details. Defaults to None.
+            package (Optional[str], optional): name of package to look in for layout file. Defaults to None.
+            labware_package (Optional[str], optional): name of package to look in for Labware file. Defaults to None.
+
+        Raises:
+            Exception: lease input either `layout_file` or `layout_dict`
+        """
+        print("'load_layout()' method to be deprecated. Use 'loadLayout()' instead.")
+        return self.loadLayout(layout_file=layout_file, layout_dict=layout_dict, package=package, labware_package=labware_package)
+
+    def remove_labware(self, index:Optional[int] = None, name:Optional[str] = None):
+        """
+        Remove Labware in slot using slot id or name
+
+        Args:
+            index (Optional[int], optional): slot id. Defaults to None.
+            name (Optional[str], optional): nickname of Labware. Defaults to None.
+
+        Raises:
+            Exception: Please input either slot id or name
+        """
+        print("'remove_labware()' method to be deprecated. Use 'removeLabware()' instead.")
+        return self.removeLabware(index=index, name=name)
 
 __where__ = "misc.Layout"
 from .factory import include_this_module

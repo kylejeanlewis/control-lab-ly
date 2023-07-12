@@ -88,7 +88,7 @@ class MG400(Dobot):
         # Z-axis
         if not (-150 < z < 230):
             return False
-        return not self.deck.is_excluded(self._transform_out(coordinates, tool_offset=True))
+        return not self.deck.isExcluded(self._transform_out(coordinates, tool_offset=True))
     
     def retractArm(self, target:Optional[tuple[float]] = None) -> bool:
         """

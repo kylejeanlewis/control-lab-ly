@@ -250,7 +250,7 @@ class LEDArray(Maker):
                 print(e)
         else:
             time.sleep(5)   # Wait for grbl to initialize
-            device.flushInput()
+            device.reset_input_buffer()
             self.turnOff()
             print(f"Connection opened to {port}")
             self.setFlag(connected=True)

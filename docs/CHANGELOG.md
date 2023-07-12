@@ -5,6 +5,50 @@
 ### 1.2.0
 - Integration for mass balance from Sartorius
 
+## Version 1.1.1
+### Changed
+- fix bug with `Cartesian` changing speeds
+
+
+## Version 1.1.1
+Bug fixes and patches. First released 12 Jul 2023.
+### Added
+- import `Device` classes in init files to view documentation
+- added library for GRBL status and error codes
+- add `update_root_direcctory()` function to Helper
+### Changed
+- fix bug with adding new rows into Dataframes
+- initialise `PiezoRoboticsDevice` upon connection
+- use `reset_input_buffer()` instead of `flushInput()` for `pyserial.Serial` objects
+- print the actual string sent to Serial devices
+- verbosity of `Measure` objects pass through to devices
+- update `Sartorius` class
+  - `tip_inset_mm` now an instance attribute with initialisation parameters
+  - set `tip_on` flag to False when performing `eject()`
+- update `Gantry` class
+  - read multiple flines in `_query()`
+  - check that commands end with newline before sending to device
+- update `Primitiv` class
+  - add `getStatus()` and `stop()` methods
+  - add `_get_settings()` method
+- update methods in `Deck`, `Labware`, and `Well` to camelCase
+- update `Deck.isExcluded()` to apply strict inequalities when determining out-of-range coordinates
+- update `LiquidMover` to insert a portion of tip into rack before ejecting
+- update `Spinner`
+  - fix bug with sending commands
+  - added `_query()` method
+  - pass verbosity to individual spinners
+- update `PiezoRoboticsDevice` to raise errors when encountering them
+- update `Mover`
+  - modify`setFlag()` to print kwargs instead of raising error if assigned values are not boolean
+  - use `safe_height` (if defined) instead of z-coordinate of home in `safeMoveTo()`
+  - added `getSettings()` method
+- fix bug in `M1Pro.setHandedness()`
+- update `Ender`
+  - added `getTemperature()`, `holdTemperature()`, `isAtTemperature()` methods
+  - modified `setTemperature()` to use Marlin code to wait for temperature
+
+
 ## Version 1.1.0
 Bug fixes and feature enhancements. First released 15 Jun 2023.
 ### Added

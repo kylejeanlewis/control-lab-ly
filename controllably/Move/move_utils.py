@@ -172,7 +172,7 @@ class Mover(ABC):
         Returns:
             bool: whether the target coordinate is feasible
         """
-        return not self.deck.is_excluded(self._transform_out(coordinates, tool_offset=True))
+        return not self.deck.isExcluded(self._transform_out(coordinates, tool_offset=True))
     
     @abstractmethod
     def moveBy(self, 
@@ -464,7 +464,7 @@ class Mover(ABC):
             print(f"{self.__class__} is not connected. Details: {self.connection_details}")
         return self.flags.get('connected', False)
  
-    def loadDeck(self, layout_file:Optional[str] = None, layout_dict:Optional[dict] = None):
+    def loadDeck(self, layout_file:Optional[str] = None, layout_dict:Optional[dict] = None, **kwargs):
         """
         Load Labware objects onto the deck from file or dictionary
         
@@ -472,7 +472,7 @@ class Mover(ABC):
             layout_file (Optional[str], optional): filename of layout .json file. Defaults to None.
             layout_dict (Optional[dict], optional): dictionary of layout. Defaults to None.
         """
-        self.deck.load_layout(layout_file=layout_file, layout_dict=layout_dict)
+        self.deck.loadLayout(layout_file=layout_file, layout_dict=layout_dict, **kwargs)
         return
     
     def move(self, axis:str, value:float, speed:Optional[float] = None, **kwargs) -> bool:
@@ -550,7 +550,8 @@ class Mover(ABC):
         coordinates = np.array(coordinates)
         orientation = np.array(orientation)
         
-        ret = self.move('z', max(0, self.home_coordinates[2]-self.coordinates[2]), speed=ascent_speed)
+        safe_height = self.home_coordinates[2] if 'safe' in self.heights else self.heights['safe']
+        ret = self.move('z', max(0, safe_height-self.coordinates[2]), speed=ascent_speed)
         success.append(ret)
         
         intermediate_position = self.tool_position if tool_offset else self.user_position
@@ -580,10 +581,9 @@ class Mover(ABC):
             key, value: (flag name, boolean) pairs
         """
         if not all([type(v)==bool for v in kwargs.values()]):
-            raise ValueError("Ensure all assigned flag values are boolean.")
+            print(kwargs)
+            # raise ValueError("Ensure all assigned flag values are boolean.")
         self.flags.update(kwargs)
-        # for key, value in kwargs.items():
-        #     self.flags[key] = value
         return
     
     def setHeight(self, overwrite:bool = False, **kwargs):

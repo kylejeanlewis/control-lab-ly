@@ -134,7 +134,7 @@ class Spinner(Maker):
             speed (int): spin speed in rpm
             time_s (int): spin time in seconds
         """
-        self._write(speed)
+        self._query(speed)
         self.speed = speed
         print(f"Duration   (channel {self.channel}): {time_s}s")
         interval = 1
@@ -145,7 +145,7 @@ class Spinner(Maker):
                 interval += 1
             if (time_s <= time.perf_counter() - start_time):
                 break
-        self._write(0)
+        self._query(0)
         self.speed = 0
         return
 
@@ -173,7 +173,7 @@ class Spinner(Maker):
                 print(e)
         else:
             time.sleep(2)   # Wait for grbl to initialize
-            device.flushInput()
+            device.reset_input_buffer()
             print(f"Connection opened to {port}")
             self.setFlag(connected=True)
         self.device = device
@@ -186,6 +186,28 @@ class Spinner(Maker):
         time.sleep(1)
         return
     
+    def _query(self, command:str) ->list[str]:
+        """
+        Write command to and read response from device
+
+        Args:
+            command (str): command string to send to device
+
+        Returns:
+            list[str]: list of response string(s) from device
+        """
+        responses = [b'']
+        self._write(command)
+        try:
+            responses = self.device.readline()
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        else:
+            if self.verbose:
+                print(responses)
+        return
+    
     def _write(self, speed:int):
         """
         Relay spin speed to spinner
@@ -193,8 +215,11 @@ class Spinner(Maker):
         Args:
             speed (int): spin speed in rpm
         """
+        fstring = f"{speed}\n"
+        if self.verbose:
+            print(fstring)
         try:
-            self.device.write(bytes(f"{speed}\n", 'utf-8'))
+            self.device.write(fstring.encode('utf-8'))
         except AttributeError:
             pass
         print(f"Spin speed (channel {self.channel}): {speed}")
@@ -231,9 +256,9 @@ class SpinnerAssembly(Maker):
     }
     
     def __init__(self, 
-        ports:list[str], 
-        channels:list[int], 
-        positions:list[tuple[float]], 
+        ports: list[str], 
+        channels: list[int], 
+        positions: list[tuple[float]],
         **kwargs
     ):
         """
@@ -248,7 +273,7 @@ class SpinnerAssembly(Maker):
         self.channels = {}
         self._threads = {}
         
-        self._connect(port=ports, channel=channels, position=positions)
+        self._connect(port=ports, channel=channels, position=positions, verbose=self.verbose)
         return
 
     def disconnect(self):

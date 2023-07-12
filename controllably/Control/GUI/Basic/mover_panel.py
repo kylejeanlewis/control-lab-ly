@@ -36,6 +36,8 @@ class Mover(Protocol):
         ...
     def rotateTo(self, *args, **kwargs):
         ...
+    def safeMoveTo(self, *args, **kwargs):
+        ...
     def _transform_out(self, *args, **kwargs):
         ...
         
@@ -241,7 +243,7 @@ class MoverPanel(Panel):
         if event == self._mangle(f'-Go-'):
             coord = [float(values[self._mangle(f'-{axis}-VALUE-')]) for axis in ['X','Y','Z']]
             orientation = [float(values[self._mangle(f'-{axis}-VALUE-')]) for axis in ['a','b','c']]
-            self.mover.moveTo(coord, orientation)
+            self.mover.safeMoveTo(coord, orientation)
             tool_position = list(np.concatenate(self.mover.tool_position))
         
         # 6. Reset mover

@@ -7,6 +7,7 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+from abc import abstractmethod
 import numpy as np
 import time
 from typing import Optional
@@ -38,6 +39,7 @@ class Gantry(Mover):
     
     ### Methods
     #### Abstract
+    - `getSettings`: get hardware settings
     - `home`: make the robot go home
     #### Public
     - `disconnect`: disconnect from device
@@ -76,7 +78,17 @@ class Gantry(Mover):
         
         self._connect(port)
         self.home()
+        self.setSpeed(self._speed_max)
         return
+    
+    @abstractmethod
+    def getSettings(self) -> list[str]:
+        """
+        Get hardware settings
+
+        Returns:
+            list[str]: hardware settings
+        """
     
     # Properties
     @property
@@ -126,7 +138,7 @@ class Gantry(Mover):
         l_bound, u_bound = self.limits
         
         if all(np.greater_equal(coordinates, l_bound)) and all(np.less_equal(coordinates, u_bound)):
-            return not self.deck.is_excluded(self._transform_out(coordinates, tool_offset=True))
+            return not self.deck.isExcluded(self._transform_out(coordinates, tool_offset=True))
         print(f"Range limits reached! {self.limits}")
         return False
 
@@ -165,7 +177,7 @@ class Gantry(Mover):
         
         self._query("G90\n")
         for move in moves:
-            self._query(f"G0 {move}\n")
+            self._query(f"G01 {move}\n")
         self._query("G90\n")
         
         distances = abs(self.coordinates - coordinates)
@@ -181,18 +193,21 @@ class Gantry(Mover):
         self.connect()
         return super().reset()
     
-    def setSpeed(self, speed: int):
+    def setSpeed(self, speed: int) -> tuple[bool, float]:
         """
         Set the speed of the robot
 
         Args:
             speed (int): speed in mm/s
+        
+        Returns:
+            tuple[bool, float]: whether speed has changed; speed
         """
         print(f'Speed: {speed} mm/s')
         self._speed_fraction = (speed/self._speed_max)
         speed = int(self._speed_max*self._speed_fraction * 60)   # get speed in mm/min
         self._query(f"G01 F{speed}\n")  # feed rate (i.e. speed) in mm/min
-        return False, self.speed
+        return True, self.speed
     
     def shutdown(self):
         """Shutdown procedure for tool"""
@@ -228,7 +243,7 @@ class Gantry(Mover):
         self.device = device
         return
 
-    def _query(self, command:str) -> str:
+    def _query(self, command:str) -> list[str]:
         """
         Write command to and read response from device
 
@@ -236,18 +251,20 @@ class Gantry(Mover):
             command (str): command string to send to device
 
         Returns:
-            str: response string from device
+            list[str]: list of response string(s) from device
         """
-        response = ''
+        responses = [b'']
         self._write(command)
         try:
-            response = self.device.readline()
+            responses = self.device.readlines()
         except Exception as e:
             if self.verbose:
                 print(e)
         else:
-            print(response)
-        return response
+            if self.verbose:
+                print(responses)
+        # self._handle_alarms_and_errors(response=response.decode())
+        return [r.decode().strip() for r in responses]
 
     def _write(self, command:str) -> bool:
         """
@@ -259,6 +276,7 @@ class Gantry(Mover):
         Returns:
             bool: whether the command is sent successfully
         """
+        command = f"{command}\n" if not command.endswith('\n') else command
         if self.verbose:
             print(command)
         try:
