@@ -260,6 +260,7 @@ class LEDArray(Maker):
     def _loop_timer(self):
         """Loop for counting time and flagging channels"""
         self.setFlag(timing_loop=True)
+        time.sleep(0.1)
         busy = self.isBusy()
         timed_channels = self._timed_channels
         last_round = False
