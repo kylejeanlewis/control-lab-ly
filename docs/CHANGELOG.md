@@ -5,6 +5,11 @@
 ### 1.2.0
 - Integration for mass balance from Sartorius
 
+## Version 1.1.3
+Bug fixes and patches. First released __ Jul 2023.
+### Changed
+- update `LEDArray` to delay timing loop by 0.1s
+
 
 ## Versions 1.1.2 & 1.1.1
 Bug fixes and patches. First released 12 Jul 2023.
