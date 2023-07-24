@@ -201,9 +201,9 @@ class PiezoRoboticsDevice(Instrument):
                 print(e)
         else:
             print(f"Connection opened to {port}")
+            self.device = device
             self.setFlag(connected=True)
             self.initialise()
-        self.device = device
         return
     
     def _query(self, command:str, timeout_s:int = 60) -> Union[str, tuple[str]]:
