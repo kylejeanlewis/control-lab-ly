@@ -487,9 +487,11 @@ class Mover(ABC):
         Returns:
             bool: whether movement is successful
         """
-        speed = self._speed_max if speed is None else speed
+        speed_change = False
+        speed = self._speed_max if speed is 0 else speed
+        if speed is not None:
+            speed_change, prevailing_speed = self.setSpeed(speed)
         success = False
-        speed_change, prevailing_speed = self.setSpeed(speed)
         axis = axis.lower()
         movement_L = {
             'x':0, 'y':0, 'z':0,
