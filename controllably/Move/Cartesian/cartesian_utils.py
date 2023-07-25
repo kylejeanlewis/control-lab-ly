@@ -174,6 +174,8 @@ class Gantry(Mover):
         positionXY = f'X{coordinates[0]}Y{coordinates[1]}'
         position_Z = f'Z{coordinates[2]}'
         moves = [position_Z, positionXY] if z_first else [positionXY, position_Z]
+        moves = [positionXY] if coordinates[2]==self.coordinates[2] else moves
+        moves = [position_Z] if (coordinates[0]==self.coordinates[0] and coordinates[1]==self.coordinates[1]) else moves
         
         self._query("G90\n")
         for move in moves:
@@ -215,7 +217,7 @@ class Gantry(Mover):
         return super().shutdown()
     
     # Protected method(s)
-    def _connect(self, port:str, baudrate:int = 115200, timeout:int = 1):
+    def _connect(self, port:str, baudrate:int = 115200, timeout:int = 0.2):
         """
         Connection procedure for tool
 
@@ -263,7 +265,6 @@ class Gantry(Mover):
         else:
             if self.verbose:
                 print(responses)
-        # self._handle_alarms_and_errors(response=response.decode())
         return [r.decode().strip() for r in responses]
 
     def _write(self, command:str) -> bool:
