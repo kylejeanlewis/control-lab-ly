@@ -1,5 +1,5 @@
 # %%
-import init
+from init import library
 from controllably.Control.GUI.Basic import MoverPanel
 from controllably.Move.Cartesian import Primitiv
 from controllably.Move.Jointed.Dobot import M1Pro
@@ -11,7 +11,7 @@ gui1 = MoverPanel(you, axes='XYZa')
 gui1.runGUI()
 
 # %%
-import init
+from init import library
 from controllably.Control.GUI.Basic import LiquidPanel
 from controllably.Transfer.Liquid.Sartorius import Sartorius
 me = Sartorius('COM17')
@@ -21,7 +21,7 @@ gui2 = LiquidPanel(liquid=me)
 # gui2.runGUI()
 
 # %%
-import init
+from init import library
 from controllably.Control.GUI.Basic import LiquidPanel
 from controllably.Transfer.Liquid import SyringeAssembly
 from controllably.Transfer.Liquid.Pumps import Peristaltic
@@ -39,14 +39,14 @@ gui2 = LiquidPanel(liquid=me)
 # gui2.runGUI()
 
 # %%
-import init
+from init import library
 from controllably.Control.GUI import CompoundPanel
 gui = CompoundPanel(dict(
     mover=gui1, liquid=gui2
 ))
 gui.runGUI()
 # %%
-import init
+from init import library
 from controllably.Control.GUI.Basic import MeasurerPanel
 from controllably.Measure.Electrical.Keithley import Keithley
 
@@ -55,7 +55,7 @@ gui = MeasurerPanel(me)
 gui.runGUI()
 
 # %%
-import init
+from init import library
 from controllably.Control.GUI.Basic import MakerPanel
 from controllably.Make.Light import LEDArray
 me = LEDArray('COM4', channels=[0,1,2,3])
@@ -64,7 +64,7 @@ gui = MakerPanel(me)
 gui.runGUI()
 
 # %%
-import init
+from init import library
 from controllably.Control.GUI.Basic import MakerPanel
 from controllably.Make.ThinFilm import SpinnerAssembly
 
@@ -77,7 +77,7 @@ gui = MakerPanel(me)
 gui.runGUI()
 
 # %%
-import init
+from init import library
 from controllably.Control.GUI.Basic import MakerPanel
 from controllably.Make.Mixture.QInstruments import BioShake
 me = BioShake('COM27', verbose=False)
@@ -85,7 +85,7 @@ gui = MakerPanel(me)
 gui.runGUI()
 
 # %%
-import init
+from init import library
 from controllably.Move.Cartesian import Primitiv
 from controllably import guide_me
 guide_me()

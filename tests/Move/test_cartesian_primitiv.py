@@ -3,9 +3,9 @@ import init
 from controllably.Move.Cartesian import Primitiv
 from controllably.Control.GUI.Basic import MoverPanel
 
-gui = MoverPanel(Primitiv('COM5'))
+me = Primitiv('COM5')
+gui = MoverPanel(me, axes='XYZ')
 # gui.runGUI()
-me = gui.tool
 me.__dict__
 # %%
 me.home()
@@ -20,5 +20,5 @@ me.safeMoveTo((-20,-40,-90))
 # %%
 me.home()
 # %%
-me.setSpeed(10) # NOTE: speed does not change for Primitiv
+me.setSpeed(10)
 # %%

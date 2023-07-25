@@ -3,11 +3,10 @@ import init
 from controllably.Move.Cartesian import Ender
 from controllably.Control.GUI.Basic import MoverPanel
 
-# gui = MoverPanel(Ender('COM18', limits=((0,0,0),(100,100,70)), max_speed=10))
-gui = MoverPanel(Ender('COM18', limits=((0,0,0),(220,220,250)), max_speed=300))
+me = Ender('COM18', limits=((0,0,0),(220,220,250)), max_speed=300, verbose=True)
+# me = Ender('COM18', limits=((0,0,0),(100,100,70)), max_speed=10, verbose=True)
+gui = MoverPanel(me, axes='XYZ')
 # gui.runGUI()
-me = gui.tool
-me.verbose = True
 me.__dict__
 # %%
 me.home()

@@ -1,15 +1,10 @@
 # %%
-import init
+from init import library
 from controllably.Transfer.Liquid.Pumps.TriContinent import TriContinent
-me = TriContinent(
-    'COM23', 
-    channel=[1,2], 
-    model='C3000',
-    capacity=1000, 
-    output_right=True, 
-    name=['first', 'second'],
-    verbose=False
-)
+from controllably import Helper, Factory
+
+details = Factory.get_details(Helper.read_yaml(library['configs']['tricontinent_pumps']))
+me = TriContinent(**details['liquid']['settings'])
 me.__dict__
 # %%
 me.setCurrentChannel(2)

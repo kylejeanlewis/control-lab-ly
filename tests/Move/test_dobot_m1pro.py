@@ -5,9 +5,9 @@ from controllably.Control.GUI.Basic import MoverPanel
 from controllably import Helper, Factory
 
 details = Factory.get_details(Helper.read_yaml(library['configs']['m1pro_B1']))
-gui = MoverPanel(M1Pro(**details['mover']['settings']), axes='XYZa')
+me = M1Pro(**details['mover']['settings'])
+gui = MoverPanel(me, axes='XYZa')
 # gui.runGUI()
-me = gui.tool
 me.__dict__
 # %%
 me.home()

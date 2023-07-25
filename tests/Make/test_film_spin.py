@@ -1,20 +1,14 @@
 # %%
-import init
-import time
-from controllably.Make.ThinFilm import SpinnerAssembly, Spinner
+from init import library
+from controllably.Make.ThinFilm import SpinnerAssembly
+from controllably import Helper, Factory
 #%%
-me = SpinnerAssembly(
-    ports = ['COM37','COM38','COM39','COM40'], 
-    channels = [4,3,2,1], 
-    positions = [[57.5,42.5,128], [132.5,42.5,128],[207.5,42.5,128],[282.5,42.5,128]],
-    verbose = True
-)
+details = Factory.get_details(Helper.read_yaml(library['configs']['spin_assembly']))
+me = SpinnerAssembly(**details['spinner']['settings'])
 me.__dict__
 # %%
 me.run(soak_time=2, spin_speed=1000, spin_time=10, channel=1)
 me.run(4, 2000, 20, 2)
 me.run(6, 3000, 30, 3)
 me.run(8, 4000, 40, 4)
-# %%
-me = Spinner('COM41')
 # %%
