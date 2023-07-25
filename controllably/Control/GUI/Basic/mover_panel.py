@@ -235,9 +235,13 @@ class MoverPanel(Panel):
         # 4. abg sliders
         if event in [self._mangle(f'-{axis}-SLIDER-') for axis in ['a','b','c']]:
             orientation = [float(values[self._mangle(f'-{axis}-SLIDER-')]) for axis in ['a','b','c']]
-            self.mover.rotateTo(orientation)
-            self.flags['update_position'] = True
-            tool_position = list(np.concatenate(self.mover.tool_position))
+            try:
+                self.mover.rotateTo(orientation)
+            except AttributeError:
+                pass
+            else:
+                self.flags['update_position'] = True
+                tool_position = list(np.concatenate(self.mover.tool_position))
             
         # 5. Go to position
         if event == self._mangle(f'-Go-'):
