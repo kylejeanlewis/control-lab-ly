@@ -242,7 +242,7 @@ class ForceSensor(Measurer):
         print('Stop listening...')
         return
 
-    def _read(self):
+    def _read(self) -> str:
         """
         Read response from device
 
