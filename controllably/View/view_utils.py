@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 import pkgutil
 from threading import Thread
-from typing import Optional, Protocol
+from typing import Optional, Protocol, Callable
 
 # Third party imports
 import cv2              # pip install opencv-python
@@ -82,6 +82,7 @@ class Camera(ABC):
     - `setFlag`: set flags by using keyword arguments
     - `shutdown`: shutdown procedure for tool
     - `toggleRecord`: start or stop image capture and recording
+    - `view`: view the camera feed
     """
     
     _default_flags: dict[str, bool] = {
@@ -234,8 +235,6 @@ class Camera(ABC):
         if not all([type(v)==bool for v in kwargs.values()]):
             raise ValueError("Ensure all assigned flag values are boolean.")
         self.flags.update(kwargs)
-        # for key, value in kwargs.items():
-        #     self.flags[key] = value
         return
     
     def shutdown(self):
@@ -354,6 +353,24 @@ class Camera(ABC):
             filename = f'image{now}.png'
         return cv2.imwrite(filename, frame)
     
+    def view(self, process_func:Optional[Callable] = None, **kwargs):
+        """
+        View the camera feed
+
+        Args:
+            process_func (Callable, optional): callable process function. Defaults to None.
+        """
+        cv2.destroyAllWindows()
+        thread = Thread(
+            target = self._loop_display, 
+            name = "CameraViewer", 
+            args = [process_func], 
+            kwargs = kwargs,
+            daemon = True
+        )
+        thread.start()
+        return
+    
     # Protected method(s)
     def _data_to_df(self, data:dict) -> pd.DataFrame:
         """
@@ -379,6 +396,29 @@ class Camera(ABC):
         df.sort_values(by=['row','x'], ascending=[True,True], inplace=True) 
         df.reset_index(inplace = True, drop = True)
         return df
+    
+    def _loop_display(self, process_func:Optional[Callable] = None, **kwargs):
+        """
+        Loop to display video stream
+
+        Args:
+            process_func (Optional[Callable], optional): callable process function. Defaults to None.
+        """
+        while True:
+            if not self.isConnected():
+                print("Stream is not open.")
+                return
+            ret,frame = self._read()
+            # if callable(process_func):
+            #     frame = process_func(frame, **kwargs)
+            if frame is None or not ret:
+                continue
+            cv2.putText(frame, "Press 'q' to close", (5, 15), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
+            cv2.imshow('output', frame)
+            key = cv2.waitKey(1) & 0xFF     
+            if key == ord('q'):
+                break
+        return
     
     def _loop_record(self):
         """Loop to constantly get and save image frames"""
