@@ -182,8 +182,11 @@ class KeithleyDevice(Instrument):
         """
         name = self.buffer_name if name is None else name
         reply = self._query(f'TRACe:ACTual:STARt? "{name}" ; END? "{name}"')
+        response = self._parse(reply=reply)
+        if '__len__' not in response.__dir__():
+            return 0,0
         try:
-            start,end = self._parse(reply=reply)
+            start,end = response
             start = int(start)
             end = int(end)
         except ValueError:
