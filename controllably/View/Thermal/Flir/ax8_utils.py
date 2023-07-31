@@ -33,6 +33,10 @@ class AX8(Camera):
         `overlay` (bool, optional): whether to have an overlay. Defaults to False.
         `verbose` (bool, optional): verbosity of class. Defaults to True.
 
+    ### Attributes
+    - `rtsp_url` (str): stream for real time stream
+    - `spotmeter_parameters` (dict[str,bool]): reflected temperature, emissivity, and distance for spotmeter)
+    
     ### Properties
     - `ip_address` (str): IP address of thermal camera
     - `modbus` (ModbusClient): alias for `device`
