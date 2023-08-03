@@ -78,12 +78,12 @@ class Ender(Gantry):
         return responses
     
     def getTemperature(self) -> Union[tuple, str]:
+    def getTemperature(self) -> tuple[float]:
         """
-        Retrieve temperatures from device 
-        Including the set temperature, hot temperature, cold temperature, and the power level
+        Retrieve set temperature and actual temperature from device
         
         Returns:
-            Union[tuple, str]: response from device
+            tuple[float]: set temperature, current temperature
         """
         responses = self._query('M105')  # Use 'M155 S<seconds>' to auto-report temperatures in S-second intervals. S0 to disable.
         temperatures = [r for r in responses if '@' in r]
@@ -94,7 +94,7 @@ class Ender(Gantry):
         
         ready = (abs(self.set_temperature - self.temperature)<=self.tolerance)
         self.setFlag(temperature_reached=ready)
-        return (self.temperature, self.set_temperature)
+        return self.set_temperature, self.temperature
     
     def holdTemperature(self, temperature:float, time_s:float):
         """
