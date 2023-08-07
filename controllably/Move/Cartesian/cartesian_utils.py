@@ -78,7 +78,6 @@ class Gantry(Mover):
         
         self._connect(port)
         self.home()
-        # self.setSpeed(self.max_speed[0])   # FIXME
         return
     
     @abstractmethod
@@ -223,20 +222,22 @@ class Gantry(Mover):
         self.connect()
         return
     
-    def setSpeed(self, speed: int) -> tuple[bool, float]:
+    def setSpeed(self, speed: int, axis:str = 'x') -> tuple[bool, float]:
         """
         Set the speed of the robot
 
         Args:
             speed (int): speed in mm/s
+            axis (str, optional): axis speed to be changed. Defaults to 'x'.
         
         Returns:
-            tuple[bool, float]: whether speed has changed; speed
+            tuple[bool, float]: whether speed has changed; prevailing speed
         """
         print(f'Speed: {speed} mm/s')
-        self._speed_fraction = (speed/self._speed_max)
-        speed = int(self._speed_max*self._speed_fraction * 60)   # get speed in mm/min
-        self._query(f"G01 F{speed}\n")  # feed rate (i.e. speed) in mm/min
+        max_speed = self._speed_max[axis]
+        self._speed_fraction = (speed/max_speed)
+        speed = int(max_speed*self._speed_fraction * 60)    # get speed in mm/min
+        self._query(f"F{speed}")                            # feed rate (i.e. speed) in mm/min
         return True, self.speed
     
     def setSpeedFraction(self, speed_fraction: float) -> tuple[bool, float]:
