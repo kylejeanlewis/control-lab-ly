@@ -124,6 +124,23 @@ class Primitiv(Gantry):
         self.coordinates = self.home_coordinates
         print("Homed")
         return True
+
+    @Helper.safety_measures
+    def moveTo(self, coordinates:tuple[float], tool_offset:bool = True, jog:bool = False, **kwargs) -> bool:
+        """
+        Move the robot to target position
+
+        Args:
+            coordinates (tuple[float]): x,y,z coordinates to move to
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
+
+        Returns:
+            bool: whether movement is successful
+        """
+        self.setFlag(jog=jog)
+        ret = super().moveTo(coordinates=coordinates, tool_offset=tool_offset)
+        self.setFlag(jog=False)
+        return ret
     
     def stop(self):
         """Halt all movement and print current coordinates"""
@@ -157,6 +174,23 @@ class Primitiv(Gantry):
             time.sleep(2)
             self.device.reset_input_buffer()
         return
+    
+    def _query(self, command: str) -> list[str]:
+        """
+        Write command to and read response from device
+
+        Args:
+            command (str): command string to send to device
+
+        Returns:
+            list[str]: list of response string(s) from device
+        """
+        if command.startswith("G1") and self.flags.get('jog',False):
+            axes = ('x','y','z','a','b','c')
+            move = command.strip().split("G1 ")[1]
+            axis = move[0].lower()
+            command = f"$J= {move} F{int(self.speed[axes.index(axis)])}"
+        return super()._query(command)
 
     # def _handle_alarms_and_errors(self, response:str):
     #     """
