@@ -25,8 +25,8 @@ you.__dict__
 device = you.device
 device.reset()
 device.sendCommands(['ROUTe:TERMinals FRONT'])
-device.configureSource('current', measure_limit=2)
-device.configureSense('voltage', limit=2, four_point=True, count=1)
+device.configureSource('current')
+device.configureSense('voltage', limit=0.2, four_point=True, count=1)
 device.makeBuffer()
 device.setSource(0)
 device.toggleOutput(True)
@@ -39,10 +39,11 @@ def read_value():
     return volt
 
 # %%
+baseline = 0.023596492368421054
 volts = []
 x,y,z = me.tool_position[0]
 me.setSpeed(me.max_speed[2])
-threshold = 0.03
+threshold = baseline*1.01
 start = time.time()
 target = np.array((x,y,20))
 me.moveTo(target, wait=False, jog=True)
