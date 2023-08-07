@@ -72,13 +72,13 @@ class Gantry(Mover):
         self._limits = ((0, 0, 0), (0, 0, 0))
         
         self.limits = limits
-        self._speed_max = max_speed
+        self._speed_max = dict(general=max_speed)
         if safe_height is not None:
             self.setHeight(safe=safe_height)
         
         self._connect(port)
         self.home()
-        self.setSpeed(self._speed_max)
+        # self.setSpeed(self.max_speed[0])   # FIXME
         return
     
     @abstractmethod
@@ -204,10 +204,9 @@ class Gantry(Mover):
         moves = [positionXY] if coordinates[2]==self.coordinates[2] else moves
         moves = [position_Z] if (coordinates[0]==self.coordinates[0] and coordinates[1]==self.coordinates[1]) else moves
         
-        self._query("G90\n")
+        self._query("G90")
         for move in moves:
-            self._query(f"G01 {move}\n")
-        self._query("G90\n")
+            self._query(f"G1 {move}")
         
         distances = abs(self.coordinates - coordinates)
         times = distances / self.speed
@@ -220,7 +219,7 @@ class Gantry(Mover):
         """Reset the robot"""
         self.disconnect()
         self.connect()
-        return super().reset()
+        return
     
     def setSpeed(self, speed: int) -> tuple[bool, float]:
         """
@@ -237,6 +236,22 @@ class Gantry(Mover):
         speed = int(self._speed_max*self._speed_fraction * 60)   # get speed in mm/min
         self._query(f"G01 F{speed}\n")  # feed rate (i.e. speed) in mm/min
         return True, self.speed
+    
+    def setSpeedFraction(self, speed_fraction: float) -> tuple[bool, float]:
+        """
+        Set the speed fraction of the robot
+
+        Args:
+            speed_fraction (float): speed fraction between 0 and 1
+        
+        Returns:
+            tuple[bool, float]: whether speed has changed; prevailing speed fraction
+        """
+        print(f'Speed fraction: {speed_fraction}')
+        prevailing_speed_fraction = self._speed_fraction
+        self._speed_fraction = speed_fraction
+        self._query(f"M220 S{int(speed_fraction*100)}")
+        return True, self.max_speed*prevailing_speed_fraction
     
     def shutdown(self):
         """Shutdown procedure for tool"""
