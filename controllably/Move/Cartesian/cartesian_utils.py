@@ -208,10 +208,12 @@ class Gantry(Mover):
         for move in moves:
             self._query(f"G1 {move}")
         
-        distances = abs(self.coordinates - coordinates)
-        times = distances / self.speed
-        move_time = max(times[:2]) + times[2]
-        time.sleep(move_time)
+        if kwargs.get('wait', True):
+            distances = abs(self.coordinates - coordinates)
+            times = [self._calculate_travel_time(d, s) for d,s in zip(distances, self.speed[:3])]
+            print(times)
+            move_time = max(times[:2]) + times[2]
+            time.sleep(move_time)
         self.updatePosition(coordinates=coordinates)
         return True
     
