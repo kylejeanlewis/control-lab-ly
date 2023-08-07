@@ -155,7 +155,7 @@ class RobotArm(Mover):
     @property
     def speed_angular(self) -> float:
         if self.verbose:
-            print(f'Max speed: {self._speed_max}')
+            print(f'Max speed: {self._speed_angular_max}')
             print(f'Speed fraction: {self._speed_fraction}')
         return self._speed_angular_max * self._speed_fraction
     
