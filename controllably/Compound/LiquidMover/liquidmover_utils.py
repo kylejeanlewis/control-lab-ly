@@ -380,13 +380,14 @@ class LiquidMoverSetup(CompoundSetup):
         rack_coordinates = (*coordinates[:2],coordinates[2]+insert_mm)
         return rack_coordinates
     
-    def touchTip(self, well:Well, safe_move:bool = False, speed_fraction:float = 0.2) -> tuple[float]:
+    def touchTip(self, well:Well, safe_move:bool = False, speed_fraction:float = 0.2, **kwargs) -> tuple[float]:
         """
         Touch the tip against the inner walls of the well
         
         Args:
             well (Well): Well object
             safe_move (bool, optional): whether to move safely (i.e. go back to safe height first). Defaults to False.
+            speed_fraction (float, optional): fraction of maximum speed to perform touch tip. Defaults to 0.2.
 
         Returns:
             tuple[float]: coordinates of well center
