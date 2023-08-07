@@ -39,3 +39,26 @@ time.sleep(1)
 data_df = device.readAll()
 device.beep()
 device.getErrors()
+
+# %%
+device = me.device
+device.reset()
+device.sendCommands(['ROUTe:TERMinals FRONT'])
+device.configureSource('current', measure_limit=2)
+device.configureSense('voltage', limit=2, four_point=True, count=1)
+device.makeBuffer()
+device.beep()
+
+# %%
+device.setSource(0)
+device.toggleOutput(True)
+volts = []
+for _ in range(100):
+    volt = device._query("MEASure:VOLTage?")
+    volt = float(volt)
+    print(f"Voltage: {volt}")
+    volts.append(volt)
+# %%
+import plotly.express as px
+px.scatter(x=[i for i in range(len(volts))], y=volts)
+# %%
