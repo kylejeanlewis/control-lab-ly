@@ -241,3 +241,11 @@ class Ender(Gantry):
             self.getTemperature()
         self.setFlag(temperature_reached=blocking)
         return
+
+    def stop(self):
+        """Halt all movement and print current coordinates"""
+        self._query("M410")
+        time.sleep(1)
+        self.coordinates = self.getCoordinates()
+        print(self.coordinates)
+        return
