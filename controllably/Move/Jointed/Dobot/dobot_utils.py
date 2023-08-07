@@ -163,7 +163,8 @@ class Dobot(RobotArm):
     @Helper.safety_measures
     def moveCoordBy(self, 
         vector: tuple[float] = (0,0,0), 
-        angles: tuple[float] = (0,0,0)
+        angles: tuple[float] = (0,0,0),
+        **kwargs
     ) -> bool:
         """
         Relative Cartesian movement and tool orientation, using robot coordinates
@@ -186,16 +187,18 @@ class Dobot(RobotArm):
             self.updatePosition(vector=vector, angles=angles)
             return False
         else:
-            move_time = max(abs(np.array(vector))/self.speed) + max(abs(np.array(angles))/self.speed_angular)
-            print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
-            time.sleep(move_time+MOVE_TIME_BUFFER_S)
+            if kwargs.get('wait', True):
+                move_time = max(abs(np.array(vector))/self.speed[:3]) + max(abs(np.array(angles))/self.speed_angular)
+                print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
+                time.sleep(move_time+MOVE_TIME_BUFFER_S)
         self.updatePosition(vector=vector, angles=angles)
         return True
 
     @Helper.safety_measures
     def moveCoordTo(self, 
         coordinates: Optional[tuple[float]] = None, 
-        orientation: Optional[tuple[float]] = None
+        orientation: Optional[tuple[float]] = None,
+        **kwargs
     ) -> bool:
         """
         Absolute Cartesian movement and tool orientation, using robot coordinates
@@ -225,17 +228,18 @@ class Dobot(RobotArm):
             self.updatePosition(coordinates=coordinates, orientation=orientation)
             return False
         else:
-            position = self.position
-            distances = abs(position[0] - np.array(coordinates))
-            rotations = abs(position[1] - np.array(orientation))
-            move_time = max([max(distances/self.speed),  max(rotations/self.speed_angular)])
-            print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
-            time.sleep(move_time+MOVE_TIME_BUFFER_S)
+            if kwargs.get('wait', True):
+                position = self.position
+                distances = abs(position[0] - np.array(coordinates))
+                rotations = abs(position[1] - np.array(orientation))
+                move_time = max([max(distances/self.speed[:3]),  max(rotations/self.speed_angular)])
+                print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
+                time.sleep(move_time+MOVE_TIME_BUFFER_S)
         self.updatePosition(coordinates=coordinates, orientation=orientation)
         return True
 
     @Helper.safety_measures
-    def moveJointBy(self, relative_angles: tuple[float]) -> bool:
+    def moveJointBy(self, relative_angles: tuple[float], **kwargs) -> bool:
         """
         Relative joint movement
 
@@ -258,14 +262,15 @@ class Dobot(RobotArm):
             self.updatePosition(angles=relative_angles[3:])
             return False
         else:
-            move_time = max(abs(np.array(relative_angles)) / self.speed_angular)
-            print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
-            time.sleep(move_time+MOVE_TIME_BUFFER_S)
+            if kwargs.get('wait', True):
+                move_time = max(abs(np.array(relative_angles)) / self.speed_angular)
+                print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
+                time.sleep(move_time+MOVE_TIME_BUFFER_S)
         self.updatePosition(angles=relative_angles[3:])
         return True
 
     @Helper.safety_measures
-    def moveJointTo(self, absolute_angles: tuple[float]) -> bool:
+    def moveJointTo(self, absolute_angles: tuple[float], **kwargs) -> bool:
         """
         Absolute joint movement
 
@@ -288,9 +293,10 @@ class Dobot(RobotArm):
             self.updatePosition(orientation=absolute_angles[3:])
             return False
         else:
-            move_time = max(abs(np.array(absolute_angles)) / self.speed_angular)
-            print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
-            time.sleep(move_time+MOVE_TIME_BUFFER_S)
+            if kwargs.get('wait', True):
+                move_time = max(abs(np.array(absolute_angles)) / self.speed_angular)    # FIXME
+                print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
+                time.sleep(move_time+MOVE_TIME_BUFFER_S)
         self.updatePosition(orientation=absolute_angles[3:])
         return True
 
