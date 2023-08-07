@@ -7,18 +7,19 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+import numpy as np
 import time
 from typing import Optional
 
 # Local application imports
 from ...misc import Helper
 from .cartesian_utils import Gantry
-from .grbl_lib import AlarmCode, ErrorCode
+# from .grbl_lib import AlarmCode, ErrorCode
 print(f"Import: OK <{__name__}>")
 
-class Primitiv(Gantry):
+class Grbl(Gantry):
     """
-    Primitiv provides controls for the Primitv platform
+    Grbl provides controls for the platforms using the Grbl firmware
 
     ### Constructor
     Args:
@@ -33,6 +34,8 @@ class Primitiv(Gantry):
     - `home`: make the robot go home
     - `stop`: stop movement immediately
     """
+    
+    _default_flags = {'busy': False, 'connected': False, 'jog':False}
     def __init__(self, 
         port: str, 
         limits: tuple[tuple[float]] = ((-410,-290,-120), (0,0,0)), 
@@ -50,6 +53,7 @@ class Primitiv(Gantry):
             max_speed (float, optional): maximum travel speed. Defaults to 250.
         """
         super().__init__(port=port, limits=limits, safe_height=safe_height, max_speed=max_speed, **kwargs)
+        self._query("F10800")
         return
     
     def getAcceleration(self) -> np.ndarray:
@@ -222,3 +226,32 @@ class Primitiv(Gantry):
     #         if code in ErrorCode._member_names_:
     #             print(ErrorCode[code].value)
     #     return
+
+
+class Primitiv(Grbl):
+    """
+    Primitiv provides controls for the Primitv platform
+
+    ### Constructor
+    Args:
+        `port` (str): COM port address
+        `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((-410,-290,-120), (0,0,0)).
+        `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to -80.
+        `max_speed` (float, optional): maximum travel speed. Defaults to 250.
+    
+    ### Methods
+    - `getSettings`: get hardware settings
+    - `getStatus`: get the current status of the tool
+    - `home`: make the robot go home
+    - `stop`: stop movement immediately
+    """
+    
+    def __init__(self, 
+        port: str, 
+        limits: tuple[tuple[float]] = ((-410, -290, -120), (0, 0, 0)), 
+        safe_height: float = -80, 
+        max_speed: float = 250, 
+        **kwargs
+    ):
+        super().__init__(port, limits, safe_height, max_speed, **kwargs)
+        
