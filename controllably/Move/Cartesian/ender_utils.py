@@ -3,21 +3,23 @@
 This module holds the class for movement tools based on Creality's Ender-3. (Marlin firmware)
 
 Classes:
-    Ender (Gantry)
+    Ender (Marlin)
+    Marlin (Gantry)
 """
 # Standard library imports
 from __future__ import annotations
+import numpy as np
 import time
-from typing import Union
+from typing import Optional
 
 # Local application imports
 from ...misc import Helper
 from .cartesian_utils import Gantry
 print(f"Import: OK <{__name__}>")
 
-class Ender(Gantry):
+class Marlin(Gantry):
     """
-    Ender provides controls for the Creality Ender-3 platform
+    Marlin provides controls for the platforms using the Marlin firmware
 
     ### Constructor
     Args:
@@ -123,7 +125,9 @@ class Ender(Gantry):
         print(responses)
         return responses
     
-    def getTemperature(self) -> Union[tuple, str]:
+    def getStatus(self):
+        ...
+    
     def getTemperature(self) -> tuple[float]:
         """
         Retrieve set temperature and actual temperature from device
@@ -167,7 +171,7 @@ class Ender(Gantry):
         self._query("G90\n")
         self._query(f"G0 Z{self.heights['safe']}\n")
         self._query("G90\n")
-        self._query("G1 F10800\n")
+        # self._query("G1 F10800\n")
         
         self.coordinates = self.home_coordinates
         print("Homed")
@@ -249,3 +253,36 @@ class Ender(Gantry):
         self.coordinates = self.getCoordinates()
         print(self.coordinates)
         return
+
+
+class Ender(Marlin):
+    """
+    Ender provides controls for the Creality Ender-3 platform
+
+    ### Constructor
+    Args:
+        `port` (str): COM port address
+        `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0,0,0), (240,235,210)).
+        `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to 30.
+        `max_speed` (float, optional): maximum travel speed. Defaults to 180.
+    
+    ### Attributes
+    - `temperature_range` (tuple): range of temperature that can be set for the platform bed
+    
+    ### Methods
+    - `getSettings`: get hardware settings
+    - `holdTemperature`: hold target temperature for desired duration
+    - `home`: make the robot go home
+    - `isAtTemperature`: checks and returns whether target temperature has been reached
+    - `setTemperature`: set the temperature of the 3-D printer platform bed
+    """
+    
+    def __init__(self, 
+        port: str, 
+        limits: tuple[tuple[float]] = ((0, 0, 0), (240, 235, 210)), 
+        safe_height: float = 30, 
+        max_speed: float = 180, 
+        **kwargs
+    ):
+        super().__init__(port, limits, safe_height, max_speed, **kwargs)
+        
