@@ -54,7 +54,6 @@ class Grbl(Gantry):
             max_speed (float, optional): maximum travel speed. Defaults to 250.
         """
         super().__init__(port=port, limits=limits, safe_height=safe_height, max_speed=max_speed, **kwargs)
-        self._query("F10800")
         return
     
     def getAcceleration(self) -> np.ndarray:
@@ -178,6 +177,7 @@ class Grbl(Gantry):
             self._write("\r\n\r\n")
             time.sleep(2)
             self.device.reset_input_buffer()
+            self._query('F10800')
         return
     
     def _query(self, command: str) -> list[str]:
