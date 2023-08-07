@@ -52,6 +52,45 @@ class Primitiv(Gantry):
         super().__init__(port=port, limits=limits, safe_height=safe_height, max_speed=max_speed, **kwargs)
         return
     
+    def getAcceleration(self) -> np.ndarray:
+        """
+        Get maximum acceleration rates (mm/s^2)
+
+        Returns:
+            np.ndarray: acceleration rates
+        """
+        settings = self.getSettings()
+        relevant = [s for s in settings if '$12' in s][-3:]
+        accels = [s.split('=')[1] for s in relevant]
+        xyz_max_accels = [float(s) for s in accels]
+        return np.array(xyz_max_accels)
+    
+    def getCoordinates(self) -> np.ndarray:
+        """
+        Get current coordinates from device
+
+        Returns:
+            np.ndarray: current device coordinates
+        """
+        status = self.getStatus()
+        relevant = [s for s in status if 'MPos' in s][-1]
+        positions = relevant.split(":")[1].split(",")
+        return np.array([float(p) for p in positions])
+    
+    def getMaxSpeed(self) -> np.ndarray:
+        """
+        Get maximum speeds (mm/s)
+
+        Returns:
+            np.ndarray: maximum speeds
+        """
+        settings = self.getSettings()
+        relevant = [s for s in settings if '$11' in s][-3:]
+        speeds = [s.split('=')[1] for s in relevant]
+        xyz_max_speeds = [float(s) for s in speeds]
+        self._speed_max = {k:v for k,v in zip(('x','y','z'), xyz_max_speeds)}
+        return self.max_speed
+    
     def getSettings(self) -> list[str]:
         """
         Get hardware settings
