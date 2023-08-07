@@ -81,7 +81,7 @@ class Dobot(RobotArm):
         """
         super().__init__(**kwargs)
         self.attachment = None
-        self._speed_max = 100
+        self._speed_max = dict(general=100)
         
         self._connect(ip_address)
         if attachment_name is not None:
@@ -323,25 +323,39 @@ class Dobot(RobotArm):
     #     """
     #     return super().retractArm(target)
     
-    def setSpeed(self, speed:float) -> tuple[bool, float]:
+    def setSpeed(self, speed:float, **kwargs) -> tuple[bool, float]:
         """
-        Set the speed of the robot
+        Set the speed of the robot (functionally equivalent to setting the speed fraction)
 
         Args:
             speed (int): rate value (value range: 1~100)
+            
+        Returns:
+            tuple[bool, float]: whether speed was changed; prevailing speed
         """
-        speed_fraction = speed/self._speed_max
+        return self.setSpeedFraction(speed)
+    
+    def setSpeedFraction(self, speed_fraction:float) -> tuple[bool, float]:
+        """
+        Set the speed fraction of the robot
+
+        Args:
+            speed_fraction (int): fraction of maximum speed (value range: 0~1)
+        
+        Returns:
+            tuple[bool, float]: whether speed was changed; prevailing speed fraction
+        """
         if speed_fraction == self._speed_fraction:
-            return False, self.speed
-        prevailing_speed = self.speed
+            return False, self._speed_fraction
+        prevailing_speed_fraction = self._speed_fraction
         try:
             self.dashboard.SpeedFactor(int(max(1, speed_fraction*100)))
         except (AttributeError, OSError):
             if self.verbose:
                 print("Not connected to arm.")
-            return False, self.speed
+            return False, self._speed_fraction
         self._speed_fraction = speed_fraction
-        return True, prevailing_speed
+        return True, prevailing_speed_fraction
     
     def shutdown(self):
         """Shutdown procedure for tool"""
