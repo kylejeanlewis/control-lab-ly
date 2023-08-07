@@ -66,6 +66,52 @@ class Ender(Gantry):
         self.tolerance = 1.5
         return
     
+    def getAcceleration(self) -> np.ndarray:
+        """
+        Get maximum acceleration rates (mm/s^2)
+
+        Returns:
+            np.ndarray: acceleration rates
+        """
+        settings = self.getSettings()
+        relevant = [s for s in settings if 'M201' in s][-1]
+        accels = relevant.split('M201 ')[1].split(' ')
+        xyz_max_accels = [float(s[1:]) for s in accels[:3]]
+        return np.array(xyz_max_accels)
+    
+    def getCoordinates(self) -> np.ndarray:
+        """
+        Get current coordinates from device
+
+        Returns:
+            np.ndarray: current device coordinates
+        """
+        relevant = []
+        while len(relevant) == 0:
+            responses = self._query('M114')  # Use 'M154 S<seconds>' to auto-report temperatures in S-second intervals. S0 to disable.
+            relevant = [r for r in responses if 'Count' in r]
+            if not self.isConnected():
+                return self.coordinates
+        # if len(position) == 0:
+        #     return np.array([np.nan]*3)
+        xyz_coordinates = relevant[-1].split("E")[0].split(" ")[:-1]
+        x,y,z = [float(c[2:]) for c in xyz_coordinates]
+        return np.array([x,y,z])
+    
+    def getMaxSpeed(self) -> np.ndarray:
+        """
+        Get maximum speeds (mm/s)
+
+        Returns:
+            np.ndarray: maximum speeds
+        """
+        settings = self.getSettings()
+        relevant = [s for s in settings if 'M203' in s][-1]
+        speeds = relevant.split('M203 ')[1].split(' ')
+        xyz_max_speeds = [float(s[1:]) for s in speeds[:3]]
+        self._speed_max = {k:v for k,v in zip(('x','y','z'), xyz_max_speeds)}
+        return self.max_speed
+    
     def getSettings(self) -> list[str] :
         """
         Get hardware settings
