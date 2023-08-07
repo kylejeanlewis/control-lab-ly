@@ -126,8 +126,12 @@ class Primitiv(Gantry):
         return True
     
     def stop(self):
-        """Stop movement immediately"""
-        self._query("!\n")
+        """Halt all movement and print current coordinates"""
+        self._query("!")
+        self._query("$X")
+        self._query("~")
+        self._query("F10800")
+        self.coordinates = self.getCoordinates()
         return
 
     # Protected method(s)
