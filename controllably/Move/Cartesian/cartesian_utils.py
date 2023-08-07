@@ -266,10 +266,11 @@ class Gantry(Mover):
             if self.verbose:
                 print(e)
         else:
+            self.device = device
             time.sleep(2)
             print(f"Connection opened to {port}")
             self.setFlag(connected=True)
-        self.device = device
+            self.getMaxSpeed()
         return
 
     def _query(self, command:str) -> list[str]:
