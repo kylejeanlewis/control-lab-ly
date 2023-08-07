@@ -182,6 +182,37 @@ class Ender(Gantry):
         """
         return self.flags['temperature_reached']
 
+    def setSpeed(self, speed: int, axis:str = 'x') -> tuple[bool, float]:
+        """
+        Set the speed of the robot
+
+        Args:
+            speed (int): speed in mm/s
+            axis (str, optional): axis speed to be changed. Defaults to 'x'.
+        
+        Returns:
+            tuple[bool, float]: whether speed has changed; prevailing speed
+        """
+        print(f'Speed: {speed} mm/s')
+        speed_fraction = (speed/self._speed_max[axis])
+        return self.setSpeedFraction(speed_fraction)
+    
+    def setSpeedFraction(self, speed_fraction: float) -> tuple[bool, float]:
+        """
+        Set the speed fraction of the robot
+
+        Args:
+            speed_fraction (float): speed fraction between 0 and 1
+        
+        Returns:
+            tuple[bool, float]: whether speed has changed; prevailing speed fraction
+        """
+        print(f'Speed fraction: {speed_fraction}')
+        prevailing_speed_fraction = self._speed_fraction
+        self._speed_fraction = speed_fraction
+        self._query(f"M220 S{int(speed_fraction*100)}")
+        return True, self.max_speed*prevailing_speed_fraction
+    
     def setTemperature(self, set_temperature: float, blocking:bool = True):
         """
         Set the temperature of the 3-D printer platform bed
