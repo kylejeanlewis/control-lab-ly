@@ -82,6 +82,33 @@ class Gantry(Mover):
         return
     
     @abstractmethod
+    def getAcceleration(self) -> np.ndarray:
+        """
+        Get maximum acceleration rates (mm/s^2)
+
+        Returns:
+            np.ndarray: acceleration rates
+        """
+    
+    @abstractmethod
+    def getCoordinates(self) -> np.ndarray:
+        """
+        Get current coordinates from device
+
+        Returns:
+            np.ndarray: current device coordinates
+        """
+    
+    @abstractmethod
+    def getMaxSpeed(self) -> np.ndarray:
+        """
+        Get maximum speeds (mm/s)
+
+        Returns:
+            np.ndarray: maximum speeds
+        """
+    
+    @abstractmethod
     def getSettings(self) -> list[str]:
         """
         Get hardware settings
