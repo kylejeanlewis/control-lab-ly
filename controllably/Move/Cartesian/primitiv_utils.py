@@ -3,7 +3,8 @@
 This module holds the class for movement tools based on Primitiv. (Grbl firmware)
 
 Classes:
-    Primitiv (Gantry)
+    Grbl (Gantry)
+    Primitiv (Grbl)
 """
 # Standard library imports
 from __future__ import annotations
