@@ -678,6 +678,32 @@ class Mover(ABC):
         return
 
     # Protected method(s)
+    def _calculate_travel_time(self, 
+        distance: float, 
+        speed: float, 
+        acceleration: Optional[float] = None,
+        deceleration: Optional[float] = None
+    ) -> float:
+        """
+        Calculate the travel time of motion
+
+        Args:
+            distance (float): distance (linear or angular) travelled
+            speed (float): speed (linear or angular) of motion
+            acceleration (Optional[float], optional): acceleration from target speed. Defaults to None.
+            deceleration (Optional[float], optional): deceleration from target speed. Defaults to None.
+
+        Returns:
+            float: travel time in seconds
+        """
+        travel_time = distance / speed
+        if acceleration is not None:
+            travel_time += speed / (2*acceleration)
+        if deceleration is not None:
+            travel_time += speed / (2*deceleration)
+        # print(travel_time)
+        return travel_time
+    
     def _diagnostic(self):
         """Run diagnostic test"""
         self.home()
