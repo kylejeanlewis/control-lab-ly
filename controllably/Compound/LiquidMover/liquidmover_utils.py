@@ -32,7 +32,7 @@ class Mover(Protocol):
     home_coordinates: np.ndarray
     implement_offset: np.ndarray
     speed: float
-    _speed_max: float
+    max_speed: float
     def home(self, *args, **kwargs):
         ...
     def isFeasible(self, *args, **kwargs):
@@ -136,7 +136,7 @@ class LiquidMoverSetup(CompoundSetup):
         coordinates = np.array(coordinates) - np.array(offset)
         if not self.mover.isFeasible(coordinates, transform_in=True, tool_offset=True):
             raise ValueError(f"Infeasible tool position! {coordinates}")
-        self.mover.safeMoveTo(coordinates, ascent_speed=0.2*self.mover._speed_max, descent_speed=0.2*self.mover._speed_max)
+        self.mover.safeMoveTo(coordinates, ascent_speed=0.2*self.mover.max_speed[2], descent_speed=0.2*self.mover.max_speed[2])
         self.setFlag(at_rest=False)
         time.sleep(1)
         return
@@ -228,12 +228,12 @@ class LiquidMoverSetup(CompoundSetup):
         
         tip_offset = np.array((0,0,-tip_length + self.liquid.tip_inset_mm))
         self.align(coordinates)
-        self.mover.move('z', -self.tip_approach_height, speed=0.01*self.mover._speed_max)
+        self.mover.move('z', -self.tip_approach_height, speed=0.01*self.mover.max_speed[2])
         time.sleep(3)
         
         self.liquid.tip_length = tip_length
         self.mover.implement_offset = self.mover.implement_offset + tip_offset
-        self.mover.move('z', self.tip_approach_height+tip_length, speed=0.2*self.mover._speed_max)
+        self.mover.move('z', self.tip_approach_height+tip_length, speed=0.2*self.mover.max_speed[2])
         time.sleep(1)
         self.liquid.setFlag(tip_on=True)
         
@@ -380,7 +380,7 @@ class LiquidMoverSetup(CompoundSetup):
         rack_coordinates = (*coordinates[:2],coordinates[2]+insert_mm)
         return rack_coordinates
     
-    def touchTip(self, well:Well, safe_move:bool = False) -> tuple[float]:
+    def touchTip(self, well:Well, safe_move:bool = False, speed_fraction:float = 0.2) -> tuple[float]:
         """
         Touch the tip against the inner walls of the well
         
@@ -396,13 +396,14 @@ class LiquidMoverSetup(CompoundSetup):
             self.align(coordinates=well.fromTop((0,0,-10)))
         else:
             speed = self.mover.speed
-            self.mover.setSpeed(speed=0.2*self.mover._speed_max)
+            self.mover.setSpeed(speed=speed_fraction*self.mover.max_speed[0])
             self.mover.moveTo(coordinates=well.fromTop((0,0,-10)))
             self.mover.setSpeed(speed=speed)
         for axis in ('x','y'):
-            self.mover.move(axis, diameter/2, speed=0.2*self.mover._speed_max)
-            self.mover.move(axis, -diameter, speed=0.2*self.mover._speed_max)
-            self.mover.move(axis, diameter/2, speed=0.2*self.mover._speed_max)
+            index = int(axis=='y')
+            self.mover.move(axis, diameter/2, speed=speed_fraction*self.mover.max_speed[index])
+            self.mover.move(axis, -diameter, speed=speed_fraction*self.mover.max_speed[index])
+            self.mover.move(axis, diameter/2, speed=speed_fraction*self.mover.max_speed[index])
         self.mover.moveTo(coordinates=well.top)
         return well.top
     
