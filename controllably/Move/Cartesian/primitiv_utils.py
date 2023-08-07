@@ -177,6 +177,7 @@ class Grbl(Gantry):
             self._write("\r\n\r\n")
             time.sleep(2)
             self.device.reset_input_buffer()
+            self._query("$X")
             self._query('F10800')
         return
     
