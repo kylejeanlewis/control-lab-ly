@@ -312,7 +312,7 @@ class LSV(Program):
         device.sendCommands(
             [f'SOURce:SWEep:{device.source.function_type}:{mode} {",".join(parameters)}']
         )
-        device.start(sequential_commands=False)
+        device.run(sequential_commands=False)
         return
 
 # %%
