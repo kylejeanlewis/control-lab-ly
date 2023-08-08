@@ -130,7 +130,7 @@ class Camera(ABC):
         return
     
     @abstractmethod
-    def disconnect(self):
+    def disconnect(self):   # TODO
         """Disconnect from device"""
         self.setFlag(connected=False)
     
@@ -143,7 +143,7 @@ class Camera(ABC):
         return
    
     @abstractmethod
-    def _read(self) -> tuple[bool, np.ndarray]:
+    def _read(self) -> tuple[bool, np.ndarray]: # TODO
         """
         Read camera feed to retrieve image
 
