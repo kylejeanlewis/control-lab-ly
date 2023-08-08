@@ -11,7 +11,8 @@ import numpy as np
 from typing import Optional
 
 # Third party imports
-from imutils.video import VideoStream       # pip install imutils
+import cv2                                  # pip install opencv-python
+# from imutils.video import VideoStream       # pip install imutils
 from pyModbusTCP.client import ModbusClient # pip install pyModbusTCP
 
 # Local application imports
@@ -140,8 +141,9 @@ class AX8(Camera):
     def disconnect(self):
         """Disconnect from camera"""
         try:
-            self.feed.stop()
-            self.feed.stream.release()
+            # self.feed.stop()
+            # self.feed.stream.release()
+            self.feed.release()
         except AttributeError:
             pass
         self.setFlag(connected=False)
@@ -278,12 +280,14 @@ class AX8(Camera):
         """
         Toggle between opening or closing video feed
         """
-        if self.feed.stream.isOpened():
+        # if self.feed.stream.isOpened():
+        if self.feed.isOpened():
             print("Closing the feed..")
             self.disconnect()
         else:
             print("Opening the feed..")
-            self.feed = VideoStream(self.rtsp_url).start()
+            # self.feed = VideoStream(self.rtsp_url).start()
+            self.feed = cv2.VideoCapture(self.rtsp_url)
         return
     
     # Protected methods
@@ -314,10 +318,11 @@ class AX8(Camera):
             
             self.rtsp_url = self._get_rtsp_url(ip_address, encoding, overlay)
             print(f"Opening camera feed at {self.rtsp_url}")
-            self.feed = VideoStream(self.rtsp_url).start()
-            if self.feed.frame is None:
-                self.feed.stop() # Probably unnecessary since it is a daemon
-                raise AttributeError(f"Could not open stream at {self.rtsp_url}!")
+            # self.feed = VideoStream(self.rtsp_url).start()
+            self.feed = cv2.VideoCapture(self.rtsp_url)
+            # if self.feed.frame is None:
+            #     self.feed.stop() # Probably unnecessary since it is a daemon
+            #     raise AttributeError(f"Could not open stream at {self.rtsp_url}!")
         self.device = modbus
         return
     
@@ -345,4 +350,5 @@ class AX8(Camera):
         Returns:
             tuple[bool, np.ndarray]: (whether frame is obtained, frame array)
         """
-        return True, self.feed.read()
+        # return True, self.feed.read()
+        return self.feed.read()
