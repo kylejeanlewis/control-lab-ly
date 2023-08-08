@@ -348,7 +348,7 @@ class Mover(ABC):
         return
     
     @property
-    def position(self) -> tuple(np.ndarray, np.ndarray):
+    def position(self) -> tuple[np.ndarray]:
         """2-uple of (coordinates, orientation)"""
         return self.coordinates, self.orientation
     
@@ -372,7 +372,7 @@ class Mover(ABC):
         return self.max_speed * self._speed_fraction
  
     @property
-    def tool_position(self) -> tuple(np.ndarray, np.ndarray):
+    def tool_position(self) -> tuple[np.ndarray]:
         """2-uple of tool tip (coordinates, orientation)"""
         coordinates = self._transform_out(coordinates=self.coordinates, tool_offset=True)
         return np.array(coordinates), self.orientation
@@ -389,13 +389,13 @@ class Mover(ABC):
         return
     
     @property
-    def user_position(self) -> tuple(np.ndarray, np.ndarray):
+    def user_position(self) -> tuple[np.ndarray]:
         """2-uple of user-defined workspace (coordinates, orientation)"""
         coordinates = self._transform_out(coordinates=self.coordinates, tool_offset=False)
         return np.array(coordinates), self.orientation
     
     @property
-    def workspace_position(self) -> tuple(np.ndarray, np.ndarray):
+    def workspace_position(self) -> tuple[np.ndarray]:
         """2-uple of workspace (coordinates, orientation). Alias for `user_position`"""
         return self.user_position
  

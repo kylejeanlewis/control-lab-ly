@@ -25,7 +25,7 @@ class Mover(Protocol):
     _place: str
     heights: dict
     home_coordinates: tuple
-    tool_position: tuple(np.ndarray, np.ndarray)
+    tool_position: tuple[np.ndarray]
     def home(self, *args, **kwargs):
         ...
     def move(self, *args, **kwargs):
