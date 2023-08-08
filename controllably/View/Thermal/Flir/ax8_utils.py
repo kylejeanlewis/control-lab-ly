@@ -3,7 +3,7 @@
 WIP: This module holds the class for thermal cameras by FLIR.
 
 Classes:
-    Thermal (Camera)
+    AX8 (Camera)
 """
 # Standard library imports
 from __future__ import annotations

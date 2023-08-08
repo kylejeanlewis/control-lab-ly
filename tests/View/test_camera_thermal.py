@@ -1,7 +1,6 @@
 # %%
 import init
 from controllably.View.Thermal import Flir
-from controllably.View.Thermal import Thermal
 # %%
 me = Flir.AX8('192.168.1.111')   # FIXME: unable to connect to 192.168.1.120
 me.view()
