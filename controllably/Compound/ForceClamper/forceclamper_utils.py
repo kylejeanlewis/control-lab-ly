@@ -18,13 +18,10 @@ class Sensor(Protocol):
         ...
 
 class Mover(Protocol):
-    coordinates: np.ndarray
     limits: np.ndarray
-    speed: float
     max_speed: np.ndarray
+    tool_position: tuple[np.ndarray]
     def home(self, *args, **kwargs):
-        ...
-    def isFeasible(self, *args, **kwargs):
         ...
     def move(self, *args, **kwargs):
         ...
@@ -50,7 +47,7 @@ class ForceClampSetup (CompoundSetup):
             components=components,
             **kwargs
         )
-        self.threshold = 0
+        self.threshold = 0  # TODO: baseline * 1.01
         return
     
     # Properties
@@ -62,39 +59,39 @@ class ForceClampSetup (CompoundSetup):
     def sensor(self) -> Sensor:
         return self.components.get('sensor')
     
-    def clamp(self, threshold:Optional[float] = None):
+    def clamp(self, threshold:Optional[float] = None, retract_height:int = 5, timeout:float = 60):
         threshold = self.threshold if threshold is None else threshold
-        speed = self.mover.speed
-        self.mover.setSpeed(self.mover.max_speed[2])
+        speed = self.mover.max_speed[2]
+        self.mover.setSpeed(speed)
         
         # Quick approach
-        target_z = self.mover.limits[1][2]
-        target = np.array((*self.mover.coordinates[:2],target_z))
+        target_z = min(self.mover.limits[0][2], self.mover.limits[1][2])
+        target = np.array((*self.mover.tool_position[0][:2],target_z))
         start = time.time()
-        self.mover.moveTo(target, wait=False)
+        self.mover.moveTo(target, wait=False, jog=True)
         while True:
-            time.sleep(0.1)
+            time.sleep(0.001)
             if self.sensor.getValue() >= threshold:
                 self.mover.stop()
                 break
-            if time.time() - start > 60:
+            if time.time() - start > timeout:
                 break
         
         # Retract a little to avoid overshooting
-        target = self.mover.coordinates
-        retract_height = 5
+        target = self.mover.tool_position[0]
         self.mover.move('z',retract_height)
+        time.sleep(1)
         
         # Reduce movement speed and approach again
-        self.mover.setSpeed(self.mover.max_speed[2]*0.005)
+        self.mover.setSpeed(speed*0.1)
         start = time.time()
         self.mover.moveTo(target, wait=False)
         while True:
-            time.sleep(0.1)
+            time.sleep(0.001)
             if self.sensor.getValue() >= threshold:
                 self.mover.stop()
                 break
-            if time.time() - start > 60:
+            if time.time() - start > timeout:
                 break
         
         self.mover.setSpeed(speed)
