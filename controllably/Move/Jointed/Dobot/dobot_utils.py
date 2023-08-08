@@ -66,6 +66,7 @@ class Dobot(RobotArm):
     - `reset`: reset the robot
     - `setSpeed`: set the speed of the robot
     - `shutdown`: shutdown procedure for tool
+    - `stop`: halt robot movement
     - `toggleAttachment`: couple or remove Dobot attachment that interfaces with Dobot's digital output
     - `toggleCalibration`: enter or exit calibration mode, with a sharp point implement for alignment
     """
@@ -361,6 +362,15 @@ class Dobot(RobotArm):
         """Shutdown procedure for tool"""
         self._freeze()
         return super().shutdown()
+    
+    def stop(self):
+        """Halt robot movement"""
+        try:
+            self.dashboard.ResetRobot()
+        except (AttributeError, OSError):
+            if self.verbose:
+                print("Not connected to arm.")
+        return
     
     def toggleAttachment(self, on:bool, attachment_class:Optional[DobotAttachment] = None):
         """
