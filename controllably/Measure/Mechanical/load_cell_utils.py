@@ -47,8 +47,9 @@ class LoadCell(Measurer):
         """
         response = self._read()
         now = datetime.now()
+        value = np.nan
         try:
-            value = int(response)
+            value = float(response)
         except ValueError:
             return np.nan
         else:
@@ -60,7 +61,7 @@ class LoadCell(Measurer):
                 row = {k:v for k,v in zip(COLUMNS, values)}
                 new_row_df = pd.DataFrame(row, index=[0])
                 self.buffer_df = pd.concat([self.buffer_df, new_row_df], ignore_index=True)
-        return response
+        return value
     
     def reset(self):
         """Reset the device"""

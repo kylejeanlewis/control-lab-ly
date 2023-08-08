@@ -11,6 +11,7 @@ Other constants and variables:
 """
 # Standard library imports
 from datetime import datetime
+import numpy as np
 import pandas as pd
 from threading import Thread
 import time
@@ -122,7 +123,7 @@ class MassBalance(Measurer):
         try:
             value = int(response)
         except ValueError:
-            pass
+            return np.nan
         else:
             self._mass = (value - self.baseline) / self.calibration_factor
             if self.flags['record']:
@@ -136,7 +137,7 @@ class MassBalance(Measurer):
                 row = {k:v for k,v in zip(COLUMNS, values)}
                 new_row_df = pd.DataFrame(row, index=[0])
                 self.buffer_df = pd.concat([self.buffer_df, new_row_df], ignore_index=True)
-        return response
+        return self._mass
   
     def reset(self):
         """Reset the device"""
