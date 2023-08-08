@@ -16,7 +16,7 @@ from pyModbusTCP.client import ModbusClient # pip install pyModbusTCP
 
 # Local application imports
 from ...view_utils import Camera
-from .ax8_lib import SpotmeterRegs, parse_value, value_to_modbus
+from .ax8_lib import SpotmeterRegs, decode_from_modbus, encode_to_modbus
 print(f"Import: OK <{__name__}>")
 
 class AX8(Camera):
@@ -131,10 +131,10 @@ class AX8(Camera):
         Args:
             instances (list): list of instance IDs
         """
-        # self.modbus.unit_id(SpotmeterRegs.UNIT_ID)
-        for inst in instances:
-            base_reg_addr = (inst*4000)
-            self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.ENABLE_SPOTMETER, [1, 1]) 
+        self.modbus.unit_id = SpotmeterRegs.UNIT_ID.value
+        for instance in instances:
+            base_reg_addr = (instance*4000)
+            self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.ENABLE_SPOTMETER.value, encode_to_modbus(False)) 
         return
 
     def disconnect(self):
@@ -156,17 +156,17 @@ class AX8(Camera):
             instances (dict[int, tuple[int,int]]): dictionary of instance and position tuples, {instance_id: (spot_x, spot_y)}
             use_local_params (bool, optional): Each spotmeter can use its own set of local parameters. If set to false, the global parameters will be used by the camera. Defaults to True.
         """
-        # self.modbus.unit_id(SpotmeterRegs.UNIT_ID)
+        self.modbus.unit_id = SpotmeterRegs.UNIT_ID.value
         for instance, position in instances.items():
-            base_reg_addr = instance * 4000
+            base_reg_addr = (instance*4000)
             if use_local_params:
-                self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.ENABLE_LOCAL_PARAMS, [1, 1])
-                self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.REFLECTED_TEMP, value_to_modbus(self.spotmeter_parameters['reflected_temperature']))
-                self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.EMISSIVITY, value_to_modbus(self.spotmeter_parameters['emissivity']))
-                self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.DISTANCE, value_to_modbus(self.spotmeter_parameters['distance']))
-            self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.SPOT_X_POSITION, value_to_modbus(position[0]))
-            self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.SPOT_Y_POSITION, value_to_modbus(position[1]))
-            self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.ENABLE_SPOTMETER, [1, 1])
+                self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.ENABLE_LOCAL_PARAMS.value, encode_to_modbus(True))
+                self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.REFLECTED_TEMP.value, encode_to_modbus(self.spotmeter_parameters['reflected_temperature']))
+                self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.EMISSIVITY.value, encode_to_modbus(self.spotmeter_parameters['emissivity']))
+                self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.DISTANCE.value, encode_to_modbus(self.spotmeter_parameters['distance']))
+            self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.SPOT_X_POSITION.value, encode_to_modbus(position[0]))
+            self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.SPOT_Y_POSITION.value, encode_to_modbus(position[1]))
+            self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.ENABLE_SPOTMETER.value, encode_to_modbus(True))
         return
 
     def getCutline(self, 
@@ -214,9 +214,11 @@ class AX8(Camera):
             float: camera temperature
         """
         # self.modbus.unit_id(SpotmeterRegs.UNIT_ID)
-        camera_temperature = parse_value(self.modbus.read_holding_registers(reg_addr=1017, reg_nb=2))
+        self.modbus.unit_id = 1
+        camera_temperature = self.modbus.read_holding_registers(1017, 2)[0:2]
+        camera_temperature = decode_from_modbus(camera_temperature, is_int=False)[0]
         if self.verbose:
-            print("Internal Camera Temperature", camera_temperature)
+            print(f"Internal Camera Temperature: {camera_temperature:.2}K")
         return camera_temperature
     
     def getSpotPositions(self, instances:list) -> dict[int, tuple[int,int]]:
@@ -229,14 +231,14 @@ class AX8(Camera):
         Returns:
             dict[int, tuple[int,int]]: dictionary of spotmeter positions, {instance_id: (spot_x, spot_y)}
         """
-        # self.modbus.unit_id(SpotmeterRegs.UNIT_ID)
+        self.modbus.unit_id = SpotmeterRegs.UNIT_ID.value
         values = {}
         for instance in instances:
-            base_reg_addr = instance * 4000
-            spot_x = self.modbus.read_holding_registers(base_reg_addr + SpotmeterRegs.SPOT_X_POSITION, 6)
-            spot_y = self.modbus.read_holding_registers(base_reg_addr + SpotmeterRegs.SPOT_Y_POSITION, 6)
-            spot_x = parse_value(spot_x[-2:])[0]
-            spot_y = parse_value(spot_y[-2:])[0]
+            base_reg_addr = (instance*4000)
+            spot_x = self.modbus.read_holding_registers(base_reg_addr + SpotmeterRegs.SPOT_X_POSITION.value, 6)[-2:]
+            spot_y = self.modbus.read_holding_registers(base_reg_addr + SpotmeterRegs.SPOT_Y_POSITION.value, 6)[-2:]
+            spot_x = decode_from_modbus(spot_x, is_int=True)[0]
+            spot_y = decode_from_modbus(spot_y, is_int=True)[0]
             values[instance] = (spot_x, spot_y)
         return values
     
@@ -251,12 +253,12 @@ class AX8(Camera):
         Returns:
             dict[int, float]: dictionary of spotmeter temperatures, {instance_id: temperature}
         """
-        # self.modbus.unit_id(SpotmeterRegs.UNIT_ID)
+        self.modbus.unit_id = SpotmeterRegs.UNIT_ID.value
         values = {}
         for instance in instances:
-            base_reg_addr = instance * 4000
-            temperature = self.modbus.read_holding_registers(base_reg_addr + SpotmeterRegs.SPOT_TEMPERATURE, 6)
-            temperature = parse_value(temperature[-2:])[0]
+            base_reg_addr = (instance*4000)
+            temperature = self.modbus.read_holding_registers(base_reg_addr + SpotmeterRegs.SPOT_TEMPERATURE.value, 6)[-2:]
+            temperature = decode_from_modbus(temperature, is_int=False)[0]
             value = temperature - 273.15 if unit_celsius else temperature
             values[instance] = value
         return values
