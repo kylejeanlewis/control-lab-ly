@@ -70,6 +70,7 @@ class Mover(ABC):
     - `reset`: reset the robot
     - `setSpeed`: set the speed of the robot
     - `shutdown`: shutdown procedure for tool
+    - `stop`: halt robot movement
     - `_connect`: connection procedure for tool
     #### Public
     - `calibrate`: calibrate the internal and external coordinate systems
@@ -249,6 +250,10 @@ class Mover(ABC):
         self.disconnect()
         self.resetFlags()
         return
+    
+    @abstractmethod
+    def stop(self):
+        """Halt robot movement"""
  
     @abstractmethod
     def _connect(self, *args, **kwargs):
