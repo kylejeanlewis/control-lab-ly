@@ -4,6 +4,7 @@
 """
 # Standard library imports
 from datetime import datetime
+import numpy as np
 import pandas as pd
 from threading import Thread
 import time
@@ -16,13 +17,14 @@ COLUMNS = ('Time', 'Value')
 """Headers for output data from load cell"""
 
 class LoadCell(Measurer):
-    def __init__(self, verbose: bool = False, **kwargs):
+    def __init__(self, address:str, verbose: bool = False, **kwargs):
         super().__init__(verbose, **kwargs)
         self.baseline = 0
         self.buffer_df = pd.DataFrame(columns=COLUMNS)
         self.calibration_factor = 1
         self.precision = 3
         self._threads = {}
+        self._connect(address)
         return
     
     def clearCache(self):
@@ -48,7 +50,7 @@ class LoadCell(Measurer):
         try:
             value = int(response)
         except ValueError:
-            pass
+            return np.nan
         else:
             if self.flags['record']:
                 values = [
@@ -59,6 +61,12 @@ class LoadCell(Measurer):
                 new_row_df = pd.DataFrame(row, index=[0])
                 self.buffer_df = pd.concat([self.buffer_df, new_row_df], ignore_index=True)
         return response
+    
+    def reset(self):
+        """Reset the device"""
+        super().reset()
+        self.baseline = 0
+        return
     
     def shutdown(self):
         """Shutdown procedure for tool"""
@@ -92,6 +100,31 @@ class LoadCell(Measurer):
         """
         self.setFlag(record=on, get_feedback=on, pause_feedback=False)
         self.toggleFeedbackLoop(on=on)
+        return
+    
+    def zero(self, wait:int = 5):
+        """
+        Set current reading as baseline
+        
+        Args:
+            wait (int, optional): duration to wait while zeroing, in seconds. Defaults to 5.
+        """
+        if self.flags['record']:
+            print("Unable to zero while recording.")
+            print("Use `toggleRecord(False)` to stop recording.")
+            return
+        temp_record_state = self.flags['record']
+        temp_buffer_df = self.buffer_df.copy()
+        self.reset()
+        self.toggleRecord(True)
+        print(f"Zeroing... ({wait}s)")
+        time.sleep(wait)
+        self.toggleRecord(False)
+        self.baseline = self.buffer_df['Value'].mean()
+        self.clearCache()
+        self.buffer_df = temp_buffer_df.copy()
+        print("Zeroing complete.")
+        self.toggleRecord(temp_record_state)
         return
     
     # Protected method(s)
