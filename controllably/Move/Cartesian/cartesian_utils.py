@@ -39,7 +39,9 @@ class Gantry(Mover):
     
     ### Methods
     #### Abstract
-    - `getSettings`: get hardware settings
+    - `getAcceleration`: get maximum acceleration rates (mm/s^2)
+    - `getCoordinates`: get current coordinates from device
+    - `getMaxSpeed`: get maximum speeds (mm/s)
     - `home`: make the robot go home
     #### Public
     - `disconnect`: disconnect from device
