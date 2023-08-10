@@ -381,7 +381,7 @@ class KeithleyDevice(Instrument):
         device = None
         try:
             rm = visa.ResourceManager('@py')
-            device = rm.open_resource(f"TCPIP0::{ip_address}::5025::SOCKET")
+            device: visa.resources.TCPIPSocket = rm.open_resource(f"TCPIP0::{ip_address}::5025::SOCKET")
             device.write_termination = '\n'
         except Exception as e:
             print("Unable to connect to Keithley")
