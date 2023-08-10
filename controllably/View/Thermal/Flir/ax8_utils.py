@@ -51,6 +51,7 @@ class AX8(Camera):
     - `getInternalTemperature`: retrieve the camera's internal temperature
     - `getSpotPositions`: get the positions for specified spotmeters
     - `getSpotTemperatures`: get temperature readings for specified spotmeters
+    - `invertPalette`: invert the colour palette of thermal image
     - `isConnected`: checks and returns whether the device is connected
     - `toggleVideo`: toggle between opening or closing video feed
     """
@@ -263,6 +264,21 @@ class AX8(Camera):
             value = temperature - 273.15 if unit_celsius else temperature
             values[instance] = value
         return values
+    
+    def invertPalette(self) -> bool:
+        """
+        Invert the colour palette of thermal image
+
+        Returns:
+            bool: whether action is successful
+        """
+        self.modbus.unit_id = int("67", base=16)
+        base_reg_addr = 4000
+        attr_id = 2
+        address = base_reg_addr+(attr_id-1)*20
+        is_blue_cold = self.modbus.read_holding_registers(address, 2)[1]
+        self.modbus.write_multiple_registers(address, self._encode_to_modbus(not is_blue_cold))
+        return
     
     def isConnected(self) -> bool:
         """
