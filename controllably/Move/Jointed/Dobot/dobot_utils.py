@@ -334,7 +334,8 @@ class Dobot(RobotArm):
         Returns:
             tuple[bool, float]: whether speed was changed; prevailing speed
         """
-        return self.setSpeedFraction(speed)
+        ret,_ = self.setSpeedFraction(speed/100)
+        return ret, self.speed
     
     def setSpeedFraction(self, speed_fraction:float) -> tuple[bool, float]:
         """
