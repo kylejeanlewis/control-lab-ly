@@ -12,7 +12,6 @@ from typing import Optional
 
 # Third party imports
 import cv2                                  # pip install opencv-python
-# from imutils.video import VideoStream       # pip install imutils
 from pyModbusTCP.client import ModbusClient # pip install pyModbusTCP
 
 # Local application imports

@@ -35,7 +35,7 @@ User-friendly package that enables flexible automation an reconfigurable setups 
   - (TriContinent) C Series syringe pumps
   - Peristaltic pump and syringe system \[Arduino\]
 - View
-  - (FLIR) AX8 thermal imaging camera - *full functionality in development*
+  - (FLIR) AX8 thermal imaging camera
   - Web cameras \[General\]
 
 ## Installation
@@ -303,7 +303,6 @@ from my_module import MyClass, my_function
 ---
 
 ## Dependencies
-- imutils (>=0.5.4)
 - Markdown (>=3.3.4)
 - numpy (>=1.19.5)
 - opencv-python (>=4.5.4.58)
