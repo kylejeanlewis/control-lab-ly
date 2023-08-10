@@ -8,7 +8,8 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 import numpy as np
-from typing import Optional
+import struct
+from typing import Optional, Union
 
 # Third party imports
 import cv2                                  # pip install opencv-python
@@ -16,7 +17,7 @@ from pyModbusTCP.client import ModbusClient # pip install pyModbusTCP
 
 # Local application imports
 from ...view_utils import Camera
-from .ax8_lib import SpotmeterRegs, decode_from_modbus, encode_to_modbus
+from .ax8_lib import SpotmeterRegs
 print(f"Import: OK <{__name__}>")
 
 class AX8(Camera):
@@ -134,7 +135,7 @@ class AX8(Camera):
         self.modbus.unit_id = SpotmeterRegs.UNIT_ID.value
         for instance in instances:
             base_reg_addr = (instance*4000)
-            self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.ENABLE_SPOTMETER.value, encode_to_modbus(False)) 
+            self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.ENABLE_SPOTMETER.value, self._encode_to_modbus(False)) 
         return
 
     def disconnect(self):
@@ -161,13 +162,13 @@ class AX8(Camera):
         for instance, position in instances.items():
             base_reg_addr = (instance*4000)
             if use_local_params:
-                self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.ENABLE_LOCAL_PARAMS.value, encode_to_modbus(True))
-                self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.REFLECTED_TEMP.value, encode_to_modbus(self.spotmeter_parameters['reflected_temperature']))
-                self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.EMISSIVITY.value, encode_to_modbus(self.spotmeter_parameters['emissivity']))
-                self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.DISTANCE.value, encode_to_modbus(self.spotmeter_parameters['distance']))
-            self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.SPOT_X_POSITION.value, encode_to_modbus(position[0]))
-            self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.SPOT_Y_POSITION.value, encode_to_modbus(position[1]))
-            self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.ENABLE_SPOTMETER.value, encode_to_modbus(True))
+                self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.ENABLE_LOCAL_PARAMS.value, self._encode_to_modbus(True))
+                self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.REFLECTED_TEMP.value, self._encode_to_modbus(self.spotmeter_parameters['reflected_temperature']))
+                self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.EMISSIVITY.value, self._encode_to_modbus(self.spotmeter_parameters['emissivity']))
+                self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.DISTANCE.value, self._encode_to_modbus(self.spotmeter_parameters['distance']))
+            self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.SPOT_X_POSITION.value, self._encode_to_modbus(position[0]))
+            self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.SPOT_Y_POSITION.value, self._encode_to_modbus(position[1]))
+            self.modbus.write_multiple_registers(base_reg_addr + SpotmeterRegs.ENABLE_SPOTMETER.value, self._encode_to_modbus(True))
         return
 
     def getCutline(self, 
@@ -214,12 +215,11 @@ class AX8(Camera):
         Returns:
             float: camera temperature
         """
-        # self.modbus.unit_id(SpotmeterRegs.UNIT_ID)
         self.modbus.unit_id = 1
         camera_temperature = self.modbus.read_holding_registers(1017, 2)[0:2]
-        camera_temperature = decode_from_modbus(camera_temperature, is_int=False)[0]
+        camera_temperature = self._decode_from_modbus(camera_temperature, is_int=False)[0]
         if self.verbose:
-            print(f"Internal Camera Temperature: {camera_temperature:.2}K")
+            print(f"Internal Camera Temperature: {camera_temperature:.2f}K")
         return camera_temperature
     
     def getSpotPositions(self, instances:list) -> dict[int, tuple[int,int]]:
@@ -238,8 +238,8 @@ class AX8(Camera):
             base_reg_addr = (instance*4000)
             spot_x = self.modbus.read_holding_registers(base_reg_addr + SpotmeterRegs.SPOT_X_POSITION.value, 6)[-2:]
             spot_y = self.modbus.read_holding_registers(base_reg_addr + SpotmeterRegs.SPOT_Y_POSITION.value, 6)[-2:]
-            spot_x = decode_from_modbus(spot_x, is_int=True)[0]
-            spot_y = decode_from_modbus(spot_y, is_int=True)[0]
+            spot_x = self._decode_from_modbus(spot_x, is_int=True)[0]
+            spot_y = self._decode_from_modbus(spot_y, is_int=True)[0]
             values[instance] = (spot_x, spot_y)
         return values
     
@@ -259,7 +259,7 @@ class AX8(Camera):
         for instance in instances:
             base_reg_addr = (instance*4000)
             temperature = self.modbus.read_holding_registers(base_reg_addr + SpotmeterRegs.SPOT_TEMPERATURE.value, 6)[-2:]
-            temperature = decode_from_modbus(temperature, is_int=False)[0]
+            temperature = self._decode_from_modbus(temperature, is_int=False)[0]
             value = temperature - 273.15 if unit_celsius else temperature
             values[instance] = value
         return values
@@ -324,6 +324,42 @@ class AX8(Camera):
             #     raise AttributeError(f"Could not open stream at {self.rtsp_url}!")
         self.device = modbus
         return
+    
+    @staticmethod
+    def _decode_from_modbus(data:list[int], is_int:bool) -> tuple:
+        """
+        Parse values from reading modbus holding registers
+
+        Args:
+            data (list[int]): data packet
+            is_int (bool): whether the expected value is an integer (as opposed to a float)
+
+        Returns:
+            tuple: _description_
+        """
+        form = ">i" if is_int else ">f"
+        value = data[0].to_bytes(2, 'big') + data[1].to_bytes(2, 'big')
+        return struct.unpack(form, value)
+
+    @staticmethod
+    def _encode_to_modbus(value:Union[bool, float, int]) -> list[int]:
+        """
+        Format value to create data packet
+
+        Args:
+            value (Union[bool, float, int]): target value
+
+        Returns:
+            list[int]: data packet
+        """
+        if type(value) is bool:
+            return [1,int(value)]
+        byte_size = 4
+        form = '>i' if type(value) is int else '>f'
+        packed_big = struct.pack(form, value)
+        big_endian = [int(packed_big[:2].hex(), base=16), int(packed_big[-2:].hex(), base=16)]
+        little_endian = big_endian[::-1]
+        return [byte_size] + little_endian + [byte_size] + big_endian
     
     def _get_rtsp_url(self, ip_address:str, encoding:str, overlay:bool) -> str:
         """
