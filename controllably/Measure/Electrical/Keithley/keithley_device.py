@@ -43,7 +43,7 @@ class KeithleyDevice(Instrument):
     - `clearBuffer`: clear the buffer on the device
     - `configureSense`: configure the sense terminal
     - `configureSource`: configure the source terminal
-    - `disconnect`: disconnect from device (NOTE: not implemented)
+    - `disconnect`: disconnect from device
     - `getBufferIndices`: get the buffer indices where the the data start and end
     - `getErrors`: get error messages from device
     - `getStatus`: get status of device
@@ -167,7 +167,9 @@ class KeithleyDevice(Instrument):
         self._query(f'SOURce:FUNCtion {self.source.function_type}')
         return self.sendCommands(commands=self.source.get_commands())
     
-    def disconnect(self):       # NOTE: not implemented
+    def disconnect(self):
+        """Disconnect from device"""
+        self.device.close()
         return super().disconnect()
     
     def getBufferIndices(self, name:Optional[str] = None) -> tuple[int]:
