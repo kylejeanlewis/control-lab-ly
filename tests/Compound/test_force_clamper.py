@@ -1,58 +1,44 @@
 # %%
+import numpy as np
+import plotly.express as px
+import random as rd
+import time
+
 from init import library
 from controllably import Factory, Helper, guide_me
 from controllably.Move.Cartesian import Primitiv
-from controllably.Control.GUI.Basic import MoverPanel
-from controllably.Measure.Electrical.Keithley import Keithley, programs
+from controllably.Measure.Electrical.Keithley import KeithleyDevice
+from controllably.Measure.Mechanical import LoadCell
 
-
-import numpy as np
-import time
-import random as rd
-import plotly.express as px
 # %%
 details = Factory.get_details(Helper.read_yaml(library['configs']['primitiv2']))
 me = Primitiv(**details['mover']['settings'])
 me.__dict__
 
 # %%
-me.move('y',-150)
+me.move('y',-150, wait=False)
 # %%
-
-you = Keithley('192.109.209.100')
-you.__dict__
-# %%
-device = you.device
-device.reset()
-device.sendCommands(['ROUTe:TERMinals FRONT'])
-device.configureSource('current')
-device.configureSense('voltage', limit=0.2, four_point=True, count=1)
-device.makeBuffer()
-device.setSource(0)
-device.toggleOutput(True)
-device.beep()
+sensor = LoadCell(
+    device = KeithleyDevice('192.109.209.100'),
+    verbose = True
+)
 
 # %%
-def read_value():
-    volt = device._query("MEASure:VOLTage?")
-    volt = float(volt)
-    return volt
-
-# %%
-baseline = 0.023596492368421054
+baseline = -0.03
 volts = []
 x,y,z = me.tool_position[0]
-me.setSpeed(me.max_speed[2])
+_, prevailing_speed = me.setSpeed(me.max_speed[2], 'z')
 threshold = baseline*1.01
 start = time.time()
 target = np.array((x,y,20))
 me.moveTo(target, wait=False, jog=True)
 while True:
-    num = read_value()
+    # num = read_value()
+    num=sensor.getValue()
     volts.append(num)
     print(num)
     # time.sleep(0.1)
-    if num >= threshold:
+    if num <= threshold:
         me.stop()
         break
     if time.time() - start > 60:
@@ -63,19 +49,20 @@ target = np.array((x,y,me.tool_position[0][2]))
 me.move('z',10)
 time.sleep(3)
 
-me.setSpeed(me.max_speed[2]*0.1)
+me.setSpeed(me.max_speed[2]*0.1, 'z')
 me.moveTo(target, wait=False, jog=True)
 while True:
-    num = read_value()
+    # num = read_value()
+    num=sensor.getValue()
     volts.append(num)
     print(num)
     # time.sleep(0.1)
-    if num >= threshold:
+    if num <= threshold:
         me.stop()
         break
     if time.time() - start > 60:
         break
-me.setSpeed(me.max_speed[2])
+me.setSpeed(prevailing_speed[2], 'z')
 
 # %%
 px.scatter(x=[i for i in range(len(volts))], y=volts)
