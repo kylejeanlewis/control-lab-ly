@@ -90,8 +90,8 @@ class Grbl(Gantry):
         """
         settings = self.getSettings()
         relevant = [s for s in settings if '$11' in s][-3:]
-        speeds = [s.split('=')[1] for s in relevant]
-        xyz_max_speeds = [float(s) for s in speeds]
+        speeds = [s.split('=')[1] for s in relevant]        # mm/min
+        xyz_max_speeds = [float(s)/60 for s in speeds]
         self._speed_max = {k:v for k,v in zip(('x','y','z'), xyz_max_speeds)}
         return self.max_speed
     
@@ -142,9 +142,26 @@ class Grbl(Gantry):
             bool: whether movement is successful
         """
         self.setFlag(jog=jog)
-        ret = super().moveTo(coordinates=coordinates, tool_offset=tool_offset)
+        ret = super().moveTo(coordinates=coordinates, tool_offset=tool_offset, **kwargs)
         self.setFlag(jog=False)
         return ret
+    
+    def setSpeedFraction(self, speed_fraction: float) -> tuple[bool, float]:
+        """
+        Set the speed fraction of the robot
+
+        Args:
+            speed_fraction (float): speed fraction between 0 and 1
+        
+        Returns:
+            tuple[bool, float]: whether speed has changed; prevailing speed fraction
+        """
+        print(f'Speed fraction: {speed_fraction}')
+        prevailing_speed_fraction = self._speed_fraction
+        self._speed_fraction = speed_fraction
+        ret,_ = self.setSpeed(self._speed_max['x']*speed_fraction, 'x')
+        # self._query(f"M220 S{int(speed_fraction*100)}")
+        return ret, prevailing_speed_fraction
     
     def stop(self):
         """Halt all movement and print current coordinates"""
@@ -195,7 +212,7 @@ class Grbl(Gantry):
             axes = ('x','y','z','a','b','c')
             move = command.strip().split("G1 ")[1]
             axis = move[0].lower()
-            command = f"$J= {move} F{int(self.speed[axes.index(axis)])}"
+            command = f"$J= {move} F{int(60*self.speed[axes.index(axis)])}"
         return super()._query(command)
 
     # def _handle_alarms_and_errors(self, response:str):
