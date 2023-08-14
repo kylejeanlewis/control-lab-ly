@@ -224,7 +224,7 @@ class Gantry(Mover):
         self.connect()
         return
     
-    def setSpeed(self, speed: int, axis:str = 'x') -> tuple[bool, float]:
+    def setSpeed(self, speed: int, axis:str = 'x') -> tuple[bool, np.ndarray]:
         """
         Set the speed of the robot
 
@@ -233,14 +233,15 @@ class Gantry(Mover):
             axis (str, optional): axis speed to be changed. Defaults to 'x'.
         
         Returns:
-            tuple[bool, float]: whether speed has changed; prevailing speed
+            tuple[bool, np.ndarray]: whether speed has changed; prevailing speed
         """
         print(f'Speed: {speed} mm/s')
-        max_speed = self._speed_max[axis]
-        self._speed_fraction = (speed/max_speed)
-        speed = int(max_speed*self._speed_fraction * 60)    # get speed in mm/min
-        self._query(f"F{speed}")                            # feed rate (i.e. speed) in mm/min
-        return True, self.speed
+        prevailing_speed = self.speed
+        max_speed_axis = self._speed_max[axis]
+        self._speed_fraction = (speed/max_speed_axis)
+        speed = int(max_speed_axis*self._speed_fraction * 60)   # get speed in mm/min
+        self._query(f"F{speed}")                                # feed rate (i.e. speed) in mm/min
+        return True, prevailing_speed
     
     def setSpeedFraction(self, speed_fraction: float) -> tuple[bool, float]:
         """
