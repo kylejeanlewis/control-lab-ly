@@ -10,6 +10,7 @@ Other constants and variables:
     COLUMNS (tuple)
 """
 # Standard library imports
+from __future__ import annotations
 from datetime import datetime
 import numpy as np
 import pandas as pd
@@ -21,6 +22,7 @@ import serial # pip install pyserial
 
 # Local application imports
 from ..measure_utils import Measurer
+from ..Mechanical import LoadCell
 print(f"Import: OK <{__name__}>")
 
 CALIBRATION_FACTOR = 6.862879436681862
@@ -267,3 +269,52 @@ class MassBalance(Measurer):
                 print(response)
         return response
  
+ 
+class Balance(LoadCell):
+    def __init__(
+        self, 
+        device: object, 
+        calibration_factor:float = CALIBRATION_FACTOR, 
+        columns: tuple[str] = COLUMNS,
+        **kwargs
+    ):
+        super().__init__(device, calibration_factor, columns, **kwargs)
+        self._mass = 0
+        return
+    
+    # Properties
+    @property
+    def mass(self) -> float:
+        return round(self._mass, self.precision)
+        
+    def getMass(self) -> float:
+        """
+        Get the mass of the sample by measuring the force response
+        
+        Returns:
+            float: mass value
+        """
+        response = self._read()
+        now = datetime.now()
+        try:
+            value = float(response)
+        except ValueError:
+            return np.nan
+        else:
+            self._mass = (value - self.baseline) / self.calibration_factor
+            if self.flags['record']:
+                values = [
+                    now, 
+                    value, 
+                    self.calibration_factor, 
+                    self.baseline, 
+                    self._mass
+                ]
+                row = {k:v for k,v in zip(self._columns, values)}
+                new_row_df = pd.DataFrame(row, index=[0])
+                self.buffer_df = pd.concat([self.buffer_df, new_row_df], ignore_index=True)
+        return self._mass
+    
+    def getValue(self) -> float:
+        return self.getMass()
+    
