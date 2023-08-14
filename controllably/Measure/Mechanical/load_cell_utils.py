@@ -3,11 +3,15 @@
 
 """
 # Standard library imports
+from __future__ import annotations
 from datetime import datetime
 import numpy as np
 import pandas as pd
 from threading import Thread
 import time
+
+# Third party imports
+import serial # pip install pyserial
 
 # Local application imports
 from ..measure_utils import Measurer
@@ -17,33 +21,57 @@ COLUMNS = ('Time', 'Value')
 """Headers for output data from load cell"""
 
 class LoadCell(Measurer):
-    def __init__(self, address:str, verbose: bool = False, **kwargs):
+    _default_flags = {
+        'busy': False,
+        'connected': False,
+        'get_feedback': False,
+        'pause_feedback': False,
+        'read': True,
+        'record': False
+    }
+    def __init__(self, 
+        device:object, 
+        calibration_factor:float = 1.0, 
+        columns: tuple[str] = COLUMNS,
+        verbose: bool = False, 
+        **kwargs
+    ):
         super().__init__(verbose, **kwargs)
         self.baseline = 0
-        self.buffer_df = pd.DataFrame(columns=COLUMNS)
-        self.calibration_factor = 1
+        self.buffer_df = pd.DataFrame(columns=columns)
+        self.calibration_factor = calibration_factor
         self.precision = 3
+        
+        self._columns = columns
         self._threads = {}
-        self._connect(address)
+    
+        self.loadDevice(device=device)
         return
     
     def clearCache(self):
         """Clear most recent data and configurations"""
         self.setFlag(pause_feedback=True)
         time.sleep(0.1)
-        self.buffer_df = pd.DataFrame(columns=COLUMNS)
+        self.buffer_df = pd.DataFrame(columns=self._columns)
         self.setFlag(pause_feedback=False)
         return
     
     def disconnect(self):
         """Disconnect from device"""
+        try:
+            self.device.close()
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        self.setFlag(connected=False)
+        return
     
-    def getValue(self) -> str:
+    def getValue(self) -> float:
         """
         Get the value of the force response on the load cell
         
         Returns:
-            str: device response
+            float: float value
         """
         response = self._read()
         now = datetime.now()
@@ -58,10 +86,41 @@ class LoadCell(Measurer):
                     now, 
                     value
                 ]
-                row = {k:v for k,v in zip(COLUMNS, values)}
+                row = {k:v for k,v in zip(self._columns, values)}
                 new_row_df = pd.DataFrame(row, index=[0])
                 self.buffer_df = pd.concat([self.buffer_df, new_row_df], ignore_index=True)
         return value
+    
+    def loadDevice(self, device: object): # TODO: generalise procedure
+        self.device = device
+        connection_details = {}
+        is_connected = False
+        if type(device) is serial.Serial:
+            is_connected = device.is_open
+            connection_details = dict(
+                port = device.port,
+                baudrate = device.baudrate,
+                timeout = device.timeout
+            )
+        elif 'KeithleyDevice' in str(type(device)):
+            is_connected = device.isConnected()
+            connection_details = dict(
+                ip_address = device.ip_address,
+                name = device.name
+            )
+            device.reset()
+            device.sendCommands(['ROUTe:TERMinals FRONT'])
+            device.configureSource('current', measure_limit=0.2)
+            device.configureSense('voltage', limit=0.2, four_point=True, count=1)
+            device.makeBuffer()
+            device.beep()
+            device.setSource(0)
+            device.toggleOutput(True)
+        self.connection_details = connection_details
+        print(is_connected)
+        self.setFlag(connected=is_connected)
+        self.zero()
+        return
     
     def reset(self):
         """Reset the device"""
@@ -152,9 +211,14 @@ class LoadCell(Measurer):
         Returns:
             str: response string
         """
-        return ''
-    
-    def _stream_data(self):
-        volt = self.device._query("MEASure:VOLTage?")
-        
-
+        response = ''
+        try:
+            response = self.device.readline()
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        else:
+            response = response.decode('utf-8').strip()
+            if self.verbose:
+                print(response)
+        return response
