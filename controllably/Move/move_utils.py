@@ -99,9 +99,9 @@ class Mover(ABC):
         implement_offset: tuple[float] = (0,0,0),
         orientate_matrix: np.ndarray = np.identity(3),
         orientation: tuple[float] = (0,0,0),
-        scale: float = 1,
+        scale: float = 1.0,
         speed_max: dict[str, float] = dict(general=1),
-        speed_fraction: float = 1,
+        speed_fraction: float = 1.0,
         translate_vector: tuple[float] = (0,0,0),
         verbose: bool = False,
         **kwargs
@@ -117,9 +117,9 @@ class Mover(ABC):
             implement_offset (tuple[float], optional): transformation (translation) vector to get from end effector to tool tip. Defaults to (0,0,0).
             orientate_matrix (np.ndarray, optional): transformation (rotation) matrix to get from robot to workspace. Defaults to np.identity(3).
             orientation (tuple[float], optional): current orientation of the robot. Defaults to (0,0,0).
-            scale (float, optional): factor to scale the basis vectors by. Defaults to 1.
+            scale (float, optional): factor to scale the basis vectors by. Defaults to 1.0.
             speed_max (dict[str, float], optional): dictionary of robot maximum speeds. Defaults to dict(general=1).
-            speed_fraction (float, optional): fraction of maximum speed to travel at. Defaults to 1.
+            speed_fraction (float, optional): fraction of maximum speed to travel at. Defaults to 1.0.
             translate_vector (tuple[float], optional): transformation (translation) vector to get from robot to end effector. Defaults to (0,0,0).
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
