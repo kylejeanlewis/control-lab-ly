@@ -256,7 +256,7 @@ class Gantry(Mover):
         prevailing_speed_fraction = self._speed_fraction
         self._speed_fraction = speed_fraction
         self._query(f"M220 S{int(speed_fraction*100)}")
-        return True, self.max_speed*prevailing_speed_fraction
+        return True, prevailing_speed_fraction
     
     def shutdown(self):
         """Shutdown procedure for tool"""
