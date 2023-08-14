@@ -80,3 +80,84 @@ me.setSpeed(me.max_speed[2])
 # %%
 px.scatter(x=[i for i in range(len(volts))], y=volts)
 # %%
+"""START HERE"""
+import numpy as np
+import plotly.express as px
+import random as rd
+import time
+
+from init import library
+from controllably import Factory, Helper, guide_me
+
+from controllably.Move.Cartesian import Primitiv
+from controllably.Measure.Electrical.Keithley import KeithleyDevice
+from controllably.Measure.Physical import Balance
+from controllably.Measure.Mechanical import LoadCell
+
+from controllably.Compound.ForceClamper import ForceClampSetup
+
+# %%
+details = Factory.get_details(Helper.read_yaml(library['configs']['primitiv2']))
+mover = Primitiv(**details['mover']['settings'])
+mover.__dict__
+# %%
+mover = Primitiv(
+    port = 'COM99', 
+    limits = ((0,0,0), (100,100,100)), 
+    safe_height = 80,
+    verbose = True
+)
+# %%
+calib = 1/166322569.226326
+sensor = LoadCell(
+    device = KeithleyDevice('192.109.209.100'), 
+    # calibration_factor = calib, 
+    verbose = True
+)
+# %%
+setup = ForceClampSetup(components=dict(mover=mover, sensor=sensor), component_config=dict())
+
+# %%
+setup.clamp(speed_fraction=0.5)
+
+# %%
+from controllably.Measure.Electrical.BioLogic import BioLogic, programs
+
+bio = BioLogic('192.109.209.128')
+# %%
+bio.loadProgram(programs.PEIS)
+
+# %%
+parameters = dict(
+    voltage = 0.0,
+    amplitude_voltage = 10E-3,
+    initial_frequency=100E6,
+    final_frequency = 10,
+    frequency_number = 100,
+    duration = 30
+)
+# parameters = dict(
+#     current = np.array([10E-3]),
+#     amplitude_current = 1E-4,
+#     initial_frequency = 100000,
+#     final_frequency = 1,
+#     frequency_number = 100,
+#     duration = 30
+# )
+bio.measure(parameters=parameters, channel=[0])
+eis = ImpedanceSpectrum(bio.buffer_df, instrument='Biologic')
+eis.plot()
+# %%
+you = sensor
+# you.clearCache()
+you.toggleRecord(True)
+# %%
+# time.sleep(10)
+you.toggleRecord(False)
+px.scatter(you.buffer_df, 'Time', 'Value')
+# %%
+from controllably.Analyse.Data.Impedance import ImpedanceSpectrum
+# %%
+eis = ImpedanceSpectrum(bio.buffer_df, instrument='Biologic')
+eis.plot()
+# %%
