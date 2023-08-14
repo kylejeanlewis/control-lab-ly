@@ -367,8 +367,9 @@ class Mover(ABC):
     def speed(self) -> np.ndarray:
         """Travel speed of robot"""
         if self.verbose:
-            print(f'Max speed(s): {self.max_speed}')
-            print(f'Speed fraction: {self._speed_fraction}')
+            ...
+            # print(f'Max speed(s): {self.max_speed}')
+            # print(f'Speed fraction: {self._speed_fraction}')
         return self.max_speed * self._speed_fraction
  
     @property
