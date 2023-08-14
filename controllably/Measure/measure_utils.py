@@ -149,8 +149,10 @@ class Measurer(ABC):
     
     def reset(self):
         """Reset the device"""
+        is_connected = self.flags.get('connected',False)
         self.resetFlags()
         self.clearCache()
+        self.setFlag(connected=is_connected)
         return
     
     def resetFlags(self):
