@@ -186,7 +186,7 @@ class Marlin(Gantry):
         """
         return self.flags['temperature_reached']
 
-    def setSpeed(self, speed: int, axis:str = 'x') -> tuple[bool, float]:
+    def setSpeed(self, speed: int, axis:str = 'x') -> tuple[bool, np.ndarray]:
         """
         Set the speed of the robot
 
@@ -195,27 +195,29 @@ class Marlin(Gantry):
             axis (str, optional): axis speed to be changed. Defaults to 'x'.
         
         Returns:
-            tuple[bool, float]: whether speed has changed; prevailing speed
+            tuple[bool, np.ndarray]: whether speed has changed; prevailing speed
         """
         print(f'Speed: {speed} mm/s')
+        prevailing_speed = self.speed
         speed_fraction = (speed/self._speed_max[axis])
-        return self.setSpeedFraction(speed_fraction)
+        ret,_ = self.setSpeedFraction(speed_fraction)
+        return ret, prevailing_speed
     
-    def setSpeedFraction(self, speed_fraction: float) -> tuple[bool, float]:
-        """
-        Set the speed fraction of the robot
+    # def setSpeedFraction(self, speed_fraction: float) -> tuple[bool, float]:
+    #     """
+    #     Set the speed fraction of the robot
 
-        Args:
-            speed_fraction (float): speed fraction between 0 and 1
+    #     Args:
+    #         speed_fraction (float): speed fraction between 0 and 1
         
-        Returns:
-            tuple[bool, float]: whether speed has changed; prevailing speed fraction
-        """
-        print(f'Speed fraction: {speed_fraction}')
-        prevailing_speed_fraction = self._speed_fraction
-        self._speed_fraction = speed_fraction
-        self._query(f"M220 S{int(speed_fraction*100)}")
-        return True, prevailing_speed_fraction
+    #     Returns:
+    #         tuple[bool, float]: whether speed has changed; prevailing speed fraction
+    #     """
+    #     print(f'Speed fraction: {speed_fraction}')
+    #     prevailing_speed_fraction = self._speed_fraction
+    #     self._speed_fraction = speed_fraction
+    #     self._query(f"M220 S{int(speed_fraction*100)}")
+    #     return True, prevailing_speed_fraction
     
     def setTemperature(self, set_temperature: float, blocking:bool = True):
         """
