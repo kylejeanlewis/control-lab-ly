@@ -5,7 +5,7 @@ from controllably.Control.GUI.Basic import MoverPanel
 from controllably import Helper, Factory
 
 details = Factory.get_details(Helper.read_yaml(library['configs']['m1pro_B1']))
-# details['mover']['settings']['ip_address'] = '192.109.209.21'
+details['mover']['settings']['ip_address'] = '192.109.209.21'
 me = M1Pro(**details['mover']['settings'])
 gui = MoverPanel(me, axes='XYZa')
 # gui.runGUI()
