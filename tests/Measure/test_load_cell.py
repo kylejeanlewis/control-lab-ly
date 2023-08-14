@@ -36,7 +36,6 @@ time.sleep(10)
 you.toggleRecord(False)
 px.scatter(you.buffer_df, 'Time', 'Mass')
 # %%
-you = sensor
 you.clearCache()
 you.toggleRecord(True)
 time.sleep(10)
