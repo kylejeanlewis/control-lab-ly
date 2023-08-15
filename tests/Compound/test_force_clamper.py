@@ -102,13 +102,26 @@ sensor = LoadCell(
     verbose = True
 )
 # %%
+class Sensor:
+    def __init__(self, verbose=True):
+        self.baseline = 0.9
+        self.verbose = verbose
+        return
+    def getValue(self):
+        value = rd.random()
+        if self.verbose:
+            print(value)
+        return value
+
+sensor = Sensor()
+# %%
 setup = ForceClampSetup(components=dict(mover=mover, sensor=sensor), component_config=dict())
 
 # %%
-setup.clamp(speed_fraction=0.5)
+setup.clamp(threshold=0.995, speed_fraction=0.5)
 
 # %%
-from controllably.Measure.Electrical.BioLogic import BioLogic, programs
+from leapfrog.Measure.Electrical.BioLogic import BioLogic, programs
 
 bio = BioLogic('192.109.209.128')
 # %%
@@ -143,7 +156,7 @@ you.toggleRecord(True)
 you.toggleRecord(False)
 px.scatter(you.buffer_df, 'Time', 'Value')
 # %%
-from controllably.Analyse.Data.Impedance import ImpedanceSpectrum
+from leapfrog.Analyse.Data.Impedance import ImpedanceSpectrum
 # %%
 eis = ImpedanceSpectrum(bio.buffer_df, instrument='Biologic')
 eis.plot()
