@@ -8,9 +8,10 @@ from init import library
 from controllably import Factory, Helper, guide_me
 
 from controllably.Measure.Electrical.Keithley import KeithleyDevice
-from controllably.Measure.Electrical.BioLogic import BioLogic, programs
 from controllably.Measure.Mechanical import LoadCell
-from controllably.Analyse.Data.Impedance import ImpedanceSpectrum
+
+from leapfrog.Measure.Electrical.BioLogic import BioLogic, programs
+from leapfrog.Analyse.Data.Impedance import ImpedanceSpectrum
 # %%
 sensor = LoadCell(
     device = KeithleyDevice('192.109.209.100'),
