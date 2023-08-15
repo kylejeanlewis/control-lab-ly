@@ -16,27 +16,29 @@ User-friendly package that enables flexible automation an reconfigurable setups 
 ## Device support
 - Make
   - (QInstruments) BioShake Orbital Shaker
-  - Multi-channel LED array \[Arduino\]
-  - Multi-channel spin-coater \[Arduino\]
-  - Peltier device \[Arduino\]
+  - (Arduino-based devices)
+    - Multi-channel LED array
+    - Multi-channel spin-coater
+    - Peltier device
 - Measure
   - (Keithley) 2450 Source Measure Unit (SMU) Instrument
   - (PiezoRobotics) Dynamic Mechanical Analyser (DMA)
   - (Sentron) SI series pH meters - *full functionality in development*
-  - Precision mass balance \[Arduino\]
+  - (Arduino-based device) Precision mass balance
 - Move
   - (Creality) Ender-3
-  - (Dobot) M1 Pro
-  - (Dobot) MG400
-  - Primitiv \[Arduino\]
+  - (Dobot) 
+    - M1 Pro
+    - MG400
+  - (Arduino-based device) Primitiv
 - Transfer
   - (Dobot) Gripper attachments
   - (Sartorius) rLINE® dispensing modules
   - (TriContinent) C Series syringe pumps
-  - Peristaltic pump and syringe system \[Arduino\]
+  - (Arduino-based device) Peristaltic pump and syringe system
 - View
   - (FLIR) AX8 thermal imaging camera
-  - Web cameras \[General\]
+  - (General) Web cameras
 
 ## Installation
 Control.lab.ly can be found on PyPI and can be easily installed with `pip install`.
