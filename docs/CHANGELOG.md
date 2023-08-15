@@ -9,7 +9,7 @@
 Bug fixes and patches. First released __ Jul 2023.
 ### Changed
 - update `LEDArray` to delay timing loop by 0.1s
--fix bug with initialising `PiezoRoboticsDevice`
+- fix bug with initialising `PiezoRoboticsDevice`
 
 
 ## Versions 1.1.2 & 1.1.1
