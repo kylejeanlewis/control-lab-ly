@@ -24,7 +24,9 @@ User-friendly package that enables flexible automation an reconfigurable setups 
   - (Keithley) 2450 Source Measure Unit (SMU) Instrument
   - (PiezoRobotics) Dynamic Mechanical Analyser (DMA)
   - (Sentron) SI series pH meters - *full functionality in development*
-  - (Arduino-based device) Precision mass balance
+  - (Arduino-based device) 
+    - Precision mass balance
+    - Load cell
 - Move
   - (Creality) Ender-3
   - (Dobot) 
