@@ -36,9 +36,9 @@ bio.loadProgram(programs.PEIS)
 parameters = dict(
     voltage = 0.0,
     amplitude_voltage = 10E-3,
-    initial_frequency=1E9,
+    initial_frequency=16E6,
     final_frequency = 10,
-    frequency_number = 100,
+    frequency_number = 200,
     duration = 30
 )
 """GEIS"""
@@ -50,15 +50,25 @@ parameters = dict(
 #     frequency_number = 100,
 #     duration = 30
 # )
-bio.measure(parameters=parameters, channel=[0])
+bio.measure(parameters=parameters, channel=[0,1])
+# %%
 eis = ImpedanceSpectrum(bio.buffer_df, instrument='Biologic')
 eis.plot()
+# %%
+bio.program.save_data("vmp_test3_multichannel", by_channel=True)
+
+# %%
+bio.program.data
 # %%
 bio.buffer_df.to_csv(f"data/test_polymer_sample_20230810_recipe_2_t-10,3_1GHz.csv")
 coin_cell = 10.75 # mm
 # %%
-import datetime
+import numpy as np
 import pandas as pd
+import plotly.express as px
+import time
+from init import library
+from leapfrog.Analyse.Data.Impedance import ImpedanceSpectrum
 # %%
 eis_files = {}
 for i in (2,3,4,5,6):
@@ -86,4 +96,22 @@ me.toggleRecord(False)
 px.scatter(me.buffer_df, 'Time', 'Mass')
 # %%
 me.buffer_df.to_csv("data/test_balance calibration for sensor.csv")
+# %%
+eis_files = {}
+for i in (0,1):
+    filename = f"vmp_test2_multichannel/ch-{i}.csv"
+    df = pd.read_csv(filename)
+    df.rename(columns={'Impendance phase': 'Impedance phase [rad]', 'Impendance_ce phase': 'Impedance_ce phase [rad]'}, inplace=True)
+    df = df[df['Frequency [Hz]']<2500000]
+    eis = ImpedanceSpectrum(df, name=f"ch-{i}",instrument="Biologic")
+    eis.df['run'] = i
+    eis_files[i] = eis
+    eis.plot()
+# %%
+for i in (0,1):
+    eis: ImpedanceSpectrum = eis_files[i]
+    eis.circuit = None
+    eis.fit()
+    print(eis.circuit)
+    eis.plot()
 # %%
