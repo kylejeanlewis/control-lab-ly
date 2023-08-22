@@ -2,11 +2,10 @@
 
 ## Unreleased
 *Items under development*
-### 1.2.0
 - Integration for mass balance from Sartorius
 
 ## Version 1.2.0
-Feature enhancements, bug fixes and patches. First released 17 Aug 2023.
+Feature enhancements, bug fixes and patches. First released 22 Aug 2023.
 ### Added
 - `ForceClampSetup` class
 - `LoadCell` class
