@@ -76,7 +76,8 @@ class RobotArm(Mover):
     @abstractmethod
     def moveCoordBy(self, 
         vector: tuple[float] = (0,0,0), 
-        angles: tuple[float] = (0,0,0)
+        angles: tuple[float] = (0,0,0),
+        **kwargs
     ) -> bool:
         """
         Relative Cartesian movement and tool orientation, using robot coordinates
@@ -92,7 +93,8 @@ class RobotArm(Mover):
     @abstractmethod
     def moveCoordTo(self, 
         coordinates: Optional[tuple[float]] = None, 
-        orientation: Optional[tuple[float]] = None
+        orientation: Optional[tuple[float]] = None,
+        **kwargs
     ) -> bool:
         """
         Absolute Cartesian movement and tool orientation, using robot coordinates
@@ -106,7 +108,7 @@ class RobotArm(Mover):
         """
 
     @abstractmethod
-    def moveJointBy(self, relative_angles: tuple[float]) -> bool:
+    def moveJointBy(self, relative_angles: tuple[float], **kwargs) -> bool:
         """
         Relative joint movement
 
@@ -123,7 +125,7 @@ class RobotArm(Mover):
             raise ValueError('Length of input needs to be 6.')
 
     @abstractmethod
-    def moveJointTo(self, absolute_angles: tuple[float]) -> bool:
+    def moveJointTo(self, absolute_angles: tuple[float], **kwargs) -> bool:
         """
         Absolute joint movement
 
@@ -155,7 +157,7 @@ class RobotArm(Mover):
     @property
     def speed_angular(self) -> float:
         if self.verbose:
-            print(f'Max speed: {self._speed_max}')
+            print(f'Max speed: {self._speed_angular_max}')
             print(f'Speed fraction: {self._speed_fraction}')
         return self._speed_angular_max * self._speed_fraction
     
@@ -210,9 +212,9 @@ class RobotArm(Mover):
         
         if len(angles) != 3:
             if len(angles) == 6:
-                return self.moveJointBy(relative_angle=angles)
+                return self.moveJointBy(relative_angle=angles, **kwargs)
             return False
-        return self.moveCoordBy(vector, angles)
+        return self.moveCoordBy(vector, angles, **kwargs)
 
     def moveTo(self, 
         coordinates: Optional[tuple[float]] = None, 
@@ -246,11 +248,11 @@ class RobotArm(Mover):
         
         if len(orientation) != 3:
             if len(orientation) == 6:
-                return self.moveJointTo(absolute_angle=orientation)
+                return self.moveJointTo(absolute_angle=orientation, **kwargs)
             return False
-        return self.moveCoordTo(coordinates, orientation)
+        return self.moveCoordTo(coordinates, orientation, **kwargs)
     
-    def rotateBy(self, angles: tuple[float]) -> bool:
+    def rotateBy(self, angles: tuple[float], **kwargs) -> bool:
         """
         Relative effector rotation
 
@@ -266,12 +268,12 @@ class RobotArm(Mover):
         if not any(angles):
             return True
         if len(angles) == 3:
-            return self.moveJointBy((0,0,0,*angles))
+            return self.moveJointBy((0,0,0,*angles), **kwargs)
         if len(angles) == 6:
-            return self.moveJointBy(angles)
+            return self.moveJointBy(angles, **kwargs)
         raise ValueError('Length of input needs to be 3 or 6.')
 
-    def rotateTo(self, orientation: tuple[float]) -> bool:
+    def rotateTo(self, orientation: tuple[float], **kwargs) -> bool:
         """
         Absolute end effector rotation
 
@@ -287,7 +289,7 @@ class RobotArm(Mover):
         if not any(orientation):
             return True
         if len(orientation) == 3:
-            return self.rotateBy(orientation - self.orientation)
+            return self.rotateBy(orientation - self.orientation, **kwargs)
         if len(orientation) == 6:
-            return self.moveJointTo(orientation)
+            return self.moveJointTo(orientation, **kwargs)
         raise ValueError('Length of input needs to be 3 or 6.')

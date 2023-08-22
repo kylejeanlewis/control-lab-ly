@@ -66,6 +66,7 @@ class Dobot(RobotArm):
     - `reset`: reset the robot
     - `setSpeed`: set the speed of the robot
     - `shutdown`: shutdown procedure for tool
+    - `stop`: halt robot movement
     - `toggleAttachment`: couple or remove Dobot attachment that interfaces with Dobot's digital output
     - `toggleCalibration`: enter or exit calibration mode, with a sharp point implement for alignment
     """
@@ -81,7 +82,7 @@ class Dobot(RobotArm):
         """
         super().__init__(**kwargs)
         self.attachment = None
-        self._speed_max = 100
+        self._speed_max = dict(general=100)
         
         self._connect(ip_address)
         if attachment_name is not None:
@@ -163,7 +164,8 @@ class Dobot(RobotArm):
     @Helper.safety_measures
     def moveCoordBy(self, 
         vector: tuple[float] = (0,0,0), 
-        angles: tuple[float] = (0,0,0)
+        angles: tuple[float] = (0,0,0),
+        **kwargs
     ) -> bool:
         """
         Relative Cartesian movement and tool orientation, using robot coordinates
@@ -186,16 +188,18 @@ class Dobot(RobotArm):
             self.updatePosition(vector=vector, angles=angles)
             return False
         else:
-            move_time = max(abs(np.array(vector))/self.speed) + max(abs(np.array(angles))/self.speed_angular)
-            print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
-            time.sleep(move_time+MOVE_TIME_BUFFER_S)
+            if kwargs.get('wait', True):
+                move_time = max(abs(np.array(vector))/self.speed[:3]) + max(abs(np.array(angles))/self.speed_angular)
+                print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
+                time.sleep(move_time+MOVE_TIME_BUFFER_S)
         self.updatePosition(vector=vector, angles=angles)
         return True
 
     @Helper.safety_measures
     def moveCoordTo(self, 
         coordinates: Optional[tuple[float]] = None, 
-        orientation: Optional[tuple[float]] = None
+        orientation: Optional[tuple[float]] = None,
+        **kwargs
     ) -> bool:
         """
         Absolute Cartesian movement and tool orientation, using robot coordinates
@@ -225,17 +229,18 @@ class Dobot(RobotArm):
             self.updatePosition(coordinates=coordinates, orientation=orientation)
             return False
         else:
-            position = self.position
-            distances = abs(position[0] - np.array(coordinates))
-            rotations = abs(position[1] - np.array(orientation))
-            move_time = max([max(distances/self.speed),  max(rotations/self.speed_angular)])
-            print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
-            time.sleep(move_time+MOVE_TIME_BUFFER_S)
+            if kwargs.get('wait', True):
+                position = self.position
+                distances = abs(position[0] - np.array(coordinates))
+                rotations = abs(position[1] - np.array(orientation))
+                move_time = max([max(distances/self.speed[:3]),  max(rotations/self.speed_angular)])
+                print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
+                time.sleep(move_time+MOVE_TIME_BUFFER_S)
         self.updatePosition(coordinates=coordinates, orientation=orientation)
         return True
 
     @Helper.safety_measures
-    def moveJointBy(self, relative_angles: tuple[float]) -> bool:
+    def moveJointBy(self, relative_angles: tuple[float], **kwargs) -> bool:
         """
         Relative joint movement
 
@@ -258,14 +263,15 @@ class Dobot(RobotArm):
             self.updatePosition(angles=relative_angles[3:])
             return False
         else:
-            move_time = max(abs(np.array(relative_angles)) / self.speed_angular)
-            print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
-            time.sleep(move_time+MOVE_TIME_BUFFER_S)
+            if kwargs.get('wait', True):
+                move_time = max(abs(np.array(relative_angles)) / self.speed_angular)
+                print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
+                time.sleep(move_time+MOVE_TIME_BUFFER_S)
         self.updatePosition(angles=relative_angles[3:])
         return True
 
     @Helper.safety_measures
-    def moveJointTo(self, absolute_angles: tuple[float]) -> bool:
+    def moveJointTo(self, absolute_angles: tuple[float], **kwargs) -> bool:
         """
         Absolute joint movement
 
@@ -288,9 +294,10 @@ class Dobot(RobotArm):
             self.updatePosition(orientation=absolute_angles[3:])
             return False
         else:
-            move_time = max(abs(np.array(absolute_angles)) / self.speed_angular)
-            print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
-            time.sleep(move_time+MOVE_TIME_BUFFER_S)
+            if kwargs.get('wait', True):
+                move_time = max(abs(np.array(absolute_angles)) / self.speed_angular)    # FIXME
+                print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
+                time.sleep(move_time+MOVE_TIME_BUFFER_S)
         self.updatePosition(orientation=absolute_angles[3:])
         return True
 
@@ -317,30 +324,54 @@ class Dobot(RobotArm):
     #     """
     #     return super().retractArm(target)
     
-    def setSpeed(self, speed:float) -> tuple[bool, float]:
+    def setSpeed(self, speed:float, **kwargs) -> tuple[bool, float]:
         """
-        Set the speed of the robot
+        Set the speed of the robot (functionally equivalent to setting the speed fraction)
 
         Args:
             speed (int): rate value (value range: 1~100)
+            
+        Returns:
+            tuple[bool, float]: whether speed was changed; prevailing speed
         """
-        speed_fraction = speed/self._speed_max
+        ret,_ = self.setSpeedFraction(speed/100)
+        return ret, self.speed
+    
+    def setSpeedFraction(self, speed_fraction:float) -> tuple[bool, float]:
+        """
+        Set the speed fraction of the robot
+
+        Args:
+            speed_fraction (int): fraction of maximum speed (value range: 0~1)
+        
+        Returns:
+            tuple[bool, float]: whether speed was changed; prevailing speed fraction
+        """
         if speed_fraction == self._speed_fraction:
-            return False, self.speed
-        prevailing_speed = self.speed
+            return False, self._speed_fraction
+        prevailing_speed_fraction = self._speed_fraction
         try:
             self.dashboard.SpeedFactor(int(max(1, speed_fraction*100)))
         except (AttributeError, OSError):
             if self.verbose:
                 print("Not connected to arm.")
-            return False, self.speed
+            return False, self._speed_fraction
         self._speed_fraction = speed_fraction
-        return True, prevailing_speed
+        return True, prevailing_speed_fraction
     
     def shutdown(self):
         """Shutdown procedure for tool"""
         self._freeze()
         return super().shutdown()
+    
+    def stop(self):
+        """Halt robot movement"""
+        try:
+            self.dashboard.ResetRobot()
+        except (AttributeError, OSError):
+            if self.verbose:
+                print("Not connected to arm.")
+        return
     
     def toggleAttachment(self, on:bool, attachment_class:Optional[DobotAttachment] = None):
         """

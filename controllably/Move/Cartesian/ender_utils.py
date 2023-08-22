@@ -3,21 +3,23 @@
 This module holds the class for movement tools based on Creality's Ender-3. (Marlin firmware)
 
 Classes:
-    Ender (Gantry)
+    Ender (Marlin)
+    Marlin (Gantry)
 """
 # Standard library imports
 from __future__ import annotations
+import numpy as np
 import time
-from typing import Union
+from typing import Optional
 
 # Local application imports
 from ...misc import Helper
 from .cartesian_utils import Gantry
 print(f"Import: OK <{__name__}>")
 
-class Ender(Gantry):
+class Marlin(Gantry):
     """
-    Ender provides controls for the Creality Ender-3 platform
+    Marlin provides controls for the platforms using the Marlin firmware
 
     ### Constructor
     Args:
@@ -66,6 +68,52 @@ class Ender(Gantry):
         self.tolerance = 1.5
         return
     
+    def getAcceleration(self) -> np.ndarray:
+        """
+        Get maximum acceleration rates (mm/s^2)
+
+        Returns:
+            np.ndarray: acceleration rates
+        """
+        settings = self.getSettings()
+        relevant = [s for s in settings if 'M201' in s][-1]
+        accels = relevant.split('M201 ')[1].split(' ')
+        xyz_max_accels = [float(s[1:]) for s in accels[:3]]
+        return np.array(xyz_max_accels)
+    
+    def getCoordinates(self) -> np.ndarray:
+        """
+        Get current coordinates from device
+
+        Returns:
+            np.ndarray: current device coordinates
+        """
+        relevant = []
+        while len(relevant) == 0:
+            responses = self._query('M114')  # Use 'M154 S<seconds>' to auto-report temperatures in S-second intervals. S0 to disable.
+            relevant = [r for r in responses if 'Count' in r]
+            if not self.isConnected():
+                return self.coordinates
+        # if len(position) == 0:
+        #     return np.array([np.nan]*3)
+        xyz_coordinates = relevant[-1].split("E")[0].split(" ")[:-1]
+        x,y,z = [float(c[2:]) for c in xyz_coordinates]
+        return np.array([x,y,z])
+    
+    def getMaxSpeed(self) -> np.ndarray:
+        """
+        Get maximum speeds (mm/s)
+
+        Returns:
+            np.ndarray: maximum speeds
+        """
+        settings = self.getSettings()
+        relevant = [s for s in settings if 'M203' in s][-1]
+        speeds = relevant.split('M203 ')[1].split(' ')
+        xyz_max_speeds = [float(s[1:]) for s in speeds[:3]]
+        self._speed_max = {k:v for k,v in zip(('x','y','z'), xyz_max_speeds)}
+        return self.max_speed
+    
     def getSettings(self) -> list[str] :
         """
         Get hardware settings
@@ -77,13 +125,15 @@ class Ender(Gantry):
         print(responses)
         return responses
     
-    def getTemperature(self) -> Union[tuple, str]:
+    def getStatus(self):
+        ...
+    
+    def getTemperature(self) -> tuple[float]:
         """
-        Retrieve temperatures from device 
-        Including the set temperature, hot temperature, cold temperature, and the power level
+        Retrieve set temperature and actual temperature from device
         
         Returns:
-            Union[tuple, str]: response from device
+            tuple[float]: set temperature, current temperature
         """
         responses = self._query('M105')  # Use 'M155 S<seconds>' to auto-report temperatures in S-second intervals. S0 to disable.
         temperatures = [r for r in responses if '@' in r]
@@ -94,7 +144,7 @@ class Ender(Gantry):
         
         ready = (abs(self.set_temperature - self.temperature)<=self.tolerance)
         self.setFlag(temperature_reached=ready)
-        return (self.temperature, self.set_temperature)
+        return self.set_temperature, self.temperature
     
     def holdTemperature(self, temperature:float, time_s:float):
         """
@@ -121,7 +171,7 @@ class Ender(Gantry):
         self._query("G90\n")
         self._query(f"G0 Z{self.heights['safe']}\n")
         self._query("G90\n")
-        self._query("G1 F10800\n")
+        # self._query("G1 F10800\n")
         
         self.coordinates = self.home_coordinates
         print("Homed")
@@ -136,6 +186,39 @@ class Ender(Gantry):
         """
         return self.flags['temperature_reached']
 
+    def setSpeed(self, speed: int, axis:str = 'x') -> tuple[bool, np.ndarray]:
+        """
+        Set the speed of the robot
+
+        Args:
+            speed (int): speed in mm/s
+            axis (str, optional): axis speed to be changed. Defaults to 'x'.
+        
+        Returns:
+            tuple[bool, np.ndarray]: whether speed has changed; prevailing speed
+        """
+        print(f'Speed: {speed} mm/s')
+        prevailing_speed = self.speed
+        speed_fraction = (speed/self._speed_max[axis])
+        ret,_ = self.setSpeedFraction(speed_fraction)
+        return ret, prevailing_speed
+    
+    # def setSpeedFraction(self, speed_fraction: float) -> tuple[bool, float]:
+    #     """
+    #     Set the speed fraction of the robot
+
+    #     Args:
+    #         speed_fraction (float): speed fraction between 0 and 1
+        
+    #     Returns:
+    #         tuple[bool, float]: whether speed has changed; prevailing speed fraction
+    #     """
+    #     print(f'Speed fraction: {speed_fraction}')
+    #     prevailing_speed_fraction = self._speed_fraction
+    #     self._speed_fraction = speed_fraction
+    #     self._query(f"M220 S{int(speed_fraction*100)}")
+    #     return True, prevailing_speed_fraction
+    
     def setTemperature(self, set_temperature: float, blocking:bool = True):
         """
         Set the temperature of the 3-D printer platform bed
@@ -164,3 +247,44 @@ class Ender(Gantry):
             self.getTemperature()
         self.setFlag(temperature_reached=blocking)
         return
+
+    def stop(self):
+        """Halt all movement and print current coordinates"""
+        self._query("M410")
+        time.sleep(1)
+        self.coordinates = self.getCoordinates()
+        print(self.coordinates)
+        return
+
+
+class Ender(Marlin):
+    """
+    Ender provides controls for the Creality Ender-3 platform
+
+    ### Constructor
+    Args:
+        `port` (str): COM port address
+        `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0,0,0), (240,235,210)).
+        `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to 30.
+        `max_speed` (float, optional): maximum travel speed. Defaults to 180.
+    
+    ### Attributes
+    - `temperature_range` (tuple): range of temperature that can be set for the platform bed
+    
+    ### Methods
+    - `getSettings`: get hardware settings
+    - `holdTemperature`: hold target temperature for desired duration
+    - `home`: make the robot go home
+    - `isAtTemperature`: checks and returns whether target temperature has been reached
+    - `setTemperature`: set the temperature of the 3-D printer platform bed
+    """
+    
+    def __init__(self, 
+        port: str, 
+        limits: tuple[tuple[float]] = ((0, 0, 0), (240, 235, 210)), 
+        safe_height: float = 30, 
+        max_speed: float = 180, 
+        **kwargs
+    ):
+        super().__init__(port, limits, safe_height, max_speed, **kwargs)
+        

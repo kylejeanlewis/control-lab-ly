@@ -2,12 +2,19 @@
 import init
 from controllably.Move.Cartesian import Ender
 from controllably.Control.GUI.Basic import MoverPanel
+import numpy as np
+import random as rd
+import time
 
-# gui = MoverPanel(Ender('COM18', limits=((0,0,0),(100,100,70)), max_speed=10))
-gui = MoverPanel(Ender('COM18', limits=((0,0,0),(220,220,250)), max_speed=300))
+me = Ender(
+    'COM18', 
+    limits=((0,0,0),(220,220,250)),
+    home_coordinates=(0,0,30),
+    verbose=True
+)
+# me = Ender('COM18', limits=((0,0,0),(100,100,70)), max_speed=10, verbose=True)
+gui = MoverPanel(me, axes='XYZ')
 # gui.runGUI()
-me = gui.tool
-me.verbose = True
 me.__dict__
 # %%
 me.home()
@@ -30,4 +37,47 @@ me.setTemperature(50)
 me.home()
 # %%
 me.setTemperature(0, False)
+# %%
+while True:
+    step = np.array((0,0,-1))
+    coordinates = me.coordinates + step
+    condition1 = me.isFeasible(coordinates, transform_in=True, tool_offset=True)
+    condition2 = True # (self.sensor.getValue() <= self.threshold)
+    if not condition1 or not condition2:
+        break
+    me.move('z', step[2])
+    if me.coordinates[2] < 30:
+        break
+# %%
+me.setSpeedFraction(1)
+threshold = 0.99
+start = time.time()
+target = np.array((0,0,me.limits[1][2]))
+me.moveTo(target, wait=False)
+while True:
+    num = rd.random()
+    print(num)
+    time.sleep(0.1)
+    if num >= threshold:
+        me.stop()
+        break
+    if time.time() - start > 60:
+        break
+
+threshold = 0.95
+target = np.array((0,0,me.coordinates[2]))
+me.move('z',-10)
+
+me.setSpeedFraction(0.01)
+me.moveTo(target, wait=False)
+while True:
+    num = rd.random()
+    print(num)
+    time.sleep(0.1)
+    if num >= threshold:
+        me.stop()
+        break
+    if time.time() - start > 60:
+        break
+me.setSpeedFraction(1)
 # %%

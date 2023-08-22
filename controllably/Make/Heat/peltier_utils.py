@@ -9,6 +9,7 @@ Other constants and variables:
     COLUMNS (tuple)
 """
 # Standard library imports
+from __future__ import annotations
 from datetime import datetime
 import pandas as pd
 from threading import Thread
@@ -128,13 +129,13 @@ class Peltier(Maker):
         """
         return self.holdTemperature(temperature=temperature, time_s=time_s)
     
-    def getTemperature(self) -> Union[tuple, str]:
+    def getTemperature(self) -> tuple[float]:
         """
         Retrieve temperatures from device 
         Including the set temperature, hot temperature, cold temperature, and the power level
         
         Returns:
-            Union[tuple, str]: response from device
+            tuple[float]: set temperature, current temperature
         """
         response = self._read()
         now = datetime.now()
@@ -142,7 +143,7 @@ class Peltier(Maker):
             values = [float(v) for v in response.split(';')]
             self.set_temperature, self.temperature, self._cold_point, self._power = values
         except ValueError:
-            pass
+            print(response)
         else:
             response = tuple(values)
             ready = (abs(self.set_temperature - self.temperature)<=self.tolerance)
@@ -162,7 +163,7 @@ class Peltier(Maker):
                 row = {k:v for k,v in zip(self._columns, values)}
                 new_row_df = pd.DataFrame(row, index=[0])
                 self.buffer_df = pd.concat([self.buffer_df, new_row_df], ignore_index=True)
-        return response
+        return self.set_temperature, self.temperature
     
     def holdTemperature(self, temperature:float, time_s:float):
         """
@@ -286,7 +287,8 @@ class Peltier(Maker):
             print(f"Connection opened to {port}")
             self.setFlag(connected=True)
             time.sleep(1)
-            print(self.getTemperature())
+            self.getTemperature()
+            print(self.temperature)
         self.device = device
         return
     

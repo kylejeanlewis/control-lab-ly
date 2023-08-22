@@ -7,9 +7,8 @@ from controllably.Transfer.Substrate.Dobot import TwoJawGrip
 # %%
 me = MG400('192.109.209.8') #LAN2
 # %%
-gui = MoverPanel(MG400('192.168.2.9'), axes='XYZa')
+gui = MoverPanel(me, axes='XYZa')
 # gui.runGUI()
-me = gui.tool
 me.__dict__
 # %%
 me.home()

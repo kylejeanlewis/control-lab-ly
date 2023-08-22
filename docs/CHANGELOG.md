@@ -2,8 +2,51 @@
 
 ## Unreleased
 *Items under development*
-### 1.2.0
 - Integration for mass balance from Sartorius
+
+## Version 1.2.0
+Feature enhancements, bug fixes and patches. First released 22 Aug 2023.
+### Added
+- `ForceClampSetup` class
+- `LoadCell` class
+- `Balance` class (subclass of `LoadCell`)
+### Changed
+- update `LEDArray` to delay timing loop by 0.1s
+- fix bug with initialising `PiezoRoboticsDevice`
+- update `getTemperature()` across multiple classes to standardise output
+- `Mover` class
+  - speed-related attributes and properties
+  - add method to calculate travel time based on target speed, acceleration and deceleration
+  - modify how speeds and max speeds interact with `move()` and `safeMoveTo()`
+- `Cartesian` class
+  - `setSpeed()` and `setSpeedFraction()`
+  - get max speed settings from device upon connecting
+  - change calculation of movement wait times using device speed and acceleration
+- `Primitiv` class
+  - change the class name to `Grbl` and `Primitiv` as a subclass name to retain compatibility
+  - overload `moveTo()` and `_query()` methods to use jogging mode
+  - modify the sequence of commands to halt movement
+  - implement `getAcceleration()`, `getCoordinates()`, `getMaxSpeed()`
+  - clear errors and setting feed rate upon establishing connection
+- `Ender` class
+  - change the class name to `Marlin` and `Ender` as a subclass name to retain compatibility
+  - added method to immediately stop movement
+  - implement `getAcceleration()`, `getCoordinates()`, `getMaxSpeed()`
+  - separate methods for `setSpeed()` (absolute speed in mm/s) and `setSpeedFraction()` (proportional speed to max speed)
+- `Dobot` class
+  - added `stop()` method
+- Flir `AX8` class
+  - added `invertPalette()` method
+  - added data parsing methods `_decode_from_modbus()` and `_encode_to_modbus()`
+- `KeithleyDevice()` class
+  - added `ip_address` property
+  - added options for `_read()` method
+  - added `readline()` method
+  - implement `disconnect()` method
+- fix bug with Keithley programs using `device.run()` instead of `device.start()`
+### Removed
+- `Thermal` class
+- removed dependency on `imutils` package
 
 
 ## Versions 1.1.2 & 1.1.1

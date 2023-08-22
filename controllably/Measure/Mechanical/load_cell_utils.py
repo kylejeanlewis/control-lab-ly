@@ -1,16 +1,11 @@
 # %% -*- coding: utf-8 -*-
 """
-This module holds the class for force sensors.
 
-Classes:
-    ForceSensor (Measurer)
-
-Other constants and variables:
-    CALIBRATION_FACTOR (float)
-    COLUMNS (tuple)
 """
 # Standard library imports
+from __future__ import annotations
 from datetime import datetime
+import numpy as np
 import pandas as pd
 from threading import Thread
 import time
@@ -22,40 +17,10 @@ import serial # pip install pyserial
 from ..measure_utils import Measurer
 print(f"Import: OK <{__name__}>")
 
-CALIBRATION_FACTOR = 6.862879436681862  # FIXME: needs to be calibrated
-"""Empirical factor by which to divide output reading by to get force in newtons"""
-COLUMNS = ('Time', 'Value', 'Factor', 'Baseline', 'Force')
-"""Headers for output data from force sensor"""
+COLUMNS = ('Time', 'Value')
+"""Headers for output data from load cell"""
 
-class ForceSensor(Measurer):
-    """
-    ForceSensor provides methods to read out values from a force sensor
-
-    ### Constructor
-    Args:
-        `port` (str): COM port address
-        `calibration_factor` (float, optional): calibration factor of device readout to newtons. Defaults to CALIBRATION_FACTOR.
-    
-    ### Attributes
-    - `baseline` (float): baseline readout at which zero newtons is set
-    - `calibration_factor` (float): calibration factor of device readout to newtons
-    - `precision` (int): number of decimal places to print force value
-    
-    ### Properties
-    - `force` (float): force experienced
-    
-    ### Methods
-    - `clearCache`: clear most recent data and configurations
-    - `disconnect`: disconnect from device
-    - `getForce`: get the force response
-    - `reset`: reset the device
-    - `shutdown`: shutdown procedure for tool
-    - `tare`: alias for `zero()`
-    - `toggleFeedbackLoop`: start or stop feedback loop
-    - `toggleRecord`: start or stop data recording
-    - `zero`: set the current reading as baseline (i.e. zero force)
-    """
-    
+class LoadCell(Measurer):
     _default_flags = {
         'busy': False,
         'connected': False,
@@ -64,34 +29,30 @@ class ForceSensor(Measurer):
         'read': True,
         'record': False
     }
-    def __init__(self, port:str, calibration_factor:float = CALIBRATION_FACTOR, **kwargs):
-        """
-        Instantiate the class
-
-        Args:
-            port (str): COM port address
-            calibration_factor (float, optional): calibration factor of device readout to newtons. Defaults to CALIBRATION_FACTOR.
-        """
-        super().__init__(**kwargs)
+    def __init__(self, 
+        device:object, 
+        calibration_factor:float = 1.0, 
+        columns: tuple[str] = COLUMNS,
+        verbose: bool = False, 
+        **kwargs
+    ):
+        super().__init__(verbose, **kwargs)
         self.baseline = 0
-        self.buffer_df = pd.DataFrame(columns=COLUMNS)
+        self.buffer_df = pd.DataFrame(columns=columns)
         self.calibration_factor = calibration_factor
         self.precision = 3
-        self._force = 0
+        
+        self._columns = columns
         self._threads = {}
-        self._connect(port)
+    
+        self.loadDevice(device=device)
         return
     
-    # Properties
-    @property
-    def force(self) -> float:
-        return round(self._force, self.precision)
-   
     def clearCache(self):
         """Clear most recent data and configurations"""
         self.setFlag(pause_feedback=True)
         time.sleep(0.1)
-        self.buffer_df = pd.DataFrame(columns=COLUMNS)
+        self.buffer_df = pd.DataFrame(columns=self._columns)
         self.setFlag(pause_feedback=False)
         return
     
@@ -105,34 +66,62 @@ class ForceSensor(Measurer):
         self.setFlag(connected=False)
         return
     
-    def getForce(self) -> str:
+    def getValue(self) -> float:
         """
-        Get the force response
+        Get the value of the force response on the load cell
         
         Returns:
-            str: device response
+            float: float value
         """
         response = self._read()
         now = datetime.now()
+        value = np.nan
         try:
-            value = int(response)
+            value = float(response)
         except ValueError:
-            pass
+            return np.nan
         else:
-            self._force = (value - self.baseline) / self.calibration_factor
             if self.flags['record']:
                 values = [
                     now, 
-                    value, 
-                    self.calibration_factor, 
-                    self.baseline, 
-                    self._force
+                    value
                 ]
-                row = {k:v for k,v in zip(COLUMNS, values)}
+                row = {k:v for k,v in zip(self._columns, values)}
                 new_row_df = pd.DataFrame(row, index=[0])
                 self.buffer_df = pd.concat([self.buffer_df, new_row_df], ignore_index=True)
-        return response
-  
+        return value
+    
+    def loadDevice(self, device: object): # TODO: generalise procedure
+        self.device = device
+        connection_details = {}
+        is_connected = False
+        if type(device) is serial.Serial:
+            is_connected = device.is_open
+            connection_details = dict(
+                port = device.port,
+                baudrate = device.baudrate,
+                timeout = device.timeout
+            )
+        elif 'KeithleyDevice' in str(type(device)):
+            is_connected = device.isConnected()
+            connection_details = dict(
+                ip_address = device.ip_address,
+                name = device.name
+            )
+            device.reset()
+            device.sendCommands(['ROUTe:TERMinals FRONT'])
+            device.configureSource('current', measure_limit=0.2)
+            device.configureSense('voltage', limit=0.2, four_point=True, count=1)
+            device.makeBuffer()
+            device.beep()
+            device.setSource(0)
+            device.toggleOutput(True)
+        self.connection_details = connection_details
+        print(is_connected)
+        self.setFlag(connected=is_connected)
+        self.zero()
+        return
+    
     def reset(self):
         """Reset the device"""
         super().reset()
@@ -143,10 +132,6 @@ class ForceSensor(Measurer):
         """Shutdown procedure for tool"""
         self.toggleFeedbackLoop(on=False)
         return super().shutdown()
- 
-    def tare(self):
-        """Alias for `zero()`"""
-        return self.zero()
     
     def toggleFeedbackLoop(self, on:bool):
         """
@@ -176,10 +161,10 @@ class ForceSensor(Measurer):
         self.setFlag(record=on, get_feedback=on, pause_feedback=False)
         self.toggleFeedbackLoop(on=on)
         return
-
+    
     def zero(self, wait:int = 5):
         """
-        Set current reading as baseline (i.e. zero force)
+        Set current reading as baseline
         
         Args:
             wait (int, optional): duration to wait while zeroing, in seconds. Defaults to 5.
@@ -201,47 +186,24 @@ class ForceSensor(Measurer):
         print("Zeroing complete.")
         self.toggleRecord(temp_record_state)
         return
-
+    
     # Protected method(s)
-    def _connect(self, port:str, baudrate:int = 115200, timeout:int = 1):
+    def _connect(self, *args, **kwargs):
         """
         Connection procedure for tool
-
-        Args:
-            port (str): COM port address
-            baudrate (int, optional): baudrate. Defaults to 115200.
-            timeout (int, optional): timeout in seconds. Defaults to 1.
         """
-        self.connection_details = {
-            'port': port,
-            'baudrate': baudrate,
-            'timeout': timeout
-        }
-        device = None
-        try:
-            device = serial.Serial(port, baudrate, timeout=timeout)
-        except Exception as e:
-            print(f"Could not connect to {port}")
-            if self.verbose:
-                print(e)
-        else:
-            print(f"Connection opened to {port}")
-            self.setFlag(connected=True)
-            time.sleep(1)
-            self.zero()
-        self.device = device
-        return
-    
+        return super()._connect(*args, **kwargs)
+
     def _loop_feedback(self):
         """Loop to constantly read from device"""
         print('Listening...')
         while self.flags['get_feedback']:
             if self.flags['pause_feedback']:
                 continue
-            self.getForce()
+            self.getValue()
         print('Stop listening...')
         return
-
+    
     def _read(self) -> str:
         """
         Read response from device
@@ -260,4 +222,3 @@ class ForceSensor(Measurer):
             if self.verbose:
                 print(response)
         return response
- 

@@ -3,22 +3,24 @@
 This module holds the class for movement tools based on Primitiv. (Grbl firmware)
 
 Classes:
-    Primitiv (Gantry)
+    Grbl (Gantry)
+    Primitiv (Grbl)
 """
 # Standard library imports
 from __future__ import annotations
+import numpy as np
 import time
 from typing import Optional
 
 # Local application imports
 from ...misc import Helper
 from .cartesian_utils import Gantry
-from .grbl_lib import AlarmCode, ErrorCode
+# from .grbl_lib import AlarmCode, ErrorCode
 print(f"Import: OK <{__name__}>")
 
-class Primitiv(Gantry):
+class Grbl(Gantry):
     """
-    Primitiv provides controls for the Primitv platform
+    Grbl provides controls for the platforms using the Grbl firmware
 
     ### Constructor
     Args:
@@ -33,6 +35,8 @@ class Primitiv(Gantry):
     - `home`: make the robot go home
     - `stop`: stop movement immediately
     """
+    
+    _default_flags = {'busy': False, 'connected': False, 'jog':False}
     def __init__(self, 
         port: str, 
         limits: tuple[tuple[float]] = ((-410,-290,-120), (0,0,0)), 
@@ -51,6 +55,45 @@ class Primitiv(Gantry):
         """
         super().__init__(port=port, limits=limits, safe_height=safe_height, max_speed=max_speed, **kwargs)
         return
+    
+    def getAcceleration(self) -> np.ndarray:
+        """
+        Get maximum acceleration rates (mm/s^2)
+
+        Returns:
+            np.ndarray: acceleration rates
+        """
+        settings = self.getSettings()
+        relevant = [s for s in settings if '$12' in s][-3:]
+        accels = [s.split('=')[1] for s in relevant]
+        xyz_max_accels = [float(s) for s in accels]
+        return np.array(xyz_max_accels)
+    
+    def getCoordinates(self) -> np.ndarray:
+        """
+        Get current coordinates from device
+
+        Returns:
+            np.ndarray: current device coordinates
+        """
+        status = self.getStatus()
+        relevant = [s for s in status if 'MPos' in s][-1]
+        positions = relevant.split(":")[1].split(",")
+        return np.array([float(p) for p in positions])
+    
+    def getMaxSpeed(self) -> np.ndarray:
+        """
+        Get maximum speeds (mm/s)
+
+        Returns:
+            np.ndarray: maximum speeds
+        """
+        settings = self.getSettings()
+        relevant = [s for s in settings if '$11' in s][-3:]
+        speeds = [s.split('=')[1] for s in relevant]        # mm/min
+        xyz_max_speeds = [float(s)/60 for s in speeds]
+        self._speed_max = {k:v for k,v in zip(('x','y','z'), xyz_max_speeds)}
+        return self.max_speed
     
     def getSettings(self) -> list[str]:
         """
@@ -85,10 +128,48 @@ class Primitiv(Gantry):
         self.coordinates = self.home_coordinates
         print("Homed")
         return True
+
+    @Helper.safety_measures
+    def moveTo(self, coordinates:tuple[float], tool_offset:bool = True, jog:bool = False, **kwargs) -> bool:
+        """
+        Move the robot to target position
+
+        Args:
+            coordinates (tuple[float]): x,y,z coordinates to move to
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
+
+        Returns:
+            bool: whether movement is successful
+        """
+        self.setFlag(jog=jog)
+        ret = super().moveTo(coordinates=coordinates, tool_offset=tool_offset, **kwargs)
+        self.setFlag(jog=False)
+        return ret
+    
+    def setSpeedFraction(self, speed_fraction: float) -> tuple[bool, float]:
+        """
+        Set the speed fraction of the robot
+
+        Args:
+            speed_fraction (float): speed fraction between 0 and 1
+        
+        Returns:
+            tuple[bool, float]: whether speed has changed; prevailing speed fraction
+        """
+        print(f'Speed fraction: {speed_fraction}')
+        prevailing_speed_fraction = self._speed_fraction
+        self._speed_fraction = speed_fraction
+        ret,_ = self.setSpeed(self._speed_max['x']*speed_fraction, 'x')
+        # self._query(f"M220 S{int(speed_fraction*100)}")
+        return ret, prevailing_speed_fraction
     
     def stop(self):
-        """Stop movement immediately"""
-        self._query("!\n")
+        """Halt all movement and print current coordinates"""
+        self._query("!")
+        self._query("$X")
+        self._query("~")
+        self._query("F10800")
+        self.coordinates = self.getCoordinates()
         return
 
     # Protected method(s)
@@ -113,7 +194,26 @@ class Primitiv(Gantry):
             self._write("\r\n\r\n")
             time.sleep(2)
             self.device.reset_input_buffer()
+            self._query("$X")
+            self._query('F10800')
         return
+    
+    def _query(self, command: str) -> list[str]:
+        """
+        Write command to and read response from device
+
+        Args:
+            command (str): command string to send to device
+
+        Returns:
+            list[str]: list of response string(s) from device
+        """
+        if command.startswith("G1") and self.flags.get('jog',False):
+            axes = ('x','y','z','a','b','c')
+            move = command.strip().split("G1 ")[1]
+            axis = move[0].lower()
+            command = f"$J= {move} F{int(60*self.speed[axes.index(axis)])}"
+        return super()._query(command)
 
     # def _handle_alarms_and_errors(self, response:str):
     #     """
@@ -145,3 +245,32 @@ class Primitiv(Gantry):
     #         if code in ErrorCode._member_names_:
     #             print(ErrorCode[code].value)
     #     return
+
+
+class Primitiv(Grbl):
+    """
+    Primitiv provides controls for the Primitv platform
+
+    ### Constructor
+    Args:
+        `port` (str): COM port address
+        `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((-410,-290,-120), (0,0,0)).
+        `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to -80.
+        `max_speed` (float, optional): maximum travel speed. Defaults to 250.
+    
+    ### Methods
+    - `getSettings`: get hardware settings
+    - `getStatus`: get the current status of the tool
+    - `home`: make the robot go home
+    - `stop`: stop movement immediately
+    """
+    
+    def __init__(self, 
+        port: str, 
+        limits: tuple[tuple[float]] = ((-410, -290, -120), (0, 0, 0)), 
+        safe_height: float = -80, 
+        max_speed: float = 250, 
+        **kwargs
+    ):
+        super().__init__(port, limits, safe_height, max_speed, **kwargs)
+        

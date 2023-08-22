@@ -37,13 +37,14 @@ class KeithleyDevice(Instrument):
     ### Properties
     - `buffer_name` (str): name of buffer
     - `fields` (tuple[str]): tuple of data fields to read from device
+    - `ip_address` (str): IP address of Keithley
     
     ### Methods
     - `beep`: make device emit a beep sound
     - `clearBuffer`: clear the buffer on the device
     - `configureSense`: configure the sense terminal
     - `configureSource`: configure the source terminal
-    - `disconnect`: disconnect from device (NOTE: not implemented)
+    - `disconnect`: disconnect from device
     - `getBufferIndices`: get the buffer indices where the the data start and end
     - `getErrors`: get error messages from device
     - `getStatus`: get status of device
@@ -102,6 +103,10 @@ class KeithleyDevice(Instrument):
             raise RuntimeError("Please input 14 or fewer fields to read out from instrument.")
         self._fields = tuple(value)
         return
+    
+    @property
+    def ip_address(self) -> str:
+        return self.connection_details.get('ip_address', '')
     
     def beep(self, frequency:int = 440, duration:float = 1):
         """
@@ -167,8 +172,15 @@ class KeithleyDevice(Instrument):
         self._query(f'SOURce:FUNCtion {self.source.function_type}')
         return self.sendCommands(commands=self.source.get_commands())
     
-    def disconnect(self):       # NOTE: not implemented
-        return super().disconnect()
+    def disconnect(self):
+        """Disconnect from device"""
+        try:
+            self.device.close()
+        except Exception as e:
+            if self.verbose:
+                print(e)
+        self.setFlag(connected=False)
+        return
     
     def getBufferIndices(self, name:Optional[str] = None) -> tuple[int]:
         """
@@ -182,8 +194,11 @@ class KeithleyDevice(Instrument):
         """
         name = self.buffer_name if name is None else name
         reply = self._query(f'TRACe:ACTual:STARt? "{name}" ; END? "{name}"')
+        response = self._parse(reply=reply)
+        if '__len__' not in response.__dir__():
+            return 0,0
         try:
-            start,end = self._parse(reply=reply)
+            start,end = response
             start = int(start)
             end = int(end)
         except ValueError:
@@ -235,10 +250,11 @@ class KeithleyDevice(Instrument):
             buffer_size = 10
         return self._query(f'TRACe:MAKE "{name}",{buffer_size}')
     
-    def read(self, 
+    def read(self,  # TODO: improve compatibility of read functions with other standards
         name: Optional[str] = None, 
         fields: tuple[str] = ('SOURce','READing', 'SEConds'), 
-        average: bool = True
+        average: bool = True,
+        quick: bool = False
     ) -> pd.DataFrame:
         """
         Read the latest data fom buffer
@@ -247,11 +263,12 @@ class KeithleyDevice(Instrument):
             name (Optional[str], optional): buffer name. Defaults to None.
             fields (tuple[str], optional): fields of interest. Defaults to ('SOURce','READing', 'SEConds').
             average (bool, optional): whether to average the data of multiple readings. Defaults to True.
+            quick (bool, optional): whether to take a quick reading using existing Sense function and settings. Defaults to False.
 
         Returns:
             pd.DataFrame: dataframe of measurements
         """
-        return self._read(bulk=False, name=name, fields=fields, average=average)
+        return self._read(bulk=False, name=name, fields=fields, average=average, quick=quick)
         
     def readAll(self, 
         name: Optional[str] = None, 
@@ -270,6 +287,17 @@ class KeithleyDevice(Instrument):
             pd.DataFrame: dataframe of measurements
         """
         return self._read(bulk=True, name=name, fields=fields, average=average)
+    
+    def readline(self) -> bytes:
+        """
+        Read latest data point from buffer
+
+        Returns:
+            bytes: latest data point value
+        """
+        df = self._read(bulk=False, fields=('READing',), quick=True)
+        return str(df.iat[0,0]).encode()
+        # return self._query('READ?').encode()
     
     def recallState(self, state:int):
         """
@@ -376,7 +404,7 @@ class KeithleyDevice(Instrument):
         device = None
         try:
             rm = visa.ResourceManager('@py')
-            device = rm.open_resource(f"TCPIP0::{ip_address}::5025::SOCKET")
+            device: visa.resources.TCPIPSocket = rm.open_resource(f"TCPIP0::{ip_address}::5025::SOCKET")
             device.write_termination = '\n'
         except Exception as e:
             print("Unable to connect to Keithley")
@@ -464,7 +492,8 @@ class KeithleyDevice(Instrument):
         bulk: bool,
         name: Optional[str] = None, 
         fields: tuple[str] = ('SOURce','READing', 'SEConds'), 
-        average: bool = True
+        average: bool = True,
+        quick: bool = False
     ) -> pd.DataFrame:
         """
         Read all data on buffer
@@ -474,15 +503,21 @@ class KeithleyDevice(Instrument):
             name (Optional[str], optional): buffer name. Defaults to None.
             fields (tuple[str], optional): fields of interest. Defaults to ('SOURce','READing', 'SEConds').
             average (bool, optional): whether to average the data of multiple readings. Defaults to True.
+            quick (bool, optional): whether to take a quick reading using existing Sense function and settings. Defaults to False.
 
         Returns:
             pd.DataFrame: dataframe of measurements
         """
         name = self.active_buffer if name is None else name
         self.fields = fields
+        if quick:
+            reply = self._query(f'READ? "{name}",{",".join(self.fields)}')
+            data = self._parse(reply=reply)
+            data = np.reshape(np.array(data), (-1,len(self.fields)))
+            return pd.DataFrame(data, columns=self.fields)
+        
         count = int(self.sense.count)
         start,end = self.getBufferIndices(name=name)
-        
         start = start if bulk else max(1, end-count+1)
         if not all([start,end]): # dummy data
             num_rows = count * max(1, int(self.source._count)) if bulk else count

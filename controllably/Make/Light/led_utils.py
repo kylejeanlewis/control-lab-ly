@@ -106,13 +106,13 @@ class LEDArray(Maker):
         'timing_loop': False
     }
     
-    def __init__(self, port:str, channels:list[int] = [0], **kwargs):
+    def __init__(self, port:str, channels:tuple[int] = (0,), **kwargs):
         """
         Instantiate the class
 
         Args:
             port (str): COM port addressed
-            channels (list[int], optional): list of channels. Defaults to [0].
+            channels (tuple[int], optional): tuple of channels. Defaults to (0,).
         """
         super().__init__(**kwargs)
         self.channels = {chn: LED(chn) for chn in channels}
@@ -260,6 +260,7 @@ class LEDArray(Maker):
     def _loop_timer(self):
         """Loop for counting time and flagging channels"""
         self.setFlag(timing_loop=True)
+        time.sleep(0.1)
         busy = self.isBusy()
         timed_channels = self._timed_channels
         last_round = False

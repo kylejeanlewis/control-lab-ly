@@ -131,7 +131,8 @@ class M1Pro(Dobot):
     
     def moveCoordBy(self, 
         vector: tuple[float] = (0,0,0), 
-        angles: tuple[float] = (0,0,0)
+        angles: tuple[float] = (0,0,0),
+        **kwargs
     ) -> bool:
         """
         Relative Cartesian movement and tool orientation, using robot coordinates
@@ -150,7 +151,7 @@ class M1Pro(Dobot):
         coordinates, orientation = self.position
         new_coordinates = np.array(coordinates) + np.array(vector)
         new_orientation = np.array(orientation) + np.array(angles)
-        return self.moveCoordTo(new_coordinates, new_orientation)
+        return self.moveCoordTo(new_coordinates, new_orientation, **kwargs)
     
     def retractArm(self, *args, **kwargs) -> bool:      # NOTE: not implemented
         return super().retractArm()

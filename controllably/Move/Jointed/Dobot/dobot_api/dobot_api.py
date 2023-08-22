@@ -139,7 +139,7 @@ class dobot_api_dashboard:
         """
         Set digital signal output (Queue instruction)
         index : Digital output index (Value range:1~24)
-        status : Status of digital signal output port(0:Low level，1:High level
+        status : Status of digital signal output port(0:Low level,1:High level
         """
         string = "DO({:d},{:d})".format(index,status)
         print(string)
@@ -150,7 +150,7 @@ class dobot_api_dashboard:
         """
         Set digital signal output (Instructions immediately)
         index : Digital output index (Value range:1~24)
-        status : Status of digital signal output port(0:Low level，1:High level)
+        status : Status of digital signal output port(0:Low level,1:High level)
         """
         string = "DOExecute({:d},{:d})".format(index,status)
         print(string)
@@ -161,7 +161,7 @@ class dobot_api_dashboard:
         """
         Set terminal signal output (Queue instruction)
         index : Terminal output index (Value range:1~2)
-        status : Status of digital signal output port(0:Low level，1:High level)
+        status : Status of digital signal output port(0:Low level,1:High level)
         """
         string = "ToolDO({:d},{:d})".format(index,status)
         print(string)
@@ -172,7 +172,7 @@ class dobot_api_dashboard:
         """
         Set terminal signal output (Instructions immediately)
         index : Terminal output index (Value range:1~2)
-        status : Status of digital signal output port(0:Low level，1:High level)
+        status : Status of digital signal output port(0:Low level,1:High level)
         """
         string = "ToolDOExecute({:d},{:d})".format(index,status)
         print(string)
@@ -299,7 +299,7 @@ class dobot_api_dashboard:
     def RunScript(self, project_name):
         """
         Run the script file
-        project_name ：Script file name
+        project_name :Script file name
         """
         string = "RunScript({:s})".format(project_name)
         print(string)
@@ -486,14 +486,14 @@ class dobot_api_feedback:
         a: A number in the Cartesian coordinate system a
         b: A number in the Cartesian coordinate system b
         c: a number in the Cartesian coordinate system c
-        *dynParams :Parameter Settings（Mode、Distance、Index、Status）
+        *dynParams :Parameter Settings(Mode、Distance、Index、Status)
                     Mode :Set Distance mode (0: Distance percentage; 1: distance from starting point or target point)
-                    Distance :Runs the specified distance（If Mode is 0, the value ranges from 0 to 100；When Mode is 1, if the value is positive,
-                             it indicates the distance from the starting point. If the value of Distance is negative, it represents the Distance from the target point）
-                    Index ：Digital output index （Value range：1~24）
-                    Status ：Digital output state（Value range：0/1）
+                    Distance :Runs the specified distance(If Mode is 0, the value ranges from 0 to 100;When Mode is 1, if the value is positive,
+                             it indicates the distance from the starting point. If the value of Distance is negative, it represents the Distance from the target point)
+                    Index :Digital output index (Value range:1~24)
+                    Status :Digital output state(Value range:0/1)
         """
-        # example： MovLIO(0,50,0,0,0,0,(0,50,1,0),(1,1,2,1))
+        # example: MovLIO(0,50,0,0,0,0,(0,50,1,0),(1,1,2,1))
         string = "MovLIO({:f},{:f},{:f},{:f},{:f},{:f}".format(x,y,z,a,b,c)
         print(type(dynParams), dynParams)
         for params in dynParams:
@@ -512,14 +512,14 @@ class dobot_api_feedback:
         a: A number in the Cartesian coordinate system a
         b: A number in the Cartesian coordinate system b
         c: a number in the Cartesian coordinate system c
-        *dynParams :Parameter Settings（Mode、Distance、Index、Status）
+        *dynParams :Parameter Settings(Mode、Distance、Index、Status)
                     Mode :Set Distance mode (0: Distance percentage; 1: distance from starting point or target point)
-                    Distance :Runs the specified distance（If Mode is 0, the value ranges from 0 to 100；When Mode is 1, if the value is positive,
-                             it indicates the distance from the starting point. If the value of Distance is negative, it represents the Distance from the target point）
-                    Index ：Digital output index （Value range：1~24）
-                    Status ：Digital output state（Value range：0/1）
+                    Distance :Runs the specified distance(If Mode is 0, the value ranges from 0 to 100;When Mode is 1, if the value is positive,
+                             it indicates the distance from the starting point. If the value of Distance is negative, it represents the Distance from the target point)
+                    Index :Digital output index (Value range:1~24)
+                    Status :Digital output state(Value range:0/1)
         """
-        # example： MovJIO(0,50,0,0,0,0,(0,50,1,0),(1,1,2,1))
+        # example: MovJIO(0,50,0,0,0,0,(0,50,1,0),(1,1,2,1))
         string = "MovJIO({:f},{:f},{:f},{:f},{:f},{:f}".format(x,y,z,a,b,c)
         print(string)
         print(type(dynParams), dynParams)
@@ -544,7 +544,7 @@ class dobot_api_feedback:
     def Circle(self, count, x1, y1, z1, a1, b1, c1, x2, y2, z2, a2, b2, c2):
         """
         Full circle motion command
-        count：Run laps
+        count:Run laps
         x1, y1, z1, a1, b1, c1 :Is the point value of intermediate point coordinates
         x2, y2, z2, a2, b2, c2 :Is the value of the end point coordinates
         Note: This instruction should be used together with other movement instructions
