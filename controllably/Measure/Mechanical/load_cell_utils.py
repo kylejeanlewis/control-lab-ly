@@ -21,6 +21,34 @@ COLUMNS = ('Time', 'Value')
 """Headers for output data from load cell"""
 
 class LoadCell(Measurer):
+    """
+    LoadCell provides methods to handle and process the data generated from a load cell
+
+    ### Constructor
+    Args:
+        `device` (object): device connection object
+        `calibration_factor` (float, optional): calibration factor for readout values. Defaults to 1.0.
+        `columns` (tuple[str], optional): columns for buffer dataframe. Defaults to COLUMNS.
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+
+    ### Attributes
+    - `baseline` (float): baseline reading of load cell when unloaded
+    - `calibration_factor` (float): calibration factor for readout values
+    - `precision` (int): number of decimal places to display readouts
+    
+    ### Methods
+    #### Public
+    - `clearCache`: clear most recent data and configurations
+    - `disconnect`: disconnect from device
+    - `getValue`: get the value of the force response on the load cell
+    - `loadDevice`: load the device connection object into class
+    - `reset`: reset the device
+    - `shutdown`: shutdown procedure for tool
+    - `toggleFeedBackLoop`: start or stop feedback loop
+    - `toggleRecord`: start or stop data recording
+    - `zero`: set current reading as baseline
+    """
+    
     _default_flags = {
         'busy': False,
         'connected': False,
@@ -36,6 +64,15 @@ class LoadCell(Measurer):
         verbose: bool = False, 
         **kwargs
     ):
+        """
+        Instantiate the class
+
+        Args:
+            device (object): device connection object
+            calibration_factor (float, optional): calibration factor for readout values. Defaults to 1.0.
+            columns (tuple[str], optional): columns for buffer dataframe. Defaults to COLUMNS.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         super().__init__(verbose, **kwargs)
         self.baseline = 0
         self.buffer_df = pd.DataFrame(columns=columns)
@@ -92,6 +129,12 @@ class LoadCell(Measurer):
         return value
     
     def loadDevice(self, device: object): # TODO: generalise procedure
+        """
+        Load the device connection object into class
+
+        Args:
+            device (object): device connection object
+        """
         self.device = device
         connection_details = {}
         is_connected = False
@@ -189,9 +232,7 @@ class LoadCell(Measurer):
     
     # Protected method(s)
     def _connect(self, *args, **kwargs):
-        """
-        Connection procedure for tool
-        """
+        """Connection procedure for tool"""
         return super()._connect(*args, **kwargs)
 
     def _loop_feedback(self):
