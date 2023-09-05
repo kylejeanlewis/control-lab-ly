@@ -491,7 +491,7 @@ class KeithleyDevice(Instrument):
     def _read(self, 
         bulk: bool,
         name: Optional[str] = None, 
-        fields: tuple[str] = ('SOURce','READing', 'SEConds'), 
+        fields: tuple[str] = ('SOURce','READing','SEConds'), 
         average: bool = True,
         quick: bool = False
     ) -> pd.DataFrame:
@@ -510,6 +510,7 @@ class KeithleyDevice(Instrument):
         """
         name = self.active_buffer if name is None else name
         self.fields = fields
+        # self.fields = ('CHANnel', *fields)
         if quick:
             reply = self._query(f'READ? "{name}",{",".join(self.fields)}')
             data = self._parse(reply=reply)
