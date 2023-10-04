@@ -73,6 +73,7 @@ class KeithleyDevice(Instrument):
         super().__init__(**kwargs)
         self.name = name
         self._fields = ('',)
+        self._model = ''
         
         self.active_buffer = self._default_buffer
         self.sense = SenseDetails()
@@ -87,7 +88,9 @@ class KeithleyDevice(Instrument):
         Returns:
             str: system info
         """
-        return self._query('*IDN?')
+        response = self._query('*IDN?')
+        self._model = response.split(',')[1].split(' ')[1]
+        return response
     
     # Properties
     @property
