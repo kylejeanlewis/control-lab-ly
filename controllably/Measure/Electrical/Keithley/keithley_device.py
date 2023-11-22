@@ -9,7 +9,7 @@ Classes:
 from __future__ import annotations
 import numpy as np
 import pandas as pd
-from typing import Optional, Union
+from typing import Iterable, Optional, Union
 
 # Third party imports
 import pyvisa as visa # pip install -U pyvisa
@@ -139,6 +139,10 @@ class KeithleyDevice(Instrument):
         name = self.active_buffer if name is None else name
         return self._query(f'TRACe:CLEar "{name}"')
     
+    def clearErrors(self):
+        """Clear errors from event logs"""
+        return self._write('SYSTem:CLEar')
+    
     def configureSense(self, 
         func: str, 
         limit: Union[str, float, None] = 'DEFault',
@@ -155,7 +159,8 @@ class KeithleyDevice(Instrument):
             count (int, optional): number of readings to measure for each condition. Defaults to 1.
         """
         self.sense = SenseDetails(func, limit, four_point, count)
-        self._query(f'SENSe:FUNCtion "{self.sense.function_type}"')
+        self.setFunction(self.sense.function_type)
+        # self._query(f'SENSe:FUNCtion "{self.sense.function_type}"')
         return self.sendCommands(commands=self.sense.get_commands())
     
     def configureSource(self, 
@@ -172,7 +177,8 @@ class KeithleyDevice(Instrument):
             measure_limit (Union[str, float, None], optional): limit imposed on the measurement range. Defaults to 'DEFault'.
         """
         self.source = SourceDetails(func, limit, measure_limit)
-        self._query(f'SOURce:FUNCtion {self.source.function_type}')
+        self.setFunction(self.source.function_type, sense=False)
+        # self._query(f'SOURce:FUNCtion {self.source.function_type}')
         return self.sendCommands(commands=self.source.get_commands())
     
     def disconnect(self):
@@ -228,6 +234,7 @@ class KeithleyDevice(Instrument):
             error = self._parse(reply=reply)
             errors.append((error))
             print(f'>>> Error {i+1}: {error}')
+        self.clearErrors()
         return errors
     
     def getStatus(self) -> str:
@@ -321,6 +328,7 @@ class KeithleyDevice(Instrument):
         self.active_buffer = self._default_buffer
         self.sense = SenseDetails()
         self.source = SourceDetails()
+        self.clearErrors()
         return self._query('*RST')
     
     def run(self, sequential_commands:bool = True):
@@ -360,6 +368,32 @@ class KeithleyDevice(Instrument):
         for command in commands:
             self._query(command)
         return
+    
+    def setDisplay(self, brightness:int = 50):
+        """
+        Set display on the instrument
+
+        Args:
+            brightness (int, optional): display brightness values from [0,25,50,75,100]. Defaults to 50.
+        """
+        state = 'ON' if brightness else 'OFF'
+        values = [25,50,75,100]
+        if brightness:
+            diff = [abs(brightness-b) for  b in values]
+            brightness_value = values[diff.index(min(diff))]
+            state += str(brightness_value)
+        return self._query(f'DISPlay:LIGHt:STATe {state}')
+    
+    def setFunction(self, function:str, sense:bool = True):
+        """
+        Set the function for either the sense or source terminals
+
+        Args:
+            function (str): type of function
+            sense (bool, optional): whether to set the sense terminal. Defaults to True.
+        """
+        terminal = 'SENSe' if sense else 'SOURce'
+        return self._query(f'{terminal}:FUNCtion "{function}"')
     
     def setSource(self, value:float):
         """
@@ -488,7 +522,8 @@ class KeithleyDevice(Instrument):
             self.getErrors()
         else:
             if self.verbose and "*WAI" not in command:
-                self.getErrors()
+                # self.getErrors()
+                ...
         return reply
     
     def _read(self, 
@@ -556,5 +591,6 @@ class KeithleyDevice(Instrument):
             self.getErrors()
             return False
         if self.verbose and "*WAI" not in command:
-            self.getErrors()
+            # self.getErrors()
+            ...
         return True
