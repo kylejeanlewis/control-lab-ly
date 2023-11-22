@@ -106,14 +106,17 @@ class LiquidMoverSetup(CompoundSetup):
             tip_approach_height (float, optional): height in mm from which to approach tip rack during tip pickup. Defaults to 20.
         """
         super().__init__(
-            config=config, 
-            layout=layout, 
-            component_config=component_config, 
-            layout_dict=layout_dict, 
-            components=components,
+            config = config, 
+            layout = layout, 
+            component_config = component_config, 
+            layout_dict = layout_dict, 
+            components = components,
             **kwargs
         )
         self.tip_approach_height = tip_approach_height
+        self.ascent_speed_ratio = kwargs.get('ascent_speed_ratio', 0.2)
+        self.descent_speed_ratio = kwargs.get('descent_speed_ratio', 0.2)
+        self.pick_tip_speed_ratio = kwargs.get('pick_tip_speed_ratio', 0.01)
         pass
     
     # Properties
@@ -136,7 +139,11 @@ class LiquidMoverSetup(CompoundSetup):
         coordinates = np.array(coordinates) - np.array(offset)
         if not self.mover.isFeasible(coordinates, transform_in=True, tool_offset=True):
             raise ValueError(f"Infeasible tool position! {coordinates}")
-        self.mover.safeMoveTo(coordinates, ascent_speed=0.2*self.mover.max_speed[2], descent_speed=0.2*self.mover.max_speed[2])
+        self.mover.safeMoveTo(
+            coordinates, 
+            ascent_speed = self.ascent_speed_ratio * self.mover.max_speed[2], 
+            descent_speed = self.descent_speed_ratio * self.mover.max_speed[2]
+        )
         self.setFlag(at_rest=False)
         time.sleep(1)
         return
@@ -228,12 +235,18 @@ class LiquidMoverSetup(CompoundSetup):
         
         tip_offset = np.array((0,0,-tip_length + self.liquid.tip_inset_mm))
         self.align(coordinates)
-        self.mover.move('z', -self.tip_approach_height, speed=0.01*self.mover.max_speed[2])
+        self.mover.move(
+            'z', -self.tip_approach_height, 
+            speed = self.pick_tip_speed_ratio * self.mover.max_speed[2]
+        )
         time.sleep(3)
         
         self.liquid.tip_length = tip_length
         self.mover.implement_offset = self.mover.implement_offset + tip_offset
-        self.mover.move('z', self.tip_approach_height+tip_length, speed=0.2*self.mover.max_speed[2])
+        self.mover.move(
+            'z', self.tip_approach_height+tip_length, 
+            speed = self.ascent_speed_ratio * self.mover.max_speed[2]
+        )
         time.sleep(1)
         self.liquid.setFlag(tip_on=True)
         
@@ -326,7 +339,7 @@ class LiquidMoverSetup(CompoundSetup):
             raise RuntimeError("There is currently no tip to eject.")
 
         self.align(coordinates)
-        time.sleep(1)
+        time.sleep(12)
         self.liquid.eject()
         
         tip_length = self.liquid.tip_length
