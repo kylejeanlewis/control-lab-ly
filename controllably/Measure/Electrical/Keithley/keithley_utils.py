@@ -10,8 +10,7 @@ from __future__ import annotations
 
 # Local application imports
 from ...measure_utils import Programmable
-from .keithley_device import KeithleyDevice
-from . import programs
+from .keithley_device import KeithleyDevice, DAQ6510
 print(f"Import: OK <{__name__}>")
 
 class Keithley(Programmable):
@@ -66,5 +65,9 @@ class Keithley(Programmable):
             'ip_address': ip_address,
             'name': name
         }
-        self.device = KeithleyDevice(ip_address=ip_address, name=name)
+        device = KeithleyDevice(ip_address=ip_address, name=name)
+        if device._model == 'DAQ6510':
+            del device
+            device = DAQ6510(ip_address=ip_address, name=name)
+        self.device = device
         return
