@@ -8,7 +8,7 @@ Classes:
     Keithley (Programmable)
 """
 from .keithley_utils import Keithley
-from .keithley_device import KeithleyDevice
+from .keithley_device import KeithleyDevice, DAQ6510, SMU2450
 from . import programs
 
 from controllably import include_this_module
