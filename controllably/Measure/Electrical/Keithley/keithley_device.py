@@ -12,7 +12,7 @@ import pandas as pd
 from typing import Iterable, Optional, Union
 
 # Third party imports
-import pyvisa as visa # pip install -U pyvisa
+import pyvisa as visa # pip install -U pyvisa; pip install -U pyvisa-py
 
 # Local application imports
 from ...instrument_utils import Instrument
