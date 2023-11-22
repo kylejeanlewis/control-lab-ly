@@ -594,3 +594,43 @@ class KeithleyDevice(Instrument):
             # self.getErrors()
             ...
         return True
+
+
+class DAQ6510(KeithleyDevice):
+    def __init__(self, ip_address: str, name: str = 'def', **kwargs):
+        super().__init__(ip_address, name, **kwargs)
+    
+    def createScanList(self, channel_count:Optional[int] = None, channels:Optional[Iterable] = None):
+        """
+        Deletes existing scan list and creates a new list of channles to scan
+
+        Args:
+            channel_count (Optional[int], optional): number of channels. Defaults to None.
+            channels (Optional[Iterable], optional): array of channel ids. Defaults to None.
+        """
+        channel_text = f'(@101:{100+channel_count})' if channel_count else ''
+        channel_text = f'(@{",".join(channels)})' if channels and not channel_text else channel_text
+        return self._query(f'ROUTe:SCAN:CREate {channel_text}')
+    
+    def setScanCount(self, scan_count:int = 1):
+        """
+        Set the number of times the scan is repeated
+
+        Args:
+            scan_count (int, optional): number of times the scan is repeated. Defaults to 1.
+        """
+        return self._query(f'ROUTe:SCAN:COUNt:SCAN {scan_count}')
+    
+    def setScanInterval(self, interval_time_s:float):
+        """
+        Set the interval time between scan starts when the scan count if greater than one
+
+        Args:
+            interval_time_s (float): scan interval in seconds between 0 and 1E5
+        """
+        return self._query(f'ROUTe:SCAN:INTerval {interval_time_s}')
+    
+    
+class SMU2450(KeithleyDevice):
+    def __init__(self, ip_address: str, name: str = 'def', **kwargs):
+        super().__init__(ip_address, name, **kwargs)
