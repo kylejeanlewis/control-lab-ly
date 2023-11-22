@@ -466,7 +466,7 @@ class Sartorius(LiquidHandler):
     
     def getInfo(self, model: Optional[str] = None):
         """Get details of the Sartorius pipette model"""
-        model = self.__model__().split('-')[0] if model is None else model
+        model = str(self.__model__()).split('-')[0] if model is None else model
         if model not in lib.ModelInfo._member_names_:
             print(f'Received: {model}')
             model = 'BRL0'
@@ -707,9 +707,11 @@ class Sartorius(LiquidHandler):
                 # preset is slower than target speed, it will never hit target speed
                 continue
             time_interval_limit = int(volume*(1/speed - 1/preset)/self.response_time)
-            if not step_interval_limit or not time_interval_limit:
+            if not step_interval_limit:
                 continue
             intervals = max(min(step_interval_limit, time_interval_limit), 1)
+            if intervals == 1 and speed != preset:
+                continue
             each_steps = volume/self.resolution/intervals
             each_delay = volume*(1/speed - 1/preset)/intervals
             area = 0.5 * (volume**2) * (1/self.resolution) * (1/intervals) * (1/speed - 1/preset)
