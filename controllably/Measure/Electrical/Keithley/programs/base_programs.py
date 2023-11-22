@@ -8,6 +8,7 @@ Classes:
     OCV (Program)
 """
 # Standard library imports
+import csv
 import pandas as pd
 import time
 from typing import Optional, Protocol
@@ -313,6 +314,160 @@ class LSV(Program):
             [f'SOURce:SWEep:{device.source.function_type}:{mode} {",".join(parameters)}']
         )
         device.run(sequential_commands=False)
+        return
+
+
+class Scan_Channels(Program):
+    """
+    Channel scanning program (Only for Keithley DAQ6510 model)
+
+    ### Constructor
+    Args:
+        `device` (Device): device object
+        `parameters` (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+
+    ### Attributes
+    - `data_df` (pd.DataFrame): data collected from device when running the program
+    - `device` (Device): device object
+    - `parameters` (dict[str, ...]): parameters
+    - `verbose` (bool): verbosity of class
+    
+    ### Methods
+    - `run`: run the measurement program
+    
+    ==========
+    
+    ### Parameters:
+        channel_count (int, optional): number of channels to scan. Defaults to 4.
+        scan_count (int, optional): number of iterations to scan. Defaults to 100.
+        scan_interval (float, optional): time interval in seconds between each reading. Defaults to 0.1.
+        fields (Iterable[str], optional): Defaults to ('READing', 'CHANnel', 'RELative'). 
+        volt_range (float, optional): voltage measurement range. Defaults to 1.
+        display_off (bool, optional): whether to turn the instrument display off during scanning. Defaults to False.
+        filename (Optional[str], optional): filename to save to. Defaults to None.
+    """
+    
+    def __init__(self, 
+        device: Device, 
+        parameters: Optional[dict] = None,
+        verbose: bool = False, 
+        **kwargs
+    ):
+        """
+        Instantiate the class
+
+        Args:
+            device (Device): device object
+            parameters (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
+        super().__init__(device=device, parameters=parameters, verbose=verbose, **kwargs)
+        return
+    
+    def run(self):
+        """Run the measurement program"""
+        device = self.device
+        channel_count = self.parameters.get('channel_count', 4)
+        scan_count = self.parameters.get('scan_count', 100)
+        scan_interval = self.parameters.get('scan_interval', 0.1)
+        fields = self.parameters.get('fields', ('READing', 'CHANnel', 'RELative')) 
+        volt_range = self.parameters.get('volt_range', 1)
+        display_off = self.parameters.get('display_off', False)
+        filename = self.parameters.get('filename', None)
+        
+        device.reset()
+        device.setDisplay(50)
+        device.setScanCount(scan_count=scan_count)
+        
+        # Set-up
+        cmd = """
+            SENSe:FUNCtion 'VOLTage:DC'
+            VOLTage:RANGe {volt_range}
+            VOLTage:AVERage:STATe OFF
+            DISPlay:VOLTage:DIGits 4
+            VOLTage:NPLCycles 0.0005
+            VOLTage:AZERo:STATe OFF
+            CALCulate2:VOLTage:LIMit1:STATe OFF
+            CALCulate2:VOLTage:LIMit2:STATe OFF
+        """.format(volt_range=volt_range)
+        channel_text = f'(@101:{100+channel_count})' if channel_count else ''
+        commands = [f'{c.strip()}, {channel_text}' for c in cmd.split('\n') if c.strip()]
+        device.sendCommands(commands)
+        
+        device.setScanInterval(scan_interval)
+        device.clearBuffer()
+        device.createScanList(channel_count=channel_count)
+        
+        # Calculate expected number of data points
+        channel_count = int(device._query('ROUTe:SCAN:COUNt:STEP?'))
+        read_count = scan_count * channel_count * len(fields)
+        print(read_count)
+        
+        # Start scan
+        if display_off:
+            device.setDisplay(0)
+        device._query('INITiate')
+        
+        # Open file if save to file
+        if filename is not None:
+            file = open(filename, 'w', newline='')
+            writer = csv.writer(file)
+            writer.writerow(fields)
+        else:
+            buffer = [tuple(fields)]
+        
+        # Scan loop
+        count = 1
+        start_time = time.perf_counter()
+        while count < read_count:
+            time.sleep(0.5)
+            actual_readings = int(device._query('TRACe:ACTual?'))
+            if count > actual_readings:
+                break
+            receive_buffer = device._query(f'TRACe:DATA? {count}, {actual_readings}, "defbuffer1", {", ".join(fields)}')
+            data = receive_buffer.split(',')
+            cols = [data[i::len(fields)] for i in range(len(fields))]
+            count = actual_readings + 1
+            if filename is not None:
+                writer.writerows(list(zip(*cols)))
+            else:
+                buffer += list(zip(*cols))
+        
+        # with open(filename, 'w', newline='') as file:
+        #     writer = csv.writer(file)
+        #     writer.writerow(fields)
+            
+        #     # Scan loop
+        #     count = 1
+        #     start_time = time.perf_counter()
+        #     while count < read_count:
+        #         time.sleep(0.5)
+        #         actual_readings = int(device._query('TRACe:ACTual?'))
+        #         if count > actual_readings:
+        #             break
+        #         receive_buffer = device._query(f'TRACe:DATA? {count}, {actual_readings}, "defbuffer1", {", ".join(fields)}')
+        #         data = receive_buffer.split(',')
+        #         cols = [data[i::len(fields)] for i in range(len(fields))]
+        #         writer.writerows(list(zip(*cols)))
+        #         count = actual_readings + 1
+        
+        end_time = time.perf_counter()
+        device.stop()
+        device.setDisplay(50)
+        
+        # Close file if save to file
+        if filename is not None:
+            file.close()
+            df = pd.read_csv(filename, header=0)
+        else:
+            header = buffer.pop(0)
+            df = pd.DataFrame(buffer, columns=header)
+        
+        print(f"Elapsed time: {end_time-start_time}s")
+        self.data_df = df
+        device.beep()
+        device.getErrors()
         return
 
 # %%
