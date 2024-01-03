@@ -6,6 +6,7 @@ guis = {}
 
 # %%
 from controllably.Move.Jointed.Dobot import M1Pro
+from controllably.Transfer.Substrate import Dobot
 details = Factory.get_details(Helper.read_yaml(library['configs']['m1pro_B1']))
 me = M1Pro(**details['mover']['settings'])
 gui = MoverPanel(me, axes='XYZa')
