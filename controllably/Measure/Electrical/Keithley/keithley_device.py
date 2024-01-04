@@ -7,8 +7,10 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+import ipaddress
 import numpy as np
 import pandas as pd
+import socket
 from typing import Iterable, Optional, Union
 
 # Third party imports
@@ -439,6 +441,16 @@ class KeithleyDevice(Instrument):
         print("Setting up Keithley communications...")
         self.connection_details['ip_address'] = ip_address
         device = None
+                
+        # Check if machine is connected to the same network as device
+        hostname = socket.getfqdn()
+        local_ip = socket.gethostbyname_ex(hostname)[2][0]
+        local_network = f"{'.'.join(local_ip.split('.')[:-1])}.0/24"
+        if ipaddress.ip_address(ip_address) not in ipaddress.ip_network(local_network):
+            print(f"Current IP Network: {local_network[:-3]}")
+            print(f"Device  IP Address: {ip_address}")
+            return
+        
         try:
             rm = visa.ResourceManager('@py')
             device: visa.resources.TCPIPSocket = rm.open_resource(f"TCPIP0::{ip_address}::5025::SOCKET")
