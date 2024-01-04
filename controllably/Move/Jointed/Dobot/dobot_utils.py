@@ -382,6 +382,7 @@ class Dobot(RobotArm):
         Args:
             on (bool): whether to couple Dobot attachment
             attachment_class (Optional[DobotAttachment], optional): Dobot attachment to couple. Defaults to None.
+            channel_map (Optional[dict], optional): mapping of digital I/O channel(s). Defaults to None.
         """
         if on: # Add attachment
             print("Please secure tool attachment.")
