@@ -375,7 +375,7 @@ class Dobot(RobotArm):
                 print("Not connected to arm.")
         return
     
-    def toggleAttachment(self, on:bool, attachment_class:Optional[DobotAttachment] = None):
+    def toggleAttachment(self, on:bool, attachment_class:Optional[DobotAttachment] = None, channel_map:Optional[dict] = None):
         """
         Couple or remove Dobot attachment that interfaces with Dobot's digital output
 
@@ -385,8 +385,7 @@ class Dobot(RobotArm):
         """
         if on: # Add attachment
             print("Please secure tool attachment.")
-            self.attachment: DobotAttachment = attachment_class()
-            self.attachment.setDashboard(dashboard=self.dashboard)
+            self.attachment: DobotAttachment = attachment_class(dashboard=self.dashboard, channel_map=channel_map)
             self.setImplementOffset(self.attachment.implement_offset)
         else: # Remove attachment
             print("Please remove tool attachment.")
