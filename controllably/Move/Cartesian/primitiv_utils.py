@@ -15,7 +15,7 @@ from typing import Optional
 # Local application imports
 from ...misc import Helper
 from .cartesian_utils import Gantry
-# from .grbl_lib import AlarmCode, ErrorCode
+from .grbl_lib import AlarmCode, ErrorCode, SettingCode
 print(f"Import: OK <{__name__}>")
 
 class Grbl(Gantry):
@@ -103,7 +103,13 @@ class Grbl(Gantry):
             list[str]: hardware settings
         """
         responses = self._query("$$\n")
-        print(responses)
+        parsed_responses = responses.copy()
+        for s,setting in enumerate(responses):
+            command = setting.split('=')[0]
+            code = command[1:]
+            if f'sc{code}' in SettingCode._member_names_:
+                parsed_responses[s] = setting.replace(command, eval(f'SettingCode.sc{code}.value.message'))
+        print(parsed_responses)
         return responses
     
     def getStatus(self) -> list[str]:
