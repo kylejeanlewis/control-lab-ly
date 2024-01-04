@@ -14,7 +14,9 @@ Other constants and variables:
 # Standard library imports
 from __future__ import annotations
 from collections import namedtuple
+import ipaddress
 import numpy as np
+import socket
 import time
 from typing import Optional, Protocol
 
@@ -424,6 +426,16 @@ class Dobot(RobotArm):
             'timeout': timeout
         }
         self.device = Device(None,None)
+        
+        # Check if machine is connected to the same network as device
+        hostname = socket.getfqdn()
+        local_ip = socket.gethostbyname_ex(hostname)[2][0]
+        local_network = f"{'.'.join(local_ip.split('.')[:-1])}.0/24"
+        if ipaddress.ip_address(ip_address) not in ipaddress.ip_network(local_network):
+            print(f"Current IP Network: {local_network[:-3]}")
+            print(f"Device  IP Address: {ip_address}")
+            return
+        
         try:
             start_time = time.perf_counter()
             dashboard = dobot_api_dashboard(ip_address, 29999)
