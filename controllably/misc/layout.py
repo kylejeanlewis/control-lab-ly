@@ -198,7 +198,7 @@ class Labware:
     - `slot` (str): deck slot number
     
     ### Properties
-    - `center` (np.ndarray): center of Labware
+    - `center` (dict[np.ndarray, np.ndarray]): bottom-left reference point and center of Labware
     - `columns` (dict[str, int]): Labware columns
     - `columns_list` (list[list[int]]): Labware columns as list
     - `dimensions` (np.ndarray): size of Labware
@@ -242,12 +242,13 @@ class Labware:
     
     # Properties
     @property
-    def center(self) -> np.ndarray:
+    def center(self) -> dict[np.ndarray, np.ndarray]:
         dimensions = self.details.get('dimensions',{})
         x = dimensions.get('xDimension', 0)
         y = dimensions.get('yDimension', 0)
         z = dimensions.get('zDimension', 0)
-        return self.reference_point, np.array((x/2,y/2,z))
+        # return self.reference_point, np.array((x/2,y/2,z))
+        return dict(reference=np.array(self.reference_point), center=np.array((x/2,y/2,z)))
     
     @property
     def columns(self) -> dict[str, int]:
