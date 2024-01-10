@@ -17,6 +17,7 @@ import serial # pip install pyserial
 
 # Local application imports
 from ...measure_utils import Measurer
+from . import programs
 print(f"Import: OK <{__name__}>")
 
 COLUMNS = ('Time', 'pH', 'Temperature')
@@ -55,6 +56,9 @@ class SentronProbe(Measurer):
         'read': True,
         'record': False
     }
+    _default_program = programs.pHMonitor
+    _place: str = '.'.join(__name__.split('.')[1:-1])
+    model = 'sentron_'
     def __init__(self, port:str, **kwargs):
         """
         Instantiate the class
