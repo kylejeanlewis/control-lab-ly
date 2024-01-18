@@ -191,7 +191,7 @@ class Dobot(RobotArm):
             return False
         else:
             if kwargs.get('wait', True):
-                move_time = max(abs(np.array(vector))/self.speed[:3]) + max(abs(np.array(angles))/self.speed_angular)
+                move_time = max(abs(np.array(vector))/self.max_speeds[:3]) + max(abs(np.array(angles))/self.speed_angular)
                 print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
                 time.sleep(move_time+MOVE_TIME_BUFFER_S)
         self.updatePosition(vector=vector, angles=angles)
@@ -235,7 +235,7 @@ class Dobot(RobotArm):
                 position = self.position
                 distances = abs(position[0] - np.array(coordinates))
                 rotations = abs(position[1] - np.array(orientation))
-                move_time = max([max(distances/self.speed[:3]),  max(rotations/self.speed_angular)])
+                move_time = max([max(distances/(self.max_speeds[:3]*self._speed_fraction)),  max(rotations/self.speed_angular)])
                 print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
                 time.sleep(move_time+MOVE_TIME_BUFFER_S)
         self.updatePosition(coordinates=coordinates, orientation=orientation)
@@ -326,7 +326,7 @@ class Dobot(RobotArm):
     #     """
     #     return super().retractArm(target)
     
-    def setSpeed(self, speed:float, **kwargs) -> tuple[bool, float]:
+    def setSpeed(self, speed:float) -> tuple[bool, float]:
         """
         Set the speed of the robot (functionally equivalent to setting the speed fraction)
 
@@ -337,7 +337,7 @@ class Dobot(RobotArm):
             tuple[bool, float]: whether speed was changed; prevailing speed
         """
         ret,_ = self.setSpeedFraction(speed/100)
-        return ret, self.speed
+        return ret, self._speed
     
     def setSpeedFraction(self, speed_fraction:float) -> tuple[bool, float]:
         """
