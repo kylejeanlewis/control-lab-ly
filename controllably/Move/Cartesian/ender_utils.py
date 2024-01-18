@@ -26,7 +26,6 @@ class Marlin(Gantry):
         `port` (str): COM port address
         `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0,0,0), (240,235,210)).
         `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to 30.
-        `max_speed` (float, optional): maximum travel speed. Defaults to 180.
     
     ### Attributes
     - `temperature_range` (tuple): range of temperature that can be set for the platform bed
@@ -48,8 +47,7 @@ class Marlin(Gantry):
     def __init__(self, 
         port: str, 
         limits: tuple[tuple[float]] = ((0,0,0), (240,235,210)), 
-        safe_height: float = 30, 
-        max_speed: float = 180, # [mm/s] (i.e. 10,800 mm/min)
+        safe_height: float = 30,
         **kwargs
     ):
         """
@@ -59,9 +57,8 @@ class Marlin(Gantry):
             port (str): COM port address
             limits (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0,0,0), (240,235,210)).
             safe_height (float, optional): height at which obstacles can be avoided. Defaults to 30.
-            max_speed (float, optional): maximum travel speed. Defaults to 180.
         """
-        super().__init__(port=port, limits=limits, safe_height=safe_height, max_speed=max_speed, **kwargs)
+        super().__init__(port=port, limits=limits, safe_height=safe_height, **kwargs)
         self.home_coordinates = (0,0,self.heights['safe'])
         self.set_temperature = None
         self.temperature = None
@@ -100,7 +97,7 @@ class Marlin(Gantry):
         x,y,z = [float(c[2:]) for c in xyz_coordinates]
         return np.array([x,y,z])
     
-    def getMaxSpeed(self) -> np.ndarray:
+    def getMaxSpeeds(self) -> np.ndarray:
         """
         Get maximum speeds (mm/s)
 
@@ -112,7 +109,7 @@ class Marlin(Gantry):
         speeds = relevant.split('M203 ')[1].split(' ')
         xyz_max_speeds = [float(s[1:]) for s in speeds[:3]]
         self._speed_max = {k:v for k,v in zip(('x','y','z'), xyz_max_speeds)}
-        return self.max_speed
+        return self.max_speeds
     
     def getSettings(self) -> list[str] :
         """
@@ -186,38 +183,21 @@ class Marlin(Gantry):
         """
         return self.flags['temperature_reached']
 
-    def setSpeed(self, speed: int, axis:str = 'x') -> tuple[bool, np.ndarray]:
+    def setSpeed(self, speed: int) -> tuple[bool, float]:
         """
         Set the speed of the robot
 
         Args:
             speed (int): speed in mm/s
-            axis (str, optional): axis speed to be changed. Defaults to 'x'.
         
         Returns:
-            tuple[bool, np.ndarray]: whether speed has changed; prevailing speed
+            tuple[bool, float]: whether speed has changed; prevailing speed
         """
         print(f'Speed: {speed} mm/s')
-        prevailing_speed = self.speed
-        speed_fraction = (speed/self._speed_max[axis])
+        prevailing_speed = self._speed
+        speed_fraction = (speed/max(self.max_speeds))
         ret,_ = self.setSpeedFraction(speed_fraction)
         return ret, prevailing_speed
-    
-    # def setSpeedFraction(self, speed_fraction: float) -> tuple[bool, float]:
-    #     """
-    #     Set the speed fraction of the robot
-
-    #     Args:
-    #         speed_fraction (float): speed fraction between 0 and 1
-        
-    #     Returns:
-    #         tuple[bool, float]: whether speed has changed; prevailing speed fraction
-    #     """
-    #     print(f'Speed fraction: {speed_fraction}')
-    #     prevailing_speed_fraction = self._speed_fraction
-    #     self._speed_fraction = speed_fraction
-    #     self._query(f"M220 S{int(speed_fraction*100)}")
-    #     return True, prevailing_speed_fraction
     
     def setTemperature(self, set_temperature: float, blocking:bool = True):
         """
@@ -266,7 +246,6 @@ class Ender(Marlin):
         `port` (str): COM port address
         `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0,0,0), (240,235,210)).
         `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to 30.
-        `max_speed` (float, optional): maximum travel speed. Defaults to 180.
     
     ### Attributes
     - `temperature_range` (tuple): range of temperature that can be set for the platform bed
@@ -282,9 +261,8 @@ class Ender(Marlin):
     def __init__(self, 
         port: str, 
         limits: tuple[tuple[float]] = ((0, 0, 0), (240, 235, 210)), 
-        safe_height: float = 30, 
-        max_speed: float = 180, 
+        safe_height: float = 30,
         **kwargs
     ):
-        super().__init__(port, limits, safe_height, max_speed, **kwargs)
+        super().__init__(port, limits, safe_height, **kwargs)
         
