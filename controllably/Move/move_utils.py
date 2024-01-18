@@ -49,7 +49,7 @@ class Mover(ABC):
     - `home_coordinates` (np.ndarray): home coordinates for the robot
     - `home_orientation` (np.ndarray): home orientation for the robot
     - `implement_offset` (np.ndarray): transformation (translation) vector to get from end effector to tool tip
-    - `max_speed` (np.ndarray): maximum speed(s) of robot
+    - `max_speeds` (np.ndarray): maximum speed(s) of robot
     - `orientate_matrix` (np.ndarray): transformation (rotation) matrix to get from robot to workspace
     - `orientation` (np.ndarray): current orientation of the robot
     - `position` (tuple[np.ndarray]): 2-uple of (coordinates, orientation)
@@ -132,6 +132,7 @@ class Mover(ABC):
         self._translate_vector = translate_vector
         self._implement_offset = implement_offset
         self._scale = scale
+        self._speed = speed_fraction * max([s for s in speed_max.values()])
         self._speed_max = speed_max
         self._speed_fraction = speed_fraction
         
@@ -236,12 +237,15 @@ class Mover(ABC):
         """Reset the robot"""
     
     @abstractmethod
-    def setSpeed(self, speed:int) -> tuple[bool, float]:
+    def setSpeed(self, speed:float) -> tuple[bool, float]:
         """
         Set the speed of the robot
 
         Args:
-            speed (int): rate value (value range: 1~100)
+            speed (float): rate value (value range: 1~100)
+            
+        Returns:
+            tuple[bool, float]: whether speed has changed; prevailing speed
         """
     
     @abstractmethod
@@ -309,7 +313,7 @@ class Mover(ABC):
         return
     
     @property
-    def max_speed(self) -> np.ndarray:
+    def max_speeds(self) -> np.ndarray:
         """Maximum speed(s) of robot"""
         speeds = [self._speed_max.get('general', 1)] * 6
         movement_L = ('x','y','z','a','b','c')
@@ -318,10 +322,10 @@ class Mover(ABC):
             if type(s) is not str:
                 break
             if s.lower() in movement_L:
-                speeds = [self._speed_max.get(speed, np.nan) for speed in movement_L]
+                speeds = [self._speed_max.get(axis, np.nan) for axis in movement_L]
                 break
             if s.lower() in movement_J:
-                speeds = [self._speed_max.get(speed, np.nan) for speed in movement_J]
+                speeds = [self._speed_max.get(axis, np.nan) for axis in movement_J]
                 break
         return np.array(speeds)
     
@@ -363,14 +367,14 @@ class Mover(ABC):
         self._scale = float(value)
         return
     
-    @property
-    def speed(self) -> np.ndarray:
-        """Travel speed of robot"""
-        if self.verbose:
-            ...
-            # print(f'Max speed(s): {self.max_speed}')
-            # print(f'Speed fraction: {self._speed_fraction}')
-        return self.max_speed * self._speed_fraction
+    # @property
+    # def speed(self) -> np.ndarray:
+    #     """Travel speed of robot"""
+    #     if self.verbose:
+    #         ...
+    #         # print(f'Max speed(s): {self.max_speeds}')
+    #         # print(f'Speed fraction: {self._speed_fraction}')
+    #     return self.max_speeds * self._speed_fraction
  
     @property
     def tool_position(self) -> tuple[np.ndarray]:
@@ -514,12 +518,13 @@ class Mover(ABC):
         axis = axis.lower()
         movement_L = ('x','y','z','a','b','c')
         movement_J = ('j1','j2','j3','j4','j5','j6')
-        index = 0 
+        # index = 0 
         speed_change = False
         success = False
         if axis in movement_L:
-            index = movement_L.index(axis)
-            speed = self.max_speed[index] if speed == 0 else speed
+            # index = movement_L.index(axis)
+            # speed = self.max_speeds[index] if speed == 0 else speed
+            speed = self._speed_max[axis] if speed == 0 else speed
             if speed is not None:
                 speed_change, prevailing_speed = self.setSpeed(speed)
             values = {m:0 for m in movement_L}
@@ -528,8 +533,9 @@ class Mover(ABC):
             angles = (values['a'], values['b'], values['c'])
             success = self.moveBy(vector=vector, angles=angles, **kwargs)
         elif axis in movement_J:
-            index = movement_L.index(axis)
-            speed = self.max_speed[index] if speed == 0 else speed
+            # index = movement_L.index(axis)
+            # speed = self.max_speeds[index] if speed == 0 else speed
+            speed = self._speed_max[axis] if speed == 0 else speed
             if speed is not None:
                 speed_change, prevailing_speed = self.setSpeed(speed)
             values = {m:0 for m in movement_J}
@@ -539,7 +545,7 @@ class Mover(ABC):
             angles = angles1 + angles2
             success = self.moveBy(angles=angles, **kwargs)
         if speed_change:
-            self.setSpeed(prevailing_speed[index])                           # change speed back here
+            self.setSpeed(prevailing_speed)                           # change speed back here
         return success
               
     def resetFlags(self):
@@ -568,8 +574,8 @@ class Mover(ABC):
         Returns:
             bool: whether movement is successful
         """
-        ascent_speed = self.max_speed[2] if ascent_speed is None else ascent_speed
-        descent_speed = self.max_speed[2] if descent_speed is None else descent_speed
+        ascent_speed = self.max_speeds[2] if ascent_speed is None else ascent_speed
+        descent_speed = self.max_speeds[2] if descent_speed is None else descent_speed
         success = []
         if coordinates is None:
             coordinates = self.tool_position if tool_offset else self.user_position
@@ -578,10 +584,12 @@ class Mover(ABC):
         coordinates = np.array(coordinates)
         orientation = np.array(orientation)
         
-        safe_height = self.home_coordinates[2] if 'safe' in self.heights else self.heights['safe']
+        # Move to safe height
+        safe_height = self.home_coordinates[2] if 'safe' not in self.heights else self.heights['safe']
         ret = self.move('z', max(0, safe_height-self.coordinates[2]), speed=ascent_speed)
         success.append(ret)
         
+        # Move to correct XY-position
         intermediate_position = self.tool_position if tool_offset else self.user_position
         ret = self.moveTo(
             coordinates=list(coordinates[:2])+[float(intermediate_position[0][2])], 
@@ -590,6 +598,7 @@ class Mover(ABC):
         )
         success.append(ret)
         
+        # Move down to target height
         speed_change, prevailing_speed = self.setSpeed(descent_speed)      # change speed here
         ret = self.moveTo(
             coordinates=coordinates,
@@ -598,7 +607,7 @@ class Mover(ABC):
         )
         success.append(ret)
         if speed_change:
-            self.setSpeed(prevailing_speed[2])                                # change speed back here
+            self.setSpeed(prevailing_speed)                                # change speed back here
         return all(success)
         
     def setFlag(self, **kwargs):
@@ -708,6 +717,8 @@ class Mover(ABC):
         if deceleration is not None:
             travel_time += speed / (2*deceleration)
         # print(travel_time)
+        # if hasattr(travel_time, '__len__') and (not isinstance(travel_time, str)):
+        #     travel_time = max(travel_time)
         return travel_time
     
     def _diagnostic(self):
