@@ -31,7 +31,6 @@ class Gantry(Mover):
         `port` (str): COM port address
         `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0, 0, 0), (0, 0, 0)).
         `safe_height` (Optional[float], optional): height at which obstacles can be avoided. Defaults to None.
-        `max_speed` (float, optional): maximum travel speed. Defaults to 250.
     
     ### Properties
     - `limits` (np.ndarray):lower and upper limits of gantry
@@ -41,7 +40,7 @@ class Gantry(Mover):
     #### Abstract
     - `getAcceleration`: get maximum acceleration rates (mm/s^2)
     - `getCoordinates`: get current coordinates from device
-    - `getMaxSpeed`: get maximum speeds (mm/s)
+    - `getMaxSpeeds`: get maximum speeds (mm/s)
     - `home`: make the robot go home
     #### Public
     - `disconnect`: disconnect from device
@@ -58,7 +57,6 @@ class Gantry(Mover):
         port: str, 
         limits: tuple[tuple[float]] = ((0, 0, 0), (0, 0, 0)), 
         safe_height: Optional[float] = None, 
-        max_speed: float = 250, # [mm/s] (i.e. 15,000 mm/min)
         **kwargs
     ):
         """
@@ -68,13 +66,11 @@ class Gantry(Mover):
             port (str): COM port address
             limits (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0, 0, 0), (0, 0, 0)).
             safe_height (Optional[float], optional): height at which obstacles can be avoided. Defaults to None.
-            max_speed (float, optional): maximum travel speed. Defaults to 250.
         """
         super().__init__(**kwargs)
         self._limits = ((0, 0, 0), (0, 0, 0))
         
         self.limits = limits
-        self._speed_max = dict(general=max_speed)
         if safe_height is not None:
             self.setHeight(safe=safe_height)
         
@@ -101,7 +97,7 @@ class Gantry(Mover):
         """
     
     @abstractmethod
-    def getMaxSpeed(self) -> np.ndarray:
+    def getMaxSpeeds(self) -> np.ndarray:
         """
         Get maximum speeds (mm/s)
 
@@ -211,9 +207,10 @@ class Gantry(Mover):
         
         if kwargs.get('wait', True):
             distances = abs(self.coordinates - coordinates)
-            times = [self._calculate_travel_time(d, s) for d,s in zip(distances, self.speed[:3])]
-            print(times)
+            times = [self._calculate_travel_time(d, s) for d,s in zip(distances, self.max_speeds[:3]*self._speed_fraction)]
+            # print(times)
             move_time = max(times[:2]) + times[2]
+            print(f'Move for {move_time}s...')
             time.sleep(move_time)
         self.updatePosition(coordinates=coordinates)
         return True
@@ -224,23 +221,23 @@ class Gantry(Mover):
         self.connect()
         return
     
-    def setSpeed(self, speed: int, axis:str = 'x') -> tuple[bool, np.ndarray]:
+    def setSpeed(self, speed: float) -> tuple[bool, float]:
         """
         Set the speed of the robot
 
         Args:
-            speed (int): speed in mm/s
-            axis (str, optional): axis speed to be changed. Defaults to 'x'.
+            speed (float): speed in mm/s
         
         Returns:
-            tuple[bool, np.ndarray]: whether speed has changed; prevailing speed
+            tuple[bool, float]: whether speed has changed; prevailing speed
         """
         print(f'Speed: {speed} mm/s')
-        prevailing_speed = self.speed
-        max_speed_axis = self._speed_max[axis]
-        self._speed_fraction = (speed/max_speed_axis)
-        speed = int(max_speed_axis*self._speed_fraction * 60)   # get speed in mm/min
-        self._query(f"F{speed}")                                # feed rate (i.e. speed) in mm/min
+        prevailing_speed = self._speed
+        # max_speed_axis = max(self.max_speeds)
+        # self._speed_fraction = (speed/max_speed_axis)
+        # speed = int(max_speed_axis*self._speed_fraction * 60)   # get speed in mm/min
+        self._query(f"F{int(speed*60)}")                                # feed rate (i.e. speed) in mm/min
+        self._speed = speed
         return True, prevailing_speed
     
     def setSpeedFraction(self, speed_fraction: float) -> tuple[bool, float]:
@@ -291,7 +288,7 @@ class Gantry(Mover):
             time.sleep(2)
             print(f"Connection opened to {port}")
             self.setFlag(connected=True)
-            self.getMaxSpeed()
+            self.getMaxSpeeds()
         return
 
     def _query(self, command:str) -> list[str]:
