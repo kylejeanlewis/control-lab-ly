@@ -27,7 +27,6 @@ class Grbl(Gantry):
         `port` (str): COM port address
         `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((-410,-290,-120), (0,0,0)).
         `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to -80.
-        `max_speed` (float, optional): maximum travel speed. Defaults to 250.
     
     ### Methods
     - `getSettings`: get hardware settings
@@ -41,7 +40,6 @@ class Grbl(Gantry):
         port: str, 
         limits: tuple[tuple[float]] = ((-410,-290,-120), (0,0,0)), 
         safe_height: float = -80, 
-        max_speed: float = 250, # [mm/s] (i.e. 15,000 mm/min)
         **kwargs
     ):
         """
@@ -51,9 +49,8 @@ class Grbl(Gantry):
             port (str): COM port address
             limits (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((-410,-290,-120), (0,0,0)).
             safe_height (float, optional): height at which obstacles can be avoided. Defaults to -80.
-            max_speed (float, optional): maximum travel speed. Defaults to 250.
         """
-        super().__init__(port=port, limits=limits, safe_height=safe_height, max_speed=max_speed, **kwargs)
+        super().__init__(port=port, limits=limits, safe_height=safe_height, **kwargs)
         return
     
     def getAcceleration(self) -> np.ndarray:
@@ -81,7 +78,7 @@ class Grbl(Gantry):
         positions = relevant.split(":")[1].split(",")
         return np.array([float(p) for p in positions])
     
-    def getMaxSpeed(self) -> np.ndarray:
+    def getMaxSpeeds(self) -> np.ndarray:
         """
         Get maximum speeds (mm/s)
 
@@ -93,7 +90,7 @@ class Grbl(Gantry):
         speeds = [s.split('=')[1] for s in relevant]        # mm/min
         xyz_max_speeds = [float(s)/60 for s in speeds]
         self._speed_max = {k:v for k,v in zip(('x','y','z'), xyz_max_speeds)}
-        return self.max_speed
+        return self.max_speeds
     
     def getSettings(self) -> list[str]:
         """
@@ -165,7 +162,7 @@ class Grbl(Gantry):
         print(f'Speed fraction: {speed_fraction}')
         prevailing_speed_fraction = self._speed_fraction
         self._speed_fraction = speed_fraction
-        ret,_ = self.setSpeed(self._speed_max['x']*speed_fraction, 'x')
+        ret,_ = self.setSpeed(self._speed*speed_fraction, 'x')
         # self._query(f"M220 S{int(speed_fraction*100)}")
         return ret, prevailing_speed_fraction
     
@@ -218,7 +215,7 @@ class Grbl(Gantry):
             axes = ('x','y','z','a','b','c')
             move = command.strip().split("G1 ")[1]
             axis = move[0].lower()
-            command = f"$J= {move} F{int(60*self.speed[axes.index(axis)])}"
+            command = f"$J= {move} F{int(60*self._speed)}"
         return super()._query(command)
 
     # def _handle_alarms_and_errors(self, response:str):
@@ -262,7 +259,6 @@ class Primitiv(Grbl):
         `port` (str): COM port address
         `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((-410,-290,-120), (0,0,0)).
         `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to -80.
-        `max_speed` (float, optional): maximum travel speed. Defaults to 250.
     
     ### Methods
     - `getSettings`: get hardware settings
@@ -275,8 +271,7 @@ class Primitiv(Grbl):
         port: str, 
         limits: tuple[tuple[float]] = ((-410, -290, -120), (0, 0, 0)), 
         safe_height: float = -80, 
-        max_speed: float = 250, 
         **kwargs
     ):
-        super().__init__(port, limits, safe_height, max_speed, **kwargs)
+        super().__init__(port, limits, safe_height, **kwargs)
         
