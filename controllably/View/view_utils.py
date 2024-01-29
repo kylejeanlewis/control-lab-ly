@@ -408,7 +408,8 @@ class Camera(ABC):
             if not self.isConnected():
                 print("Stream is not open.")
                 return
-            ret,frame = self._read()
+            # ret,frame = self._read()
+            ret,frame = self.getImage(resize=True)
             # if callable(process_func):
             #     frame = process_func(frame, **kwargs)
             if frame is None or not ret:

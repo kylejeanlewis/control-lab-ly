@@ -118,7 +118,7 @@ class ViewerPanel(Panel):
         updates = {}
         if self.flags['update_display']:
             now = time.perf_counter()
-            ret, frame = self.viewer.getImage()
+            ret, frame = self.viewer.getImage(resize=True)
             if ret:
                 frame_interval =  now - self._last_read_time
                 self._last_read_time = now
