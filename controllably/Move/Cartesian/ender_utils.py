@@ -31,6 +31,9 @@ class Marlin(Gantry):
     - `temperature_range` (tuple): range of temperature that can be set for the platform bed
     
     ### Methods
+    - `getAcceleration`: get maximum acceleration rates (mm/s^2)
+    - `getCoordinates`: get current coordinates from device
+    - `getMaxSpeeds`:  get maximum speeds (mm/s)
     - `getSettings`: get hardware settings
     - `holdTemperature`: hold target temperature for desired duration
     - `home`: make the robot go home
@@ -73,10 +76,20 @@ class Marlin(Gantry):
             np.ndarray: acceleration rates
         """
         settings = self.getSettings()
-        relevant = [s for s in settings if 'M201' in s][-1]
-        accels = relevant.split('M201 ')[1].split(' ')
-        xyz_max_accels = [float(s[1:]) for s in accels[:3]]
-        return np.array(xyz_max_accels)
+        if len(settings) == 0:
+            return self.max_accels
+        relevant = [s for s in settings if 'M201' in s]
+        if len(relevant) == 0:
+            time.sleep(5)
+            settings = self.getSettings()
+            relevant = [s for s in settings if 'M201' in s]
+        if len(relevant) == 0:
+            print('Unable to get maximum accelerations.')
+            return self.max_accels
+        accels_str_list = relevant[-1].split('M201 ')[1].split(' ')
+        xyz_max_speeds = [(a[0].lower(), float(a[1:])) for a in accels_str_list[:3]]
+        self._accel_max = {k:v for k,v in xyz_max_speeds}
+        return self.max_accels
     
     def getCoordinates(self) -> np.ndarray:
         """
@@ -105,10 +118,20 @@ class Marlin(Gantry):
             np.ndarray: maximum speeds
         """
         settings = self.getSettings()
-        relevant = [s for s in settings if 'M203' in s][-1]
-        speeds = relevant.split('M203 ')[1].split(' ')
-        xyz_max_speeds = [float(s[1:]) for s in speeds[:3]]
-        self._speed_max = {k:v for k,v in zip(('x','y','z'), xyz_max_speeds)}
+        if len(settings) == 0:
+            return self.max_speeds
+        relevant = [s for s in settings if 'M203' in s]
+        if len(relevant) == 0:
+            time.sleep(5)
+            settings = self.getSettings()
+            relevant = [s for s in settings if 'M203' in s]
+        if len(relevant) == 0:
+            print('Unable to get maximum speeds.')
+            return self.max_speeds
+        speeds_str_list = relevant[-1].split('M203 ')[1].split(' ')
+        xyz_max_speeds = [(s[0].lower(), float(s[1:])) for s in speeds_str_list[:3]]
+        self._speed_max = {k:v for k,v in xyz_max_speeds}
+        super().getMaxSpeeds()
         return self.max_speeds
     
     def getSettings(self) -> list[str] :
@@ -193,10 +216,12 @@ class Marlin(Gantry):
         Returns:
             tuple[bool, float]: whether speed has changed; prevailing speed
         """
-        print(f'Speed: {speed} mm/s')
-        prevailing_speed = self._speed
-        speed_fraction = (speed/max(self.max_speeds))
-        ret,_ = self.setSpeedFraction(speed_fraction)
+        if speed == self.speed or speed is None:
+            return False, self.speed
+        # print(f'Speed: {speed} mm/s')
+        prevailing_speed = self.speed
+        speed_factor = (speed/self.max_feedrate)
+        ret,_ = self.setSpeedFactor(speed_factor)
         return ret, prevailing_speed
     
     def setTemperature(self, set_temperature: float, blocking:bool = True):
