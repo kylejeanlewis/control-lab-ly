@@ -29,6 +29,9 @@ class Grbl(Gantry):
         `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to -80.
     
     ### Methods
+    - `getAcceleration`: get maximum acceleration rates (mm/s^2)
+    - `getCoordinates`: get current coordinates from device
+    - `getMaxSpeeds`:  get maximum speeds (mm/s)
     - `getSettings`: get hardware settings
     - `getStatus`: get the current status of the tool
     - `home`: make the robot go home
