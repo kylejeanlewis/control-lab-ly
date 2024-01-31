@@ -10,6 +10,7 @@ from __future__ import annotations
 import math
 import numpy as np
 import time
+from typing import Optional
 
 # Local application imports
 from .dobot_utils import Dobot
@@ -64,7 +65,7 @@ class M1Pro(Dobot):
             home_coordinates=home_coordinates, 
             **kwargs
         )
-        self._speed_angular_max = 180
+        self._speed_max = dict(j1=180, j2=180, j3=1000, j4=1000)
         self.setHandedness(right_hand=right_handed, stretch=False)
         self.home()
         return
@@ -104,7 +105,7 @@ class M1Pro(Dobot):
         x,y,z = coordinates
         
         # Z-axis
-        if not (5 < z < 245):
+        if not (5 <= z <= 245):
             return False
         # XY-plane
         if x >= 0:
@@ -153,7 +154,16 @@ class M1Pro(Dobot):
         new_orientation = np.array(orientation) + np.array(angles)
         return self.moveCoordTo(new_coordinates, new_orientation, **kwargs)
     
-    def retractArm(self, *args, **kwargs) -> bool:      # NOTE: not implemented
+    def retractArm(self, target:Optional[tuple[float]] = None) -> bool:         # NOTE: not implemented
+        """
+        Tuck in arm, rotate about base, then extend again
+
+        Args:
+            target (Optional[tuple[float]], optional): x,y,z coordinates of destination. Defaults to None.
+
+        Returns:
+            bool: whether movement is successful
+        """    
         return super().retractArm()
     
     def setHandedness(self, right_hand:bool, stretch:bool = False) -> bool:
@@ -202,3 +212,41 @@ class M1Pro(Dobot):
         self.setFlag(stretched=True)
         return all([ret1,ret2,ret3,ret4])
    
+   # Protected method(s)
+    def _get_move_wait_time(self, 
+        distances: np.ndarray, 
+        speeds: np.ndarray, 
+        accels: Optional[np.ndarray] = None,
+        cartesian_to_angles: bool = False
+    ) -> float:
+        """
+        Get the amount of time to wait to complete movement
+
+        Args:
+            distances (np.ndarray): array of distances to travel
+            speeds (np.ndarray): array of axis speeds
+            accels (Optional[np.ndarray], optional): array of axis accelerations. Defaults to None.
+            cartesian_to_angles (bool, optional): whether from coordinates to joint rotations angles. Defaults to False.
+
+        Returns:
+            float: wait time to complete travel
+        """
+        if cartesian_to_angles is None:
+            return super()._get_move_wait_time(distances=distances, speeds=speeds, accels=accels)
+        
+        dx,dy,dz = distances[:3]
+        rotation_1 = abs( math.degrees(math.atan2(dy, dx)) )                    # joint 1
+        distance_z = abs(dz)
+        
+        distances = np.array([rotation_1, distance_z, *distances[3:]])
+        speeds = np.array([speeds[0], speeds[2], *speeds[3:]])
+        accels = np.zeros(len(speeds)) if accels is None else accels
+        
+        times = [self._calculate_travel_time(d,s,a,a) for d,s,a in zip(distances, speeds, accels)]
+        move_time = max(times[2:]) + times[0] + times[1]
+        if self.verbose:
+            print(distances)
+            print(speeds)
+            print(accels)
+            print(times)
+        return move_time
