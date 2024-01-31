@@ -17,14 +17,16 @@ print(f"Import: OK <{__name__}>")
 
 class Mover(Protocol):
     limits: tuple[tuple]
-    max_speed: np.ndarray
+    max_speeds: np.ndarray
     tool_position: tuple[np.ndarray]
     def home(self, *args, **kwargs):
         ...
     def move(self, *args, **kwargs):
         ...
-    def setSpeed(self, *args, **kwargs):
-        ...
+    # def setSpeed(self, *args, **kwargs):
+    #     ...
+    # def setSpeedFactor(self, *args, **kwargs):
+    #     ...
     def stop(self, *args, **kwargs):
         ...
         
@@ -100,7 +102,7 @@ class ForceClampSetup(CompoundSetup):
         self, 
         threshold:Optional[float] = None, 
         retract_height:int = 5, 
-        speed_fraction: float = 1.0,
+        speed_factor: float = 1.0,
         timeout:float = 60
     ):
         """
@@ -109,19 +111,21 @@ class ForceClampSetup(CompoundSetup):
         Args:
             threshold (Optional[float], optional): threshold value to trigger clamp to stop. Defaults to None.
             retract_height (int, optional): z-distance to retract before re-approach at slower speed. Defaults to 5.
-            speed_fraction (float, optional): fraction of max speed to perform initial approach. Defaults to 1.0.
+            speed_factor (float, optional): fraction of max speed to perform initial approach. Defaults to 1.0.
             timeout (float, optional): timeout in seconds before aborting clamp. Defaults to 60.
         """
         threshold = self.threshold if threshold is None else threshold
-        speed_z = self.mover.max_speed[2] * speed_fraction
-        _,prevailing_speed = self.mover.setSpeed(speed_z, 'z')
+        # speed_z = self.mover.max_speeds[2] * speed_factor
+        # _,prevailing_speed = self.mover.setSpeed(speed_z)
+        # _,prevailing_speed_factor = self.mover.setSpeedFactor(speed_factor)
         
         # Quick approach
         target_z = min(self.mover.limits[0][2], self.mover.limits[1][2])
         target = np.array((*self.mover.position[0][:2],target_z))
         target = self.mover._transform_out(target)
         start = time.time()
-        self.mover.moveTo(target, wait=False, jog=True)
+        # self.mover.moveTo(target, wait=False, jog=True)
+        self.mover.moveTo(target, speed_factor=speed_factor, wait=False, jog=True)
         while True:
             time.sleep(0.001)
             if abs(self.sensor.getValue()) >= abs(threshold):
@@ -136,9 +140,10 @@ class ForceClampSetup(CompoundSetup):
         time.sleep(2)
         
         # Reduce movement speed and approach again
-        self.mover.setSpeed(speed_z*0.1, 'z')
+        # self.mover.setSpeed(speed_z*0.1)
+        # self.mover.setSpeedFactor(0.1)
         start = time.time()
-        self.mover.moveTo(target, wait=False, jog=True)
+        self.mover.moveTo(target, speed_factor=0.1, wait=False, jog=True)
         while True:
             time.sleep(0.001)
             if abs(self.sensor.getValue()) >= abs(threshold):
@@ -147,7 +152,8 @@ class ForceClampSetup(CompoundSetup):
             if time.time() - start > timeout:
                 break
         
-        self.mover.setSpeed(prevailing_speed[2], 'z')
+        # self.mover.setSpeed(prevailing_speed)
+        # self.mover.setSpeedFactor(prevailing_speed_factor)
         return
     
     def reset(self):
