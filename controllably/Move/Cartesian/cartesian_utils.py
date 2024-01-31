@@ -235,14 +235,10 @@ class Gantry(Mover):
         coordinates = np.array(self._transform_in(coordinates=coordinates, tool_offset=tool_offset))
         if not self.isFeasible(coordinates):
             return False
-        # speed_change, prevailing_speed = False, self.speed
-        # if self.speed != speed:
-        #     speed_change, prevailing_speed = self.setSpeed(speed)
         distances = abs(self.coordinates - coordinates)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
         speed_change, prevailing_speed_factor = False, self.speed_factor
         if self.speed_factor != speed_factor:
-            # speed_change, prevailing_speed_factor = self.setSpeedFactor(speed_factor)
             speed_change = True
             
         z_first = True if (self.coordinates[2] < coordinates[2]) else False
@@ -275,8 +271,6 @@ class Gantry(Mover):
             time.sleep(move_time)
         self.updatePosition(coordinates=coordinates)
         
-        # if speed_change:
-        #     self.setSpeed(prevailing_speed)                 # change speed back here
         if speed_change:
             self.setSpeedFactor(prevailing_speed_factor)
         return True
@@ -299,7 +293,6 @@ class Gantry(Mover):
         """
         if speed == self.speed or speed is None:
             return False, self.speed
-        # print(f'Speed: {speed} mm/s')
         prevailing_speed = self.speed
         speed = min(speed, self.max_feedrate)
         self._query(f"F{int(speed*60)}")                                # feed rate (i.e. speed) in mm/min
@@ -320,7 +313,6 @@ class Gantry(Mover):
             return False, self.speed_factor
         if speed_factor < 0 or speed_factor > 1:
             return False, self.speed_factor
-        # print(f'Speed fraction: {speed_factor}')
         prevailing_speed_factor = self.speed_factor
         self._query(f"M220 S{round(speed_factor*100)}")
         self._speed_factor = speed_factor

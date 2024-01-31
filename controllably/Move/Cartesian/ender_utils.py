@@ -10,7 +10,6 @@ Classes:
 from __future__ import annotations
 import numpy as np
 import time
-from typing import Optional
 
 # Local application imports
 from ...misc import Helper
@@ -104,8 +103,6 @@ class Marlin(Gantry):
             relevant = [r for r in responses if 'Count' in r]
             if not self.isConnected():
                 return self.coordinates
-        # if len(position) == 0:
-        #     return np.array([np.nan]*3)
         xyz_coordinates = relevant[-1].split("E")[0].split(" ")[:-1]
         x,y,z = [float(c[2:]) for c in xyz_coordinates]
         return np.array([x,y,z])
@@ -218,7 +215,6 @@ class Marlin(Gantry):
         """
         if speed == self.speed or speed is None:
             return False, self.speed
-        # print(f'Speed: {speed} mm/s')
         prevailing_speed = self.speed
         speed_factor = (speed/self.max_feedrate)
         ret,_ = self.setSpeedFactor(speed_factor)

@@ -197,7 +197,6 @@ class Dobot(RobotArm):
                 move_time = self._get_move_wait_time(distances=distances, speeds=speeds, cartesian_to_angles=True)
                 move_time += MOVE_TIME_BUFFER_S
                 print(f'Move for {move_time}s...')
-                # print(f'Move time: {move_time:.3f}s ({self.speed_factor:.3f}x)')
                 time.sleep(move_time)
         self.updatePosition(vector=vector, angles=angles)
         return True
@@ -247,7 +246,6 @@ class Dobot(RobotArm):
                 move_time = self._get_move_wait_time(distances=distances, speeds=speeds, cartesian_to_angles=True)
                 move_time += MOVE_TIME_BUFFER_S
                 print(f'Move for {move_time}s...')
-                # print(f'Move time: {move_time:.3f}s ({self.speed_factor:.3f}x)')
                 time.sleep(move_time)
         self.updatePosition(coordinates=coordinates, orientation=orientation)
         return True
@@ -283,7 +281,6 @@ class Dobot(RobotArm):
                 move_time = self._get_move_wait_time(distances=rotations, speeds=angular_speeds)
                 move_time += MOVE_TIME_BUFFER_S
                 print(f'Move for {move_time}s...')
-                # print(f'Move time: {move_time:.3f}s ({self.speed_factor:.3f}x)')
                 time.sleep(move_time)
         self.updatePosition(angles=relative_angles[3:])
         return True
@@ -319,7 +316,6 @@ class Dobot(RobotArm):
                 move_time = self._get_move_wait_time(distances=rotations, speeds=angular_speeds)
                 move_time += MOVE_TIME_BUFFER_S
                 print(f'Move for {move_time}s...')
-                # print(f'Move time: {move_time:.3f}s ({self.speed_factor:.3f}x)')
                 time.sleep(move_time)
         self.updatePosition(orientation=absolute_angles[3:])
         return True
@@ -470,7 +466,6 @@ class Dobot(RobotArm):
         except AttributeError as e:
             print(e)
         else:
-            # self.setSpeed(speed=100)
             self.setSpeedFactor(1)
             self.setFlag(connected=True)
         return

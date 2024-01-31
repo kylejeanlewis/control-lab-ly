@@ -222,9 +222,7 @@ class Grbl(Gantry):
             list[str]: list of response string(s) from device
         """
         if command.startswith("G1") and self.flags.get('jog',False):
-            # axes = ('x','y','z','a','b','c')
             move = command.strip().split("G1 ")[1]
-            # axis = move[0].lower()
             command = f"$J= {move} F{int(60*self.speed)}"
         return super()._query(command)
 

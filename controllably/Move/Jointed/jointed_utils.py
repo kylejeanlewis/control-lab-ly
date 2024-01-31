@@ -65,8 +65,6 @@ class RobotArm(Mover):
         self.setFlag(retract=retract)
         if safe_height is not None:
             self.setHeight(safe=safe_height)
-        # else:
-        #     self.setHeight('safe', self.home_coordinates[2])
         return
     
     @abstractmethod
@@ -200,9 +198,6 @@ class RobotArm(Mover):
         vector = np.array(vector)
         angles = np.array(angles)
         
-        # speed_change, prevailing_speed = False, self.speed
-        # if self.speed != speed:
-        #     speed_change, prevailing_speed = self.setSpeed(speed)
         speed_change, prevailing_speed_factor = False, self.speed_factor
         if self.speed_factor != speed_factor:
             speed_change, prevailing_speed_factor = self.setSpeedFactor(speed_factor)
@@ -213,8 +208,6 @@ class RobotArm(Mover):
         elif len(angles) == 6:
             ret = self.moveJointBy(relative_angle=angles, **kwargs)
         
-        # if speed_change:
-        #     self.setSpeed(prevailing_speed)                 # change speed back here
         if speed_change:
             self.setSpeedFactor(prevailing_speed_factor)
         return ret
@@ -248,9 +241,6 @@ class RobotArm(Mover):
         coordinates = np.array(coordinates)
         orientation = np.array(orientation)
         
-        # speed_change, prevailing_speed = False, self.speed
-        # if self.speed != speed:
-        #     speed_change, prevailing_speed = self.setSpeed(speed)
         speed_change, prevailing_speed_factor = False, self.speed_factor
         if self.speed_factor != speed_factor:
             speed_change, prevailing_speed_factor = self.setSpeedFactor(speed_factor)
@@ -264,8 +254,6 @@ class RobotArm(Mover):
         elif len(orientation) == 6:
             ret = self.moveJointTo(absolute_angle=orientation, **kwargs)
         
-        # if speed_change:
-        #     self.setSpeed(prevailing_speed)                 # change speed back here
         if speed_change:
             self.setSpeedFactor(prevailing_speed_factor)
         return ret

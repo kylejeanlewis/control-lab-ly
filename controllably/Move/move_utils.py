@@ -134,7 +134,6 @@ class Mover(ABC):
         self._translate_vector = translate_vector
         self._implement_offset = implement_offset
         self._scale = scale
-        # self._speed = speed_factor * max([s for s in speed_max.values()])
         self._speed_max = speed_max
         self._speed_factor = speed_factor
         
@@ -544,14 +543,9 @@ class Mover(ABC):
         axis = axis.lower()
         movement_L = ('x','y','z','a','b','c')
         movement_J = ('j1','j2','j3','j4','j5','j6')
-        # index = 0 
-        # speed_change = False
         success = False
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
         speed_factor = 1 if speed_factor == 0 else speed_factor
-        # if speed_factor is not None:
-        # #     # speed_change, prevailing_speed = self.setSpeed(speed)
-        #     speed_change, prevailing_speed_factor = self.setSpeedFactor(speed_factor=speed_factor)
         if axis in movement_L:
             values = {m:0 for m in movement_L}
             values[axis] = value
@@ -565,9 +559,6 @@ class Mover(ABC):
             angles2 = (values['j4'], values['j5'], values['j6'])
             angles = angles1 + angles2
             success = self.moveBy(angles=angles, speed_factor=speed_factor, **kwargs)
-        # if speed_change:
-        # #     # self.setSpeed(prevailing_speed)                           # change speed back here
-        #     self.setSpeedFactor(prevailing_speed_factor)
         return success
               
     def resetFlags(self):
@@ -601,8 +592,6 @@ class Mover(ABC):
         ascent_speed_ratio = 1 if ascent_speed_ratio is None else ascent_speed_ratio
         descent_speed_ratio = 1 if descent_speed_ratio is None else descent_speed_ratio
         travel_speed_ratio = 1 if travel_speed_ratio is None else travel_speed_ratio
-        # prevailing_speed = self.speed
-        # prevailing_speed_factor = self._speed_factor
         success = []
         if coordinates is None:
             coordinates = self.tool_position if tool_offset else self.user_position
@@ -613,38 +602,27 @@ class Mover(ABC):
         
         # Move to safe height
         safe_height = self.home_coordinates[2] if 'safe' not in self.heights else self.heights['safe']
-        # ret = self.move('z', max(0, safe_height-self.coordinates[2]), speed=ascent_speed_ratio*self.max_feedrate)
         ret = self.move('z', max(0, safe_height-self.coordinates[2]), speed_factor=ascent_speed_ratio)
         success.append(ret)
         
         # Move to correct XY-position
-        # speed_change, prevailing_speed = self.setSpeed(travel_speed)      # change speed here
         intermediate_position = self.tool_position if tool_offset else self.user_position
         ret = self.moveTo(
-            # coordinates=list(coordinates[:2])+[float(intermediate_position[0][2])], 
             coordinates = [*coordinates[:2],float(intermediate_position[0][2])], 
             orientation = orientation, 
             tool_offset = tool_offset,
-            # speed=travel_speed_ratio*self.max_feedrate
             speed_factor = travel_speed_ratio
         )
         success.append(ret)
         
         # Move down to target height
-        # speed_change, prevailing_speed = self.setSpeed(descent_speed)      # change speed here
         ret = self.moveTo(
             coordinates = coordinates,
             orientation = orientation, 
             tool_offset = tool_offset,
-            # speed=descent_speed_ratio*self.max_feedrate
             speed_factor = descent_speed_ratio
         )
         success.append(ret)
-        
-        # if self.speed != prevailing_speed:
-        #     self.setSpeed(prevailing_speed)                                # change speed back here
-        # if self._speed_factor != prevailing_speed_factor:
-        #     self.setSpeedFactor(prevailing_speed_factor)
         return all(success)
         
     def setFlag(self, **kwargs):
@@ -748,14 +726,6 @@ class Mover(ABC):
         Returns:
             float: travel time in seconds
         """
-        # travel_time = distance / speed
-        # if acceleration is not None:
-        #     travel_time += speed / (2*acceleration)
-        # if deceleration is not None:
-        #     travel_time += speed / (2*deceleration)
-        # print(travel_time)
-        # if hasattr(travel_time, '__len__') and (not isinstance(travel_time, str)):
-        #     travel_time = max(travel_time)
         travel_time = 0
         speed2 = speed*speed
         accel_distance = 0 if not acceleration else speed2 / (2*acceleration)
