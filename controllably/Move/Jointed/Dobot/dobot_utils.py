@@ -9,7 +9,7 @@ Other types:
     Device (namedtuple)
 
 Other constants and variables:
-    MOVE_TIME_BUFFER_S (float)
+    MOVE_TIME_BUFFER_S (float) = 0.5
 """
 # Standard library imports
 from __future__ import annotations
@@ -191,9 +191,14 @@ class Dobot(RobotArm):
             return False
         else:
             if kwargs.get('wait', True):
-                move_time = max(abs(np.array(vector))/self.max_speeds[:3]) + max(abs(np.array(angles))/self.speed_angular)
-                print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
-                time.sleep(move_time+MOVE_TIME_BUFFER_S)
+                distances = np.concatenate([np.array(vector), np.zeros(3)])
+                speeds = self.max_speeds * self.speed_factor
+                
+                move_time = self._get_move_wait_time(distances=distances, speeds=speeds, cartesian_to_angles=True)
+                move_time += MOVE_TIME_BUFFER_S
+                print(f'Move for {move_time}s...')
+                # print(f'Move time: {move_time:.3f}s ({self.speed_factor:.3f}x)')
+                time.sleep(move_time)
         self.updatePosition(vector=vector, angles=angles)
         return True
 
@@ -233,11 +238,17 @@ class Dobot(RobotArm):
         else:
             if kwargs.get('wait', True):
                 position = self.position
-                distances = abs(position[0] - np.array(coordinates))
-                rotations = abs(position[1] - np.array(orientation))
-                move_time = max([max(distances/(self.max_speeds[:3]*self._speed_fraction)),  max(rotations/self.speed_angular)])
-                print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
-                time.sleep(move_time+MOVE_TIME_BUFFER_S)
+                distances = np.concatenate([
+                    position[0] - np.array(coordinates), 
+                    abs(position[1] - np.array(orientation))
+                ])
+                speeds = self.max_speeds * self.speed_factor
+                
+                move_time = self._get_move_wait_time(distances=distances, speeds=speeds, cartesian_to_angles=True)
+                move_time += MOVE_TIME_BUFFER_S
+                print(f'Move for {move_time}s...')
+                # print(f'Move time: {move_time:.3f}s ({self.speed_factor:.3f}x)')
+                time.sleep(move_time)
         self.updatePosition(coordinates=coordinates, orientation=orientation)
         return True
 
@@ -266,9 +277,14 @@ class Dobot(RobotArm):
             return False
         else:
             if kwargs.get('wait', True):
-                move_time = max(abs(np.array(relative_angles)) / self.speed_angular)
-                print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
-                time.sleep(move_time+MOVE_TIME_BUFFER_S)
+                rotations = abs(np.array(relative_angles))
+                angular_speeds = self.max_speeds * self.speed_factor
+                
+                move_time = self._get_move_wait_time(distances=rotations, speeds=angular_speeds)
+                move_time += MOVE_TIME_BUFFER_S
+                print(f'Move for {move_time}s...')
+                # print(f'Move time: {move_time:.3f}s ({self.speed_factor:.3f}x)')
+                time.sleep(move_time)
         self.updatePosition(angles=relative_angles[3:])
         return True
 
@@ -297,9 +313,14 @@ class Dobot(RobotArm):
             return False
         else:
             if kwargs.get('wait', True):
-                move_time = max(abs(np.array(absolute_angles)) / self.speed_angular)    # FIXME
-                print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
-                time.sleep(move_time+MOVE_TIME_BUFFER_S)
+                rotations = abs(self.orientation - np.array(absolute_angles))
+                angular_speeds = self.max_speeds * self.speed_factor
+                
+                move_time = self._get_move_wait_time(distances=rotations, speeds=angular_speeds)
+                move_time += MOVE_TIME_BUFFER_S
+                print(f'Move for {move_time}s...')
+                # print(f'Move time: {move_time:.3f}s ({self.speed_factor:.3f}x)')
+                time.sleep(move_time)
         self.updatePosition(orientation=absolute_angles[3:])
         return True
 
@@ -313,18 +334,6 @@ class Dobot(RobotArm):
             if self.verbose:
                 print("Not connected to arm.")
         return
-
-    # def retractArm(self, target: Optional[tuple[float]] = None) -> bool:
-    #     """
-    #     Tuck in arm, rotate about base, then extend again
-
-    #     Args:
-    #         target (Optional[tuple[float]], optional): x,y,z coordinates of destination. Defaults to None.
-
-    #     Returns:
-    #         bool: whether movement is successful
-    #     """
-    #     return super().retractArm(target)
     
     def setSpeed(self, speed:float) -> tuple[bool, float]:
         """
@@ -336,30 +345,31 @@ class Dobot(RobotArm):
         Returns:
             tuple[bool, float]: whether speed was changed; prevailing speed
         """
-        ret,_ = self.setSpeedFraction(speed/100)
-        return ret, self._speed
+        ret,_ = self.setSpeedFactor(speed/100)
+        return ret, self.speed
     
-    def setSpeedFraction(self, speed_fraction:float) -> tuple[bool, float]:
+    def setSpeedFactor(self, speed_factor:float) -> tuple[bool, float]:
         """
         Set the speed fraction of the robot
 
         Args:
-            speed_fraction (int): fraction of maximum speed (value range: 0~1)
+            speed_factor (int): fraction of maximum speed (value range: 0~1)
         
         Returns:
             tuple[bool, float]: whether speed was changed; prevailing speed fraction
         """
-        if speed_fraction == self._speed_fraction:
-            return False, self._speed_fraction
-        prevailing_speed_fraction = self._speed_fraction
+        if speed_factor == self.speed_factor:
+            return False, self.speed_factor
+        speed_factor = self.speed_factor if speed_factor is None else speed_factor
+        prevailing_speed_factor = self.speed_factor
         try:
-            self.dashboard.SpeedFactor(int(max(1, speed_fraction*100)))
+            self.dashboard.SpeedFactor(int(100*max(0.01,min(1,speed_factor))))
         except (AttributeError, OSError):
             if self.verbose:
                 print("Not connected to arm.")
-            return False, self._speed_fraction
-        self._speed_fraction = speed_fraction
-        return True, prevailing_speed_fraction
+            return False, self.speed_factor
+        self._speed_factor = speed_factor
+        return True, prevailing_speed_factor
     
     def shutdown(self):
         """Shutdown procedure for tool"""
@@ -460,7 +470,8 @@ class Dobot(RobotArm):
         except AttributeError as e:
             print(e)
         else:
-            self.setSpeed(speed=100)
+            # self.setSpeed(speed=100)
+            self.setSpeedFactor(1)
             self.setFlag(connected=True)
         return
 
