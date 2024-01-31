@@ -70,6 +70,7 @@ class Mover(ABC):
     - `moveTo`: move the robot to target position
     - `reset`: reset the robot
     - `setSpeed`: set the speed of the robot
+    - `setSpeedFactor`: set the speed factor of the robot
     - `shutdown`: shutdown procedure for tool
     - `stop`: halt robot movement
     - `_connect`: connection procedure for tool
