@@ -63,8 +63,9 @@ class Grbl(Gantry):
         settings = self.getSettings()
         relevant = [s for s in settings if '$12' in s][-3:]
         accels = [s.split('=')[1] for s in relevant]
-        xyz_max_accels = [float(s) for s in accels]
-        return np.array(xyz_max_accels)
+        xyz_max_accels = [float(a) for a in accels]
+        self._accel_max = {k:v for k,v in zip(('x','y','z'), xyz_max_accels)}
+        return self.max_accels
     
     def getCoordinates(self) -> np.ndarray:
         """
@@ -87,9 +88,10 @@ class Grbl(Gantry):
         """
         settings = self.getSettings()
         relevant = [s for s in settings if '$11' in s][-3:]
-        speeds = [s.split('=')[1] for s in relevant]        # mm/min
-        xyz_max_speeds = [float(s)/60 for s in speeds]
+        speeds_str_list = [s.split('=')[1] for s in relevant]        # mm/min
+        xyz_max_speeds = [float(s)/60 for s in speeds_str_list]
         self._speed_max = {k:v for k,v in zip(('x','y','z'), xyz_max_speeds)}
+        super().getMaxSpeeds()
         return self.max_speeds
     
     def getSettings(self) -> list[str]:
@@ -105,8 +107,10 @@ class Grbl(Gantry):
             command = setting.split('=')[0]
             code = command[1:]
             if f'sc{code}' in SettingCode._member_names_:
-                parsed_responses[s] = setting.replace(command, eval(f'SettingCode.sc{code}.value.message'))
-        print(parsed_responses)
+                parsed_responses[s] = setting.replace(command, f'[{command}] ' + eval(f'SettingCode.sc{code}.value.message'))
+        if self.verbose:
+            for r in parsed_responses:
+                print(r)
         return responses
     
     def getStatus(self) -> list[str]:
@@ -149,22 +153,25 @@ class Grbl(Gantry):
         self.setFlag(jog=False)
         return ret
     
-    def setSpeedFraction(self, speed_fraction: float) -> tuple[bool, float]:
+    def setSpeedFactor(self, speed_factor: float) -> tuple[bool, float]:
         """
         Set the speed fraction of the robot
 
         Args:
-            speed_fraction (float): speed fraction between 0 and 1
+            speed_factor (float): speed fraction between 0 and 1
         
         Returns:
             tuple[bool, float]: whether speed has changed; prevailing speed fraction
         """
-        print(f'Speed fraction: {speed_fraction}')
-        prevailing_speed_fraction = self._speed_fraction
-        self._speed_fraction = speed_fraction
-        ret,_ = self.setSpeed(self._speed*speed_fraction, 'x')
-        # self._query(f"M220 S{int(speed_fraction*100)}")
-        return ret, prevailing_speed_fraction
+        if speed_factor == self.speed_factor or speed_factor is None:
+            return False, self.speed_factor
+        if speed_factor < 0 or speed_factor > 1:
+            return False, self.speed_factor
+        prevailing_speed_factor = self.speed_factor
+        ret,_ = self.setSpeed(self.max_feedrate * speed_factor)
+        if ret:
+            self._speed_factor = speed_factor
+        return ret, prevailing_speed_factor
     
     def stop(self):
         """Halt all movement and print current coordinates"""
@@ -212,10 +219,10 @@ class Grbl(Gantry):
             list[str]: list of response string(s) from device
         """
         if command.startswith("G1") and self.flags.get('jog',False):
-            axes = ('x','y','z','a','b','c')
+            # axes = ('x','y','z','a','b','c')
             move = command.strip().split("G1 ")[1]
-            axis = move[0].lower()
-            command = f"$J= {move} F{int(60*self._speed)}"
+            # axis = move[0].lower()
+            command = f"$J= {move} F{int(60*self.speed)}"
         return super()._query(command)
 
     # def _handle_alarms_and_errors(self, response:str):
