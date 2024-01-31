@@ -1,15 +1,17 @@
 # %%
 import init
-from controllably.Move.Cartesian import Ender
+from controllably.Move.Cartesian import Marlin
 from controllably.Control.GUI.Basic import MoverPanel
 import numpy as np
 import random as rd
 import time
 
-me = Ender(
-    'COM18', 
+me = Marlin(
+    'COM4', 
     limits=((0,0,0),(220,220,250)),
     home_coordinates=(0,0,30),
+    # speed_max=dict(x=100,y=100,z=100),
+    # accel_max=dict(x=100,y=100,z=100),
     verbose=True
 )
 # me = Ender('COM18', limits=((0,0,0),(100,100,70)), max_speed=10, verbose=True)
@@ -19,6 +21,17 @@ me.__dict__
 # %%
 me.home()
 # %%
+me.moveTo((50,50,50),speed_factor=0.2)
+# %%
+me.move('x',30,speed_factor=0.2)
+# %%
+me.moveBy((10,10,5), speed_factor=0.2)
+# %%
+me.safeMoveTo((20,40,20), ascent_speed_ratio=0.2, descent_speed_ratio=0.2, travel_speed_ratio=0.2)
+# %%
+me.home()
+me.setSpeedFactor(0.7) 
+# %%
 me.moveTo((50,50,50))
 # %%
 me.move('x',30)
@@ -27,8 +40,9 @@ me.moveBy((10,10,5))
 # %%
 me.safeMoveTo((20,40,20))
 # %%
-me.setSpeed(20) # NOTE: max speed is 180 mm/s
+me.home()
 # %%
+me.setSpeedFactor(1)
 me.moveTo((150,150,50))
 # %%
 me.home()
@@ -49,7 +63,7 @@ while True:
     if me.coordinates[2] < 30:
         break
 # %%
-me.setSpeedFraction(1)
+me.setSpeedFactor(1)
 threshold = 0.99
 start = time.time()
 target = np.array((0,0,me.limits[1][2]))
@@ -68,7 +82,7 @@ threshold = 0.95
 target = np.array((0,0,me.coordinates[2]))
 me.move('z',-10)
 
-me.setSpeedFraction(0.01)
+me.setSpeedFactor(0.01)
 me.moveTo(target, wait=False)
 while True:
     num = rd.random()
@@ -79,5 +93,5 @@ while True:
         break
     if time.time() - start > 60:
         break
-me.setSpeedFraction(1)
+me.setSpeedFactor(1)
 # %%
