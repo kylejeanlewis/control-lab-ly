@@ -86,8 +86,8 @@ class Marlin(Gantry):
             print('Unable to get maximum accelerations.')
             return self.max_accels
         accels_str_list = relevant[-1].split('M201 ')[1].split(' ')
-        xyz_max_speeds = [(a[0].lower(), float(a[1:])) for a in accels_str_list[:3]]
-        self._accel_max = {k:v for k,v in xyz_max_speeds}
+        xyz_max_accels = [(a[0].lower(), float(a[1:])) for a in accels_str_list[:3]]
+        self._accel_max = {k:v for k,v in xyz_max_accels}
         return self.max_accels
     
     def getCoordinates(self) -> np.ndarray:
@@ -180,15 +180,31 @@ class Marlin(Gantry):
     @Helper.safety_measures
     def home(self) -> bool:
         """Make the robot go home"""
-        self._query("G90\n")
-        self._query(f"G0 Z{self.heights['safe']}\n")
-        self._query("G90\n")
-        self._query("G28\n")
-
-        self._query("G90\n")
-        self._query(f"G0 Z{self.heights['safe']}\n")
-        self._query("G90\n")
-        # self._query("G1 F10800\n")
+        self._query("G91")
+        self._query(f"G0 Z{self.heights['safe']}")
+        move_time = self._calculate_travel_time(
+            self.heights['safe'], self.max_speeds[2]*self.speed_factor, 
+            self.max_accels[2], self.max_accels[2]
+        )
+        print(f'Move for {move_time}s...')
+        time.sleep(move_time)
+        
+        # Homing cycle
+        self._query("G90")
+        # self._query("G28")
+        self._write('G28')
+        while True:
+            responses = self._read()
+            if self.device is None:
+                break
+            if len(responses) and responses[-1] != b'echo:busy: processing\n':
+                break
+        
+        # Lift to safe height
+        self._query("G90")
+        self._query(f"G0 Z{self.heights['safe']}")
+        print(f'Move for {move_time}s...')
+        time.sleep(move_time)
         
         self.coordinates = self.home_coordinates
         print("Homed")
@@ -202,23 +218,26 @@ class Marlin(Gantry):
             bool: whether target temperature has been reached
         """
         return self.flags['temperature_reached']
-
-    def setSpeed(self, speed: int) -> tuple[bool, float]:
+    
+    def setSpeedFactor(self, speed_factor: float) -> tuple[bool, float]:
         """
-        Set the speed of the robot
+        Set the speed fraction of the robot
 
         Args:
-            speed (int): speed in mm/s
+            speed_factor (float): speed fraction between 0 and 1
         
         Returns:
-            tuple[bool, float]: whether speed has changed; prevailing speed
+            tuple[bool, float]: whether speed has changed; prevailing speed fraction
         """
-        if speed == self.speed or speed is None:
-            return False, self.speed
-        prevailing_speed = self.speed
-        speed_factor = (speed/self.max_feedrate)
-        ret,_ = self.setSpeedFactor(speed_factor)
-        return ret, prevailing_speed
+        if speed_factor == self.speed_factor or speed_factor is None:
+            return False, self.speed_factor
+        if speed_factor < 0 or speed_factor > 1:
+            return False, self.speed_factor
+        prevailing_speed_factor = self.speed_factor
+        ret,_ = self.setSpeed(self.max_feedrate * speed_factor)
+        if ret:
+            self._speed_factor = speed_factor
+        return ret, prevailing_speed_factor
     
     def setTemperature(self, set_temperature: float, blocking:bool = True):
         """
@@ -256,6 +275,22 @@ class Marlin(Gantry):
         self.coordinates = self.getCoordinates()
         print(self.coordinates)
         return
+    
+    # Protected methods
+    def _query(self, command:str) -> list[str]:
+        """
+        Write command to and read response from device
+
+        Args:
+            command (str): command string to send to device
+
+        Returns:
+            list[str]: list of response string(s) from device
+        """
+        command = command.replace('G1', 'G0')
+        if command.startswith('F'):
+            command = f'G0 {command}'
+        return super()._query(command)
 
 
 class Ender(Marlin):
