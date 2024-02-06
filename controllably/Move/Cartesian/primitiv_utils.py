@@ -134,7 +134,12 @@ class Grbl(Gantry):
     @Helper.safety_measures
     def home(self) -> bool:
         """Make the robot go home"""
-        self._query("$H\n")
+        self._write('$H')
+        while True:
+            responses = self._read()
+            if len(responses):
+                break
+        # self._query("$H\n")
         self.coordinates = self.home_coordinates
         print("Homed")
         return True
@@ -183,6 +188,7 @@ class Grbl(Gantry):
         self._query("~")
         self._query("F10800")
         self.coordinates = self.getCoordinates()
+        print(self.coordinates)
         return
 
     # Protected method(s)
