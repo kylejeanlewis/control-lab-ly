@@ -70,4 +70,5 @@ class Keithley(Programmable):
             del device
             device = DAQ6510(ip_address=ip_address, name=name)
         self.device = device
+        self.device.verbose = self.verbose
         return
