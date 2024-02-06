@@ -10,8 +10,8 @@ me = Marlin(
     'COM4', 
     limits=((0,0,0),(220,220,250)),
     home_coordinates=(0,0,30),
-    # speed_max=dict(x=100,y=100,z=100),
-    # accel_max=dict(x=100,y=100,z=100),
+    # speed_max=dict(x=25,y=25,z=25),
+    # accel_max=dict(x=500,y=500,z=100),
     verbose=True
 )
 # me = Ender('COM18', limits=((0,0,0),(100,100,70)), max_speed=10, verbose=True)
@@ -21,13 +21,13 @@ me.__dict__
 # %%
 me.home()
 # %%
-me.moveTo((50,50,50),speed_factor=0.2)
+me.moveTo((50,50,50),speed_factor=0.1)
 # %%
-me.move('x',30,speed_factor=0.2)
+me.move('x',150,speed_factor=1)
 # %%
-me.moveBy((10,10,5), speed_factor=0.2)
+me.moveBy((10,10,5), speed_factor=1)
 # %%
-me.safeMoveTo((20,40,20), ascent_speed_ratio=0.2, descent_speed_ratio=0.2, travel_speed_ratio=0.2)
+me.safeMoveTo((20,40,20), travel_speed_ratio=0.1)
 # %%
 me.home()
 me.setSpeedFactor(0.7) 
