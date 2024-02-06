@@ -161,26 +161,6 @@ class Grbl(Gantry):
         self.setFlag(jog=False)
         return ret
     
-    def setSpeedFactor(self, speed_factor: float) -> tuple[bool, float]:
-        """
-        Set the speed fraction of the robot
-
-        Args:
-            speed_factor (float): speed fraction between 0 and 1
-        
-        Returns:
-            tuple[bool, float]: whether speed has changed; prevailing speed fraction
-        """
-        if speed_factor == self.speed_factor or speed_factor is None:
-            return False, self.speed_factor
-        if speed_factor < 0 or speed_factor > 1:
-            return False, self.speed_factor
-        prevailing_speed_factor = self.speed_factor
-        ret,_ = self.setSpeed(self.max_feedrate * speed_factor)
-        if ret:
-            self._speed_factor = speed_factor
-        return ret, prevailing_speed_factor
-    
     def stop(self):
         """Halt all movement and print current coordinates"""
         self._query("!")
