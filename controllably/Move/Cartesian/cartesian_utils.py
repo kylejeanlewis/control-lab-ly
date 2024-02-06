@@ -365,15 +365,34 @@ class Gantry(Mover):
         """
         responses = [b'']
         self._write(command)
+        responses = self._read()
+        # try:
+        #     responses = self.device.readlines()
+        # except Exception as e:
+        #     if self.verbose:
+        #         print(e)
+        # else:
+        #     if self.verbose:
+        #         print(responses)
+        return [r.decode().strip() for r in responses]
+    
+    def _read(self) -> list[str]:
+        """
+        Read responses from device
+
+        Returns:
+            list[str]: list of response string(s) from device
+        """
+        responses = []
         try:
             responses = self.device.readlines()
         except Exception as e:
             if self.verbose:
                 print(e)
         else:
-            if self.verbose:
+            if self.verbose and len(responses):
                 print(responses)
-        return [r.decode().strip() for r in responses]
+        return responses
 
     def _write(self, command:str) -> bool:
         """
