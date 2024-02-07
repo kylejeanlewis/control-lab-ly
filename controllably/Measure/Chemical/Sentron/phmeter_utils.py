@@ -107,9 +107,6 @@ class SentronProbe(Measurer):
         Returns:
             str: device response
         """
-        # self.device.write('ACT'.encode('utf-8'))    # Manual pp.36 sending the string 'ACT' queries the pH meter
-        # time.sleep(wait)                            # require a delay between writing to and reading from the pH meter 
-        # reading = self.device.read_until('\r\n')    # Reads data until the end of line; see pp. 36 of manual (or print whole string) to see data format
         response = self._query(wait=wait)
         now = datetime.now()
         try:

@@ -296,7 +296,8 @@ class Camera(ABC):
     
     def getImage(self, 
         crosshair: bool = False, 
-        resize: bool = False
+        resize: bool = False,
+        latest: bool = False
     ) -> tuple[bool, np.ndarray]:
         """
         Get image from camera feed
@@ -304,12 +305,15 @@ class Camera(ABC):
         Args:
             crosshair (bool, optional): whether to overlay crosshair on image. Defaults to False.
             resize (bool, optional): whether to resize the image. Defaults to False.
+            latest (bool, optional): whether to get the latest image. Default to False.
 
         Returns:
             tuple[bool, np.ndarray]: (whether an image is obtained, image array)
         """
         ret = False
         frame = self.placeholder_image
+        if latest:
+            ret, frame = self.getImage()
         try:
             ret, frame = self._read()
         except AttributeError:
@@ -408,7 +412,7 @@ class Camera(ABC):
             if not self.isConnected():
                 print("Stream is not open.")
                 return
-            ret,frame = self._read()
+            ret,frame = self.getImage(resize=True)
             # if callable(process_func):
             #     frame = process_func(frame, **kwargs)
             if frame is None or not ret:
