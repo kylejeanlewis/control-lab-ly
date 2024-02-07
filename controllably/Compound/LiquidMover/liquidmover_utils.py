@@ -29,12 +29,8 @@ class Liquid(Protocol):
         ...
 
 class Mover(Protocol):
-    home_coordinates: np.ndarray
     implement_offset: np.ndarray
-    speed: float
-    max_feedrate: float
-    max_speeds: np.ndarray
-    speed_max: dict[str, float]
+    speed_factor: float
     def home(self, *args, **kwargs):
         ...
     def isFeasible(self, *args, **kwargs):
@@ -47,8 +43,6 @@ class Mover(Protocol):
         ...
     def safeMoveTo(self, *args, **kwargs):
         ...
-    # def setSpeed(self, *args, **kwargs):
-    #     ...
     
 class LiquidMoverSetup(CompoundSetup):
     """
@@ -147,7 +141,7 @@ class LiquidMoverSetup(CompoundSetup):
             descent_speed_ratio = self.descent_speed_ratio
         )
         self.setFlag(at_rest=False)
-        time.sleep(1)
+        # time.sleep(1)
         return
     
     def aspirateAt(self, 
@@ -239,9 +233,9 @@ class LiquidMoverSetup(CompoundSetup):
         self.align(coordinates)
         self.mover.move(
             'z', -self.tip_approach_height, 
-            speed = self.pick_tip_speed_ratio * self.mover.max_speeds[2]
+            speed_factor = self.pick_tip_speed_ratio
         )
-        time.sleep(3)
+        # time.sleep(3)
         
         self.liquid.tip_length = tip_length
         self.mover.implement_offset = self.mover.implement_offset + tip_offset
@@ -249,7 +243,7 @@ class LiquidMoverSetup(CompoundSetup):
             'z', self.tip_approach_height+tip_length, 
             speed_factor = self.ascent_speed_ratio
         )
-        time.sleep(1)
+        # time.sleep(1)
         self.liquid.setFlag(tip_on=True)
         
         if not self.liquid.isTipOn():
@@ -341,7 +335,7 @@ class LiquidMoverSetup(CompoundSetup):
             raise RuntimeError("There is currently no tip to eject.")
 
         self.align(coordinates)
-        time.sleep(12)
+        # time.sleep(12)
         self.liquid.eject()
         
         tip_length = self.liquid.tip_length
@@ -411,20 +405,13 @@ class LiquidMoverSetup(CompoundSetup):
         if safe_move:
             self.align(coordinates=well.fromTop((0,0,-10)))
         else:
-            # prevailing_speed = self.mover.speed
-            # self.mover.setSpeed(speed_factor*self.mover.max_feedrate)
-            # self.mover.moveTo(coordinates=well.fromTop((0,0,-10)), speed=speed_factor*self.mover.max_feedrate)
-            self.mover.moveTo(coordinates=well.fromTop((0,0,-10)), speed_factor=speed_factor)
-            # self.mover.setSpeed(prevailing_speed)
+            self.mover.moveTo(coordinates=well.fromTop((0,0,-10)))
         _, prevailing_speed_factor = self.mover.setSpeedFactor(speed_factor)
         for axis in ('x','y'):
-            index = int(axis=='y')
-            # self.mover.move(axis, diameter/2, speed=speed_factor*self.mover.speed_max[index])
-            # self.mover.move(axis, -diameter, speed=speed_factor*self.mover.speed_max[index])
-            # self.mover.move(axis, diameter/2, speed=speed_factor*self.mover.speed_max[index])
             self.mover.move(axis, diameter/2)
             self.mover.move(axis, -diameter)
             self.mover.move(axis, diameter/2)
+        self.mover.setSpeedFactor(prevailing_speed_factor)
         self.mover.moveTo(coordinates=well.top)
         return well.top
     
