@@ -14,7 +14,6 @@ import time
 from typing import Callable, Optional
 
 # Local application imports
-from ....misc import Helper
 from ..substrate_utils import Gripper
 print(f"Import: OK <{__name__}>")
 
