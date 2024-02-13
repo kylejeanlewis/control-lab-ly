@@ -441,18 +441,12 @@ class Camera(ABC):
             _, frame = self.getImage()
             self.saveImage(frame=frame, filename=f'{folder}/frames/frame_{frame_num:05}.png')
             timestamps.append(now)
-            # frames.append(frame)
             frame_num += 1
             
             # Timer check
             if self.record_timeout is not None and (now - start).seconds > self.record_timeout:
                 break
         end = datetime.now()
-        
-        # for i,frame in enumerate(frames):
-        #     self.saveImage(frame=frame, filename=f'{folder}/frames/frame_{i:05}.png')
-        # frame_num = len(frames)
-        # del frames
         
         duration = end - start
         print('Stop recording...')
