@@ -137,6 +137,8 @@ class Grbl(Gantry):
         self._write('$H')
         while True:
             responses = self._read()
+            if not self.isConnected():
+                break
             if len(responses):
                 break
         # self._query("$H\n")
