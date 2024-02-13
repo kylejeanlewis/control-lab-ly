@@ -141,7 +141,6 @@ class LiquidMoverSetup(CompoundSetup):
             descent_speed_ratio = self.descent_speed_ratio
         )
         self.setFlag(at_rest=False)
-        # time.sleep(1)
         return
     
     def aspirateAt(self, 
@@ -238,15 +237,13 @@ class LiquidMoverSetup(CompoundSetup):
             'z', -self.tip_approach_height, 
             speed_factor = self.pick_tip_speed_ratio
         )
-        # time.sleep(3)
         
         self.liquid.tip_length = tip_length
         self.mover.implement_offset = self.mover.implement_offset + tip_offset
         self.mover.move(
-            'z', self.tip_approach_height+tip_length, 
+            'z', self.tip_approach_height - tip_offset[2], 
             speed_factor = self.ascent_speed_ratio
         )
-        # time.sleep(1)
         self.liquid.setFlag(tip_on=True)
         
         if not self.liquid.isTipOn():
@@ -341,7 +338,6 @@ class LiquidMoverSetup(CompoundSetup):
             raise RuntimeError("There is currently no tip to eject.")
 
         self.align(coordinates)
-        # time.sleep(12)
         self.liquid.eject()
         
         tip_length = self.liquid.tip_length
