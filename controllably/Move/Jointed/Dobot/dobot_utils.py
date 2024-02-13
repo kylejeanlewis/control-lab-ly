@@ -74,6 +74,7 @@ class Dobot(RobotArm):
     """
     
     _place: str = '.'.join(__name__.split('.')[1:-1])
+    _default_move_time_buffer: float = MOVE_TIME_BUFFER_S
     def __init__(self, ip_address:str, attachment_name:str = None, **kwargs):
         """
         Instantiate the class
@@ -190,12 +191,15 @@ class Dobot(RobotArm):
             self.updatePosition(vector=vector, angles=angles)
             return False
         else:
-            if kwargs.get('wait', True):
-                distances = np.concatenate([np.array(vector), np.zeros(3)])
-                speeds = self.max_speeds * self.speed_factor
+            if kwargs.get('wait', True) and self.isConnected():
+                coordinates = self.position[0] + np.array(vector)
+                coord_rotations = self._convert_cartesian_to_angles(self.position[0], coordinates)
+                rotations = np.array([*coord_rotations, *angles])
+                angular_speeds = self.max_speeds * self.speed_factor
                 
-                move_time = self._get_move_wait_time(distances=distances, speeds=speeds, cartesian_to_angles=True)
-                move_time += MOVE_TIME_BUFFER_S
+                move_time = self._get_move_wait_time(distances=rotations, speeds=angular_speeds)
+                move_time *= 2
+                move_time += self._move_time_buffer
                 print(f'Move for {move_time}s...')
                 time.sleep(move_time)
         self.updatePosition(vector=vector, angles=angles)
@@ -235,16 +239,15 @@ class Dobot(RobotArm):
             self.updatePosition(coordinates=coordinates, orientation=orientation)
             return False
         else:
-            if kwargs.get('wait', True):
-                position = self.position
-                distances = np.concatenate([
-                    position[0] - np.array(coordinates), 
-                    abs(position[1] - np.array(orientation))
-                ])
-                speeds = self.max_speeds * self.speed_factor
+            if kwargs.get('wait', True) and self.isConnected():
+                angles = abs(self.position[1] - np.array(orientation))
+                coord_rotations = self._convert_cartesian_to_angles(self.position[0], np.array(coordinates))
+                rotations = np.array([*coord_rotations, *angles])
+                angular_speeds = self.max_speeds * self.speed_factor
                 
-                move_time = self._get_move_wait_time(distances=distances, speeds=speeds, cartesian_to_angles=True)
-                move_time += MOVE_TIME_BUFFER_S
+                move_time = self._get_move_wait_time(distances=rotations, speeds=angular_speeds)
+                move_time *= 2
+                move_time += self._move_time_buffer
                 print(f'Move for {move_time}s...')
                 time.sleep(move_time)
         self.updatePosition(coordinates=coordinates, orientation=orientation)
@@ -274,12 +277,13 @@ class Dobot(RobotArm):
             self.updatePosition(angles=relative_angles[3:])
             return False
         else:
-            if kwargs.get('wait', True):
+            if kwargs.get('wait', True) and self.isConnected():
                 rotations = abs(np.array(relative_angles))
                 angular_speeds = self.max_speeds * self.speed_factor
                 
                 move_time = self._get_move_wait_time(distances=rotations, speeds=angular_speeds)
-                move_time += MOVE_TIME_BUFFER_S
+                move_time *= 2
+                move_time += self._move_time_buffer
                 print(f'Move for {move_time}s...')
                 time.sleep(move_time)
         self.updatePosition(angles=relative_angles[3:])
@@ -309,12 +313,13 @@ class Dobot(RobotArm):
             self.updatePosition(orientation=absolute_angles[3:])
             return False
         else:
-            if kwargs.get('wait', True):
+            if kwargs.get('wait', True) and self.isConnected():
                 rotations = abs(self.orientation - np.array(absolute_angles))
                 angular_speeds = self.max_speeds * self.speed_factor
                 
                 move_time = self._get_move_wait_time(distances=rotations, speeds=angular_speeds)
-                move_time += MOVE_TIME_BUFFER_S
+                move_time *= 2
+                move_time += self._move_time_buffer
                 print(f'Move for {move_time}s...')
                 time.sleep(move_time)
         self.updatePosition(orientation=absolute_angles[3:])
