@@ -195,7 +195,7 @@ class Marlin(Gantry):
         self._write('G28')
         while True:
             responses = self._read()
-            if self.device is None:
+            if not self.isConnected():
                 break
             if len(responses) and responses[-1] != b'echo:busy: processing\n':
                 break
