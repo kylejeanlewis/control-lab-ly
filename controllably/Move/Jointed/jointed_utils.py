@@ -146,6 +146,19 @@ class RobotArm(Mover):
         Returns:
             bool: whether movement is successful
         """
+        
+    @abstractmethod
+    def _convert_cartesian_to_angles(self, src_point:np.ndarray, dst_point: np.ndarray) -> float:
+        """
+        Convert travel between two points into relevant rotation angles and/or distances
+
+        Args:
+            src_point (np.ndarray): (x,y,z) coordinates, orientation of starting point
+            dst_point (np.ndarray): (x,y,z) coordinates, orientation of ending point
+
+        Returns:
+            float: relevant rotation angles (in degrees) and/or distances (in mm)
+        """
     
     def home(self, safe:bool = True, tool_offset:bool = True) -> bool:
         """
