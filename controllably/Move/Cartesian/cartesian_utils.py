@@ -261,7 +261,7 @@ class Gantry(Mover):
                 self.max_feedrate = _max_feedrate
             self.setSpeedFactor(prevailing_speed_factor)
         
-        if kwargs.get('wait', True):
+        if kwargs.get('wait', True) and self.isConnected():
             distances = abs(self.coordinates - coordinates)
             speeds = self.max_speeds[:3] * speed_factor
             accels = self.max_accels[:3]
