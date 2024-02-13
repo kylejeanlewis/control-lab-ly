@@ -129,41 +129,41 @@ class MG400(Dobot):
             return_values.append(ret)
         return all(return_values)
     
-    # Protected method(s)
-    def _get_move_wait_time(self, 
-        distances: np.ndarray, 
-        speeds: np.ndarray, 
-        accels: Optional[np.ndarray] = None,
-        cartesian_to_angles: bool = False
-    ) -> float:
-        """
-        Get the amount of time to wait to complete movement
+    # # Protected method(s)
+    # def _get_move_wait_time(self, 
+    #     distances: np.ndarray, 
+    #     speeds: np.ndarray, 
+    #     accels: Optional[np.ndarray] = None,
+    #     cartesian_to_angles: bool = False
+    # ) -> float:
+    #     """
+    #     Get the amount of time to wait to complete movement
 
-        Args:
-            distances (np.ndarray): array of distances to travel
-            speeds (np.ndarray): array of axis speeds
-            accels (Optional[np.ndarray], optional): array of axis accelerations. Defaults to None.
-            cartesian_to_angles (bool, optional): whether from coordinates to joint rotations angles. Defaults to False.
+    #     Args:
+    #         distances (np.ndarray): array of distances to travel
+    #         speeds (np.ndarray): array of axis speeds
+    #         accels (Optional[np.ndarray], optional): array of axis accelerations. Defaults to None.
+    #         cartesian_to_angles (bool, optional): whether from coordinates to joint rotations angles. Defaults to False.
 
-        Returns:
-            float: wait time to complete travel
-        """
-        if cartesian_to_angles is None:
-            return super()._get_move_wait_time(distances=distances, speeds=speeds, accels=accels)
+    #     Returns:
+    #         float: wait time to complete travel
+    #     """
+    #     if cartesian_to_angles is None:
+    #         return super()._get_move_wait_time(distances=distances, speeds=speeds, accels=accels)
         
-        dx,dy,dz = distances[:3]
-        rotation_1 = abs( math.degrees(math.atan2(dy, dx)) )                    # joint 1
-        # rotation_2 = math.degrees(math.atan2(dz, np.linalg.norm([dx,dy])))      # joint 2
+    #     dx,dy,dz = distances[:3]
+    #     rotation_1 = abs( math.degrees(math.atan2(dy, dx)) )                    # joint 1
+    #     # rotation_2 = math.degrees(math.atan2(dz, np.linalg.norm([dx,dy])))      # joint 2
         
-        distances = np.array([rotation_1, *distances[3:]])
-        speeds = np.array([speeds[0], *speeds[3:]])
-        accels = np.zeros(len(speeds)) if accels is None else accels
+    #     distances = np.array([rotation_1, *distances[3:]])
+    #     speeds = np.array([speeds[0], *speeds[3:]])
+    #     accels = np.zeros(len(speeds)) if accels is None else accels
         
-        times = [self._calculate_travel_time(d,s,a,a) for d,s,a in zip(distances, speeds, accels)]
-        move_time = max(times[1:]) + times[0]
-        if self.verbose:
-            print(distances)
-            print(speeds)
-            print(accels)
-            print(times)
-        return move_time
+    #     times = [self._calculate_travel_time(d,s,a,a) for d,s,a in zip(distances, speeds, accels)]
+    #     move_time = max(times[1:]) + times[0]
+    #     if self.verbose:
+    #         print(distances)
+    #         print(speeds)
+    #         print(accels)
+    #         print(times)
+    #     return move_time
