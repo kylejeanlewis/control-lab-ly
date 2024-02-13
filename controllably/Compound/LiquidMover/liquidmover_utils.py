@@ -172,6 +172,9 @@ class LiquidMoverSetup(CompoundSetup):
                 offset = self.liquid.channels[chn].offset
                 self.align(coordinates=coordinates, offset=offset)
                 self.liquid.aspirate(volume=volume, speed=speed, channel=chn)
+        else:
+            self.align(coordinates=coordinates)
+            self.liquid.aspirate(volume=volume, speed=speed)
         return
     
     def attachTip(self, 
@@ -283,6 +286,9 @@ class LiquidMoverSetup(CompoundSetup):
                 offset = self.liquid.channels[chn].offset
                 self.align(coordinates=coordinates, offset=offset)
                 self.liquid.dispense(volume=volume, speed=speed, channel=chn)
+        else:
+            self.align(coordinates=coordinates)
+            self.liquid.dispense(volume=volume, speed=speed)
         return
     
     def ejectTip(self, slot:str = 'bin', channel:Optional[int] = None) -> tuple[float]:
