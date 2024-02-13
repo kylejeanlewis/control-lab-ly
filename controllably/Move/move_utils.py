@@ -92,6 +92,7 @@ class Mover(ABC):
     
     _default_flags: dict[str, bool] = {'busy': False, 'connected': False}
     _default_heights: dict[str, float] = {}
+    _default_move_time_buffer: float = 0
     _place: str = '.'.join(__name__.split('.')[1:-1])
     def __init__(self, 
         coordinates: tuple[float] = (0,0,0),
@@ -136,6 +137,7 @@ class Mover(ABC):
         self._scale = scale
         self._speed_max = speed_max
         self._speed_factor = speed_factor
+        self._move_time_buffer = self._default_move_time_buffer
         
         self.connection_details = {}
         self.device = None
@@ -736,11 +738,11 @@ class Mover(ABC):
             accel_time = 0 if not acceleration else speed / acceleration
             decel_time = 0 if not deceleration else speed / deceleration
             travel_time += (accel_time + decel_time)
-            print('more time')
+            # print('more time')
         else:
             time2 = (2*distance)* (acceleration + deceleration)/(acceleration*deceleration)
             travel_time = time2**0.5
-            print('less time')
+            # print('less time')
         return travel_time
     
     def _diagnostic(self):
@@ -751,8 +753,7 @@ class Mover(ABC):
     def _get_move_wait_time(self, 
         distances: np.ndarray, 
         speeds: np.ndarray, 
-        accels: Optional[np.ndarray] = None,
-        cartesian_to_angles: bool = False
+        accels: Optional[np.ndarray] = None
     ) -> float:
         """
         Get the amount of time to wait to complete movement
@@ -761,7 +762,6 @@ class Mover(ABC):
             distances (np.ndarray): array of distances to travel
             speeds (np.ndarray): array of axis speeds
             accels (Optional[np.ndarray], optional): array of axis accelerations. Defaults to None.
-            cartesian_to_angles (bool, optional): whether from coordinates to joint rotations angles. Defaults to False.
 
         Returns:
             float: wait time to complete travel
@@ -770,10 +770,10 @@ class Mover(ABC):
         times = [self._calculate_travel_time(d,s,a,a) for d,s,a in zip(distances, speeds, accels)]
         move_time = max(times[:2]) + times[2]
         if self.verbose:
-            print(distances)
-            print(speeds)
-            print(accels)
-            print(times)
+            print(f'distances: {distances}')
+            print(f'speeds: {speeds}')
+            print(f'accels: {accels}')
+            print(f'times: {times}')
         return move_time
 
     def _transform_in(self, 
