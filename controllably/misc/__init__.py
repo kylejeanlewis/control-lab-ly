@@ -11,6 +11,7 @@ Classes:
 
 Functions:
     create_configs
+    create_named_tuple_from_dict
     create_setup
     include_this_module
     load_deck

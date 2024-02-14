@@ -4,6 +4,7 @@ This module holds the core functions in Control.lab.ly.
     
 Functions:
     create_configs
+    create_named_tuple_from_dict
     create_setup
     load_deck
     load_setup
@@ -14,19 +15,20 @@ Other constants and variables:
 """
 __all__ = [
     "create_configs", 
+    "create_named_tuple_from_dict",
     "create_setup", 
     "load_deck", 
     "load_setup", 
     "set_safety"
 ]
 # Standard library imports
+from collections import namedtuple
 import os
 from pathlib import Path
 from shutil import copytree
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 # Local application imports
-from . import decorators
 from . import factory
 from . import helper
 print(f"Import: OK <{__name__}>")
@@ -36,15 +38,35 @@ here = str(Path(__file__).parent.absolute()).replace('\\', '/')
 
 # Core functions
 def create_configs():
-    """Create new configs folder"""
+    """Create new tools configs folder"""
     cwd = os.getcwd().replace('\\', '/')
-    src = f"{here}/templates/configs"
-    dst = f"{cwd}/configs"
+    src = f"{here}/templates/tools"
+    dst = f"{cwd}/tools"
     if not os.path.exists(dst):
-        print("Creating configs folder...\n")
+        print("Creating tools folder...\n")
         copytree(src=src, dst=dst)
         helper.get_node()
     return
+
+def create_named_tuple_from_dict(d: dict, type_name: str) -> tuple:
+    """
+    creating named tuple from dictionary
+
+    Args:
+        d (dict): dictionary to be transformed
+
+    Returns:
+        tuple: named tuple from dictionary
+    """
+    field_list = []
+    object_list = []
+    for k,v in d.items():
+        field_list.append(k)
+        object_list.append(v)
+    
+    named_tuple = namedtuple(type_name, field_list)
+    print(f"Objects created: {', '.join(field_list)}")
+    return named_tuple(*object_list)
 
 def create_setup(setup_name:Optional[str] = None):
     """
@@ -97,17 +119,17 @@ def load_deck(device:Callable, layout_file:str, get_absolute_filepath:bool = Tru
     device.loadDeck(layout_dict=layout_dict)
     return device
 
-@decorators.named_tuple_from_dict
-def load_setup(config_file:str, registry_file:Optional[str] = None) -> dict:
+def load_setup(config_file:str, registry_file:Optional[str] = None, create_tuple:bool = True) -> Union[dict,tuple]:
     """
     Load and initialise setup
 
     Args:
         config_file (str): config filename
         registry_file (Optional[str], optional): registry filename. Defaults to None.
+        create_tuple (bool, optional): whether to return a named tuple, if not returns dictionary. Defaults to True.
 
     Returns:
-        dict: dictionary of loaded devices
+        Union[dict,tuple]: dictionary or named tuple of setup objects
     """
     config = helper.get_plans(config_file=config_file, registry_file=registry_file)
     setup = factory.load_components(config=config)
@@ -123,6 +145,8 @@ def load_setup(config_file:str, registry_file:Optional[str] = None) -> dict:
             print(f"Tool ({parent}) does not have components")
             continue
         setup[key] = tool.components.get(child)
+    if create_tuple:
+        return create_named_tuple_from_dict(setup)
     return setup
 
 def set_safety(safety_level:Optional[str] = None, safety_countdown:int = 3):
