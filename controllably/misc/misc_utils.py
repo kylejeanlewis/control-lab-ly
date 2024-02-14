@@ -80,11 +80,11 @@ def create_setup(setup_name:Optional[str] = None):
         setup_num = 1
         while True:
             setup_name = f'Setup{str(setup_num).zfill(2)}'
-            if not os.path.exists(f"{cwd}/configs/{setup_name}"):
+            if not os.path.exists(f"{cwd}/tools/{setup_name}"):
                 break
             setup_num += 1
     src = f"{here}/templates/setup"
-    cfg = f"{cwd}/configs"
+    cfg = f"{cwd}/tools"
     dst = f"{cfg}/{setup_name}"
     if not os.path.exists(cfg):
         create_configs()
