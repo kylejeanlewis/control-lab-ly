@@ -19,7 +19,7 @@ me.moveBy((50,50,50))
 # %%
 me.move('z',-80)
 # %%
-me.safeMoveTo((200,200,-20), ascent_speed=20, descent_speed=50)
+me.safeMoveTo((200,200,-20), ascent_speed_ratio=0.2, descent_speed_ratio=0.5)
 # %%
 me.home()
 # %%

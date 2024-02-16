@@ -17,13 +17,12 @@ print(f"Import: OK <{__name__}>")
 
 class Mover(Protocol):
     limits: tuple[tuple]
-    max_speed: np.ndarray
+    max_speeds: np.ndarray
+    position: tuple[np.ndarray]
     tool_position: tuple[np.ndarray]
     def home(self, *args, **kwargs):
         ...
     def move(self, *args, **kwargs):
-        ...
-    def setSpeed(self, *args, **kwargs):
         ...
     def stop(self, *args, **kwargs):
         ...
@@ -55,7 +54,8 @@ class ForceClampSetup(CompoundSetup):
     ### Methods
     - `clamp`: clamp down on object
     - `reset`: reset the z-height of mover
-    - `toggleClamp`:
+    - `toggleClamp`: close or open the clamp
+    - `waitTouch`: wait for the sensor to make contact with sample
     """
     
     def __init__(self, 
@@ -100,7 +100,7 @@ class ForceClampSetup(CompoundSetup):
         self, 
         threshold:Optional[float] = None, 
         retract_height:int = 5, 
-        speed_fraction: float = 1.0,
+        speed_factor: float = 1.0,
         timeout:float = 60
     ):
         """
@@ -109,45 +109,28 @@ class ForceClampSetup(CompoundSetup):
         Args:
             threshold (Optional[float], optional): threshold value to trigger clamp to stop. Defaults to None.
             retract_height (int, optional): z-distance to retract before re-approach at slower speed. Defaults to 5.
-            speed_fraction (float, optional): fraction of max speed to perform initial approach. Defaults to 1.0.
+            speed_factor (float, optional): fraction of max speed to perform initial approach. Defaults to 1.0.
             timeout (float, optional): timeout in seconds before aborting clamp. Defaults to 60.
         """
         threshold = self.threshold if threshold is None else threshold
-        speed_z = self.mover.max_speed[2] * speed_fraction
-        _,prevailing_speed = self.mover.setSpeed(speed_z, 'z')
         
         # Quick approach
         target_z = min(self.mover.limits[0][2], self.mover.limits[1][2])
         target = np.array((*self.mover.position[0][:2],target_z))
         target = self.mover._transform_out(target)
-        start = time.time()
-        self.mover.moveTo(target, wait=False, jog=True)
-        while True:
-            time.sleep(0.001)
-            if abs(self.sensor.getValue()) >= abs(threshold):
-                self.mover.stop()
-                break
-            if time.time() - start > timeout:
-                break
+        self.mover.moveTo(target, speed_factor=speed_factor, wait=False, jog=True)
+        self.waitTouch(threshold=threshold, timeout=timeout)
+        self.mover.stop()
+        target = self.mover.tool_position[0]
         
         # Retract a little to avoid overshooting
-        target = self.mover.tool_position[0]
         self.mover.move('z',retract_height)
-        time.sleep(2)
+        # time.sleep(2)
         
         # Reduce movement speed and approach again
-        self.mover.setSpeed(speed_z*0.1, 'z')
-        start = time.time()
-        self.mover.moveTo(target, wait=False, jog=True)
-        while True:
-            time.sleep(0.001)
-            if abs(self.sensor.getValue()) >= abs(threshold):
-                self.mover.stop()
-                break
-            if time.time() - start > timeout:
-                break
-        
-        self.mover.setSpeed(prevailing_speed[2], 'z')
+        self.mover.moveTo(target, speed_factor=0.1, wait=False, jog=True)
+        self.waitTouch(threshold=threshold, timeout=timeout)
+        self.mover.stop()
         return
     
     def reset(self):
@@ -170,5 +153,24 @@ class ForceClampSetup(CompoundSetup):
             self.clamp(threshold=threshold)
         else:
             self.reset()
+        return
+    
+    def waitTouch(self, threshold:float, timeout:float = 60):
+        """
+        Wait for the sensor to make contact with sample
+
+        Args:
+            threshold (float): threshold value to register as making contact
+            timeout (float, optional): timeout in seconds before aborting clamp. Defaults to 60.
+        """
+        start = time.time()
+        while True:
+            time.sleep(0.001)
+            if abs(self.sensor.getValue()) >= abs(threshold):
+                print('Made contact')
+                break
+            if time.time() - start > timeout:
+                print('Touch timeout')
+                break
         return
     

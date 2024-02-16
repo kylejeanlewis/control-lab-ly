@@ -10,7 +10,6 @@ Classes:
 from __future__ import annotations
 import numpy as np
 import time
-from typing import Optional
 
 # Local application imports
 from ...misc import Helper
@@ -26,12 +25,14 @@ class Marlin(Gantry):
         `port` (str): COM port address
         `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0,0,0), (240,235,210)).
         `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to 30.
-        `max_speed` (float, optional): maximum travel speed. Defaults to 180.
     
     ### Attributes
     - `temperature_range` (tuple): range of temperature that can be set for the platform bed
     
     ### Methods
+    - `getAcceleration`: get maximum acceleration rates (mm/s^2)
+    - `getCoordinates`: get current coordinates from device
+    - `getMaxSpeeds`:  get maximum speeds (mm/s)
     - `getSettings`: get hardware settings
     - `holdTemperature`: hold target temperature for desired duration
     - `home`: make the robot go home
@@ -48,8 +49,7 @@ class Marlin(Gantry):
     def __init__(self, 
         port: str, 
         limits: tuple[tuple[float]] = ((0,0,0), (240,235,210)), 
-        safe_height: float = 30, 
-        max_speed: float = 180, # [mm/s] (i.e. 10,800 mm/min)
+        safe_height: float = 30,
         **kwargs
     ):
         """
@@ -59,9 +59,8 @@ class Marlin(Gantry):
             port (str): COM port address
             limits (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0,0,0), (240,235,210)).
             safe_height (float, optional): height at which obstacles can be avoided. Defaults to 30.
-            max_speed (float, optional): maximum travel speed. Defaults to 180.
         """
-        super().__init__(port=port, limits=limits, safe_height=safe_height, max_speed=max_speed, **kwargs)
+        super().__init__(port=port, limits=limits, safe_height=safe_height, **kwargs)
         self.home_coordinates = (0,0,self.heights['safe'])
         self.set_temperature = None
         self.temperature = None
@@ -76,10 +75,20 @@ class Marlin(Gantry):
             np.ndarray: acceleration rates
         """
         settings = self.getSettings()
-        relevant = [s for s in settings if 'M201' in s][-1]
-        accels = relevant.split('M201 ')[1].split(' ')
-        xyz_max_accels = [float(s[1:]) for s in accels[:3]]
-        return np.array(xyz_max_accels)
+        if len(settings) == 0:
+            return self.max_accels
+        relevant = [s for s in settings if 'M201' in s]
+        if len(relevant) == 0:
+            time.sleep(5)
+            settings = self.getSettings()
+            relevant = [s for s in settings if 'M201' in s]
+        if len(relevant) == 0:
+            print('Unable to get maximum accelerations.')
+            return self.max_accels
+        accels_str_list = relevant[-1].split('M201 ')[1].split(' ')
+        xyz_max_accels = [(a[0].lower(), float(a[1:])) for a in accels_str_list[:3]]
+        self._accel_max = {k:v for k,v in xyz_max_accels}
+        return self.max_accels
     
     def getCoordinates(self) -> np.ndarray:
         """
@@ -94,13 +103,11 @@ class Marlin(Gantry):
             relevant = [r for r in responses if 'Count' in r]
             if not self.isConnected():
                 return self.coordinates
-        # if len(position) == 0:
-        #     return np.array([np.nan]*3)
         xyz_coordinates = relevant[-1].split("E")[0].split(" ")[:-1]
         x,y,z = [float(c[2:]) for c in xyz_coordinates]
         return np.array([x,y,z])
     
-    def getMaxSpeed(self) -> np.ndarray:
+    def getMaxSpeeds(self) -> np.ndarray:
         """
         Get maximum speeds (mm/s)
 
@@ -108,11 +115,21 @@ class Marlin(Gantry):
             np.ndarray: maximum speeds
         """
         settings = self.getSettings()
-        relevant = [s for s in settings if 'M203' in s][-1]
-        speeds = relevant.split('M203 ')[1].split(' ')
-        xyz_max_speeds = [float(s[1:]) for s in speeds[:3]]
-        self._speed_max = {k:v for k,v in zip(('x','y','z'), xyz_max_speeds)}
-        return self.max_speed
+        if len(settings) == 0:
+            return self.max_speeds
+        relevant = [s for s in settings if 'M203' in s]
+        if len(relevant) == 0:
+            time.sleep(5)
+            settings = self.getSettings()
+            relevant = [s for s in settings if 'M203' in s]
+        if len(relevant) == 0:
+            print('Unable to get maximum speeds.')
+            return self.max_speeds
+        speeds_str_list = relevant[-1].split('M203 ')[1].split(' ')
+        xyz_max_speeds = [(s[0].lower(), float(s[1:])) for s in speeds_str_list[:3]]
+        self._speed_max = {k:v for k,v in xyz_max_speeds}
+        super().getMaxSpeeds()
+        return self.max_speeds
     
     def getSettings(self) -> list[str] :
         """
@@ -163,15 +180,31 @@ class Marlin(Gantry):
     @Helper.safety_measures
     def home(self) -> bool:
         """Make the robot go home"""
-        self._query("G90\n")
-        self._query(f"G0 Z{self.heights['safe']}\n")
-        self._query("G90\n")
-        self._query("G28\n")
-
-        self._query("G90\n")
-        self._query(f"G0 Z{self.heights['safe']}\n")
-        self._query("G90\n")
-        # self._query("G1 F10800\n")
+        self._query("G91")
+        self._query(f"G0 Z{self.heights['safe']}")
+        move_time = self._calculate_travel_time(
+            self.heights['safe'], self.max_speeds[2]*self.speed_factor, 
+            self.max_accels[2], self.max_accels[2]
+        )
+        print(f'Move for {move_time}s...')
+        time.sleep(move_time)
+        
+        # Homing cycle
+        self._query("G90")
+        # self._query("G28")
+        self._write('G28')
+        while True:
+            responses = self._read()
+            if not self.isConnected():
+                break
+            if len(responses) and responses[-1] != b'echo:busy: processing\n':
+                break
+        
+        # Lift to safe height
+        self._query("G90")
+        self._query(f"G0 Z{self.heights['safe']}")
+        print(f'Move for {move_time}s...')
+        time.sleep(move_time)
         
         self.coordinates = self.home_coordinates
         print("Homed")
@@ -185,39 +218,6 @@ class Marlin(Gantry):
             bool: whether target temperature has been reached
         """
         return self.flags['temperature_reached']
-
-    def setSpeed(self, speed: int, axis:str = 'x') -> tuple[bool, np.ndarray]:
-        """
-        Set the speed of the robot
-
-        Args:
-            speed (int): speed in mm/s
-            axis (str, optional): axis speed to be changed. Defaults to 'x'.
-        
-        Returns:
-            tuple[bool, np.ndarray]: whether speed has changed; prevailing speed
-        """
-        print(f'Speed: {speed} mm/s')
-        prevailing_speed = self.speed
-        speed_fraction = (speed/self._speed_max[axis])
-        ret,_ = self.setSpeedFraction(speed_fraction)
-        return ret, prevailing_speed
-    
-    # def setSpeedFraction(self, speed_fraction: float) -> tuple[bool, float]:
-    #     """
-    #     Set the speed fraction of the robot
-
-    #     Args:
-    #         speed_fraction (float): speed fraction between 0 and 1
-        
-    #     Returns:
-    #         tuple[bool, float]: whether speed has changed; prevailing speed fraction
-    #     """
-    #     print(f'Speed fraction: {speed_fraction}')
-    #     prevailing_speed_fraction = self._speed_fraction
-    #     self._speed_fraction = speed_fraction
-    #     self._query(f"M220 S{int(speed_fraction*100)}")
-    #     return True, prevailing_speed_fraction
     
     def setTemperature(self, set_temperature: float, blocking:bool = True):
         """
@@ -255,6 +255,22 @@ class Marlin(Gantry):
         self.coordinates = self.getCoordinates()
         print(self.coordinates)
         return
+    
+    # Protected methods
+    def _query(self, command:str) -> list[str]:
+        """
+        Write command to and read response from device
+
+        Args:
+            command (str): command string to send to device
+
+        Returns:
+            list[str]: list of response string(s) from device
+        """
+        command = command.replace('G1', 'G0')
+        if command.startswith('F'):
+            command = f'G0 {command}'
+        return super()._query(command)
 
 
 class Ender(Marlin):
@@ -266,7 +282,6 @@ class Ender(Marlin):
         `port` (str): COM port address
         `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0,0,0), (240,235,210)).
         `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to 30.
-        `max_speed` (float, optional): maximum travel speed. Defaults to 180.
     
     ### Attributes
     - `temperature_range` (tuple): range of temperature that can be set for the platform bed
@@ -282,9 +297,8 @@ class Ender(Marlin):
     def __init__(self, 
         port: str, 
         limits: tuple[tuple[float]] = ((0, 0, 0), (240, 235, 210)), 
-        safe_height: float = 30, 
-        max_speed: float = 180, 
+        safe_height: float = 30,
         **kwargs
     ):
-        super().__init__(port, limits, safe_height, max_speed, **kwargs)
+        super().__init__(port, limits, safe_height, **kwargs)
         

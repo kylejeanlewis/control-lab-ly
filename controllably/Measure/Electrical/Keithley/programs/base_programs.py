@@ -6,6 +6,7 @@ Classes:
     IV_Scan (Program)
     LSV (Program)
     OCV (Program)
+    Scan_Channels (Program)
 """
 # Standard library imports
 import csv

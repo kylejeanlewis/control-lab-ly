@@ -118,7 +118,7 @@ sensor = Sensor()
 setup = ForceClampSetup(components=dict(mover=mover, sensor=sensor), component_config=dict())
 
 # %%
-setup.clamp(threshold=0.995, speed_fraction=0.5)
+setup.clamp(threshold=0.995, speed_factor=0.5)
 
 # %%
 from leapfrog.Measure.Electrical.BioLogic import BioLogic, programs

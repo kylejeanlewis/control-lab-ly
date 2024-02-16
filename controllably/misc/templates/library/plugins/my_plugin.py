@@ -11,7 +11,8 @@ Other constants and variables:
     MY_CONSTANT (str)
     my_variable (str)
 """
-__where__ = "Make.Something.Good"                 # Where to register this module to
+MY_CONSTANT = 'MY_CONSTANT'
+my_variable = 'my_variable'
 
 # ================================================\ Define your plugin classes and functions in this section
 class MyClass:
@@ -31,10 +32,8 @@ def my_function():
     """This is a summary of my function."""
     print('Calling my function...')
     return
-
-MY_CONSTANT = 'MY_CONSTANT'
-my_variable = 'my_variable'
 # ================================================/
 
+__where__ = "Make.Something.Good"                   # Where to register this module to
 from controllably import include_this_module
 include_this_module()                               # Registers only the Classes and Functions defined above in this .py file
