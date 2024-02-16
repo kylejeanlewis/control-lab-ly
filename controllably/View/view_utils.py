@@ -266,6 +266,7 @@ class Camera(ABC):
             self._threads['record_loop'] = thread
         else:
             self._threads['record_loop'].join()
+            print("Stop recording")
         return
  
     # Image handling
