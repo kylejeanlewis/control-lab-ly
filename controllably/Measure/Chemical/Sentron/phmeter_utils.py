@@ -55,6 +55,7 @@ class SentronProbe(Measurer):
         'read': True,
         'record': False
     }
+    
     _place: str = '.'.join(__name__.split('.')[1:-1])
     model = 'sentron_'
     def __init__(self, port:str, **kwargs):
