@@ -17,7 +17,6 @@ import serial # pip install pyserial
 
 # Local application imports
 from ...measure_utils import Measurer
-from . import programs
 print(f"Import: OK <{__name__}>")
 
 COLUMNS = ('Time', 'pH', 'Temperature')
@@ -56,7 +55,6 @@ class SentronProbe(Measurer):
         'read': True,
         'record': False
     }
-    _default_program = programs.pHMonitor
     _place: str = '.'.join(__name__.split('.')[1:-1])
     model = 'sentron_'
     def __init__(self, port:str, **kwargs):
@@ -212,6 +210,8 @@ class SentronProbe(Measurer):
         Returns:
             str: response string
         """
+        if self.device is None:
+            return ''
         self.device.write('ACT'.encode('utf-8'))    # Manual pp.36 sending the string 'ACT' queries the pH meter
         time.sleep(wait)                            # require a delay between writing to and reading from the pH meter 
         return self._read()
