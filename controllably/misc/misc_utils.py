@@ -48,12 +48,13 @@ def create_configs():
         helper.get_node()
     return
 
-def create_named_tuple_from_dict(d: dict, type_name: str) -> tuple:
+def create_named_tuple_from_dict(d:dict, type_name:str = 'Setup') -> tuple:
     """
     creating named tuple from dictionary
 
     Args:
         d (dict): dictionary to be transformed
+        type_name (str, optional): name of new namedtuple type. Defaults to 'Setup'.
 
     Returns:
         tuple: named tuple from dictionary
