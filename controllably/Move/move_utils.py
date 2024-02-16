@@ -572,9 +572,9 @@ class Mover(ABC):
         coordinates: Optional[tuple[float]] = None, 
         orientation: Optional[tuple[float]] = None, 
         tool_offset: bool = True, 
-        travel_speed_ratio: float = 1,
-        ascent_speed_ratio: float = 1, 
-        descent_speed_ratio: float = 1, 
+        travel_speed_ratio: Optional[float] = None,
+        ascent_speed_ratio: Optional[float] = None, 
+        descent_speed_ratio: Optional[float] = None, 
         **kwargs
     ) -> bool:
         """
@@ -584,16 +584,16 @@ class Mover(ABC):
             coordinates (Optional[tuple[float]], optional): x,y,z coordinates to move to. Defaults to None.
             orientation (Optional[tuple[float]], optional): a,b,c orientation to move to. Defaults to None.
             tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
-            travel_speed_ratio (float, optional): speed ratio of lateral travel. Defaults to 1.
-            ascent_speed_ratio (float, optional): speed ratio of ascent. Defaults to 1.
-            descent_speed_ratio (float, optional): speed ratio of descent. Defaults to 1.
+            travel_speed_ratio (Optional[float], optional): speed ratio of lateral travel. Defaults to None.
+            ascent_speed_ratio (Optional[float], optional): speed ratio of ascent. Defaults to None.
+            descent_speed_ratio (Optional[float], optional): speed ratio of descent. Defaults to None.
             
         Returns:
             bool: whether movement is successful
         """
-        ascent_speed_ratio = 1 if ascent_speed_ratio is None else ascent_speed_ratio
-        descent_speed_ratio = 1 if descent_speed_ratio is None else descent_speed_ratio
-        travel_speed_ratio = 1 if travel_speed_ratio is None else travel_speed_ratio
+        ascent_speed_ratio = self.speed_factor if ascent_speed_ratio is None else ascent_speed_ratio
+        descent_speed_ratio = self.speed_factor if descent_speed_ratio is None else descent_speed_ratio
+        travel_speed_ratio = self.speed_factor if travel_speed_ratio is None else travel_speed_ratio
         success = []
         if coordinates is None:
             coordinates = self.tool_position if tool_offset else self.user_position
