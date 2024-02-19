@@ -1,9 +1,5 @@
 # Change Log
 
-## Unreleased
-*Items under development*
-- Integration for mass balance from Sartorius
-
 ## Version 1.3.0
 Feature enhancements, bug fixes and patches. First released 16 Feb 2024.
 ### Added
@@ -14,9 +10,10 @@ Feature enhancements, bug fixes and patches. First released 16 Feb 2024.
   - added new Keithley program for DAQ to scan multiple channels
   - new methods `clearErrors()`, `setDisplay()`, `setFunction()`
 ### Changed
-- changed the way travel times are calculated for `Mover` tools
+- changed the way travel times are calculated for `Mover` tools, so that they reflect the actual physical travel times more accurately
+- changed ability to delay initialisation of TriContinent pumps until it is in a more convenient location
 ### Removed
-- 
+- removed old archived files
 
 
 ## Version 1.2.0
