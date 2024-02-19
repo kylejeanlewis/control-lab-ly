@@ -254,7 +254,7 @@ def register(new_object:Callable, where:str, module_docs:Optional[str] = None):
     name = new_object.__name__
     if name in temp:
         overwrite = input(f"An object with the same name ({name}) already exists, Overwrite? [y/n]")
-        if overwrite.lower()[0] == 'n':
+        if not overwrite or overwrite.lower()[0] == 'n':
             print(f"Skipping {name}...")
             return
     temp[new_object.__name__] = new_object

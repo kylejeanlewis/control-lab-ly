@@ -391,8 +391,15 @@ class Guide(Panel):
         self._stored_tree = current_tree
         return new_tree
     
-def guide_me():
-    """Start guide to view documentation"""
+def guide_me(show_all:bool = False):
+    """
+    Start guide to view documentation
+    
+    Args:
+        show_all (bool, optional): whether to show all available modules. Defaults to False.
+    """
     gui = Guide()
+    if show_all:
+        gui._import_all()
     gui.runGUI('Documentation')
     return

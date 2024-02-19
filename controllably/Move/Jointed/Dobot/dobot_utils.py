@@ -9,12 +9,14 @@ Other types:
     Device (namedtuple)
 
 Other constants and variables:
-    MOVE_TIME_BUFFER_S (float)
+    MOVE_TIME_BUFFER_S (float) = 0.5
 """
 # Standard library imports
 from __future__ import annotations
 from collections import namedtuple
+import ipaddress
 import numpy as np
+import socket
 import time
 from typing import Optional, Protocol
 
@@ -72,6 +74,7 @@ class Dobot(RobotArm):
     """
     
     _place: str = '.'.join(__name__.split('.')[1:-1])
+    _default_move_time_buffer: float = MOVE_TIME_BUFFER_S
     def __init__(self, ip_address:str, attachment_name:str = None, **kwargs):
         """
         Instantiate the class
@@ -188,10 +191,17 @@ class Dobot(RobotArm):
             self.updatePosition(vector=vector, angles=angles)
             return False
         else:
-            if kwargs.get('wait', True):
-                move_time = max(abs(np.array(vector))/self.speed[:3]) + max(abs(np.array(angles))/self.speed_angular)
-                print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
-                time.sleep(move_time+MOVE_TIME_BUFFER_S)
+            if kwargs.get('wait', True) and self.isConnected():
+                coordinates = self.position[0] + np.array(vector)
+                coord_rotations = self._convert_cartesian_to_angles(self.position[0], coordinates)
+                rotations = np.array([*coord_rotations, *angles])
+                angular_speeds = self.max_speeds * self.speed_factor
+                
+                move_time = self._get_move_wait_time(distances=rotations, speeds=angular_speeds)
+                move_time *= 2
+                move_time += self._move_time_buffer
+                print(f'Move for {move_time}s...')
+                time.sleep(move_time)
         self.updatePosition(vector=vector, angles=angles)
         return True
 
@@ -229,13 +239,17 @@ class Dobot(RobotArm):
             self.updatePosition(coordinates=coordinates, orientation=orientation)
             return False
         else:
-            if kwargs.get('wait', True):
-                position = self.position
-                distances = abs(position[0] - np.array(coordinates))
-                rotations = abs(position[1] - np.array(orientation))
-                move_time = max([max(distances/self.speed[:3]),  max(rotations/self.speed_angular)])
-                print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
-                time.sleep(move_time+MOVE_TIME_BUFFER_S)
+            if kwargs.get('wait', True) and self.isConnected():
+                angles = abs(self.position[1] - np.array(orientation))
+                coord_rotations = self._convert_cartesian_to_angles(self.position[0], np.array(coordinates))
+                rotations = np.array([*coord_rotations, *angles])
+                angular_speeds = self.max_speeds * self.speed_factor
+                
+                move_time = self._get_move_wait_time(distances=rotations, speeds=angular_speeds)
+                move_time *= 2
+                move_time += self._move_time_buffer
+                print(f'Move for {move_time}s...')
+                time.sleep(move_time)
         self.updatePosition(coordinates=coordinates, orientation=orientation)
         return True
 
@@ -263,10 +277,15 @@ class Dobot(RobotArm):
             self.updatePosition(angles=relative_angles[3:])
             return False
         else:
-            if kwargs.get('wait', True):
-                move_time = max(abs(np.array(relative_angles)) / self.speed_angular)
-                print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
-                time.sleep(move_time+MOVE_TIME_BUFFER_S)
+            if kwargs.get('wait', True) and self.isConnected():
+                rotations = abs(np.array(relative_angles))
+                angular_speeds = self.max_speeds * self.speed_factor
+                
+                move_time = self._get_move_wait_time(distances=rotations, speeds=angular_speeds)
+                move_time *= 2
+                move_time += self._move_time_buffer
+                print(f'Move for {move_time}s...')
+                time.sleep(move_time)
         self.updatePosition(angles=relative_angles[3:])
         return True
 
@@ -294,10 +313,15 @@ class Dobot(RobotArm):
             self.updatePosition(orientation=absolute_angles[3:])
             return False
         else:
-            if kwargs.get('wait', True):
-                move_time = max(abs(np.array(absolute_angles)) / self.speed_angular)    # FIXME
-                print(f'Move time: {move_time:.3f}s ({self._speed_fraction:.3f}x)')
-                time.sleep(move_time+MOVE_TIME_BUFFER_S)
+            if kwargs.get('wait', True) and self.isConnected():
+                rotations = abs(self.orientation - np.array(absolute_angles))
+                angular_speeds = self.max_speeds * self.speed_factor
+                
+                move_time = self._get_move_wait_time(distances=rotations, speeds=angular_speeds)
+                move_time *= 2
+                move_time += self._move_time_buffer
+                print(f'Move for {move_time}s...')
+                time.sleep(move_time)
         self.updatePosition(orientation=absolute_angles[3:])
         return True
 
@@ -311,20 +335,8 @@ class Dobot(RobotArm):
             if self.verbose:
                 print("Not connected to arm.")
         return
-
-    # def retractArm(self, target: Optional[tuple[float]] = None) -> bool:
-    #     """
-    #     Tuck in arm, rotate about base, then extend again
-
-    #     Args:
-    #         target (Optional[tuple[float]], optional): x,y,z coordinates of destination. Defaults to None.
-
-    #     Returns:
-    #         bool: whether movement is successful
-    #     """
-    #     return super().retractArm(target)
     
-    def setSpeed(self, speed:float, **kwargs) -> tuple[bool, float]:
+    def setSpeed(self, speed:float) -> tuple[bool, float]:
         """
         Set the speed of the robot (functionally equivalent to setting the speed fraction)
 
@@ -334,30 +346,31 @@ class Dobot(RobotArm):
         Returns:
             tuple[bool, float]: whether speed was changed; prevailing speed
         """
-        ret,_ = self.setSpeedFraction(speed/100)
+        ret,_ = self.setSpeedFactor(speed/100)
         return ret, self.speed
     
-    def setSpeedFraction(self, speed_fraction:float) -> tuple[bool, float]:
+    def setSpeedFactor(self, speed_factor:float) -> tuple[bool, float]:
         """
         Set the speed fraction of the robot
 
         Args:
-            speed_fraction (int): fraction of maximum speed (value range: 0~1)
+            speed_factor (int): fraction of maximum speed (value range: 0~1)
         
         Returns:
             tuple[bool, float]: whether speed was changed; prevailing speed fraction
         """
-        if speed_fraction == self._speed_fraction:
-            return False, self._speed_fraction
-        prevailing_speed_fraction = self._speed_fraction
+        if speed_factor == self.speed_factor:
+            return False, self.speed_factor
+        speed_factor = self.speed_factor if speed_factor is None else speed_factor
+        prevailing_speed_factor = self.speed_factor
         try:
-            self.dashboard.SpeedFactor(int(max(1, speed_fraction*100)))
+            self.dashboard.SpeedFactor(int(100*max(0.01,min(1,speed_factor))))
         except (AttributeError, OSError):
             if self.verbose:
                 print("Not connected to arm.")
-            return False, self._speed_fraction
-        self._speed_fraction = speed_fraction
-        return True, prevailing_speed_fraction
+            return False, self.speed_factor
+        self._speed_factor = speed_factor
+        return True, prevailing_speed_factor
     
     def shutdown(self):
         """Shutdown procedure for tool"""
@@ -373,18 +386,18 @@ class Dobot(RobotArm):
                 print("Not connected to arm.")
         return
     
-    def toggleAttachment(self, on:bool, attachment_class:Optional[DobotAttachment] = None):
+    def toggleAttachment(self, on:bool, attachment_class:Optional[DobotAttachment] = None, channel_map:Optional[dict] = None):
         """
         Couple or remove Dobot attachment that interfaces with Dobot's digital output
 
         Args:
             on (bool): whether to couple Dobot attachment
             attachment_class (Optional[DobotAttachment], optional): Dobot attachment to couple. Defaults to None.
+            channel_map (Optional[dict], optional): mapping of digital I/O channel(s). Defaults to None.
         """
         if on: # Add attachment
             print("Please secure tool attachment.")
-            self.attachment: DobotAttachment = attachment_class()
-            self.attachment.setDashboard(dashboard=self.dashboard)
+            self.attachment: DobotAttachment = attachment_class(dashboard=self.dashboard, channel_map=channel_map)
             self.setImplementOffset(self.attachment.implement_offset)
         else: # Remove attachment
             print("Please remove tool attachment.")
@@ -424,6 +437,16 @@ class Dobot(RobotArm):
             'timeout': timeout
         }
         self.device = Device(None,None)
+        
+        # Check if machine is connected to the same network as device
+        hostname = socket.getfqdn()
+        local_ip = socket.gethostbyname_ex(hostname)[2][0]
+        local_network = f"{'.'.join(local_ip.split('.')[:-1])}.0/24"
+        if ipaddress.ip_address(ip_address) not in ipaddress.ip_network(local_network):
+            print(f"Current IP Network: {local_network[:-3]}")
+            print(f"Device  IP Address: {ip_address}")
+            return
+        
         try:
             start_time = time.perf_counter()
             dashboard = dobot_api_dashboard(ip_address, 29999)
@@ -448,7 +471,7 @@ class Dobot(RobotArm):
         except AttributeError as e:
             print(e)
         else:
-            self.setSpeed(speed=100)
+            self.setSpeedFactor(1)
             self.setFlag(connected=True)
         return
 

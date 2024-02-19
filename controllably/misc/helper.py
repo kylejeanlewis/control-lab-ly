@@ -128,8 +128,10 @@ def get_plans(config_file:str, registry_file:Optional[str] = None, package:Optio
         dict: dictionary of configuration parameters
     """
     configs = read_yaml(config_file, package)
-    registry = read_yaml(registry_file, package)
-    addresses = get_machine_addresses(registry=registry)
+    addresses = None
+    if registry_file:
+        registry = read_yaml(registry_file, package)
+        addresses = get_machine_addresses(registry=registry)
     configs = factory.get_details(configs, addresses=addresses)
     return configs
 

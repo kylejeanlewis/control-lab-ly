@@ -31,6 +31,7 @@ class TriContinent(Pump):
         `capacity` (Union[int, tuple[int]]): capacity (capacities)
         `output_right` (Union[bool, tuple[bool]]): whether liquid is pumped out to the right for channel(s)
         `name` (Union[str, tuple[str]], optional): name of the pump(s). Defaults to ''.
+        `delay_init` (bool, optional): delay the initialization of the pump(s). Defaults to False.
     
     ### Attributes
     - `channels` (dict[int, TriContinentPump]): dictionary of {channel id, TriContinentPump object}
@@ -90,6 +91,7 @@ class TriContinent(Pump):
         capacity: Union[int, tuple[int]], 
         output_right: Union[bool, tuple[bool]], 
         name: Union[str, tuple[str]] = '',
+        delay_init: bool = False,
         **kwargs
     ):
         """
@@ -102,6 +104,7 @@ class TriContinent(Pump):
             capacity (Union[int, tuple[int]]): capacity (capacities)
             output_right (Union[bool, tuple[bool]]): whether liquid is pumped out to the right for channel(s)
             name (Union[str, tuple[str]], optional): name of the pump(s). Defaults to ''.
+            delay_init (bool, optional): delay the initialization of the pump(s). Defaults to False.
         """
         super().__init__(port, **kwargs)
         self.channels = self._get_pumps(
@@ -120,9 +123,10 @@ class TriContinent(Pump):
         self.limits = 1
         
         self.position = 0
-        for channel in self.channels:
-            self.setCurrentChannel(channel=channel)
-            self.initialise()
+        if not delay_init:
+            for channel in self.channels:
+                self.setCurrentChannel(channel=channel)
+                self.initialise()
         self.resetChannel()
         return
     

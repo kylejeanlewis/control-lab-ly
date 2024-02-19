@@ -21,9 +21,11 @@ User-friendly package that enables flexible automation an reconfigurable setups 
     - Multi-channel spin-coater
     - Peltier device
 - Measure
-  - (Keithley) 2450 Source Measure Unit (SMU) Instrument
+  - (Keithley)
+    - SMU 2450 Source Measure Unit Instrument
+    - DAQ 6510 Data Acquisition and Multimeter System
   - (PiezoRobotics) Dynamic Mechanical Analyser (DMA)
-  - (Sentron) SI series pH meters - *full functionality in development*
+  - (Sentron) SI series pH meters
   - (Arduino-based device) 
     - Precision mass balance
     - Load cell
@@ -32,7 +34,7 @@ User-friendly package that enables flexible automation an reconfigurable setups 
   - (Dobot) 
     - M1 Pro
     - MG400
-  - (Arduino-based device) Primitiv
+  - (Arduino-based device) gantry robot running on GRBL
 - Transfer
   - (Dobot) Gripper attachments
   - (Sartorius) rLINE® dispensing modules
@@ -315,6 +317,7 @@ from my_module import MyClass, my_function
 - pyserial (>=3.5)
 - PySimpleGUI (>=4.60.5)
 - PyVISA (>=1.12.0)
+- PyVISA-py (>=0.7)
 - PyYAML (>=6.0)
 - tkhtmlview (>=0.2.0)
 

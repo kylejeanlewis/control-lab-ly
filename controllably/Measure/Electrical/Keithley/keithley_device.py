@@ -7,12 +7,14 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+import ipaddress
 import numpy as np
 import pandas as pd
-from typing import Optional, Union
+import socket
+from typing import Iterable, Optional, Union
 
 # Third party imports
-import pyvisa as visa # pip install -U pyvisa
+import pyvisa as visa # pip install -U pyvisa; pip install -U pyvisa-py
 
 # Local application imports
 from ...instrument_utils import Instrument
@@ -73,6 +75,7 @@ class KeithleyDevice(Instrument):
         super().__init__(**kwargs)
         self.name = name
         self._fields = ('',)
+        self._model = ''
         
         self.active_buffer = self._default_buffer
         self.sense = SenseDetails()
@@ -87,7 +90,9 @@ class KeithleyDevice(Instrument):
         Returns:
             str: system info
         """
-        return self._query('*IDN?')
+        response = self._query('*IDN?')
+        self._model = response.split(',')[1].split(' ')[1]
+        return response
     
     # Properties
     @property
@@ -136,6 +141,10 @@ class KeithleyDevice(Instrument):
         name = self.active_buffer if name is None else name
         return self._query(f'TRACe:CLEar "{name}"')
     
+    def clearErrors(self):
+        """Clear errors from event logs"""
+        return self._write('SYSTem:CLEar')
+    
     def configureSense(self, 
         func: str, 
         limit: Union[str, float, None] = 'DEFault',
@@ -152,7 +161,8 @@ class KeithleyDevice(Instrument):
             count (int, optional): number of readings to measure for each condition. Defaults to 1.
         """
         self.sense = SenseDetails(func, limit, four_point, count)
-        self._query(f'SENSe:FUNCtion "{self.sense.function_type}"')
+        self.setFunction(self.sense.function_type)
+        # self._query(f'SENSe:FUNCtion "{self.sense.function_type}"')
         return self.sendCommands(commands=self.sense.get_commands())
     
     def configureSource(self, 
@@ -169,7 +179,8 @@ class KeithleyDevice(Instrument):
             measure_limit (Union[str, float, None], optional): limit imposed on the measurement range. Defaults to 'DEFault'.
         """
         self.source = SourceDetails(func, limit, measure_limit)
-        self._query(f'SOURce:FUNCtion {self.source.function_type}')
+        self.setFunction(self.source.function_type, sense=False)
+        # self._query(f'SOURce:FUNCtion {self.source.function_type}')
         return self.sendCommands(commands=self.source.get_commands())
     
     def disconnect(self):
@@ -225,6 +236,7 @@ class KeithleyDevice(Instrument):
             error = self._parse(reply=reply)
             errors.append((error))
             print(f'>>> Error {i+1}: {error}')
+        self.clearErrors()
         return errors
     
     def getStatus(self) -> str:
@@ -318,6 +330,7 @@ class KeithleyDevice(Instrument):
         self.active_buffer = self._default_buffer
         self.sense = SenseDetails()
         self.source = SourceDetails()
+        self.clearErrors()
         return self._query('*RST')
     
     def run(self, sequential_commands:bool = True):
@@ -357,6 +370,32 @@ class KeithleyDevice(Instrument):
         for command in commands:
             self._query(command)
         return
+    
+    def setDisplay(self, brightness:int = 50):
+        """
+        Set display on the instrument
+
+        Args:
+            brightness (int, optional): display brightness values from [0,25,50,75,100]. Defaults to 50.
+        """
+        state = 'ON' if brightness else 'OFF'
+        values = [25,50,75,100]
+        if brightness:
+            diff = [abs(brightness-b) for  b in values]
+            brightness_value = values[diff.index(min(diff))]
+            state += str(brightness_value)
+        return self._query(f'DISPlay:LIGHt:STATe {state}')
+    
+    def setFunction(self, function:str, sense:bool = True):
+        """
+        Set the function for either the sense or source terminals
+
+        Args:
+            function (str): type of function
+            sense (bool, optional): whether to set the sense terminal. Defaults to True.
+        """
+        terminal = 'SENSe' if sense else 'SOURce'
+        return self._query(f'{terminal}:FUNCtion "{function}"')
     
     def setSource(self, value:float):
         """
@@ -402,6 +441,16 @@ class KeithleyDevice(Instrument):
         print("Setting up Keithley communications...")
         self.connection_details['ip_address'] = ip_address
         device = None
+                
+        # Check if machine is connected to the same network as device
+        hostname = socket.getfqdn()
+        local_ip = socket.gethostbyname_ex(hostname)[2][0]
+        local_network = f"{'.'.join(local_ip.split('.')[:-1])}.0/24"
+        if ipaddress.ip_address(ip_address) not in ipaddress.ip_network(local_network):
+            print(f"Current IP Network: {local_network[:-3]}")
+            print(f"Device  IP Address: {ip_address}")
+            return
+        
         try:
             rm = visa.ResourceManager('@py')
             device: visa.resources.TCPIPSocket = rm.open_resource(f"TCPIP0::{ip_address}::5025::SOCKET")
@@ -485,13 +534,14 @@ class KeithleyDevice(Instrument):
             self.getErrors()
         else:
             if self.verbose and "*WAI" not in command:
-                self.getErrors()
+                # self.getErrors()
+                ...
         return reply
     
     def _read(self, 
         bulk: bool,
         name: Optional[str] = None, 
-        fields: tuple[str] = ('SOURce','READing', 'SEConds'), 
+        fields: tuple[str] = ('SOURce','READing','SEConds'), 
         average: bool = True,
         quick: bool = False
     ) -> pd.DataFrame:
@@ -510,6 +560,7 @@ class KeithleyDevice(Instrument):
         """
         name = self.active_buffer if name is None else name
         self.fields = fields
+        # self.fields = ('CHANnel', *fields)
         if quick:
             reply = self._query(f'READ? "{name}",{",".join(self.fields)}')
             data = self._parse(reply=reply)
@@ -552,5 +603,46 @@ class KeithleyDevice(Instrument):
             self.getErrors()
             return False
         if self.verbose and "*WAI" not in command:
-            self.getErrors()
+            # self.getErrors()
+            ...
         return True
+
+
+class DAQ6510(KeithleyDevice):
+    def __init__(self, ip_address: str, name: str = 'def', **kwargs):
+        super().__init__(ip_address, name, **kwargs)
+    
+    def createScanList(self, channel_count:Optional[int] = None, channels:Optional[Iterable] = None):
+        """
+        Deletes existing scan list and creates a new list of channles to scan
+
+        Args:
+            channel_count (Optional[int], optional): number of channels. Defaults to None.
+            channels (Optional[Iterable], optional): array of channel ids. Defaults to None.
+        """
+        channel_text = f'(@101:{100+channel_count})' if channel_count else ''
+        channel_text = f'(@{",".join(channels)})' if channels and not channel_text else channel_text
+        return self._query(f'ROUTe:SCAN:CREate {channel_text}')
+    
+    def setScanCount(self, scan_count:int = 1):
+        """
+        Set the number of times the scan is repeated
+
+        Args:
+            scan_count (int, optional): number of times the scan is repeated. Defaults to 1.
+        """
+        return self._query(f'ROUTe:SCAN:COUNt:SCAN {scan_count}')
+    
+    def setScanInterval(self, interval_time_s:float):
+        """
+        Set the interval time between scan starts when the scan count if greater than one
+
+        Args:
+            interval_time_s (float): scan interval in seconds between 0 and 1E5
+        """
+        return self._query(f'ROUTe:SCAN:INTerval {interval_time_s}')
+    
+    
+class SMU2450(KeithleyDevice):
+    def __init__(self, ip_address: str, name: str = 'def', **kwargs):
+        super().__init__(ip_address, name, **kwargs)

@@ -21,6 +21,8 @@ print(f"Import: OK <{__name__}>")
 class Viewer(Protocol):
     def getImage(self, *args, **kwargs):
         ...
+    def isConnected(self):
+        ...
     def shutdown(self, *args, **kwargs):
         ...
 
@@ -89,6 +91,10 @@ class ViewerPanel(Panel):
         Returns:
             sg.Column: Column object
         """
+        if not self.viewer.isConnected():
+            self.viewer.connect()
+        if not self.viewer.isConnected():
+            raise Exception('Unable to connect viewing device.')
         font = (self.typeface, self.font_sizes[title_font_level])
         layout = super().getLayout(f'{self.name.title()} Control', justification='center', font=font)
         layout = [
@@ -112,7 +118,7 @@ class ViewerPanel(Panel):
         updates = {}
         if self.flags['update_display']:
             now = time.perf_counter()
-            ret, frame = self.viewer.getImage()
+            ret, frame = self.viewer.getImage(resize=True)
             if ret:
                 frame_interval =  now - self._last_read_time
                 self._last_read_time = now

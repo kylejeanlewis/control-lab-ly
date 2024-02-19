@@ -1,8 +1,21 @@
 # Change Log
 
-## Unreleased
-*Items under development*
-- Integration for mass balance from Sartorius
+## Version 1.3.0
+Feature enhancements, bug fixes and patches. First released 19 Feb 2024.
+### Added
+- added check for poor physical connection with `PiezoRoboticsDevice`
+- Keithley
+  - added new subclasses of `KeithleyDevice`: `DAQ6510` and `SMU2450`
+  - added way to read and save model name of `KeithleyDevice`
+  - added new Keithley program for DAQ to scan multiple channels
+  - new methods `clearErrors()`, `setDisplay()`, `setFunction()`
+### Changed
+- changed the way travel times are calculated for `Mover` tools, so that they reflect the actual physical travel times more accurately
+- changed ability to delay initialisation of TriContinent pumps until it is in a more convenient location
+- fixed few bugs with `SentronProbe` tool
+### Removed
+- removed old archived files
+
 
 ## Version 1.2.0
 Feature enhancements, bug fixes and patches. First released 22 Aug 2023.

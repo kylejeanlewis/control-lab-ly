@@ -15,7 +15,7 @@ from typing import Optional
 # Local application imports
 from ...misc import Helper
 from .cartesian_utils import Gantry
-# from .grbl_lib import AlarmCode, ErrorCode
+from .grbl_lib import AlarmCode, ErrorCode, SettingCode
 print(f"Import: OK <{__name__}>")
 
 class Grbl(Gantry):
@@ -27,9 +27,11 @@ class Grbl(Gantry):
         `port` (str): COM port address
         `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((-410,-290,-120), (0,0,0)).
         `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to -80.
-        `max_speed` (float, optional): maximum travel speed. Defaults to 250.
     
     ### Methods
+    - `getAcceleration`: get maximum acceleration rates (mm/s^2)
+    - `getCoordinates`: get current coordinates from device
+    - `getMaxSpeeds`:  get maximum speeds (mm/s)
     - `getSettings`: get hardware settings
     - `getStatus`: get the current status of the tool
     - `home`: make the robot go home
@@ -41,7 +43,6 @@ class Grbl(Gantry):
         port: str, 
         limits: tuple[tuple[float]] = ((-410,-290,-120), (0,0,0)), 
         safe_height: float = -80, 
-        max_speed: float = 250, # [mm/s] (i.e. 15,000 mm/min)
         **kwargs
     ):
         """
@@ -51,9 +52,8 @@ class Grbl(Gantry):
             port (str): COM port address
             limits (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((-410,-290,-120), (0,0,0)).
             safe_height (float, optional): height at which obstacles can be avoided. Defaults to -80.
-            max_speed (float, optional): maximum travel speed. Defaults to 250.
         """
-        super().__init__(port=port, limits=limits, safe_height=safe_height, max_speed=max_speed, **kwargs)
+        super().__init__(port=port, limits=limits, safe_height=safe_height, **kwargs)
         return
     
     def getAcceleration(self) -> np.ndarray:
@@ -66,8 +66,9 @@ class Grbl(Gantry):
         settings = self.getSettings()
         relevant = [s for s in settings if '$12' in s][-3:]
         accels = [s.split('=')[1] for s in relevant]
-        xyz_max_accels = [float(s) for s in accels]
-        return np.array(xyz_max_accels)
+        xyz_max_accels = [float(a) for a in accels]
+        self._accel_max = {k:v for k,v in zip(('x','y','z'), xyz_max_accels)}
+        return self.max_accels
     
     def getCoordinates(self) -> np.ndarray:
         """
@@ -81,7 +82,7 @@ class Grbl(Gantry):
         positions = relevant.split(":")[1].split(",")
         return np.array([float(p) for p in positions])
     
-    def getMaxSpeed(self) -> np.ndarray:
+    def getMaxSpeeds(self) -> np.ndarray:
         """
         Get maximum speeds (mm/s)
 
@@ -90,10 +91,11 @@ class Grbl(Gantry):
         """
         settings = self.getSettings()
         relevant = [s for s in settings if '$11' in s][-3:]
-        speeds = [s.split('=')[1] for s in relevant]        # mm/min
-        xyz_max_speeds = [float(s)/60 for s in speeds]
+        speeds_str_list = [s.split('=')[1] for s in relevant]        # mm/min
+        xyz_max_speeds = [float(s)/60 for s in speeds_str_list]
         self._speed_max = {k:v for k,v in zip(('x','y','z'), xyz_max_speeds)}
-        return self.max_speed
+        super().getMaxSpeeds()
+        return self.max_speeds
     
     def getSettings(self) -> list[str]:
         """
@@ -103,7 +105,15 @@ class Grbl(Gantry):
             list[str]: hardware settings
         """
         responses = self._query("$$\n")
-        print(responses)
+        parsed_responses = responses.copy()
+        for s,setting in enumerate(responses):
+            command = setting.split('=')[0]
+            code = command[1:]
+            if f'sc{code}' in SettingCode._member_names_:
+                parsed_responses[s] = setting.replace(command, f'[{command}] ' + eval(f'SettingCode.sc{code}.value.message'))
+        if self.verbose:
+            for r in parsed_responses:
+                print(r)
         return responses
     
     def getStatus(self) -> list[str]:
@@ -124,7 +134,14 @@ class Grbl(Gantry):
     @Helper.safety_measures
     def home(self) -> bool:
         """Make the robot go home"""
-        self._query("$H\n")
+        self._write('$H')
+        while True:
+            responses = self._read()
+            if not self.isConnected():
+                break
+            if len(responses):
+                break
+        # self._query("$H\n")
         self.coordinates = self.home_coordinates
         print("Homed")
         return True
@@ -146,23 +163,6 @@ class Grbl(Gantry):
         self.setFlag(jog=False)
         return ret
     
-    def setSpeedFraction(self, speed_fraction: float) -> tuple[bool, float]:
-        """
-        Set the speed fraction of the robot
-
-        Args:
-            speed_fraction (float): speed fraction between 0 and 1
-        
-        Returns:
-            tuple[bool, float]: whether speed has changed; prevailing speed fraction
-        """
-        print(f'Speed fraction: {speed_fraction}')
-        prevailing_speed_fraction = self._speed_fraction
-        self._speed_fraction = speed_fraction
-        ret,_ = self.setSpeed(self._speed_max['x']*speed_fraction, 'x')
-        # self._query(f"M220 S{int(speed_fraction*100)}")
-        return ret, prevailing_speed_fraction
-    
     def stop(self):
         """Halt all movement and print current coordinates"""
         self._query("!")
@@ -170,6 +170,7 @@ class Grbl(Gantry):
         self._query("~")
         self._query("F10800")
         self.coordinates = self.getCoordinates()
+        print(self.coordinates)
         return
 
     # Protected method(s)
@@ -209,10 +210,8 @@ class Grbl(Gantry):
             list[str]: list of response string(s) from device
         """
         if command.startswith("G1") and self.flags.get('jog',False):
-            axes = ('x','y','z','a','b','c')
             move = command.strip().split("G1 ")[1]
-            axis = move[0].lower()
-            command = f"$J= {move} F{int(60*self.speed[axes.index(axis)])}"
+            command = f"$J= {move} F{int(60*self.speed)}"
         return super()._query(command)
 
     # def _handle_alarms_and_errors(self, response:str):
@@ -256,7 +255,6 @@ class Primitiv(Grbl):
         `port` (str): COM port address
         `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((-410,-290,-120), (0,0,0)).
         `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to -80.
-        `max_speed` (float, optional): maximum travel speed. Defaults to 250.
     
     ### Methods
     - `getSettings`: get hardware settings
@@ -269,8 +267,7 @@ class Primitiv(Grbl):
         port: str, 
         limits: tuple[tuple[float]] = ((-410, -290, -120), (0, 0, 0)), 
         safe_height: float = -80, 
-        max_speed: float = 250, 
         **kwargs
     ):
-        super().__init__(port, limits, safe_height, max_speed, **kwargs)
+        super().__init__(port, limits, safe_height, **kwargs)
         

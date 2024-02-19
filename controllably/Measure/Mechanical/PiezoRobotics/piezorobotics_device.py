@@ -143,8 +143,13 @@ class PiezoRoboticsDevice(Instrument):
         self.resetFlags()
         return self._query('CLR,0')
     
-    def run(self, sample_thickness:float = 1E-6) -> Optional[str]:
-        """Start the measurement"""
+    def run(self, sample_thickness:float = 1E-6) -> Union[str, tuple[str]]:
+        """
+        Start the measurement
+        
+        Args:
+            sample_thickness (float, optional): thickness of sample. Defaults to 1E-6.
+        """
         if not self.flags['initialised']:
             self.initialise()
         return self._query(f"RUN,{sample_thickness}")
@@ -232,6 +237,9 @@ class PiezoRoboticsDevice(Instrument):
             response = self._read()
             if command_code == 'GET' and len(response):
                 cache.append(response)
+            if "PermissionError(13" in response:
+                print("Adjust connection of physical wire.")
+                break
         self.setFlag(busy=False)
         time.sleep(0.1)
         if command_code == 'GET':

@@ -133,3 +133,4 @@ dmypy.json
 
 # Local files and folders
 /library
+/archive
