@@ -28,17 +28,23 @@ class Well:
         `details` (dict[str, Union[float, tuple[float]]]): well details
     
     ### Attributes
+    - `content` (dict): contains the details of the contents within the well
     - `details` (dict): well details; dictionary of depth, total liquid volume, shape, diameter, x,y,z
     - `name` (str): name of well
     - `reference_point` (tuple[int]): bottom left reference corner of Labware
+    - `volume` (float): volume of contents in well
     
     ### Properties
+    - `base_area` (float): base area of well in mm^2
     - `bottom` (np.ndarray): bottom of well
     - `center` (np.ndarray): center of well
     - `depth` (float): well depth
     - `diameter` (float): well diameter
+    - `dimensions` (tuple[float]): dimensions of base in mm
+    - `level` (float): level of contents in well
     - `middle` (np.ndarray): middle of well
     - `offset` (np.ndarray): well offset from Labware reference point
+    - `shape` (str): shape of well
     - `top` (np.ndarray): top of well
     
     ### Methods
@@ -60,9 +66,11 @@ class Well:
             name (str): name of well
             details (dict[str, Union[float, tuple[float]]]): well details
         """
+        self.content = {}
         self.details = details  # depth,totalLiquidVolume,shape,diameter,x,y,z
         self.name = name
         self.reference_point = labware_info.get('reference_point', (0,0,0))
+        self.volume = 0
         
         self._labware_name = labware_info.get('name','')
         self._labware_slot = labware_info.get('slot','')
@@ -72,6 +80,16 @@ class Well:
         return f"{self.name} in {self._labware_name} at Slot {self._labware_slot}" 
     
     # Properties
+    @property
+    def base_area(self) -> float:
+        """Base area in mm^2"""
+        area_mm2 = 1
+        if self.shape == 'circular':
+            area_mm2 = 3.141592/4 * self.dimensions[0]**2
+        elif self.shape == 'rectangular':
+            area_mm2 = self.dimensions[0] * self.dimensions[1]
+        return area_mm2
+    
     @property
     def bottom(self) -> np.ndarray:
         return self.center
@@ -89,6 +107,21 @@ class Well:
         return self.details.get('diameter', 0)
     
     @property
+    def dimensions(self) -> tuple[float]:
+        """Dimensions of base in mm"""
+        dim = []
+        if self.shape == 'circular':
+            dim.append(self.diameter)
+        elif self.shape == 'rectangular':
+            dim.append(self.details.get('xDimension',0))
+            dim.append(self.details.get('yDimension',0))
+        return tuple(dim)
+    
+    @property
+    def level(self) -> float:
+        return self.volume / self.base_area
+        
+    @property
     def middle(self) -> np.ndarray:
         depth = self.details.get('depth', 0)
         return self.center + np.array((0,0,depth/2))
@@ -99,6 +132,10 @@ class Well:
         y = self.details.get('y', 0)
         z = self.details.get('z', 0)
         return np.array((x,y,z))
+    
+    @property
+    def shape(self) -> str:
+        return self.details.get('shape', '')
     
     @property
     def top(self) -> np.ndarray:
@@ -231,6 +268,7 @@ class Labware:
         """
         self.details = helper.read_json(json_file=labware_file, package=package)
         self.name = self.details.get('metadata',{}).get('displayName', '')
+        self.order_wells_by_rows = False
         self._reference_point = tuple(bottom_left_coordinates)
         self.slot = slot
         self._wells = {}
@@ -292,10 +330,14 @@ class Labware:
        
     @property
     def wells(self) -> dict[str, Well]:
+        if self.order_wells_by_rows:
+            return {w:self._wells[w] for l in self.rows_list for w in l}
         return self._wells
     
     @property
     def wells_list(self) -> list[Well]:
+        if self.order_wells_by_rows:
+            return [self._wells[w] for l in self.rows_list for w in l]
         return [self._wells[well] for well in self.details.get('wells',{})]
 
     def at(self, name:str) -> Well:
