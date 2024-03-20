@@ -284,12 +284,13 @@ class Peltier(Maker):
             if self.verbose:
                 print(e)
         else:
+            self.device = device
             print(f"Connection opened to {port}")
             self.setFlag(connected=True)
             time.sleep(1)
             self.getTemperature()
             print(self.temperature)
-        self.device = device
+        # self.device = device
         return
     
     def _loop_feedback(self):
