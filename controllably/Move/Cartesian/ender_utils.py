@@ -153,11 +153,15 @@ class Marlin(Gantry):
             tuple[float]: set temperature, current temperature
         """
         responses = self._query('M105')  # Use 'M155 S<seconds>' to auto-report temperatures in S-second intervals. S0 to disable.
-        temperatures = [r for r in responses if '@' in r]
-        bed_temperatures = temperatures[-1].split(':')[2].split(' ')[:2]
-        temperature, set_temperature = bed_temperatures
-        self.temperature = float(temperature)
-        self.set_temperature = float(set_temperature[1:])
+        try:
+            temperatures = [r for r in responses if '@' in r]
+        except Exception as e:
+            raise e
+        else:
+            bed_temperatures = temperatures[-1].split(':')[2].split(' ')[:2]
+            temperature, set_temperature = bed_temperatures
+            self.temperature = float(temperature)
+            self.set_temperature = float(set_temperature[1:])
         
         ready = (abs(self.set_temperature - self.temperature)<=self.tolerance)
         self.setFlag(temperature_reached=ready)
