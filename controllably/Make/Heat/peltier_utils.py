@@ -141,10 +141,10 @@ class Peltier(Maker):
         now = datetime.now()
         try:
             values = [float(v) for v in response.split(';')]
-            self.set_temperature, self.temperature, self._cold_point, self._power = values
         except ValueError:
             print(response)
         else:
+            self.set_temperature, self.temperature, self._cold_point, self._power = values
             response = tuple(values)
             ready = (abs(self.set_temperature - self.temperature)<=self.tolerance)
             if not ready:
