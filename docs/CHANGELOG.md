@@ -1,5 +1,18 @@
 # Change Log
 
+## Version 1.3.1
+Feature enhancements, bug fixes and patches. First released 19 Feb 2024.
+### Added
+- implementation of `TriContinent.pullback()`
+- new `Well` properties and option in return list of wells by rows instead of columns
+
+### Changed
+- fix bugs in `Peltier` (`setTemperature()` and `getTemperature()`)
+- fix bugs in `Ender` (`setTemperature()` and `getTemperature()`)
+- fix bug in `Keithley.setFunction()`
+- generalise `IV_Scan` to take either currents or voltages
+
+
 ## Version 1.3.0
 Feature enhancements, bug fixes and patches. First released 19 Feb 2024.
 ### Added
