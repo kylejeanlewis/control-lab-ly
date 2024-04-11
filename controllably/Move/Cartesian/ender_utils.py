@@ -163,8 +163,11 @@ class Marlin(Gantry):
             self.temperature = float(temperature)
             self.set_temperature = float(set_temperature[1:])
         
-        ready = (abs(self.set_temperature - self.temperature)<=self.tolerance)
-        self.setFlag(temperature_reached=ready)
+            ready = (abs(self.set_temperature - self.temperature)<=self.tolerance)
+            self.setFlag(temperature_reached=ready)
+            if ready:
+                print(bed_temperatures)
+                print(f"Temperature of {self.set_temperature}°C reached!")
         return self.set_temperature, self.temperature
     
     def holdTemperature(self, temperature:float, time_s:float):
@@ -223,19 +226,19 @@ class Marlin(Gantry):
         """
         return self.flags['temperature_reached']
     
-    def setTemperature(self, set_temperature: float, blocking:bool = True):
+    def setTemperature(self, temperature: float, blocking:bool = True):
         """
         Set the temperature of the 3-D printer platform bed
 
         Args:
-            set_temperature (float): set point for platform temperature
+            temperature (float): set point for platform temperature
             blocking (bool, optional): whether to wait for temperature to reach set point. Defaults to True.
         """
-        if set_temperature < self.temperature_range[0] or set_temperature > self.temperature_range[1]:
+        if temperature < self.temperature_range[0] or temperature > self.temperature_range[1]:
             print(f'Please select a temperature between {self.temperature_range[0]} and {self.temperature_range[1]}°C.')
             return False
-        set_temperature = round( min(max(set_temperature,0), 110) )
-        command = f'M190 S{set_temperature}\n'
+        temperature = round( min(max(temperature,0), 110) )
+        command = f'M190 S{temperature}\n'
         try:
             self._query(command)
         except Exception as e:
@@ -244,9 +247,9 @@ class Marlin(Gantry):
                 print(e)
             return
         else:
-            while self.set_temperature != float(set_temperature):
+            while self.set_temperature != float(temperature):
                 self.getTemperature()
-        print(f"New set temperature at {set_temperature}°C")
+        print(f"New set temperature at {temperature}°C")
         
         if blocking:
             print(f"Waiting for temperature to reach {self.set_temperature}°C")
