@@ -235,11 +235,7 @@ class Marlin(Gantry):
             print(f'Please select a temperature between {self.temperature_range[0]} and {self.temperature_range[1]}°C.')
             return False
         set_temperature = round( min(max(set_temperature,0), 110) )
-        command = f'M190 R{set_temperature}\n' if blocking else f'M140 S{set_temperature}\n'
-        
-        print(f"New set temperature at {set_temperature}°C")
-        if blocking:
-            print(f"Waiting for temperature to reach {set_temperature}°C")
+        command = f'M190 S{set_temperature}\n'
         try:
             self._query(command)
         except Exception as e:
@@ -248,7 +244,17 @@ class Marlin(Gantry):
                 print(e)
             return
         else:
+            while self.set_temperature != float(set_temperature):
+                self.getTemperature()
+        print(f"New set temperature at {set_temperature}°C")
+        
+        if blocking:
+            print(f"Waiting for temperature to reach {self.set_temperature}°C")
+        while not self.isAtTemperature():
             self.getTemperature()
+            time.sleep(0.1)
+            if not blocking:
+                break
         self.setFlag(temperature_reached=blocking)
         return
 
