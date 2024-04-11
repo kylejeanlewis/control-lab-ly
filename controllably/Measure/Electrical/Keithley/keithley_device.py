@@ -395,7 +395,8 @@ class KeithleyDevice(Instrument):
             sense (bool, optional): whether to set the sense terminal. Defaults to True.
         """
         terminal = 'SENSe' if sense else 'SOURce'
-        return self._query(f'{terminal}:FUNCtion "{function}"')
+        function = f'"{function}"' if sense else function
+        return self._query(f'{terminal}:FUNCtion {function}')
     
     def setSource(self, value:float):
         """

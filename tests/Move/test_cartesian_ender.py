@@ -10,8 +10,6 @@ me = Marlin(
     'COM4', 
     limits=((0,0,0),(220,220,250)),
     home_coordinates=(0,0,30),
-    # speed_max=dict(x=25,y=25,z=25),
-    # accel_max=dict(x=500,y=500,z=100),
     verbose=True
 )
 # me = Ender('COM18', limits=((0,0,0),(100,100,70)), max_speed=10, verbose=True)

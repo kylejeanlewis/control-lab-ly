@@ -526,8 +526,33 @@ class TriContinent(Pump):
         print(f"Priming complete")
         return command
     
-    def pullback(self, channel: Optional[Union[int, tuple[int]]] = None, **kwargs) -> bool: # NOTE: no implementation
-        return ''
+    @_compound_action
+    def pullback(self, 
+        channel: Optional[Union[int, tuple[int]]] = None,
+        **kwargs
+    ) -> str:
+        """
+        Dispense desired volume of reagent
+
+        Args:
+            channel (Optional[Union[int, tuple[int]]], optional): channel id(s). Defaults to None.
+
+        Returns:
+            str: command string
+        """
+        steps = min(int(10/self.resolution), self.limits-self.position)
+        self.queue([
+            self.setStartSpeed(50),
+            self.setTopSpeed(200),
+            self.setSpeedRamp(1),
+            self.setValve('O'),
+            self.moveBy(abs(steps))
+        ], channel=channel)
+        command = self.current_pump.command
+        print(f"Pump: {self.name}")
+        print(f"Pulling back...")
+        self.run()
+        return command
 
     def queue(self, actions:list[str], channel:Optional[int] = None) -> str:
         """

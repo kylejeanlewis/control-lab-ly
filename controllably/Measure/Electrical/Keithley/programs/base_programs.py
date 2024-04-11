@@ -16,7 +16,7 @@ from typing import Optional, Protocol
 
 # Local application imports
 from ....program_utils import Program
-from ..keithley_lib import SenseDetails, SourceDetails
+from ..keithley_lib import SenseDetails, SourceDetails, CURRENT_LIMITS, VOLTAGE_LIMITS
 print(f"Import: OK <{__name__}>")
 
 class Device(Protocol):
@@ -67,8 +67,11 @@ class IV_Scan(Program):
     ==========
     
     ### Parameters:
+        sense_limit (float, optional): measurement limit. Defaults to 1A or 200V.
+        currents (iterable, optional): current values to measure. Defaults to (0,).
+        voltages (iterable, optional): voltage values to measure. Defaults to (0,).
         count (int, optional): number of readings to take and average over. Defaults to 1.
-        currents (iterable): current values to measure. Defaults to (0,).
+        four_point (bool, optional): whether to use four point probe. Defaults to True.
     """
     
     def __init__(self, 
@@ -92,16 +95,35 @@ class IV_Scan(Program):
         """Run the measurement program"""
         device = self.device
         count = self.parameters.get('count', 1)
+        four_point = self.parameters.get('four_point', True)
+        
+        if 'voltages' in self.parameters:
+            _source = 'voltage'
+            _sense = 'current'
+            values = self.parameters.get('voltages', (0,))
+            limits = VOLTAGE_LIMITS
+            sense_limit = CURRENT_LIMITS[-1]
+        elif 'currents' in self.parameters:
+            _source = 'current'
+            _sense = 'voltage'
+            values = self.parameters.get('currents', (0,))
+            limits = CURRENT_LIMITS
+            sense_limit = VOLTAGE_LIMITS[-1]
+        else:
+            raise Exception('Please provide either "voltages" or "currents" as a parameter')
+        max_value = max([abs(v) for v in values])
+        source_limit = min([l for l in limits if l >= max_value])
+        sense_limit = self.parameters.get('sense_limit', sense_limit)
         
         device.reset()
         device.sendCommands(['ROUTe:TERMinals FRONT'])
-        device.configureSource('current', measure_limit=200)
-        device.configureSense('voltage', limit=200, four_point=True, count=count)
+        device.configureSource(_source, limit=source_limit, measure_limit=sense_limit)
+        device.configureSense(_sense, limit=sense_limit, four_point=four_point, count=count)
         device.makeBuffer()
         device.beep()
         
-        for current in self.parameters.get('currents', (0,)):
-            device.setSource(value=current)
+        for value in values:
+            device.setSource(value=value)
             device.toggleOutput(on=True)
             device.run()
             time.sleep(0.1*count)
