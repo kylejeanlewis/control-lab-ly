@@ -72,7 +72,6 @@ class IV_Scan(Program):
         voltages (iterable, optional): voltage values to measure. Defaults to (0,).
         count (int, optional): number of readings to take and average over. Defaults to 1.
         four_point (bool, optional): whether to use four point probe. Defaults to True.
-        
     """
     
     def __init__(self, 
