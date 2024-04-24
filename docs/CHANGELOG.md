@@ -1,11 +1,19 @@
 # Change Log
 
+## Version 1.3.2
+Feature enhancements, bug fixes and patches. First released 24 Apr 2024.
+### Added
+- add new `delay` parameter in `Keithley.programs.IV_Scan`
+### Changed
+- fix critical bug in setting sense/source limits for `KeithleyDevice`
+- fix bugs in `KeithleyDevice`, `Peltier`, `ForceSensor`
+
+
 ## Version 1.3.1
-Feature enhancements, bug fixes and patches. First released 19 Feb 2024.
+Feature enhancements, bug fixes and patches. First released 11 Apr 2024.
 ### Added
 - implementation of `TriContinent.pullback()`
 - new `Well` properties and option in return list of wells by rows instead of columns
-
 ### Changed
 - fix bugs in `Peltier` (`setTemperature()` and `getTemperature()`)
 - fix bugs in `Ender` (`setTemperature()` and `getTemperature()`)
