@@ -603,6 +603,8 @@ class KeithleyDevice(Instrument):
         except visa.VisaIOError:
             self.getErrors()
             return False
+        except AttributeError:
+            print(f'Not connected to Keithley ({self.ip_address})')
         if self.verbose and "*WAI" not in command:
             # self.getErrors()
             ...
