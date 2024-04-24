@@ -290,7 +290,6 @@ class Peltier(Maker):
             time.sleep(1)
             self.getTemperature()
             print(self.temperature)
-        # self.device = device
         return
     
     def _loop_feedback(self):

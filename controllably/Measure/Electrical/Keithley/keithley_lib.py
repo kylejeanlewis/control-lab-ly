@@ -74,8 +74,8 @@ def set_limit(limit:Union[str, float, None], is_current:bool) -> Union[str, floa
             if limit in choice.lower():
                 return choice
         raise ValueError(f"Select a valid option from: {', '.join([c.lower() for c in choices])}")
-    unit = 'A' if is_current == 'CURRent' else 'V'
-    options = np.array(CURRENT_LIMITS) if is_current == 'CURRent' else np.array(VOLTAGE_LIMITS)
+    unit = 'A' if is_current else 'V'
+    options = np.array(CURRENT_LIMITS) if is_current else np.array(VOLTAGE_LIMITS)
     shortlist = options[options >= abs(limit)]
     if len(shortlist):
         return shortlist[0]

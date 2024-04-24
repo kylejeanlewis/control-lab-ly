@@ -72,6 +72,7 @@ class IV_Scan(Program):
         voltages (iterable, optional): voltage values to measure. Defaults to (0,).
         count (int, optional): number of readings to take and average over. Defaults to 1.
         four_point (bool, optional): whether to use four point probe. Defaults to True.
+        delay(float, optional): the time delay between each measurement. Defaults to 0.1.
     """
     
     def __init__(self, 
@@ -96,6 +97,7 @@ class IV_Scan(Program):
         device = self.device
         count = self.parameters.get('count', 1)
         four_point = self.parameters.get('four_point', True)
+        delay = self.parameters.get('delay', 0.1)
         
         if 'voltages' in self.parameters:
             _source = 'voltage'
@@ -126,7 +128,7 @@ class IV_Scan(Program):
             device.setSource(value=value)
             device.toggleOutput(on=True)
             device.run()
-            time.sleep(0.1*count)
+            time.sleep(delay*count)
         time.sleep(1)
         self.data_df = device.readAll()
         device.beep()
