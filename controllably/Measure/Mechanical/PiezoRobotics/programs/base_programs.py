@@ -59,6 +59,7 @@ class DMA(Program):
         sample_thickness (float): thickness of measured sample in [m]. Defaults to 1E-3.
         repeat (int): number of times to run the measurement. Defaults to 1.
         pause (bool): whether to pause for loading samples. Defaults to True.
+        toggle_clamp(bool): whether to toggle clamp to open and close before and after measurement. Defaults to True.
     """
     
     def __init__(self, 
@@ -82,7 +83,8 @@ class DMA(Program):
         """Run the measurement program"""
         device = self.device
         repeat = self.parameters.get('repeat', 1)
-        device.toggleClamp(False)
+        if self.parameters.get('toggle_clamp', True):
+            device.toggleClamp(False)
         # device.initialise(
         #     low_frequency=self.parameters.get('low_frequency', FREQUENCIES[0]), 
         #     high_frequency=self.parameters.get('high_frequency', FREQUENCIES[-1])
@@ -90,7 +92,8 @@ class DMA(Program):
         
         if self.parameters.get('pause', True):
             input("Please load sample. Press 'Enter' to proceed")
-        device.toggleClamp(True)
+        if self.parameters.get('toggle_clamp', True):
+            device.toggleClamp(True)
         for i in range(repeat):
             print(f"Start run {i+1} at {datetime.now()}")
             device.run(sample_thickness=self.parameters.get('sample_thickness', 1E-3))
@@ -102,5 +105,6 @@ class DMA(Program):
                 self.data_df = df
             else:
                 self.data_df = pd.concat([self.data_df, df], ignore_index=True)
-        device.toggleClamp(False)
+        if self.parameters.get('toggle_clamp', True):
+            device.toggleClamp(False)
         return
