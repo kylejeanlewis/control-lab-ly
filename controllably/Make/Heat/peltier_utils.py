@@ -141,10 +141,10 @@ class Peltier(Maker):
         now = datetime.now()
         try:
             values = [float(v) for v in response.split(';')]
-            self.set_temperature, self.temperature, self._cold_point, self._power = values
         except ValueError:
             print(response)
         else:
+            self.set_temperature, self.temperature, self._cold_point, self._power = values
             response = tuple(values)
             ready = (abs(self.set_temperature - self.temperature)<=self.tolerance)
             if not ready:
@@ -284,12 +284,12 @@ class Peltier(Maker):
             if self.verbose:
                 print(e)
         else:
+            self.device = device
             print(f"Connection opened to {port}")
             self.setFlag(connected=True)
             time.sleep(1)
             self.getTemperature()
             print(self.temperature)
-        self.device = device
         return
     
     def _loop_feedback(self):

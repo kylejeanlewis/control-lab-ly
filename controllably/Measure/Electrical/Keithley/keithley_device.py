@@ -395,7 +395,8 @@ class KeithleyDevice(Instrument):
             sense (bool, optional): whether to set the sense terminal. Defaults to True.
         """
         terminal = 'SENSe' if sense else 'SOURce'
-        return self._query(f'{terminal}:FUNCtion "{function}"')
+        function = f'"{function}"' if sense else function
+        return self._query(f'{terminal}:FUNCtion {function}')
     
     def setSource(self, value:float):
         """
@@ -602,6 +603,8 @@ class KeithleyDevice(Instrument):
         except visa.VisaIOError:
             self.getErrors()
             return False
+        except AttributeError:
+            print(f'Not connected to Keithley ({self.ip_address})')
         if self.verbose and "*WAI" not in command:
             # self.getErrors()
             ...
