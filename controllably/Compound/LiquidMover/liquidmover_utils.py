@@ -404,10 +404,11 @@ class LiquidMoverSetup(CompoundSetup):
             tuple[float]: coordinates of well center
         """
         diameter = well.diameter
+        depth = well.depth *0.05
         if safe_move:
-            self.align(coordinates=well.fromTop((0,0,-10)))
+            self.align(coordinates=well.fromTop((0,0,-depth)))
         else:
-            self.mover.moveTo(coordinates=well.fromTop((0,0,-10)))
+            self.mover.moveTo(coordinates=well.fromTop((0,0,-depth)))
         _, prevailing_speed_factor = self.mover.setSpeedFactor(speed_factor)
         for axis in ('x','y'):
             self.mover.move(axis, diameter/2)
