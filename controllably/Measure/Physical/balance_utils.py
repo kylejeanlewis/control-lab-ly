@@ -264,7 +264,10 @@ class MassBalance(Measurer):
             if self.verbose:
                 print(e)
         else:
-            response = response.decode('utf-8').strip()
+            try:
+                response = response.decode('utf-8').strip()
+            except UnicodeDecodeError:
+                response = ''
             if self.verbose:
                 print(response)
         return response
