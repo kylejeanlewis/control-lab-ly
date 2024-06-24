@@ -163,15 +163,15 @@ class MassBalance(Measurer):
         Args:
             on (bool): whether to start loop to continuously read from device
         """
+        if 'feedback_loop' in self._threads:
+            self._threads['feedback_loop'].join()
+        previous_state = self.flags['get_feedback']
         self.setFlag(get_feedback=on)
-        if on:
-            if 'feedback_loop' in self._threads:
-                self._threads['feedback_loop'].join()
+        if on and previous_state == False:
+            time.sleep(1)
             thread = Thread(target=self._loop_feedback)
             thread.start()
             self._threads['feedback_loop'] = thread
-        else:
-            self._threads['feedback_loop'].join()
         return
     
     def toggleRecord(self, on:bool):
@@ -181,7 +181,7 @@ class MassBalance(Measurer):
         Args:
             on (bool): whether to start recording data
         """
-        self.setFlag(record=on, get_feedback=on, pause_feedback=False)
+        self.setFlag(record=on, pause_feedback=False)
         self.toggleFeedbackLoop(on=on)
         return
 
