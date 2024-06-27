@@ -325,7 +325,8 @@ class BioShake(Maker):
             values = [now, self.set_temperature, self.temperature]
             row = {k:v for k,v in zip(self._columns, values)}
             new_row_df = pd.DataFrame(row, index=[0])
-            self.buffer_df = pd.concat([self.buffer_df, new_row_df], ignore_index=True)
+            dfs = [_df for _df in [self.buffer_df, new_row_df] if len(_df)]
+            self.buffer_df = pd.concat(dfs, ignore_index=True)
         return self.set_temperature, self.temperature
     
     def getUserLimits(self):

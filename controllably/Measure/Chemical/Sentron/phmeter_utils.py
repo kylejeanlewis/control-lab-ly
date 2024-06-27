@@ -124,7 +124,8 @@ class SentronProbe(Measurer):
                 ]
                 row = {k:v for k,v in zip(COLUMNS, values)}
                 new_row_df = pd.DataFrame(row, index=[0])
-                self.buffer_df = pd.concat([self.buffer_df, new_row_df], ignore_index=True)
+                dfs = [_df for _df in [self.buffer_df, new_row_df] if len(_df)]
+                self.buffer_df = pd.concat(dfs, ignore_index=True)
             print(f"pH = {pH:.3f}, temperature = {temperature:.1f}°C")
         return response
     
