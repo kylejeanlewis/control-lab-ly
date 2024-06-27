@@ -55,7 +55,7 @@ class ErrorCode(Enum):
     er27 = Message('Invalid gcode ID:27', 'Line number value is invalid.')
     er28 = Message('Invalid gcode ID:28', 'G-code command is missing a required value word.')
     er29 = Message('Invalid gcode ID:29', 'G59.x work coordinate systems are not supported.')
-    er30 = Message('Invalid gcode ID:30', '	G53 only allowed with G0 and G1 motion modes.')
+    er30 = Message('Invalid gcode ID:30', 'G53 only allowed with G0 and G1 motion modes.')
     er31 = Message('Invalid gcode ID:31', 'Axis words found in block when no command or current modal state uses them.')
     er32 = Message('Invalid gcode ID:32', 'G2 and G3 arcs require at least one in-plane axis word.')
     er33 = Message('Invalid gcode ID:33', 'Motion command target is invalid.')
