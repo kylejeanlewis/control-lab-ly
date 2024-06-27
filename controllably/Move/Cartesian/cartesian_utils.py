@@ -8,11 +8,11 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 from abc import abstractmethod
-import numpy as np
 import time
 from typing import Optional
 
 # Third party imports
+import numpy as np
 import serial # pip install pyserial
 
 # Local application imports
@@ -367,14 +367,12 @@ class Gantry(Mover):
         responses = [b'']
         self._write(command)
         responses = self._read()
-        # try:
-        #     responses = self.device.readlines()
-        # except Exception as e:
-        #     if self.verbose:
-        #         print(e)
-        # else:
-        #     if self.verbose:
-        #         print(responses)
+        try:
+            self.device.flush()
+            self.device.reset_output_buffer()
+        except Exception as e:
+            if self.verbose:
+                print(e)
         return [r.decode().strip() for r in responses]
     
     def _read(self) -> list[str]:
