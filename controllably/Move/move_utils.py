@@ -743,6 +743,7 @@ class Mover(ABC):
             time2 = (2*distance)* (acceleration + deceleration)/(acceleration*deceleration)
             travel_time = time2**0.5
             # print('less time')
+        travel_time = 0.0 if np.isnan(travel_time) else travel_time
         return travel_time
     
     def _diagnostic(self):
