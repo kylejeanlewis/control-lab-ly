@@ -9,12 +9,15 @@ Other constants and variables:
     LOGGER (Logger)
 """
 # Standard library imports
+import logging
 import os
 import time
 from typing import Optional
-print(f"Import: OK <{__name__}>")
 
-class Logger:
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
+
+class _Logger:
     """
     Logger class with miscellaneous methods
     
@@ -96,5 +99,32 @@ class Logger:
                     f.write(line + '\n')
         return
 
-LOGGER = Logger('main') 
+LOGGER = _Logger('main') 
 """NOTE: importing LOGGER gives the same instance of the 'Logger' class wherever you import it"""
+
+def main():
+    # logging.basicConfig(
+    #     level=logging.DEBUG,
+    #     format="%(asctime)s %(levelname)s %(message)s",
+    #     datefmt="%Y-%m-%d %H:%M:%S",
+    #     filename="basic.log",
+    #     filemode='a'
+    # )
+    
+    logger.debug("This is a debug message.")
+    logger.info("This is a info message.")
+    logger.warning("This is a warning message.")
+    logger.error("This is a error message.")
+    logger.critical("This is a critical message.")
+    
+    # handler = logging.FileHandler("test.log")
+    # formatter = logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s")
+    # handler.setFormatter(formatter)
+    # logger.addHandler(handler)
+    
+    # logger.info("test custom logger")
+
+if __name__ == '__main__':
+    main()
+
+# %%
