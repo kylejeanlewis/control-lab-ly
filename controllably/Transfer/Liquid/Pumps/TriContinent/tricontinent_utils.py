@@ -8,6 +8,7 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 from functools import wraps
+import logging
 import string
 import time
 from typing import Callable, Optional, Union
@@ -17,7 +18,9 @@ from .....misc import Helper
 from ...liquid_utils import Speed
 from ..pump_utils import Pump
 from .tricontinent_lib import ErrorCode, StatusCode, TriContinentPump
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class TriContinent(Pump):
     """

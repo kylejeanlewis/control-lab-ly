@@ -15,6 +15,7 @@ Other constants and variables:
 from __future__ import annotations
 from collections import namedtuple
 import ipaddress
+import logging
 import numpy as np
 import socket
 import time
@@ -24,7 +25,9 @@ from typing import Optional, Protocol
 from ....misc import Factory, Helper
 from ..jointed_utils import RobotArm
 from .dobot_api import dobot_api_dashboard, dobot_api_feedback
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 MOVE_TIME_BUFFER_S = 0.5
 

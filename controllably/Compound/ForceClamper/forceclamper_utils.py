@@ -7,13 +7,18 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
-import numpy as np
+import logging
 import time
 from typing import Optional, Protocol
 
+# Third party imports
+import numpy as np
+
 # Local application imports
 from ..compound_utils import CompoundSetup
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class Mover(Protocol):
     limits: tuple[tuple]
@@ -167,10 +172,10 @@ class ForceClampSetup(CompoundSetup):
         while True:
             time.sleep(0.001)
             if abs(self.sensor.getValue()) >= abs(threshold):
-                print('Made contact')
+                logger.info('Made contact')
                 break
             if time.time() - start > timeout:
-                print('Touch timeout')
+                logger.info('Touch timeout')
                 break
         return
     

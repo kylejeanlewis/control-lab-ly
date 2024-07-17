@@ -8,6 +8,7 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 import inspect
+import logging
 from typing import Protocol
 
 # Third party imports
@@ -15,7 +16,9 @@ import PySimpleGUI as sg # pip install PySimpleGUI
 
 # Local application imports
 from ..multichannel_panel import MultiChannelPanel
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class Maker(Protocol):
     channel: int

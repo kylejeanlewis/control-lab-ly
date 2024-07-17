@@ -8,11 +8,14 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 from abc import ABC, abstractmethod
+import logging
 from typing import Optional
 
 # Local application imports
 from ..misc import Factory, Helper, Layout
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class CompoundSetup(ABC):
     """
@@ -163,8 +166,8 @@ class CompoundSetup(ABC):
             if key not in self.positions or overwrite:
                 self.positions[key] = value
             elif not overwrite:
-                print(f"Previously saved height '{key}': {self.positions[key]}\n")
-                print(f"New height received: {value}")
+                logger.info(f"Previously saved height '{key}': {self.positions[key]}\n")
+                logger.info(f"New height received: {value}")
                 if input('Overwrite? [y/n]').lower() == 'n':
                     continue
                 self.positions[key] = value
@@ -189,13 +192,13 @@ class CompoundSetup(ABC):
     def _diagnostic(self):
         """Run diagnostic test"""
         for component in self.components.values():
-            print(component.__dict__.get('connection_details', {}))
+            logger.info(component.__dict__.get('connection_details', {}))
             if not component.isConnected():
-                print("Check hardware / connection!")
+                logger.warning("Check hardware / connection!")
                 continue
-            print("Hardware / connection ok!")
+            logger.info("Hardware / connection ok!")
             if '_diagnostic' in dir(component):
                 component._diagnostic()
-        print('Ready!')
+        logger.info('Ready!')
         return
     

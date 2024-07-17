@@ -11,6 +11,7 @@ Other constants and variables:
 # Standard library imports
 from __future__ import annotations
 from datetime import datetime
+import logging
 import pandas as pd
 from threading import Thread
 import time
@@ -21,7 +22,9 @@ import serial   # pip install pyserial
 
 # Local application imports
 from ..make_utils import Maker
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 COLUMNS = ('Time', 'Set', 'Hot', 'Cold', 'Power')
 """Headers for output data from Peltier device"""

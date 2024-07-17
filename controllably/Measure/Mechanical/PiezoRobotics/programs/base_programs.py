@@ -10,6 +10,7 @@ Other constants and variables:
 """
 # Standard library imports
 from datetime import datetime
+import logging
 import pandas as pd
 import time
 from typing import Optional, Protocol
@@ -17,7 +18,9 @@ from typing import Optional, Protocol
 # Local application imports
 from ....program_utils import Program
 from ..piezorobotics_lib import FrequencyCode
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 FREQUENCIES = tuple([frequency.value for frequency in FrequencyCode])
 """Collection of all available frequency values"""

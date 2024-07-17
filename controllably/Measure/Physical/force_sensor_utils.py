@@ -11,6 +11,7 @@ Other constants and variables:
 """
 # Standard library imports
 from datetime import datetime
+import logging
 import pandas as pd
 from threading import Thread
 import time
@@ -20,7 +21,9 @@ import serial # pip install pyserial
 
 # Local application imports
 from ..measure_utils import Measurer
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 CALIBRATION_FACTOR = 6.862879436681862  # FIXME: needs to be calibrated
 """Empirical factor by which to divide output reading by to get force in newtons"""

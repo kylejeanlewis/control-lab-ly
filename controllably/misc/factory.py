@@ -22,13 +22,15 @@ Other constants and variables:
 from dataclasses import dataclass, field
 import importlib
 import inspect
+import logging
 import numpy as np
 import pprint
 import sys
 from typing import Callable, Optional
 
 # Local application imports
-print(f"Import: OK <{__name__}>")
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 HOME_PACKAGES = ['controllably','lab']
 """Names and aliases of base package"""

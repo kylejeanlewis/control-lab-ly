@@ -16,8 +16,11 @@ Other constants and variables:
 from __future__ import annotations
 from collections import namedtuple
 from dataclasses import dataclass, field
+import logging
 import numpy as np
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 Calibration = namedtuple('Calibration', ['aspirate','dispense'])
 """Calibration is a named tuple for an aspirate-dispense pair calibration value"""

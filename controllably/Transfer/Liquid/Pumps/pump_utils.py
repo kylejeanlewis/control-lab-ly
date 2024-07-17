@@ -6,6 +6,7 @@ Classes:
     Pump (LiquidHandler)
 """
 # Standard library imports
+import logging
 import time
 
 # Third party imports
@@ -13,7 +14,9 @@ import serial # pip install pyserial
 
 # Local application imports
 from ..liquid_utils import LiquidHandler
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class Pump(LiquidHandler):
     """

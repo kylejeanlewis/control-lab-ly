@@ -9,13 +9,16 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+import logging
 import numpy as np
 import time
 from typing import Callable, Optional
 
 # Local application imports
 from ..substrate_utils import Gripper
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class DobotGripper(Gripper):
     """

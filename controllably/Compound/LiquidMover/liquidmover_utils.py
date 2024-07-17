@@ -7,14 +7,18 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
-import numpy as np
-import time
+import logging
 from typing import Optional, Protocol
+
+# Third party imports
+import numpy as np
 
 # Local application imports
 from ...misc.layout import Well
 from ..compound_utils import CompoundSetup
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class Liquid(Protocol):
     def aspirate(self, *args, **kwargs):
@@ -160,7 +164,7 @@ class LiquidMoverSetup(CompoundSetup):
             channel (Optional[int], optional): channel to use. Defaults to None.
         """
         if 'eject' in dir(self.liquid) and not self.liquid.isTipOn():
-            print("[aspirate] There is no tip attached.")
+            logger.info("[aspirate] There is no tip attached.")
             return
         if channel is not None:
             offset = self.liquid.channels[channel].offset if 'channels' in dir(self.liquid) else self.liquid.offset
@@ -202,7 +206,7 @@ class LiquidMoverSetup(CompoundSetup):
         if start_tip is not None:
             self.updateStartTip(start_tip=start_tip, slot=slot)
         well = self.deck.at(slot).wells_list[-len(self.positions[slot])]
-        print(well.name)
+        logger.info(well.name)
         next_tip_location, tip_length = self.positions[slot].pop(0)
         return self.attachTipAt(next_tip_location, tip_length=tip_length, channel=channel)
     
@@ -272,7 +276,7 @@ class LiquidMoverSetup(CompoundSetup):
             channel (Optional[int], optional): channel to use. Defaults to None.
         """
         if 'eject' in dir(self.liquid) and not self.liquid.isTipOn():
-            print("[dispense] There is no tip attached.")
+            logger.info("[dispense] There is no tip attached.")
             return
         if channel is not None:
             offset = self.liquid.channels[channel].offset if 'channels' in dir(self.liquid) else self.liquid.offset
@@ -429,8 +433,8 @@ class LiquidMoverSetup(CompoundSetup):
         wells_list = self.deck.at(slot).wells_list.copy()
         well_names = [well.name for well in wells_list]
         if start_tip not in well_names:
-            print(f"Received: start_tip={start_tip}; slot={slot}")
-            print("Please enter a compatible set of inputs.")
+            logger.info(f"Received: start_tip={start_tip}; slot={slot}")
+            logger.info("Please enter a compatible set of inputs.")
             return
         self.positions[slot] = [(well.top, well.depth) for well in wells_list]
         for name in well_names:

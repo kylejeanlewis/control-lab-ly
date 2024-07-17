@@ -9,13 +9,16 @@ Classes:
 """
 # Standard library imports
 from abc import ABC, abstractmethod
+import logging
 
 # Third party imports
 import cv2 # pip install opencv-python
 
 # Local application imports
 from .. import image as Image
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class Classifier(ABC):
     """

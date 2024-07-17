@@ -10,7 +10,10 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 from enum import IntEnum
-print(f"Import: OK <{__name__}>")
+import logging
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class BoxRegs(IntEnum):
     UNIT_ID             = int('6D', base=16)

@@ -18,9 +18,12 @@ Other constants and variables:
 # Standard library imports
 from __future__ import annotations
 from dataclasses import dataclass, field
+import logging
 import numpy as np
 from typing import Optional, Union
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 COUNT_UPPER_LIMIT = 300000
 """Maximum number of rows in buffer"""

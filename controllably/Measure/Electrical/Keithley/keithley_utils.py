@@ -7,11 +7,14 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+import logging
 
 # Local application imports
 from ...measure_utils import Programmable
 from .keithley_device import KeithleyDevice, DAQ6510
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class Keithley(Programmable):
     """

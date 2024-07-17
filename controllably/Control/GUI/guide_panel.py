@@ -13,18 +13,22 @@ from __future__ import annotations
 import copy
 import importlib
 import inspect
-import markdown
+import logging
 import os
-from tkhtmlview import html_parser
+
 from typing import Callable
 
 # Third party imports
+import markdown
 import PySimpleGUI as sg # pip install PySimpleGUI
+from tkhtmlview import html_parser
 
 # Local application imports
 from ... import modules, Helper
 from .gui_utils import Panel
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 DEFAULT_TEXT = "Select an item to view its documentation."
 DEFAULT_METHOD = "< Methods >"

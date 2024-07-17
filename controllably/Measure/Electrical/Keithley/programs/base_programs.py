@@ -10,6 +10,7 @@ Classes:
 """
 # Standard library imports
 import csv
+import logging
 import pandas as pd
 import time
 from typing import Optional, Protocol
@@ -17,7 +18,9 @@ from typing import Optional, Protocol
 # Local application imports
 from ....program_utils import Program
 from ..keithley_lib import SenseDetails, SourceDetails, CURRENT_LIMITS, VOLTAGE_LIMITS
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class Device(Protocol):
     sense: SenseDetails

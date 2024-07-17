@@ -8,13 +8,16 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 from abc import ABC, abstractmethod
+import logging
 import math
 import numpy as np
 from typing import Optional
 
 # Local application imports
 from ..misc import Layout
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class Mover(ABC):
     """
@@ -743,6 +746,7 @@ class Mover(ABC):
             time2 = (2*distance)* (acceleration + deceleration)/(acceleration*deceleration)
             travel_time = time2**0.5
             # print('less time')
+        travel_time = 0.0 if np.isnan(travel_time) else travel_time
         return travel_time
     
     def _diagnostic(self):

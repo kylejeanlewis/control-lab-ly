@@ -8,12 +8,15 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 from abc import abstractmethod
+import logging
 import numpy as np
 from typing import Optional
 
 # Local application imports
 from ..move_utils import Mover
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class RobotArm(Mover):
     """

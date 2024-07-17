@@ -7,9 +7,12 @@ Functions:
 """
 # Standard library imports
 from functools import wraps
+import logging
 import time
 from typing import Callable, Optional
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 def safety_measures(mode:Optional[str] = None, countdown:int = 3) -> Callable:
     """

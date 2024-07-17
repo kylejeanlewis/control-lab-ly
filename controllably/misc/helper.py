@@ -25,6 +25,7 @@ Other constants and variables:
 from __future__ import annotations
 from datetime import datetime
 import json
+import logging
 import os
 import pandas as pd
 from pathlib import Path
@@ -40,7 +41,9 @@ import yaml                         # pip install pyyaml
 # Local application imports
 from . import decorators
 from . import factory
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 safety_countdown = 3
 """Safety countdown before executing move, in seconds"""

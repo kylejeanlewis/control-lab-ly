@@ -10,6 +10,7 @@ Other constants and variables:
 """
 # Standard library imports
 from __future__ import annotations
+import logging
 import numpy as np
 from threading import Thread
 import time
@@ -21,7 +22,9 @@ import serial # pip install pyserial
 # Local application imports
 from ..liquid_utils import LiquidHandler, Speed
 from . import sartorius_lib as lib
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 QUERIES = lib.StatusQueryCode._member_names_ + lib.StaticQueryCode._member_names_
 """List of all query codes"""

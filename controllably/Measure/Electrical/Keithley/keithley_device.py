@@ -8,6 +8,7 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 import ipaddress
+import logging
 import numpy as np
 import pandas as pd
 import socket
@@ -19,7 +20,9 @@ import pyvisa as visa # pip install -U pyvisa; pip install -U pyvisa-py
 # Local application imports
 from ...instrument_utils import Instrument
 from .keithley_lib import SenseDetails, SourceDetails
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class KeithleyDevice(Instrument):
     """

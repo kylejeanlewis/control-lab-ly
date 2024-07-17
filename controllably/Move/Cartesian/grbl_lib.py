@@ -11,7 +11,10 @@ Other types:
 from collections import namedtuple
 from dataclasses import dataclass
 from enum import Enum
-print(f"Import: OK <{__name__}>")
+import logging
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 Message = namedtuple('Message', ['message','description'])
 """Message is a named tuple for a pair of message and its description"""

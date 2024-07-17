@@ -13,6 +13,7 @@ Other constants and variables:
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from datetime import datetime
+import logging
 import numpy as np
 import pandas as pd
 import pkgutil
@@ -25,7 +26,9 @@ import cv2              # pip install opencv-python
 # Local application imports
 from ..misc import Helper
 from . import image as Image
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 DIMENSION_THRESHOLD = 36
 """Minimum width in pixels of target for detection"""

@@ -10,13 +10,16 @@ Other constants and variables:
 """
 # Standard library imports
 from __future__ import annotations
+import logging
 import math
 import numpy as np
 from typing import Optional
 
 # Local application imports
 from .dobot_utils import Dobot
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 SAFE_HEIGHT = 75
 

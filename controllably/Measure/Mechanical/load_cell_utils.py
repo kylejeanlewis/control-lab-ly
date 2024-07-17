@@ -5,6 +5,7 @@
 # Standard library imports
 from __future__ import annotations
 from datetime import datetime
+import logging
 import numpy as np
 import pandas as pd
 from threading import Thread
@@ -15,7 +16,9 @@ import serial # pip install pyserial
 
 # Local application imports
 from ..measure_utils import Measurer
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 COLUMNS = ('Time', 'Value')
 """Headers for output data from load cell"""

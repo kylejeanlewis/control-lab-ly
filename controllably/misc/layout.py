@@ -9,13 +9,16 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+import logging
 import numpy as np
 from pathlib import Path
 from typing import Optional, Union
 
 # Local application imports
 from . import helper
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class Well:
     """

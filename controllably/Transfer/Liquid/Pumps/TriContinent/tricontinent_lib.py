@@ -10,7 +10,10 @@ Classes:
 # Standard library imports
 from dataclasses import dataclass, field
 from enum import Enum
-print(f"Import: OK <{__name__}>")
+import logging
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class ErrorCode(Enum):
     er0     = 'No error'

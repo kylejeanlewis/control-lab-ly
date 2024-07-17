@@ -9,6 +9,7 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 from dataclasses import dataclass, field
+import logging
 from threading import Thread
 import time
 from typing import Optional
@@ -18,7 +19,9 @@ import serial   # pip install pyserial
 
 # Local application imports
 from ..make_utils import Maker
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 @dataclass
 class LED:

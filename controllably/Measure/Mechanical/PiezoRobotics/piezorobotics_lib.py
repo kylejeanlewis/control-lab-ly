@@ -12,7 +12,10 @@ Classes:
 from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
-print(f"Import: OK <{__name__}>")
+import logging
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class CommandCode(Enum):
     INIT    = 'To initialize after every power-up, make sure there is no sample placed on the pr.DMA'

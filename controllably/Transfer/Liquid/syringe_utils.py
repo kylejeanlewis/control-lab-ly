@@ -8,6 +8,7 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 from functools import wraps
+import logging
 import time
 from typing import Callable, Optional, Protocol, Union
 
@@ -15,7 +16,9 @@ from typing import Callable, Optional, Protocol, Union
 from ...misc import Helper
 from .liquid_utils import LiquidHandler, Speed
 from .syringe_lib import Syringe
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class Pump(Protocol):
     def aspirate(self, *args, **kwargs):

@@ -7,12 +7,15 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+import logging
 import time
 from typing import Optional, Union
 
 # Local application imports
 from .pump_utils import Pump
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class Peristaltic(Pump):
     """

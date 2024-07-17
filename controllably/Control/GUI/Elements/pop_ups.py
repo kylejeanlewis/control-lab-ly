@@ -10,13 +10,15 @@ Functions:
 """
 # Standard library imports
 from __future__ import annotations
+import logging
 from typing import Optional
 
 # Third party imports
 import PySimpleGUI as sg                # pip install PySimpleGUI
 
 # Local application imports
-print(f"Import: OK <{__name__}>")
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 FONT = "Helvetica"
 TEXT_SIZE = 10

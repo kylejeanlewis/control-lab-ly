@@ -8,13 +8,16 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+import logging
 import numpy as np
 import time
 
 # Local application imports
 from ...misc import Helper
 from .cartesian_utils import Gantry
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class Marlin(Gantry):
     """
@@ -83,7 +86,7 @@ class Marlin(Gantry):
             settings = self.getSettings()
             relevant = [s for s in settings if 'M201' in s]
         if len(relevant) == 0:
-            print('Unable to get maximum accelerations.')
+            logger.warning('Unable to get maximum accelerations.')
             return self.max_accels
         accels_str_list = relevant[-1].split('M201 ')[1].split(' ')
         xyz_max_accels = [(a[0].lower(), float(a[1:])) for a in accels_str_list[:3]]
@@ -123,7 +126,7 @@ class Marlin(Gantry):
             settings = self.getSettings()
             relevant = [s for s in settings if 'M203' in s]
         if len(relevant) == 0:
-            print('Unable to get maximum speeds.')
+            logger.warning('Unable to get maximum speeds.')
             return self.max_speeds
         speeds_str_list = relevant[-1].split('M203 ')[1].split(' ')
         xyz_max_speeds = [(s[0].lower(), float(s[1:])) for s in speeds_str_list[:3]]
@@ -139,7 +142,7 @@ class Marlin(Gantry):
             list[str]: hardware settings
         """
         responses = self._query('M503\n')
-        print(responses)
+        logger.info(responses)
         return responses
     
     def getStatus(self):
@@ -166,8 +169,8 @@ class Marlin(Gantry):
             ready = (abs(self.set_temperature - self.temperature)<=self.tolerance)
             self.setFlag(temperature_reached=ready)
             if ready:
-                print(bed_temperatures)
-                print(f"Temperature of {self.set_temperature}°C reached!")
+                logger.info(bed_temperatures)
+                logger.info(f"Temperature of {self.set_temperature}°C reached!")
         return self.set_temperature, self.temperature
     
     def holdTemperature(self, temperature:float, time_s:float):
@@ -179,9 +182,9 @@ class Marlin(Gantry):
             time_s (float): duration in seconds
         """
         self.setTemperature(temperature)
-        print(f"Holding at {self.set_temperature}°C for {time_s} seconds")
+        logger.info(f"Holding at {self.set_temperature}°C for {time_s} seconds")
         time.sleep(time_s)
-        print(f"End of temperature hold")
+        logger.info(f"End of temperature hold")
         return
 
     @Helper.safety_measures
@@ -193,7 +196,7 @@ class Marlin(Gantry):
             self.heights['safe'], self.max_speeds[2]*self.speed_factor, 
             self.max_accels[2], self.max_accels[2]
         )
-        print(f'Move for {move_time}s...')
+        logger.info(f'Move for {move_time}s...')
         time.sleep(move_time)
         
         # Homing cycle
@@ -210,11 +213,11 @@ class Marlin(Gantry):
         # Lift to safe height
         self._query("G90")
         self._query(f"G0 Z{self.heights['safe']}")
-        print(f'Move for {move_time}s...')
+        logger.info(f'Move for {move_time}s...')
         time.sleep(move_time)
         
         self.coordinates = self.home_coordinates
-        print("Homed")
+        logger.info("Homed")
         return True
     
     def isAtTemperature(self) -> bool:
@@ -235,24 +238,23 @@ class Marlin(Gantry):
             blocking (bool, optional): whether to wait for temperature to reach set point. Defaults to True.
         """
         if temperature < self.temperature_range[0] or temperature > self.temperature_range[1]:
-            print(f'Please select a temperature between {self.temperature_range[0]} and {self.temperature_range[1]}°C.')
+            logger.warning(f'Please select a temperature between {self.temperature_range[0]} and {self.temperature_range[1]}°C.')
             return False
         temperature = round( min(max(temperature,0), 110) )
         command = f'M190 S{temperature}\n'
         try:
             self._query(command)
         except Exception as e:
-            print('Unable to heat stage!')
-            if self.verbose:
-                print(e)
+            logger.warning('Unable to heat stage!')
+            logger.exception(e, exc_info=self.verbose)
             return
         else:
             while self.set_temperature != float(temperature):
                 self.getTemperature()
-        print(f"New set temperature at {temperature}°C")
+        logger.info(f"New set temperature at {temperature}°C")
         
         if blocking:
-            print(f"Waiting for temperature to reach {self.set_temperature}°C")
+            logger.info(f"Waiting for temperature to reach {self.set_temperature}°C")
         while not self.isAtTemperature():
             self.getTemperature()
             time.sleep(0.1)
@@ -266,7 +268,7 @@ class Marlin(Gantry):
         self._query("M410")
         time.sleep(1)
         self.coordinates = self.getCoordinates()
-        print(self.coordinates)
+        logger.info(self.coordinates)
         return
     
     # Protected methods

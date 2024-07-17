@@ -9,6 +9,7 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 from dataclasses import dataclass, field
+import logging
 from typing import Protocol, Callable, Any
 
 # Third party imports
@@ -17,7 +18,9 @@ import PySimpleGUI as sg # pip install PySimpleGUI
 # Local application imports
 from .... import modules
 from ..gui_utils import Panel
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 @dataclass
 class ProgramDetails:

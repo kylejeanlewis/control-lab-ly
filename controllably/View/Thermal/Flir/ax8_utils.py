@@ -7,6 +7,7 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+import logging
 import numpy as np
 import struct
 from typing import Optional, Union
@@ -18,7 +19,9 @@ from pyModbusTCP.client import ModbusClient # pip install pyModbusTCP
 # Local application imports
 from ...view_utils import Camera
 from .ax8_lib import SpotmeterRegs
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class AX8(Camera):
     """

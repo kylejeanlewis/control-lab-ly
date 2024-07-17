@@ -3,17 +3,16 @@
 
 """
 # Standard library imports
-import numpy as np
-import time
-from typing import Protocol, Callable
+import logging
 
 # Third party imports
 import PySimpleGUI as sg # pip install PySimpleGUI
 
 # Local application imports
-from ....misc import Helper
 from ..gui_utils import Panel
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class LoaderPanel(Panel):
     """

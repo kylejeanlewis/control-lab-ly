@@ -8,7 +8,10 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 from abc import ABC, abstractmethod
-print(f"Import: OK <{__name__}>")
+import logging
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class Maker(ABC):
     """

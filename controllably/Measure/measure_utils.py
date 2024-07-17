@@ -9,12 +9,15 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 from abc import ABC, abstractmethod
+import logging
 import pandas as pd
 from typing import Callable, Optional, Protocol, Union
 
 # Local application imports
 from .program_utils import ProgramDetails, get_program_details
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class Data(Protocol):
     def plot(self, *args, **kwargs):

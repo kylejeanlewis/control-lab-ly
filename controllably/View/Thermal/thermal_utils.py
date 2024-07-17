@@ -7,12 +7,14 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+import logging
 import numpy as np
 
 # Local application imports
 from ..view_utils import Camera
 # from .Flir.ax8 import Ax8ThermalCamera
-print(f"Import: OK <{__name__}>")
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 # class Thermal(Camera):
 #     """

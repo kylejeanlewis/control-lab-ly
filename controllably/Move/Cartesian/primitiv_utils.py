@@ -8,6 +8,7 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+import logging
 import numpy as np
 import time
 from typing import Optional
@@ -16,7 +17,9 @@ from typing import Optional
 from ...misc import Helper
 from .cartesian_utils import Gantry
 from .grbl_lib import AlarmCode, ErrorCode, SettingCode
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class Grbl(Gantry):
     """
@@ -113,7 +116,7 @@ class Grbl(Gantry):
                 parsed_responses[s] = setting.replace(command, f'[{command}] ' + eval(f'SettingCode.sc{code}.value.message'))
         if self.verbose:
             for r in parsed_responses:
-                print(r)
+                logger.info(r)
         return responses
     
     def getStatus(self) -> list[str]:
@@ -124,7 +127,7 @@ class Grbl(Gantry):
             list[str]: status output
         """
         responses = self._query('?\n')
-        print(responses)
+        logger.info(responses)
         for r in responses:
             if '<' in r and '>' in r:
                 status_string = r.strip()
@@ -143,7 +146,7 @@ class Grbl(Gantry):
                 break
         # self._query("$H\n")
         self.coordinates = self.home_coordinates
-        print("Homed")
+        logger.info("Homed")
         return True
 
     @Helper.safety_measures
@@ -170,7 +173,7 @@ class Grbl(Gantry):
         self._query("~")
         self._query("F10800")
         self.coordinates = self.getCoordinates()
-        print(self.coordinates)
+        logger.info(self.coordinates)
         return
 
     # Protected method(s)
@@ -187,8 +190,7 @@ class Grbl(Gantry):
         try:
             self.device.close()
         except Exception as e:
-            if self.verbose:
-                print(e)
+            logger.exception(e, exc_info=self.verbose)
         else:
             self.device.open()
             # Start grbl 

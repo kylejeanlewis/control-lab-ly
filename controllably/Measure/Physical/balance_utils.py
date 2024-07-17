@@ -12,6 +12,7 @@ Other constants and variables:
 # Standard library imports
 from __future__ import annotations
 from datetime import datetime
+import logging
 import numpy as np
 import pandas as pd
 from threading import Thread
@@ -23,7 +24,9 @@ import serial # pip install pyserial
 # Local application imports
 from ..measure_utils import Measurer
 from ..Mechanical import LoadCell
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 CALIBRATION_FACTOR = 6.862879436681862
 """Empirical factor by which to divide output reading by to get mass in mg"""

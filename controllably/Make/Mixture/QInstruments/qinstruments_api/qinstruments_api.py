@@ -7,6 +7,7 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+import logging
 import numpy as np
 import time
 from typing import Optional, Union
@@ -16,7 +17,9 @@ import serial   # pip install pyserial
 
 # Local application imports
 from .qinstruments_lib import ELMStateCode, ELMStateString, ShakeStateCode, ShakeStateString
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class QInstruments:
     """

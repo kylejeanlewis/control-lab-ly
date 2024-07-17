@@ -18,7 +18,10 @@ Other types:
 from collections import namedtuple
 from dataclasses import dataclass
 from enum import Enum
-print(f"Import: OK <{__name__}>")
+import logging
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 PresetSpeeds = namedtuple('PresetSpeeds', ['s1','s2','s3','s4','s5','s6'])
 """PresetSpeeds is a named tuple for a set of the 6 preset speeds provided with each model"""

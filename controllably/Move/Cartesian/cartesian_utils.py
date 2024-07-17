@@ -8,6 +8,7 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 from abc import abstractmethod
+import logging
 import time
 from typing import Optional
 
@@ -18,7 +19,9 @@ import serial # pip install pyserial
 # Local application imports
 from ...misc import Helper
 from ..move_utils import Mover
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
     
 class Gantry(Mover):
     """
@@ -161,8 +164,7 @@ class Gantry(Mover):
         try:
             self.device.close()
         except Exception as e:
-            if self.verbose:
-                print(e)
+            logger.exception(e, exc_info=self.verbose)
         self.setFlag(connected=False)
         return
     
@@ -190,7 +192,7 @@ class Gantry(Mover):
         
         if all(np.greater_equal(coordinates, l_bound)) and all(np.less_equal(coordinates, u_bound)):
             return not self.deck.isExcluded(self._transform_out(coordinates, tool_offset=True))
-        print(f"Range limits reached! {self.limits}")
+        logger.warning(f"Range limits reached! {self.limits}")
         return False
 
     def moveBy(self,
@@ -267,7 +269,7 @@ class Gantry(Mover):
             accels = self.max_accels[:3]
             
             move_time = self._get_move_wait_time(distances=distances, speeds=speeds, accels=accels)
-            print(f'Move for {move_time}s...')
+            logger.info(f'Move for {move_time}s...')
             time.sleep(move_time)
         self.updatePosition(coordinates=coordinates)
         
@@ -343,14 +345,13 @@ class Gantry(Mover):
         try:
             device = serial.Serial(port, baudrate, timeout=timeout)
         except Exception as e:
-            print(f"Could not connect to {port}")
-            if self.verbose:
-                print(e)
+            logger.warning(f"Could not connect to {port}")
+            logger.exception(e, exc_info=self.verbose)
             self.max_feedrate = np.linalg.norm(self.max_speeds[:2])
         else:
             self.device = device
             time.sleep(2)
-            print(f"Connection opened to {port}")
+            logger.info(f"Connection opened to {port}")
             self.setFlag(connected=True)
         return
 
@@ -371,8 +372,7 @@ class Gantry(Mover):
             self.device.flush()
             self.device.reset_output_buffer()
         except Exception as e:
-            if self.verbose:
-                print(e)
+            logger.exception(e, exc_info=self.verbose)
         return [r.decode().strip() for r in responses]
     
     def _read(self) -> list[str]:
@@ -386,11 +386,10 @@ class Gantry(Mover):
         try:
             responses = self.device.readlines()
         except Exception as e:
-            if self.verbose:
-                print(e)
+            logger.exception(e, exc_info=self.verbose)
         else:
             if self.verbose and len(responses):
-                print(responses)
+                logger.debug(responses)
         return responses
 
     def _write(self, command:str) -> bool:
@@ -405,7 +404,7 @@ class Gantry(Mover):
         """
         command = f"{command}\n" if not command.endswith('\n') else command
         if self.verbose:
-            print(command)
+            logger.debug(command)
         try:
             self.device.write(command.encode('utf-8'))
         except Exception as e:

@@ -8,16 +8,19 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 import inspect
-import numpy as np
+import logging
 from typing import Optional, Protocol, Union
 
 # Third party imports
+import numpy as np
 import PySimpleGUI as sg # pip install PySimpleGUI
 
 # Local application imports
 from ....misc import Helper, modules
 from ..gui_utils import Panel
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 MAX_FUNCTION_BUTTONS = 7
 

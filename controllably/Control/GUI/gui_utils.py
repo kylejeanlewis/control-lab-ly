@@ -12,6 +12,7 @@ Other constants and variables:
 # Standard library imports
 from __future__ import annotations
 from abc import ABC, abstractmethod
+import logging
 from typing import Optional, Union
 
 # Third party imports
@@ -19,7 +20,8 @@ import PySimpleGUI as sg                                            # pip instal
 from PySimpleGUI import WIN_CLOSED, WINDOW_CLOSE_ATTEMPTED_EVENT
 
 # Local application imports
-print(f"Import: OK <{__name__}>")
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 WIDTH, HEIGHT = sg.Window.get_screen_size()
 

@@ -23,6 +23,7 @@ __all__ = [
 ]
 # Standard library imports
 from collections import namedtuple
+import logging
 import os
 from pathlib import Path
 from shutil import copytree
@@ -31,7 +32,9 @@ from typing import Callable, Optional, Union
 # Local application imports
 from . import factory
 from . import helper
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 here = str(Path(__file__).parent.absolute()).replace('\\', '/')
 """Path to this current file"""

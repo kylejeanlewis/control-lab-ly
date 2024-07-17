@@ -14,11 +14,14 @@ Functions:
 """
 # Standard library imports
 from __future__ import annotations
+import logging
 import numpy as np
 
 # Third party imports
 import cv2              # pip install opencv-python
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
     
 def addText(frame:np.ndarray, text:str, position:tuple[int]) -> np.ndarray:
     """

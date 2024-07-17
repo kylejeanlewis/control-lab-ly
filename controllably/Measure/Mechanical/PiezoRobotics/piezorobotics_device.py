@@ -10,6 +10,7 @@ Other constants and variables:
 """
 # Standard library imports
 from __future__ import annotations
+import logging
 import numpy as np
 import pandas as pd
 import time
@@ -21,7 +22,9 @@ import serial # pip install pyserial
 # Local application imports
 from ...instrument_utils import Instrument
 from .piezorobotics_lib import CommandCode, ErrorCode, FrequencyCode, Frequency
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 FREQUENCIES = tuple([frequency.value for frequency in FrequencyCode])
 """Collection of all available frequency values"""

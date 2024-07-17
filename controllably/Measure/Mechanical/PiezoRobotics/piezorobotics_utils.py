@@ -7,12 +7,15 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+import logging
 
 # Local application imports
 from ...measure_utils import Programmable
 from .piezorobotics_device import PiezoRoboticsDevice
 from . import programs
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
         
 class PiezoRobotics(Programmable):
     """

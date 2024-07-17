@@ -14,9 +14,12 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 import inspect
+import logging
 import pandas as pd
 from typing import Callable, Optional, Protocol, Any
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class Device(Protocol):
     ...

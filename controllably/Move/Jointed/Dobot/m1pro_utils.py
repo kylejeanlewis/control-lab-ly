@@ -7,6 +7,7 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+import logging
 import math
 import numpy as np
 import time
@@ -14,7 +15,9 @@ from typing import Optional
 
 # Local application imports
 from .dobot_utils import Dobot
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 class M1Pro(Dobot):
     """

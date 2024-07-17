@@ -10,9 +10,12 @@ Classes:
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+import logging
 import numpy as np
 from typing import Optional, Union
-print(f"Import: OK <{__name__}>")
+
+logger = logging.getLogger(__name__)
+logger.debug(f"Import: OK <{__name__}>")
 
 @dataclass
 class Speed:
