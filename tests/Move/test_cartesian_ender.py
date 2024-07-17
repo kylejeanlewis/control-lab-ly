@@ -2,15 +2,24 @@
 import init
 from controllably.Move.Cartesian import Marlin
 from controllably.Control.GUI.Basic import MoverPanel
+import logging
 import numpy as np
 import random as rd
 import time
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(name)s:%(levelname)s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    filename="basic.log"
+)
+
+# %%
 me = Marlin(
     'COM4', 
     limits=((0,0,0),(220,220,250)),
     home_coordinates=(0,0,30),
-    verbose=True
+    verbose=False
 )
 # me = Ender('COM18', limits=((0,0,0),(100,100,70)), max_speed=10, verbose=True)
 gui = MoverPanel(me, axes='XYZ')
