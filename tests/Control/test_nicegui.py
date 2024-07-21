@@ -2,7 +2,10 @@
 from __future__ import annotations
 import logging
 import nest_asyncio
+import os
+from threading import Thread
 from typing import Optional, Union, Any
+import webbrowser
 
 from nicegui import ui, app
 from nicegui.events import ValueChangeEventArguments
@@ -53,7 +56,12 @@ class Panel:#(ABC):
     - `setFlag`: set flags by using keyword arguments
     """
     
-    _default_flags: dict[str, bool] = dict()
+    _default_flags: dict[str, bool] = dict(
+        built_layout=False,
+        built_page=False,
+        built_panels=False,
+        built_window=False
+    )
     _default_values: dict[str, Any] = dict(
         checkbox1=True,
         notify=False,
@@ -79,13 +87,14 @@ class Panel:#(ABC):
         
         self.flags = self._default_flags.copy()
         self.tool = None
-        self.configure()
-        
         self.values = self._default_values.copy()
+        
+        self._thread: Thread | None = None
+        self.configure()
         return
     
     def __del__(self):
-        self.close()
+        self.close(force=True)
     
     @property
     def page_address(self) -> str:
@@ -94,7 +103,7 @@ class Panel:#(ABC):
     # @abstractmethod
     def getLayout(self):
         """
-        Build `sg.Column` object
+        Build the UI layout
 
         Args:
             title (str, optional): title of layout. Defaults to 'Panel'.
@@ -103,17 +112,20 @@ class Panel:#(ABC):
         Returns:
             sg.Column: Column object
         """
+        if self.flags.get('built_layout', False):
+            return
         with ui.card():
             ui.markdown(f'# {self.name}')
-            # ui.button('Button', on_click=lambda: ui.notify('Click'))
-            # with ui.row():
-            #     ui.checkbox('Checkbox', on_change=self.showValues).bind_value(self.values, 'checkbox1')
-            #     ui.switch('Switch', on_change=self.showValues).bind_value(self.values, 'notify')
-            # ui.radio(['A', 'B', 'C'], value='A', on_change=self.showValues).props('inline').bind_value(self.values, 'radio1')
-            # with ui.row():
-            #     ui.input('Text input', on_change=self.showValues).bind_value(self.values, 'input1')
-            #     ui.select(['One', 'Two'], value='One', on_change=self.showValues).bind_value(self.values, 'select1')
-            # ui.link('And many more...', '/documentation').classes('mt-8')
+            ui.button('Button', on_click=lambda: ui.notify('Click'))
+            with ui.row():
+                ui.checkbox('Checkbox', on_change=self.showValues).bind_value(self.values, 'checkbox1')
+                ui.switch('Switch', on_change=self.showValues).bind_value(self.values, 'notify')
+            ui.radio(['A', 'B', 'C'], value='A', on_change=self.showValues).props('inline').bind_value(self.values, 'radio1')
+            with ui.row():
+                ui.input('Text input', on_change=self.showValues).bind_value(self.values, 'input1')
+                ui.select(['One', 'Two'], value='One', on_change=self.showValues).bind_value(self.values, 'select1')
+            ui.link('And many more...', '/documentation').classes('mt-8')
+        self.setFlag(built_layout=True)
         return
 
     # @abstractmethod
@@ -131,12 +143,17 @@ class Panel:#(ABC):
         return
 
     @staticmethod
-    def close():
+    def close(force: bool = False):
         """Exit the application"""
+        if not force:
+            proceed = input('Once GUI server closed, unable to start up again until kernel is restarted. Proceed? (y/n)')
+            if proceed.strip().lower() != 'y':
+                logger.warning('Abort closing GUI server.')
+                return
         try:
             app.shutdown()
-        except:
-            pass
+        except Exception as e:
+            logger.exception(e)
         return
 
     @classmethod
@@ -145,6 +162,14 @@ class Panel:#(ABC):
         return
 
     def getMultiPanel(self, paginated: bool = False):
+        """
+        Build multi-panel page
+        
+        Args:
+            paginated (bool, optional): whether to have individual pages for each panel. Defaults to False.
+        """
+        if self.flags.get('built_panels', False):
+            return
         if paginated:
             with ui.button_group():
                 for panel in self.panels:
@@ -154,26 +179,34 @@ class Panel:#(ABC):
             with ui.row():
                 for panel in self.panels:
                     panel.getLayout()
-        ui.button('Shutdown', on_click=app.shutdown)
+        ui.button('Shutdown', on_click=self.close)
+        self.setFlag(built_panels=True)
         return
 
     def getPage(self) -> str:
         """Build GUI page"""
+        if self.flags.get('built_page', False):
+            return
         @ui.page(self.page_address)
-        async def get_page():
+        def get_page():
             """Build GUI page"""
             self.getLayout()
-            ui.button('Shutdown', on_click=app.shutdown)
-            await ui.context.client.connected()
-            print('Connected')
-            await ui.context.client.disconnected()
-            print('Disconnected')
+            ui.button('Shutdown', on_click=self.close)
             return
+        self.setFlag(built_page=True)
         return self.page_address
     
     def getWindow(self, paginated: bool = False):
+        """
+        Get landing page window
+
+        Args:
+            paginated (bool, optional): whether to have individual pages for each panel. Defaults to False.
+        """
+        if self.flags.get('built_window', False):
+            return
         @ui.page('/')
-        async def index():
+        def index():
             """Build landing page"""
             if len(self.panels):
                 self.getMultiPanel(paginated=paginated)
@@ -181,6 +214,7 @@ class Panel:#(ABC):
                 self.getPage()
                 ui.navigate.to(f'/{self.name}')
             return
+        self.setFlag(built_window=True)
         return
 
     @classmethod
@@ -225,18 +259,30 @@ class Panel:#(ABC):
         return text
     
     def redirect(self):
+        """Redirect to panel's page address"""
         return ui.navigate.to(self.page_address)
     
-    async def runGUI(self, title:str = 'Control-lab-ly', paginated: bool = False, **kwargs):
+    def runGUI(self, title:str = 'Control-lab-ly', paginated: bool = False, **kwargs):
         """
         Run the GUI loop
 
         Args:
             title (str, optional): title of window. Defaults to 'Application'.
+            paginated (bool, optional): whether to have individual pages for each panel. Defaults to False.
         """
-        self.configure()
-        self.getWindow(paginated=paginated)
-        ui.run(title=title, reload=kwargs.get('reload', False))
+        if self._thread is None:
+            self.configure()
+            self.getWindow(paginated=paginated)
+            kwargs.update(dict(title=title, reload=False))
+            self._thread = Thread(target=ui.run, kwargs=kwargs)
+            self._thread.start()
+        elif isinstance(self._thread, Thread) and self._thread.is_alive():
+            port = os.environ.get('NICEGUI_PORT')
+            host = os.environ.get('NICEGUI_HOST')
+            host = '127.0.0.1' if host == '0.0.0.0' else host
+            webbrowser.open(f'http://{host}:{port}')
+        else:
+            logger.error('Unable to run GUI.')
         return
     
     def setFlag(self, **kwargs):
@@ -249,12 +295,12 @@ class Panel:#(ABC):
         if not all([type(v)==bool for v in kwargs.values()]):
             raise ValueError("Ensure all assigned flag values are boolean.")
         self.flags.update(kwargs)
-        # for key, value in kwargs.items():
-        #     self.flags[key] = value
+        for key, value in kwargs.items():
+            self.flags[key] = value
         return
 
     def showValues(self, event: ValueChangeEventArguments):
-        print(self.values)
+        logger.info(f'{self.name} | {self.values}')
         if self.values['notify']:
             name = type(event.sender).__name__
             ui.notify(f'{name}: {event.value}')
@@ -265,6 +311,6 @@ if __name__ == '__main__':
     left = Panel('Left')
     right = Panel('Right')
     gui = Panel('Outer', panels=[left,right])
-    gui.runGUI(reload=False, paginated=True)
+    gui.runGUI(paginated=True)
 
 # %%
