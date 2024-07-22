@@ -11,6 +11,8 @@ from nicegui import ui, app
 from nicegui.events import ValueChangeEventArguments
 
 logger = logging.getLogger(__name__)
+panels: list[Panel] = []
+logging.basicConfig(level=logging.DEBUG)
 nest_asyncio.apply()
 
 # %%
@@ -56,19 +58,10 @@ class Panel:#(ABC):
     - `setFlag`: set flags by using keyword arguments
     """
     
-    _default_flags: dict[str, bool] = dict(
-        built_layout=False,
-        built_page=False,
-        built_panels=False,
-        built_window=False
-    )
-    _default_values: dict[str, Any] = dict(
-        checkbox1=True,
-        notify=False,
-        radio1='B',
-        input1='type here',
-        select1=None
-    )
+    _default_flags: dict[str, bool] = dict(notify=True)
+    _default_values: dict[str, Any] = dict()
+    _shutdown_dialog = None
+    _used_names: list[str] = []
     def __init__(self, 
         name: str = '', 
         group: Optional[str] = None,
@@ -81,6 +74,7 @@ class Panel:#(ABC):
             name (str, optional): name of panel. Defaults to ''.
             group (Optional[str], optional): name of group. Defaults to None.
         """
+        self._name = ''
         self.name = name
         self.group = group
         self.panels: list[Panel] = panels
@@ -89,16 +83,41 @@ class Panel:#(ABC):
         self.tool = None
         self.values = self._default_values.copy()
         
+        self._host = os.environ.get('NICEGUI_HOST', '0.0.0.0')
+        self._port = int(os.environ.get('NICEGUI_PORT', '8080'))
         self._thread: Thread | None = None
-        self.configure()
+        # self.configure()
         return
     
     def __del__(self):
         self.close(force=True)
     
     @property
+    def host(self) -> str:
+        return '127.0.0.1' if self._host == '0.0.0.0' else self._host
+    
+    @property
+    def name(self) -> str:
+        return self._name
+    @name.setter
+    def name(self, value: str):
+        if value in self._used_names:
+            raise Exception('Named already used. Choose another name for GUI.')
+        self._name = value
+        self._used_names.append(value)
+        return
+    
+    @property
     def page_address(self) -> str:
         return f'/{self.name}'
+    
+    @property
+    def port(self) -> int:
+        return self._port
+    
+    @property
+    def root_address(self) -> str:
+        return f'{self.host}:{self.port}'
     
     # @abstractmethod
     def getLayout(self):
@@ -112,10 +131,15 @@ class Panel:#(ABC):
         Returns:
             sg.Column: Column object
         """
-        if self.flags.get('built_layout', False):
-            return
+        self.values = dict(
+            checkbox1=True,
+            notify=False,
+            radio1='B',
+            input1='type here',
+            select1=None
+        )
         with ui.card():
-            ui.markdown(f'# {self.name}')
+            ui.markdown(f'## {self.name}')
             ui.button('Button', on_click=lambda: ui.notify('Click'))
             with ui.row():
                 ui.checkbox('Checkbox', on_change=self.showValues).bind_value(self.values, 'checkbox1')
@@ -125,11 +149,10 @@ class Panel:#(ABC):
                 ui.input('Text input', on_change=self.showValues).bind_value(self.values, 'input1')
                 ui.select(['One', 'Two'], value='One', on_change=self.showValues).bind_value(self.values, 'select1')
             ui.link('And many more...', '/documentation').classes('mt-8')
-        self.setFlag(built_layout=True)
         return
 
     # @abstractmethod
-    def listenEvents(self, event:str, values:dict[str, str]) -> dict[str, str]:
+    def listenEvents(self, ui_event: ValueChangeEventArguments) -> dict[str, str]:
         """
         Listen to events and act on values
 
@@ -140,10 +163,12 @@ class Panel:#(ABC):
         Returns:
             dict: dictionary of updates
         """
-        return
+        event = type(ui_event.sender).__name__
+        values = self.values
+        return self.showValues(ui_event=ui_event)
 
-    @staticmethod
-    def close(force: bool = False):
+    @classmethod
+    def close(cls, force: bool = False):
         """Exit the application"""
         if not force:
             proceed = input('Once GUI server closed, unable to start up again until kernel is restarted. Proceed? (y/n)')
@@ -151,6 +176,7 @@ class Panel:#(ABC):
                 logger.warning('Abort closing GUI server.')
                 return
         try:
+            cls._shutdown_dialog.close()
             app.shutdown()
         except Exception as e:
             logger.exception(e)
@@ -159,62 +185,98 @@ class Panel:#(ABC):
     @classmethod
     def configure(cls, **kwargs):
         """Configure GUI defaults"""
+        with ui.dialog() as dialog, ui.card():
+            def _close():
+                cls._shutdown_dialog.close()
+                cls.close(force=True)
+                return
+            cls._shutdown_dialog = dialog
+            ui.label('Once GUI server closed, unable to start up again until kernel is restarted. Proceed?')
+            with ui.row().classes('w-full justify-center'):
+                ui.button('No', on_click=cls._shutdown_dialog.close)
+                ui.button('Yes', on_click=_close, color='negative')
         return
 
-    def getMultiPanel(self, paginated: bool = False):
+    def getMultiPanel(self):
         """
         Build multi-panel page
-        
-        Args:
-            paginated (bool, optional): whether to have individual pages for each panel. Defaults to False.
         """
-        if self.flags.get('built_panels', False):
-            return
-        if paginated:
-            with ui.button_group():
-                for panel in self.panels:
-                    panel.getPage()
-                    ui.button(panel.name, on_click=panel.redirect)
-        else:
-            with ui.row():
+        @ui.page(self.page_address)
+        async def get_multi_panel_page():
+            """Build multi panel page"""
+            self.configure()
+            with ui.row().classes('w-full justify-between items-center'):
+                ui.markdown(f'# {self.name}')
+                ui.button('Shutdown', on_click=self._shutdown_dialog.open, color='negative')
+                
+            with ui.row().classes('w-full justify-center'):
                 for panel in self.panels:
                     panel.getLayout()
-        ui.button('Shutdown', on_click=self.close)
-        self.setFlag(built_panels=True)
+                    panel.getPage()
+            
+            await ui.context.client.connected()
+            logging.debug(f'Connected: {self.root_address}{self.page_address}')
+            await ui.context.client.disconnected()
+            logging.debug(f'Disconnected: {self.root_address}{self.page_address}')
+            return
         return
 
     def getPage(self) -> str:
         """Build GUI page"""
-        if self.flags.get('built_page', False):
-            return
         @ui.page(self.page_address)
-        def get_page():
+        async def get_page():
             """Build GUI page"""
+            self.configure()
             self.getLayout()
-            ui.button('Shutdown', on_click=self.close)
+            ui.button('Shutdown', on_click=self._shutdown_dialog.open, color='negative')
+            
+            await ui.context.client.connected()
+            logging.debug(f'Connected: {self.root_address}{self.page_address}')
+            await ui.context.client.disconnected()
+            logging.debug(f'Disconnected: {self.root_address}{self.page_address}')
             return
-        self.setFlag(built_page=True)
         return self.page_address
     
-    def getWindow(self, paginated: bool = False):
+    def getWindow(self):
         """
         Get landing page window
-
-        Args:
-            paginated (bool, optional): whether to have individual pages for each panel. Defaults to False.
         """
-        if self.flags.get('built_window', False):
-            return
+        global panels
+        if len(self.panels):
+            self.getMultiPanel()
+        else:
+            self.getPage()
+        if self not in panels:
+            panels.append(self)
+        
         @ui.page('/')
-        def index():
+        async def index():
             """Build landing page"""
-            if len(self.panels):
-                self.getMultiPanel(paginated=paginated)
-            else:
-                self.getPage()
-                ui.navigate.to(f'/{self.name}')
+            self.configure()
+            with ui.row().classes('w-full justify-between items-center'):
+                ui.markdown(f'# Control-lab-ly')
+                ui.button('Shutdown', on_click=self._shutdown_dialog.open, color='negative')
+                
+            with ui.tabs().classes('w-full') as ui_tabs:
+                tabs = []
+                default_tab = None
+                for panel in panels:
+                    tab = ui.tab(panel.name)
+                    tabs.append(tab)
+                    if panel.name == self.name:
+                        default_tab = tab
+                default_tab = tabs[-1] if default_tab is None else default_tab
+            
+            with ui.tab_panels(ui_tabs, value=default_tab).classes('w-full'):
+                for tab,panel in zip(tabs, panels):
+                    with ui.tab_panel(tab):
+                        if len(panel.panels):
+                            with ui.row().classes('w-full justify-center'):
+                                for panel in panel.panels:
+                                    panel.getLayout()
+                        else:
+                            panel.getLayout()
             return
-        self.setFlag(built_window=True)
         return
 
     @classmethod
@@ -262,25 +324,23 @@ class Panel:#(ABC):
         """Redirect to panel's page address"""
         return ui.navigate.to(self.page_address)
     
-    def runGUI(self, title:str = 'Control-lab-ly', paginated: bool = False, **kwargs):
+    def runGUI(self, title:str = 'Control-lab-ly', **kwargs):
         """
         Run the GUI loop
 
         Args:
             title (str, optional): title of window. Defaults to 'Application'.
-            paginated (bool, optional): whether to have individual pages for each panel. Defaults to False.
         """
-        if self._thread is None:
-            self.configure()
-            self.getWindow(paginated=paginated)
-            kwargs.update(dict(title=title, reload=False))
+        # self.configure()
+        self.getWindow()
+        if 'NICEGUI_HOST' in os.environ:
+            webbrowser.open(f'http://{self.root_address}{self.page_address}')
+        elif self._thread is None:
+            self._port = int(os.environ.get('NICEGUI_PORT', '8080'))
+            kwargs.update(dict(title=title, reload=False, host=self.host, port=self.port, show=False))
             self._thread = Thread(target=ui.run, kwargs=kwargs)
             self._thread.start()
-        elif isinstance(self._thread, Thread) and self._thread.is_alive():
-            port = os.environ.get('NICEGUI_PORT')
-            host = os.environ.get('NICEGUI_HOST')
-            host = '127.0.0.1' if host == '0.0.0.0' else host
-            webbrowser.open(f'http://{host}:{port}')
+            webbrowser.open(f'http://{self.root_address}{self.page_address}')
         else:
             logger.error('Unable to run GUI.')
         return
@@ -299,11 +359,11 @@ class Panel:#(ABC):
             self.flags[key] = value
         return
 
-    def showValues(self, event: ValueChangeEventArguments):
-        logger.info(f'{self.name} | {self.values}')
-        if self.values['notify']:
-            name = type(event.sender).__name__
-            ui.notify(f'{name}: {event.value}')
+    def showValues(self, ui_event: ValueChangeEventArguments):
+        logger.info(f'{self.name} <- {self.values}')
+        if self.flags.get('notify',True):
+            name = type(ui_event.sender).__name__
+            ui.notify(f'{name}: {ui_event.value}')
         return
 
 # %%
@@ -311,6 +371,13 @@ if __name__ == '__main__':
     left = Panel('Left')
     right = Panel('Right')
     gui = Panel('Outer', panels=[left,right])
-    gui.runGUI(paginated=True)
+    gui.runGUI()
 
+# %%
+if __name__ == '__main__':
+    up = Panel('Up')
+    down = Panel('Down')
+    gui2 = Panel('Other', panels=[up,down])
+    gui2.runGUI()
+    
 # %%
