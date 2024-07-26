@@ -1,46 +1,24 @@
 # %%
 from __future__ import annotations
 from abc import ABC, abstractmethod
-import keyboard
 import logging
-import nest_asyncio
-import numpy as np
 import os
 from threading import Thread
-from typing import Optional, Union, Any, Protocol
+from typing import Union, Any, Protocol
 import webbrowser
 
+import keyboard
+import nest_asyncio
 from nicegui import ui, app
 from nicegui.elements.button import Button
 from nicegui.elements.dialog import Dialog
 from nicegui.events import UiEventArguments
+import numpy as np
 
 nest_asyncio.apply()
 
 logger = logging.getLogger(__name__)
-panels: list[Panel] = []
 
-class Mover(Protocol):
-    _place: str
-    heights: dict
-    home_coordinates: tuple
-    tool_position: tuple[np.ndarray]
-    def home(self, *args, **kwargs):
-        ...
-    def move(self, *args, **kwargs):
-        ...
-    def moveTo(self, *args, **kwargs):
-        ...
-    def reset(self, *args, **kwargs):
-        ...
-    def rotateTo(self, *args, **kwargs):
-        ...
-    def safeMoveTo(self, *args, **kwargs):
-        ...
-    def _transform_out(self, *args, **kwargs):
-        ...
-
-# %%
 class Panel:#(ABC):
     """
     Abstract Base Class (ABC) for Panel objects (i.e. GUI panels).
@@ -49,7 +27,7 @@ class Panel:#(ABC):
     ### Constructor
     Args:
         `name` (str, optional): name of panel. Defaults to ''.
-        `group` (Optional[str], optional): name of group. Defaults to None.
+        `group` (str | None, optional): name of group. Defaults to None.
         `panels` (list[Panel], optional): list of sub-panels. Defaults to list().
     
     ### Attributes
@@ -84,21 +62,25 @@ class Panel:#(ABC):
     """
     
     _default_flags: dict[str, bool] = dict(notify=True)
-    _default_values: dict[str, Any] = dict()
+    _default_values: dict[str, Any] = dict(click=None)
+    _loaded_panels: list[Panel] = []
+    _server_shutdown: list[bool] = [False]
     _shutdown_dialog: Dialog | None = None
     _thread: list[Thread] = []
     _used_names: list[str] = []
     def __init__(self, 
+        tool: Any | None = None,
         name: str = '', 
-        group: Optional[str] = None,
-        panels: list[Panel] = list()
+        group: str | None = None,
+        panels: list[Panel] = list(),
+        **kwargs
     ):
         """
         Instantiate the class
 
         Args:
             name (str, optional): name of panel. Defaults to ''.
-            group (Optional[str], optional): name of group. Defaults to None.
+            group (str | None, optional): name of group. Defaults to None.
             panels (list[Panel], optional): list of sub-panels. Defaults to list().
         """
         self._name = ''
@@ -106,8 +88,9 @@ class Panel:#(ABC):
         self.group = group
         self.panels: list[Panel] = panels
         
+        self.elements = dict()
         self.flags = self._default_flags.copy()
-        self.tool = None
+        self.tool = tool
         self.values = self._default_values.copy()
         
         self._host = os.environ.get('NICEGUI_HOST', '0.0.0.0')
@@ -146,6 +129,7 @@ class Panel:#(ABC):
         return f'{self.host}:{self.port}'
     
     # @abstractmethod
+    @ui.refreshable
     def getLayout(self):
         """Build the UI layout"""
         self.values.update(dict(
@@ -169,7 +153,7 @@ class Panel:#(ABC):
         return
 
     # @abstractmethod
-    def listenEvents(self, ui_event: UiEventArguments) -> dict[str, Any]:
+    def listenEvents(self, ui_event: UiEventArguments) -> tuple[str, dict[str, Any]]:
         """
         Listen to events and act on values
 
@@ -177,17 +161,17 @@ class Panel:#(ABC):
             ui_event (UiEventArguments): event object from NiceGUI
 
         Returns:
-            dict: dictionary of values
+            tuple[str, dict[str, Any]]: dictionary of values
         """
         event = type(ui_event.sender).__name__
         if event.lower() == 'button':
             sender: Button = ui_event.sender
             value = sender.text
             self.values.update(dict(click=value))
-        values = self.values
-        
-        ...
-        return self._show_values(ui_event=ui_event)
+        else:
+            self.values.update(dict(click=None))
+        self._show_values(ui_event=ui_event)
+        return event, self.values.copy()
 
     @classmethod
     def close(cls):
@@ -211,6 +195,34 @@ class Panel:#(ABC):
                 ui.button('Close tab', on_click=cls.close)
                 ui.button('Shutdown', on_click=lambda: cls.shutdown(True), color='negative')
         return
+    
+    def getMultiChannelLayout(self):
+        if 'channels' not in dir(self.tool):
+            return self.getLayout()
+        channels: dict = self.tool.channels
+        if len(channels) == 0:
+            return self.getLayout()
+        
+        with ui.carousel(animated=True, arrows=True, navigation=True).props('height=180px'):
+            for channel_id,tool in channels.items():
+                with ui.carousel_slide().classes('p-0'):
+                    self.getLayout() 
+        # with ui.card():
+        #     with ui.tabs().classes('w-full') as ui_tabs:
+        #         tabs = []
+        #         tools = []
+        #         default_tab = None
+        #         for channel_id,tool in channels.items():
+        #             tab = ui.tab(str(channel_id))
+        #             tabs.append(tab)
+        #             tools.append(tool)
+        #         default_tab = tabs[0] if default_tab is None else default_tab
+            
+        #     with ui.tab_panels(ui_tabs, value=default_tab).classes('w-full'):
+        #         for tab,tool in zip(tabs, tools):
+        #             with ui.tab_panel(tab):
+        #                 self.getLayout()
+        return
 
     def getMultiPanel(self):
         """Build multi-panel page"""
@@ -224,7 +236,8 @@ class Panel:#(ABC):
                 
             with ui.row().classes('w-full justify-center'):
                 for panel in self.panels:
-                    panel.getLayout()
+                    # panel.getLayout()
+                    panel.getMultiChannelLayout()
                     panel.getPage()
             
             await ui.context.client.connected()
@@ -240,7 +253,8 @@ class Panel:#(ABC):
         async def get_page():
             """Build GUI page"""
             self.configure()
-            self.getLayout()
+            self.getMultiChannelLayout()
+            # self.getLayout()
             ui.button('✖', on_click=self._shutdown_dialog.open, color='negative')
             
             await ui.context.client.connected()
@@ -257,8 +271,8 @@ class Panel:#(ABC):
             self.getMultiPanel()
         else:
             self.getPage()
-        if self not in panels:
-            panels.append(self)
+        if self not in self._loaded_panels:
+            self._loaded_panels.append(self)
         
         @ui.page('/')
         async def index():
@@ -271,7 +285,7 @@ class Panel:#(ABC):
             with ui.tabs().classes('w-full') as ui_tabs:
                 tabs = []
                 default_tab = None
-                for panel in panels:
+                for panel in self._loaded_panels:
                     tab = ui.tab(panel.name)
                     tabs.append(tab)
                     if panel.name == self.name:
@@ -279,14 +293,16 @@ class Panel:#(ABC):
                 default_tab = tabs[-1] if default_tab is None else default_tab
             
             with ui.tab_panels(ui_tabs, value=default_tab).classes('w-full'):
-                for tab,panel in zip(tabs, panels):
+                for tab,panel in zip(tabs, self._loaded_panels):
                     with ui.tab_panel(tab):
                         if len(panel.panels):
                             with ui.row().classes('w-full justify-center'):
                                 for panel in panel.panels:
-                                    panel.getLayout()
+                                    panel.getMultiChannelLayout()
+                                    # panel.getLayout()
                         else:
-                            panel.getLayout()
+                            panel.getMultiChannelLayout()
+                            # panel.getLayout()
             return
         return
 
@@ -342,7 +358,9 @@ class Panel:#(ABC):
         Args:
             title (str, optional): title of window. Defaults to 'Control-lab-ly'.
         """
-        # self.configure()
+        if self._server_shutdown[0]:
+            logging.error('Server has been shutdown. Kernel restart required.')
+            return
         self.getWindow()
         if 'NICEGUI_HOST' in os.environ:
             webbrowser.open(f'http://{self.root_address}{self.page_address}')
@@ -383,6 +401,7 @@ class Panel:#(ABC):
             cls._shutdown_dialog.close()
             cls.close()
             app.shutdown()
+            cls._server_shutdown = [True]
         except Exception as e:
             logger.exception(e)
         return
@@ -402,25 +421,43 @@ class Panel:#(ABC):
         logger.info(f'{self.name} <- {self.values}')
         return self.values
 
+
+class Mover(Protocol):
+    _place: str
+    heights: dict
+    home_coordinates: tuple
+    tool_position: tuple[np.ndarray]
+    def home(self, *args, **kwargs):
+        ...
+    def move(self, *args, **kwargs):
+        ...
+    def moveTo(self, *args, **kwargs):
+        ...
+    def reset(self, *args, **kwargs):
+        ...
+    def rotateTo(self, *args, **kwargs):
+        ...
+    def safeMoveTo(self, *args, **kwargs):
+        ...
+    def _transform_out(self, *args, **kwargs):
+        ...
+
 class MoverPanel(Panel):
     def __init__(self, 
         mover: Mover | None = None,
         name: str = 'Mover', 
         group: str | None = None, 
         panels: list[Panel] = list(),
-        axes: Union[list, str] = 'XYZabc', 
+        axes: Union[list, str] = 'xyzabc', 
         **kwargs
     ):
-        super().__init__(name, group, panels, **kwargs)
+        super().__init__(name=name, group=group, panels=panels, **kwargs)
         self.tool = mover
+        self.axes = [*axes.lower()]
         
-        self.axes = [*axes]
-        self.buttons = {}
         self.current_attachment = ''
         self.attachment_methods = []
         self.method_map = {}
-        
-        self.flags['update_position'] = True
         return
     
     # Properties
@@ -428,51 +465,122 @@ class MoverPanel(Panel):
     def mover(self) -> Mover:
         return self.tool
     
+    @ui.refreshable
     def getLayout(self):
-        axes = ['X','Y','Z','a','b','c']
-        increments = ['-10','-1','-0.1',0,'+0.1','+1','+10']
-        zpad = ['Z-10','Z-1','Z-0.1','Safe','Z+0.1','Z+1','Z+10']
+        axes = [*'xyzabc']
+        zpad = ['Z+10','Z+1','Z+0.1','Safe','Z-0.1','Z-1','Z-10']
         dpad_positions = {
-            3:'Y+10',
-            10:'Y+1',
-            17:'Y+0.1',
-            21:'X-10',22:'X-1',23:'X-0.1',24:'Home',25:'X+0.1',26:'X+1',27:'X+10',
-            31:'Y-0.1',
-            38:'Y-1',
-            45:'Y-10'
+            3:'Y+10',10:'Y+1',17:'Y+0.1',
+            21:'X-10',22:'X-1',23:'X-0.1',24:'Home',
+            25:'X+0.1',26:'X+1',27:'X+10',
+            31:'Y-0.1',38:'Y-1',45:'Y-10'
         }
+        tool_position = list(np.concatenate(self.mover.tool_position))
+        positions = {axis:value for axis,value in zip(axes,tool_position)}
+        sliders = {axis:value for axis,value in positions.items() if axis in [*'abc']}
+        self.values.update(dict(position=positions, sliders=sliders))
+        
         with ui.card():
             ui.markdown(f'## {self.name}')
-            with ui.row():
-                with ui.grid(rows=7,columns=1).classes('gap-0'):
+            with ui.row().classes('w-full justify-center'):
+                with ui.grid(rows=7,columns=1).classes('gap-0') as grid:
+                    grid.set_visibility(('z' in self.axes))
                     for z in zpad:
                         color = 'accent' if z.lower() == 'safe' else 'primary'
                         ui.button(z,color=color, on_click=self.listenEvents)
                 with ui.grid(rows=7,columns=7).classes('gap-0'):
                     for d in range(7*7):
                         if d in dpad_positions:
-                            color = 'accent' if dpad_positions[d].lower() == 'home' else 'primary'
-                            ui.button(dpad_positions[d], color=color, on_click=self.listenEvents)
+                            button_label = dpad_positions[d].lower()
+                            color = 'accent' if button_label == 'home' else 'primary'
+                            visible = (button_label == 'home') or (button_label[0] in self.axes)
+                            ui.button(button_label, color=color, on_click=self.listenEvents).set_visibility(visible)
                         else:
                             ui.space()
+            for axis,rotations in zip([*'abc'],('yaw','pitch','roll')):
+                if axis not in self.axes:
+                    continue
+                with ui.row().classes('w-full justify-between'):
+                    ui.label(rotations.title())
+                    slider = ui.slider(min=-180,max=180,step=1,value=positions[axis])#, on_change=self.listenEvents)
+                    slider.on('update:model-value', self.listenEvents, throttle=1.0, leading_events=False)
+                    slider.bind_value(self.values['sliders'], axis.lower())
+                    slider.props('label True').classes('w-3/4')
+            with ui.row().classes('w-full justify-center'):
+                for axis in self.axes:
+                    number = ui.number(axis, precision=2, step=0.1).bind_value(self.values['position'], axis.lower())
+                    number.classes('w-1/12')
+            with ui.row().classes('w-full justify-center'):
+                ui.button('Go', on_click=self.listenEvents)
+                ui.button('Clear', on_click=self.listenEvents)
+                ui.button('Reset', on_click=self.listenEvents)
         return
     
-    def listenEvents(self, ui_event: UiEventArguments) -> dict[str, Any]:
-        return super().listenEvents(ui_event)
+    def listenEvents(self, ui_event: UiEventArguments) -> tuple[str, dict[str, Any]]:
+        event, values = super().listenEvents(ui_event=ui_event)
+        axes = [*'xyzabc']
+        tool_position = list(np.concatenate(self.mover.tool_position))
+        
+        _event = event.upper()
+        if _event == 'BUTTON':
+            click = self.values.get('click')
+            _click = click.upper() if click is not None else ''
+            if _click == 'CLEAR':
+                positions = {axis:value for axis,value in zip(axes,tool_position)}
+                logger.debug(f'Reset values to: {positions}')
+                self.values.update(position=positions)
+            elif _click == 'GO':
+                pos_val = self.values.get('position')
+                if pos_val is not None:
+                    position = np.array([pos_val.get(axis,tool_position[i]) for i,axis in enumerate(axes)])
+                    position = position.reshape((2,3))
+                else:
+                    position = self.mover.tool_position
+                logger.debug(f'Go to: {position}')
+                self.mover.safeMoveTo(*position)
+            elif _click == 'HOME':
+                logger.debug('Home')
+                self.mover.home()
+            elif _click == 'RESET':
+                logger.debug('Reset')
+                self.mover.reset()
+            elif _click == 'SAFE':
+                try:
+                    coord = tool_position[:2] + [self.mover.heights['safe']]
+                except (AttributeError,KeyError):
+                    coord = self.mover._transform_out(coordinates=self.mover.home_coordinates, tool_offset=True)
+                    coord = (*tool_position[:2], coord[2])
+                if tool_position[2] >= coord[2]:
+                    print('Already cleared safe height. Staying put...')
+                else:
+                    orientation = tool_position[-3:]
+                    logger.debug('Safe')
+                    self.mover.moveTo(coord, orientation)
+            elif _click[0] in [*'XYZ']:
+                    axis = _click[0].lower()
+                    displacement = float(click[1:])
+                    logger.debug(f"Axes: {axis}; Displacement: {displacement}")
+                    self.mover.move(axis,displacement)
+            else:
+                ...
+            self.getLayout.refresh()
+        
+        elif _event == 'SLIDER':
+            pos_val = self.values.get('sliders')
+            if pos_val is not None:
+                position = np.array([pos_val.get(axis,tool_position[i]) for i,axis in enumerate(axes)])
+                position = position.reshape((2,3))
+            else:
+                position = self.mover.tool_position
+            
+            if not (position[1] == self.mover.tool_position[1]).all():
+                logger.debug(f'Rotate to: {position[1]}')
+                self.mover.rotateTo(position[1])
+            # time.sleep(1)
+            self.getLayout.refresh()
+        
+        else:
+            ...
+        return event, values
 
-# %%
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
-    left = MoverPanel()
-    right = Panel('Right')
-    gui = Panel('Outer', panels=[left,right])
-    gui.runGUI()
-
-# %%
-if __name__ == '__main__':
-    up = Panel('Up')
-    down = Panel('Down')
-    gui2 = Panel('Other', panels=[up,down])
-    gui2.runGUI()
-    
 # %%
