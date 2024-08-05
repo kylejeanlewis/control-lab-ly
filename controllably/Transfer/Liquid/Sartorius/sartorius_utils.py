@@ -710,8 +710,8 @@ class Sartorius(LiquidHandler):
             if not step_interval_limit:
                 continue
             intervals = max(min(step_interval_limit, time_interval_limit), 1)
-            if intervals == 1 and speed != preset:
-                continue
+            # if intervals == 1 and speed != preset:
+            #     continue
             each_steps = volume/self.resolution/intervals
             each_delay = volume*(1/speed - 1/preset)/intervals
             area = 0.5 * (volume**2) * (1/self.resolution) * (1/intervals) * (1/speed - 1/preset)
