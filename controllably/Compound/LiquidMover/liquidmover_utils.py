@@ -31,6 +31,7 @@ class Liquid(Protocol):
 class Mover(Protocol):
     implement_offset: np.ndarray
     speed_factor: float
+    saved_positions: dict
     def home(self, *args, **kwargs):
         ...
     def isFeasible(self, *args, **kwargs):
@@ -201,9 +202,9 @@ class LiquidMoverSetup(CompoundSetup):
         
         if start_tip is not None:
             self.updateStartTip(start_tip=start_tip, slot=slot)
-        well = self.deck.at(slot).wells_list[-len(self.positions[slot])]
+        well = self.deck.at(slot).wells_list[-len(self.mover.saved_positions[slot])]
         print(well.name)
-        next_tip_location, tip_length = self.positions[slot].pop(0)
+        next_tip_location, tip_length = self.mover.saved_positions[slot].pop(0)
         return self.attachTipAt(next_tip_location, tip_length=tip_length, channel=channel)
     
     def attachTipAt(self, 
@@ -309,7 +310,7 @@ class LiquidMoverSetup(CompoundSetup):
             self.liquid.setFlag(tip_on=False)
             raise RuntimeError("There is currently no tip to eject.")
         
-        bin_location,_ = self.positions[slot][0]
+        bin_location,_ = self.mover.saved_positions[slot][0]
         return self.ejectTipAt(bin_location, channel=channel)
     
     def ejectTipAt(self, coordinates:tuple[float], channel:Optional[int] = None) -> tuple[float]:
@@ -368,7 +369,7 @@ class LiquidMoverSetup(CompoundSetup):
         """Go back to the rest position or home"""
         if self.flags['at_rest']:
             return
-        rest_coordinates = self.positions.get('rest', None)
+        rest_coordinates = self.mover.saved_positions.get('rest', None)
         if rest_coordinates is None:
             self.mover.home()
         else:
@@ -432,10 +433,10 @@ class LiquidMoverSetup(CompoundSetup):
             print(f"Received: start_tip={start_tip}; slot={slot}")
             print("Please enter a compatible set of inputs.")
             return
-        self.positions[slot] = [(well.top, well.depth) for well in wells_list]
+        self.mover.saved_positions[slot] = [(well.top, well.depth) for well in wells_list]
         for name in well_names:
             if name == start_tip:
                 break
-            self.positions[slot].pop(0)
+            self.mover.saved_positions[slot].pop(0)
         return
     

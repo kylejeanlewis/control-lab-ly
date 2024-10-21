@@ -154,7 +154,7 @@ class Mover(ABC):
         self.flags = self._default_flags.copy()
         self.heights = self._default_heights.copy()
         self.max_feedrate = 100
-        self.saved_positions: dict[str,Position] = {}
+        self.saved_positions: dict = {}
         self.verbose = verbose
         return
     
