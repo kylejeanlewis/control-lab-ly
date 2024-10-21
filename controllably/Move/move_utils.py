@@ -8,9 +8,14 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 import math
+from typing import Sequence
+
+# Third party imports
 import numpy as np
 from typing import Optional
+from scipy.spatial.transform import Rotation
 
 # Local application imports
 from ..misc import Layout
@@ -127,13 +132,19 @@ class Mover(ABC):
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
         self.deck = deck
-        self._coordinates = coordinates
-        self._orientation = orientation
-        self._home_coordinates = home_coordinates
-        self._home_orientation = home_orientation
-        self._orientate_matrix = orientate_matrix
-        self._translate_vector = translate_vector
-        self._implement_offset = implement_offset
+        self._position = Position(coordinates, Rotation.from_euler('xyz',orientation), 'euler')
+        # self._coordinates = coordinates
+        # self._orientation = orientation
+        
+        self._home_position = Position(home_coordinates, Rotation.from_euler('xyz',home_orientation), 'euler')
+        # self._home_coordinates = home_coordinates
+        # self._home_orientation = home_orientation
+        
+        self._calibration_position = Position(translate_vector, Rotation.from_matrix(orientate_matrix), 'matrix')
+        # self._orientate_matrix = orientate_matrix
+        # self._translate_vector = translate_vector
+        
+        self._implement_offset = Position(implement_offset, Rotation.from_euler('xyz',[0,0,0]), 'euler')
         self._scale = scale
         self._speed_max = speed_max
         self._speed_factor = speed_factor
@@ -144,6 +155,7 @@ class Mover(ABC):
         self.flags = self._default_flags.copy()
         self.heights = self._default_heights.copy()
         self.max_feedrate = 100
+        self.saved_positions: dict[str,Position] = {}
         self.verbose = verbose
         return
     
@@ -297,45 +309,37 @@ class Mover(ABC):
     @property
     def coordinates(self) -> np.ndarray:
         """Current coordinates of the robot"""
-        return np.array(self._coordinates)
+        return self._position.coordinates
     @coordinates.setter
     def coordinates(self, value):
-        if len(value) != 3:
-            raise Exception('Please input x,y,z coordinates')
-        self._coordinates = tuple(value)
+        self._position.coordinates = value
         return
     
     @property
     def home_coordinates(self) -> np.ndarray:
         """Home coordinates for the robot"""
-        return np.array(self._home_coordinates)
+        return self._home_position.coordinates
     @home_coordinates.setter
     def home_coordinates(self, value):
-        if len(value) != 3:
-            raise Exception('Please input x,y,z coordinates')
-        self._home_coordinates = tuple(value)
+        self._home_position.coordinates = value
         return
     
     @property
     def home_orientation(self) -> np.ndarray:
         """Home orientation for the robot"""
-        return np.array(self._home_orientation)
+        return self._home_position.rotation
     @home_orientation.setter
     def home_orientation(self, value):
-        if len(value) != 3:
-            raise Exception('Please input a,b,c angles')
-        self._home_orientation = tuple(value)
+        self._home_position.rotation = value
         return
 
     @property
     def implement_offset(self) -> np.ndarray:
         """Transformation (translation) vector to get from end effector to tool tip"""
-        return np.array(self._implement_offset)
+        return self._implement_offset.coordinates
     @implement_offset.setter
     def implement_offset(self, value):
-        if len(value) != 3:
-            raise Exception('Please input x,y,z offset')
-        self._implement_offset = tuple(value)
+        self._implement_offset.coordinates = value
         return
     
     @property
@@ -358,23 +362,19 @@ class Mover(ABC):
     @property
     def orientate_matrix(self) -> np.ndarray:
         """Transformation (rotation) matrix to get from robot to workspace"""
-        return self._orientate_matrix
+        return self._calibration_position.rotation
     @orientate_matrix.setter
     def orientate_matrix(self, value):
-        if len(value) != 3 or any([len(row)!=3 for row in value]):
-            raise Exception('Please input 3x3 matrix')
-        self._orientate_matrix = np.array(value)
+        self._calibration_position.rotation = value
         return
     
     @property
     def orientation(self) -> np.ndarray:
         """Current orientation of the robot"""
-        return np.array(self._orientation)
+        return self._position.rotation
     @orientation.setter
     def orientation(self, value):
-        if len(value) != 3:
-            raise Exception('Please input a,b,c angles')
-        self._orientation = tuple(value)
+        self._position.rotation = value
         return
     
     @property
@@ -412,12 +412,10 @@ class Mover(ABC):
     @property
     def translate_vector(self) -> np.ndarray:
         """Transformation (translation) vector to get from robot to end effector"""
-        return np.array(self._translate_vector)
+        return self._calibration_position.coordinates
     @translate_vector.setter
     def translate_vector(self, value):
-        if len(value) != 3:
-            raise Exception('Please input x,y,z vector')
-        self._translate_vector = tuple(value)
+        self._calibration_position.coordinates = value
         return
     
     @property
@@ -894,3 +892,52 @@ class Mover(ABC):
         """
         print("`getWorkspacePosition()` to be deprecated. Use `workspace_position` attribute instead.")
         return self.workspace_position
+
+@dataclass
+class Position:
+    _coordinates: Sequence[float]
+    _rotation: Rotation = Rotation.from_matrix(np.identity(3))
+    rotation_type: str = 'matrix'
+    
+    def __post_init__(self):
+        self._coordinates = tuple(self._coordinates)
+        return
+    
+    def __repr__(self):
+        return f"Position {self._coordinates} with ({self.rotation_type}) rotation\n{self.rotation}"
+    
+    @property
+    def coordinates(self):
+        return np.array(self._coordinates)
+    @coordinates.setter
+    def coordinates(self, value):
+        if len(value) != 3:
+            raise Exception('Please input x,y,z coordinates')
+        self._coordinates = tuple(value)
+        return
+    
+    @property
+    def rotation(self):
+        match self.rotation_type:
+            case 'quaternion':
+                return self._rotation.as_quat()
+            case 'matrix':
+                return self._rotation.as_matrix()
+            case 'angle_axis':
+                return self._rotation.as_rotvec()
+            case 'euler':
+                return self._rotation.as_euler('xyz', degrees=True)
+            case 'mrp':
+                return self._rotation.as_mrp()
+            case 'davenport':
+                return self._rotation.as_davenport()
+            case _:
+                raise ValueError(f"Invalid rotation type: {self.rotation_type}")
+        return
+    @rotation.setter
+    def rotation(self, value):
+        if isinstance(value, Rotation):
+            raise Exception('Please input a Rotation object')
+        self._rotation = value
+        return
+    
