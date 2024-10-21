@@ -30,7 +30,7 @@ class Gantry(Mover):
     Args:
         `port` (str): COM port address
         `limits` (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0, 0, 0), (0, 0, 0)).
-        `safe_height` (Optional[float], optional): height at which obstacles can be avoided. Defaults to None.
+        `safe_height` (float|None, optional): height at which obstacles can be avoided. Defaults to None.
     
     ### Properties
     - `limits` (np.ndarray): lower and upper limits of gantry
@@ -57,7 +57,7 @@ class Gantry(Mover):
     def __init__(self, 
         port: str, 
         limits: tuple[tuple[float]] = ((0, 0, 0), (0, 0, 0)), 
-        safe_height: Optional[float] = None, 
+        safe_height: float|None = None, 
         accel_max: Optional[dict[str, float]] = None,
         **kwargs
     ):
@@ -67,7 +67,7 @@ class Gantry(Mover):
         Args:
             port (str): COM port address
             limits (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0, 0, 0), (0, 0, 0)).
-            safe_height (Optional[float], optional): height at which obstacles can be avoided. Defaults to None.
+            safe_height (float|None, optional): height at which obstacles can be avoided. Defaults to None.
         """
         super().__init__(**kwargs)
         self._accel_max = dict(general=np.nan)
@@ -196,7 +196,7 @@ class Gantry(Mover):
     def moveBy(self,
         vector: tuple[float] = (0,0,0), 
         angles: tuple[float] = (0,0,0), 
-        speed_factor: Optional[float] = None,
+        speed_factor: float|None = None,
         **kwargs
     ) -> bool:
         """
@@ -205,7 +205,7 @@ class Gantry(Mover):
         Args:
             vector (tuple[float], optional): x,y,z vector to move in. Defaults to (0,0,0).
             angles (tuple[float], optional): a,b,c angles to move in. Defaults to (0,0,0).
-            speed_factor (Optional[float], optional): speed factor of travel. Defaults to None.
+            speed_factor (float|None, optional): speed factor of travel. Defaults to None.
 
         Returns:
             bool: whether the movement is successful
@@ -217,7 +217,7 @@ class Gantry(Mover):
         coordinates: tuple[float], 
         orientation: Optional[tuple[float]] = None,
         tool_offset: bool = True, 
-        speed_factor: Optional[float] = None, 
+        speed_factor: float|None = None, 
         **kwargs
     ) -> bool:
         """
@@ -227,7 +227,7 @@ class Gantry(Mover):
             coordinates (tuple[float]): x,y,z coordinates to move to
             orientation (Optional[tuple[float]], optional): a,b,c orientation to move to. Defaults to None.
             tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
-            speed_factor (Optional[float], optional): speed factor of travel. Defaults to None.
+            speed_factor (float|None, optional): speed factor of travel. Defaults to None.
 
         Returns:
             bool: whether movement is successful

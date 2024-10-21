@@ -15,10 +15,12 @@ Other constants and variables:
 from __future__ import annotations
 from collections import namedtuple
 import ipaddress
-import numpy as np
 import socket
 import time
-from typing import Optional, Protocol
+from typing import Protocol
+
+# Third party imports
+import numpy as np
 
 # Local application imports
 from ....misc import Factory, Helper
@@ -143,12 +145,12 @@ class Dobot(RobotArm):
         self.setFlag(connected=False)
         return
     
-    def getConfigSettings(self, attributes:Optional[list[str]] = None) -> dict:
+    def getConfigSettings(self, attributes:list[str]|None = None) -> dict:
         """
         Retrieve the robot's configuration
         
         Args:
-            attributes (list[str]): list of attributes to retrieve values from
+            attributes (list[str]|None): list of attributes to retrieve values from
         
         Returns:
             dict: dictionary of robot class and configuration
@@ -207,16 +209,16 @@ class Dobot(RobotArm):
 
     @Helper.safety_measures
     def moveCoordTo(self, 
-        coordinates: Optional[tuple[float]] = None, 
-        orientation: Optional[tuple[float]] = None,
+        coordinates: tuple[float]|None = None, 
+        orientation: tuple[float]|None = None,
         **kwargs
     ) -> bool:
         """
         Absolute Cartesian movement and tool orientation, using robot coordinates
 
         Args:
-            coordinates (Optional[tuple[float]], optional): x,y,z position vector. Defaults to None.
-            orientation (Optional[tuple[float]], optional): a,b,c orientation angles in degrees. Defaults to None.
+            coordinates (tuple[float]|None, optional): x,y,z position vector. Defaults to None.
+            orientation (tuple[float]|None, optional): a,b,c orientation angles in degrees. Defaults to None.
         
         Returns:
             bool: whether movement is successful
@@ -386,14 +388,14 @@ class Dobot(RobotArm):
                 print("Not connected to arm.")
         return
     
-    def toggleAttachment(self, on:bool, attachment_class:Optional[DobotAttachment] = None, channel_map:Optional[dict] = None):
+    def toggleAttachment(self, on:bool, attachment_class:DobotAttachment|None = None, channel_map:dict|None = None):
         """
         Couple or remove Dobot attachment that interfaces with Dobot's digital output
 
         Args:
             on (bool): whether to couple Dobot attachment
-            attachment_class (Optional[DobotAttachment], optional): Dobot attachment to couple. Defaults to None.
-            channel_map (Optional[dict], optional): mapping of digital I/O channel(s). Defaults to None.
+            attachment_class (DobotAttachment|None, optional): Dobot attachment to couple. Defaults to None.
+            channel_map (dict|None, optional): mapping of digital I/O channel(s). Defaults to None.
         """
         if on: # Add attachment
             print("Please secure tool attachment.")

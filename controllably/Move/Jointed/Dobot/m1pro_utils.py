@@ -8,9 +8,9 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 import math
+
+#Third party imports
 import numpy as np
-import time
-from typing import Optional
 
 # Local application imports
 from .dobot_utils import Dobot
@@ -149,12 +149,12 @@ class M1Pro(Dobot):
         new_orientation = np.array(orientation) + np.array(angles)
         return self.moveCoordTo(new_coordinates, new_orientation, **kwargs)
     
-    def retractArm(self, target:Optional[tuple[float]] = None) -> bool:         # NOTE: not implemented
+    def retractArm(self, target:tuple[float]|None = None) -> bool:         # NOTE: not implemented
         """
         Tuck in arm, rotate about base, then extend again
 
         Args:
-            target (Optional[tuple[float]], optional): x,y,z coordinates of destination. Defaults to None.
+            target (tuple[float]|None, optional): x,y,z coordinates of destination. Defaults to None.
 
         Returns:
             bool: whether movement is successful
@@ -248,7 +248,7 @@ class M1Pro(Dobot):
     def _get_move_wait_time(self, 
         distances: np.ndarray, 
         speeds: np.ndarray, 
-        accels: Optional[np.ndarray] = None
+        accels: np.ndarray|None = None
     ) -> float:
         """
         Get the amount of time to wait to complete movement
@@ -256,7 +256,7 @@ class M1Pro(Dobot):
         Args:
             distances (np.ndarray): array of distances to travel
             speeds (np.ndarray): array of axis speeds
-            accels (Optional[np.ndarray], optional): array of axis accelerations. Defaults to None.
+            accels (np.ndarray|None, optional): array of axis accelerations. Defaults to None.
 
         Returns:
             float: wait time to complete travel

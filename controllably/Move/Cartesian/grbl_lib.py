@@ -9,7 +9,6 @@ Other types:
 """
 # Standard library imports
 from collections import namedtuple
-from dataclasses import dataclass
 from enum import Enum
 print(f"Import: OK <{__name__}>")
 

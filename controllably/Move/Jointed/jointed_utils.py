@@ -8,8 +8,9 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 from abc import abstractmethod
+
+# Third party imports
 import numpy as np
-from typing import Optional
 
 # Local application imports
 from ..move_utils import Mover
@@ -22,7 +23,7 @@ class RobotArm(Mover):
     
     ### Constructor
     Args:
-        `safe_height` (Optional[float], optional): height at which obstacles can be avoided. Defaults to None.
+        `safe_height` (float|None, optional): height at which obstacles can be avoided. Defaults to None.
         `retract` (bool, optional): whether to retract arm before movement. Defaults to False.
 
     ### Methods
@@ -52,12 +53,12 @@ class RobotArm(Mover):
         'retract': False
     }
     _place: str = '.'.join(__name__.split('.')[1:-1])
-    def __init__(self, safe_height:Optional[float] = None, retract:bool = False, **kwargs):
+    def __init__(self, safe_height:float|None = None, retract:bool = False, **kwargs):
         """
         Instantiate the class
 
         Args:
-            safe_height (Optional[float], optional): height at which obstacles can be avoided. Defaults to None.
+            safe_height (float|None, optional): height at which obstacles can be avoided. Defaults to None.
             retract (bool, optional): whether to retract arm before movement. Defaults to False.
         """
         super().__init__(**kwargs)
@@ -86,16 +87,16 @@ class RobotArm(Mover):
 
     @abstractmethod
     def moveCoordTo(self, 
-        coordinates: Optional[tuple[float]] = None, 
-        orientation: Optional[tuple[float]] = None,
+        coordinates: tuple[float]|None = None, 
+        orientation: tuple[float]|None = None,
         **kwargs
     ) -> bool:
         """
         Absolute Cartesian movement and tool orientation, using robot coordinates
 
         Args:
-            coordinates (Optional[tuple[float]], optional): x,y,z position vector. Defaults to None.
-            orientation (Optional[tuple[float]], optional): a,b,c orientation angles in degrees. Defaults to None.
+            coordinates (tuple[float]|None, optional): x,y,z position vector. Defaults to None.
+            orientation (tuple[float]|None, optional): a,b,c orientation angles in degrees. Defaults to None.
         
         Returns:
             bool: whether movement is successful
@@ -136,12 +137,12 @@ class RobotArm(Mover):
             raise ValueError('Length of input needs to be 6.')
     
     @abstractmethod
-    def retractArm(self, target: Optional[tuple[float]] = None) -> bool:
+    def retractArm(self, target: tuple[float]|None = None) -> bool:
         """
         Tuck in arm, rotate about base, then extend again
 
         Args:
-            target (Optional[tuple[float]], optional): x,y,z coordinates of destination. Defaults to None.
+            target (tuple[float]|None, optional): x,y,z coordinates of destination. Defaults to None.
 
         Returns:
             bool: whether movement is successful
@@ -193,7 +194,7 @@ class RobotArm(Mover):
     def moveBy(self, 
         vector: tuple[float] = (0,0,0), 
         angles: tuple[float] = (0,0,0), 
-        speed_factor: Optional[float] = None,
+        speed_factor: float|None = None,
         **kwargs
     ) -> bool:
         """
@@ -202,7 +203,7 @@ class RobotArm(Mover):
         Args:
             vector (tuple[float], optional): x,y,z vector to move in. Defaults to (0,0,0).
             angles (tuple[float], optional): a,b,c angles to move in. Defaults to (0,0,0).
-            speed_factor (Optional[float], optional): speed factor of travel. Defaults to None.
+            speed_factor (float|None, optional): speed factor of travel. Defaults to None.
 
         Returns:
             bool: whether movement is successful
@@ -226,10 +227,10 @@ class RobotArm(Mover):
         return ret
 
     def moveTo(self, 
-        coordinates: Optional[tuple[float]] = None, 
-        orientation: Optional[tuple[float]] = None, 
+        coordinates: tuple[float]|None = None, 
+        orientation: tuple[float]|None = None, 
         tool_offset: bool = True, 
-        speed_factor: Optional[float] = None,
+        speed_factor: float|None = None,
         retract: bool = False, 
         **kwargs
     ) -> bool:
@@ -237,10 +238,10 @@ class RobotArm(Mover):
         Move the robot to target position, using workspace coordinates
 
         Args:
-            coordinates (Optional[tuple[float]], optional): x,y,z coordinates to move to. Defaults to None.
-            orientation (Optional[tuple[float]], optional): a,b,c orientation to move to. Defaults to None.
+            coordinates (tuple[float]|None, optional): x,y,z coordinates to move to. Defaults to None.
+            orientation (tuple[float]|None, optional): a,b,c orientation to move to. Defaults to None.
             tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
-            speed_factor (Optional[float], optional): speed factor of travel. Defaults to None.
+            speed_factor (float|None, optional): speed factor of travel. Defaults to None.
             retract (bool, optional): whether to retract arm before movement. Defaults to False.
 
         Returns:
@@ -271,13 +272,13 @@ class RobotArm(Mover):
             self.setSpeedFactor(prevailing_speed_factor)
         return ret
     
-    def rotateBy(self, angles: tuple[float], speed_factor: Optional[float] = None, **kwargs) -> bool:
+    def rotateBy(self, angles: tuple[float], speed_factor: float|None = None, **kwargs) -> bool:
         """
         Relative effector rotation
 
         Args:
             angles (tuple[float]): a,b,c rotation angles in degrees
-            speed_factor (Optional[float], optional): speed factor of travel. Defaults to None.
+            speed_factor (float|None, optional): speed factor of travel. Defaults to None.
             
         Raises:
             Exception: Length of input needs to be 3 or 6
@@ -302,13 +303,13 @@ class RobotArm(Mover):
             self.setSpeedFactor(prevailing_speed_factor)
         return ret
         
-    def rotateTo(self, orientation: tuple[float], speed_factor: Optional[float] = None, **kwargs) -> bool:
+    def rotateTo(self, orientation: tuple[float], speed_factor: float|None = None, **kwargs) -> bool:
         """
         Absolute end effector rotation
 
         Args:
             orientation (tuple[float]): a,b,c orientation angles in degrees
-            speed_factor (Optional[float], optional): speed factor of travel. Defaults to None.
+            speed_factor (float|None, optional): speed factor of travel. Defaults to None.
         
         Raises:
             Exception: Length of input needs to be 3 or 6

@@ -8,8 +8,10 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
-import numpy as np
 import time
+
+# Third party imports
+import numpy as np
 
 # Local application imports
 from ...misc import Helper

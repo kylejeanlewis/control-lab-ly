@@ -8,9 +8,10 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
-import numpy as np
 import time
-from typing import Optional
+
+# Third party imports
+import numpy as np
 
 # Local application imports
 from ...misc import Helper
@@ -174,14 +175,14 @@ class Grbl(Gantry):
         return
 
     # Protected method(s)
-    def _connect(self, port:str, baudrate:int = 115200, timeout:Optional[int] = 0.1):
+    def _connect(self, port:str, baudrate:int = 115200, timeout:int|None = 0.1):
         """
         Connection procedure for tool
 
         Args:
             port (str): COM port address
             baudrate (int, optional): baudrate. Defaults to 115200.
-            timeout (Optional[int], optional): timeout in seconds. Defaults to 0.1.
+            timeout (int|None, optional): timeout in seconds. Defaults to 0.1.
         """
         super()._connect(port, baudrate, timeout)
         try:

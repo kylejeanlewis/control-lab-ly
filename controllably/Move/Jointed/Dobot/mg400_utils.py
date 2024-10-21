@@ -11,7 +11,6 @@ Other constants and variables:
 # Standard library imports
 from __future__ import annotations
 import math
-import numpy as np
 from typing import Optional
 
 # Local application imports
@@ -27,7 +26,7 @@ class MG400(Dobot):
     ### Constructor
     Args:
         `ip_address` (str): IP address of Dobot
-        `safe_height` (Optional[float], optional): height at which obstacles can be avoided. Defaults to SAFE_HEIGHT.
+        `safe_height` (float, optional): height at which obstacles can be avoided. Defaults to SAFE_HEIGHT.
         `retract` (bool, optional): whether to retract arm before movement. Defaults to True.
         `home_coordinates` (tuple[float], optional): home coordinates for the robot. Defaults to (0,300,0).
     
@@ -48,7 +47,7 @@ class MG400(Dobot):
 
         Args:
             ip_address (str): IP address of Dobot
-            safe_height (Optional[float], optional): height at which obstacles can be avoided. Defaults to SAFE_HEIGHT.
+            safe_height (float, optional): height at which obstacles can be avoided. Defaults to SAFE_HEIGHT.
             retract (bool, optional): whether to retract arm before movement. Defaults to True.
             home_coordinates (tuple[float], optional): home coordinates for the robot. Defaults to (0,300,0).
         """
@@ -96,12 +95,12 @@ class MG400(Dobot):
             return False
         return not self.deck.isExcluded(self._transform_out(coordinates, tool_offset=True))
     
-    def retractArm(self, target:Optional[tuple[float]] = None) -> bool:
+    def retractArm(self, target:tuple[float]|None = None) -> bool:
         """
         Tuck in arm, rotate about base, then extend again
 
         Args:
-            target (Optional[tuple[float]], optional): x,y,z coordinates of destination. Defaults to None.
+            target (tuple[float]|None, optional): x,y,z coordinates of destination. Defaults to None.
 
         Returns:
             bool: whether movement is successful
