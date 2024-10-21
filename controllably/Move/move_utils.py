@@ -131,11 +131,11 @@ class Mover(ABC):
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
         self.deck = deck
-        self._position = Position(coordinates, Rotation.from_euler('xyz',orientation), 'euler')
+        self._position = Position(coordinates, Rotation.from_euler('zyx',orientation), 'euler')
         # self._coordinates = coordinates
         # self._orientation = orientation
         
-        self._home_position = Position(home_coordinates, Rotation.from_euler('xyz',home_orientation), 'euler')
+        self._home_position = Position(home_coordinates, Rotation.from_euler('zyx',home_orientation), 'euler')
         # self._home_coordinates = home_coordinates
         # self._home_orientation = home_orientation
         
@@ -143,7 +143,7 @@ class Mover(ABC):
         # self._orientate_matrix = orientate_matrix
         # self._translate_vector = translate_vector
         
-        self._implement_offset = Position(implement_offset, Rotation.from_euler('xyz',[0,0,0]), 'euler')
+        self._implement_offset = Position(implement_offset, Rotation.from_euler('zyx',[0,0,0]), 'euler')
         self._scale = scale
         self._speed_max = speed_max
         self._speed_factor = speed_factor
@@ -925,7 +925,7 @@ class Position:
             case 'angle_axis':
                 return self._rotation.as_rotvec()
             case 'euler':
-                return self._rotation.as_euler('xyz', degrees=True)
+                return self._rotation.as_euler('zyx', degrees=True)
             case 'mrp':
                 return self._rotation.as_mrp()
             case 'davenport':
