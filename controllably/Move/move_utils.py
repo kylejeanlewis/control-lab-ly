@@ -143,7 +143,7 @@ class Mover(ABC):
         # self._orientate_matrix = orientate_matrix
         # self._translate_vector = translate_vector
         
-        self._implement_offset = Position(implement_offset, Rotation.from_euler('zyx',[0,0,0]), 'euler')
+        self._implement_offset = Position(implement_offset)
         self._scale = scale
         self._speed_max = speed_max
         self._speed_factor = speed_factor
@@ -895,8 +895,8 @@ class Mover(ABC):
 @dataclass
 class Position:
     _coordinates: Sequence[float]
-    _rotation: Rotation = Rotation.from_matrix(np.identity(3))
-    rotation_type: str = 'matrix'
+    _rotation: Rotation = Rotation.from_euler('zyx',[0,0,0],degrees=True)
+    rotation_type: str = 'euler'
     
     def __post_init__(self):
         self._coordinates = tuple(self._coordinates)
