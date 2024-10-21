@@ -8,4 +8,5 @@ PySimpleGUI==4.60.5
 PyVISA==1.12.0
 PyVISA-py==0.7.1
 PyYAML==6.0
+scipy==1.6.3
 tkhtmlview==0.2.0
