@@ -17,6 +17,55 @@ from typing import Optional, Union
 from . import helper
 print(f"Import: OK <{__name__}>")
 
+@dataclass
+class Position:
+    _coordinates: Sequence[float]
+    _rotation: Rotation = Rotation.from_euler('zyx',[0,0,0],degrees=True)
+    rotation_type: str = 'euler'
+    
+    def __post_init__(self):
+        self._coordinates = tuple(self._coordinates)
+        return
+    
+    def __repr__(self):
+        return f"Position {self._coordinates} with ({self.rotation_type}) rotation\n{self.rotation}"
+    
+    @property
+    def coordinates(self):
+        return np.array(self._coordinates)
+    @coordinates.setter
+    def coordinates(self, value):
+        if len(value) != 3:
+            raise Exception('Please input x,y,z coordinates')
+        self._coordinates = tuple(value)
+        return
+    
+    @property
+    def rotation(self):
+        match self.rotation_type:
+            case 'quaternion':
+                return self._rotation.as_quat()
+            case 'matrix':
+                return self._rotation.as_matrix()
+            case 'angle_axis':
+                return self._rotation.as_rotvec()
+            case 'euler':
+                return self._rotation.as_euler('zyx', degrees=True)
+            case 'mrp':
+                return self._rotation.as_mrp()
+            case 'davenport':
+                return self._rotation.as_davenport()
+            case _:
+                raise ValueError(f"Invalid rotation type: {self.rotation_type}")
+        return
+    @rotation.setter
+    def rotation(self, value):
+        if isinstance(value, Rotation):
+            raise Exception('Please input a Rotation object')
+        self._rotation = value
+        return
+    
+
 class Well:
     """
     Well represents a single well in a Labware object
