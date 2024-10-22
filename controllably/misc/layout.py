@@ -585,6 +585,9 @@ class Deck:
             self.names[name] = slot
         reference_position = tuple( self.details.get('reference_positions',{}).get(str(slot),((0,0,0),(0,0,0))) )
         # bottom_left_coordinates = tuple( self.details.get('reference_points',{}).get(str(slot),(0,0,0)) )
+        if len(reference_position) != 2 or isinstance(reference_position[0], (int,float)):
+            reference_position = (reference_position, (0,0,0))
+            
         bottom_left_coordinates, orientation = reference_position
         labware = Labware(slot=str(slot), bottom_left_coordinates=bottom_left_coordinates, orientation=orientation, labware_file=labware_file, package=package)
         self._slots[str(slot)] = labware
@@ -623,6 +626,8 @@ class Deck:
         else:
             self.details = layout_dict
         origin_position = self.details.get('origin_position', ((0,0,0),(0,0,0)))
+        if len(origin_position) != 2 or isinstance(origin_position[0], (int,float)):
+            origin_position = (origin_position, (0,0,0))
         self.origin = Position(origin_position[0], Rotation.from_euler('zyx', origin_position[1], degrees=True))
         
         slots = self.details.get('slots', {})
