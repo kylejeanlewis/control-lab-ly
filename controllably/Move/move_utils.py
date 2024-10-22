@@ -8,16 +8,14 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 import math
-from typing import Sequence
 
 # Third party imports
 import numpy as np
 from scipy.spatial.transform import Rotation
 
 # Local application imports
-from ..misc import Layout
+from ..misc.layout import Deck, Position
 print(f"Import: OK <{__name__}>")
 
 class Mover(ABC):
@@ -28,7 +26,7 @@ class Mover(ABC):
     ### Constructor
     Args:
         `coordinates` (tuple[float], optional): current coordinates of the robot. Defaults to (0,0,0).
-        `deck` (Layout.Deck, optional): Deck object for workspace. Defaults to Layout.Deck().
+        `deck` (Deck, optional): Deck object for workspace. Defaults to Deck().
         `home_coordinates` (tuple[float], optional): home coordinates for the robot. Defaults to (0,0,0).
         `home_orientation` (tuple[float], optional): home orientation for the robot. Defaults to (0,0,0).
         `implement_offset` (tuple[float], optional): transformation (translation) vector to get from end effector to tool tip. Defaults to (0,0,0).
@@ -42,7 +40,7 @@ class Mover(ABC):
     
     ### Attributes
     - `connection_details` (dict): dictionary of connection details (e.g. COM port / IP address)
-    - `deck` (Layout.Deck): Deck object for workspace
+    - `deck` (Deck): Deck object for workspace
     - `device` (Callable): device object that communicates with physical tool
     - `flags` (dict[str, bool]): keywords paired with boolean flags
     - `heights` (dict[str, float]): specified height names and values
@@ -100,7 +98,7 @@ class Mover(ABC):
     _place: str = '.'.join(__name__.split('.')[1:-1])
     def __init__(self, 
         coordinates: tuple[float] = (0,0,0),
-        deck: Layout.Deck = Layout.Deck(),
+        deck: Deck = Deck(),
         home_coordinates: tuple[float] = (0,0,0),
         home_orientation: tuple[float] = (0,0,0),
         implement_offset: tuple[float] = (0,0,0),
@@ -118,7 +116,7 @@ class Mover(ABC):
 
         Args:
             coordinates (tuple[float], optional): current coordinates of the robot. Defaults to (0,0,0).
-            deck (Layout.Deck, optional): Deck object for workspace. Defaults to Layout.Deck().
+            deck (Deck, optional): Deck object for workspace. Defaults to Deck().
             home_coordinates (tuple[float], optional): home coordinates for the robot. Defaults to (0,0,0).
             home_orientation (tuple[float], optional): home_orientation for the robot. Defaults to (0,0,0).
             implement_offset (tuple[float], optional): transformation (translation) vector to get from end effector to tool tip. Defaults to (0,0,0).
