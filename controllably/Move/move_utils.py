@@ -108,6 +108,7 @@ class Mover(ABC):
         speed_max: dict[str, float] = dict(general=20),
         speed_factor: float = 1.0,
         translate_vector: tuple[float] = (0,0,0),
+        saved_positions: dict = dict(),
         verbose: bool = False,
         **kwargs
     ):
@@ -152,7 +153,7 @@ class Mover(ABC):
         self.flags = self._default_flags.copy()
         self.heights = self._default_heights.copy()
         self.max_feedrate = 100
-        self.saved_positions: dict = {}
+        self.saved_positions = saved_positions
         self.verbose = verbose
         return
     
