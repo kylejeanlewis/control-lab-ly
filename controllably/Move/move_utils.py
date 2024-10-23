@@ -247,7 +247,7 @@ class Mover(ABC):
         if not self.isFeasible(coordinates):
             return False
         self.coordinates = coordinates
-        self.orientation = orientation
+        self.orientation = Rotation.from_euler('zyx', orientation, degrees=True)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
         speed_change, prevailing_speed_factor = False, self.speed_factor
         if self.speed_factor != speed_factor:
@@ -698,9 +698,10 @@ class Mover(ABC):
             self.coordinates = self.coordinates + np.array(vector)
             
         if orientation is not None:
-            self.orientation = orientation
+            self.orientation = Rotation.from_euler('zyx', orientation, degrees=True)
         else:
-            self.orientation = self.orientation + np.array(angles)
+            orientation = self.orientation + np.array(angles)
+            self.orientation = Rotation.from_euler('zyx', orientation, degrees=True)
         
         print(f'{self.coordinates}, {self.orientation}')
         return
