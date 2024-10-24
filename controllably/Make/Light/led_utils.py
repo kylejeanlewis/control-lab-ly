@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from threading import Thread
 import time
-from typing import Optional
+from typing import Sequence
 
 # Third party imports
 import serial   # pip install pyserial
@@ -126,7 +126,7 @@ class LEDArray(Maker):
     def port(self) -> str:
         return self.connection_details.get('port', '')
     
-    def execute(self, value:int, time_s:int = 0, channel:Optional[int] = None, *args, **kwargs):
+    def execute(self, value:int, time_s:int = 0, channel:int|Sequence[int]|None = None, *args, **kwargs):
         """
         Alias for `setPower()`
         
@@ -139,7 +139,7 @@ class LEDArray(Maker):
         """
         return self.setPower(value=value, time_s=time_s, channel=channel)
     
-    def getPower(self, channel:Optional[int] = None) -> list[int]:
+    def getPower(self, channel:int|Sequence[int]|None = None) -> list[int]:
         """
         Get power level(s) of channel(s)
 
@@ -152,8 +152,10 @@ class LEDArray(Maker):
         power = []
         if channel is None:
             power = [chn.power for chn in self.channels.values()]
-        else:
+        elif isinstance(channel, int) and channel in self.channels:
             power = [self.channels[channel].power]
+        elif isinstance(channel, Sequence):
+            power = [self.channels[chn].power for chn in channel]
         return power
     
     def getTimedChannels(self) -> list[int]:
@@ -178,7 +180,7 @@ class LEDArray(Maker):
         busy = busy | any([chn._duration for chn in self.channels.values()])
         return busy
     
-    def setPower(self, value:int, time_s:int = 0, channel:Optional[int] = None):
+    def setPower(self, value:int, time_s:int = 0, channel:int|Sequence[int]|None = None):
         """
         Set the power value(s) for channel(s)
 
@@ -190,8 +192,12 @@ class LEDArray(Maker):
         if channel is None:
             for chn in self.channels.values():
                 chn.setPower(value, time_s)
-        elif type(channel) is int and channel in self.channels:
+        elif isinstance(channel, int) and channel in self.channels:
             self.channels[channel].setPower(value, time_s)
+        elif isinstance(channel, Sequence):
+            for chn in channel:
+                if chn in self.channels:
+                    self.channels[chn].setPower(value, time_s)
         if time_s:
             self.startTiming()
         else:
@@ -215,7 +221,7 @@ class LEDArray(Maker):
             self._threads['timing_loop'] = thread
         return
     
-    def turnOff(self, channel:Optional[int] = None):
+    def turnOff(self, channel:int|Sequence[int]|None = None):
         """
         Turn off the LED corresponding to the channel(s)
 
