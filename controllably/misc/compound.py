@@ -50,6 +50,10 @@ class Compound:
         _str = f"{self.__class__.__name__} containing:\n{parts}"
         return _str
     
+    def __del__(self):
+        self.shutdown()
+        return
+    
     @classmethod
     def fromConfig(cls, config:dict):
         details = config.pop('details')
