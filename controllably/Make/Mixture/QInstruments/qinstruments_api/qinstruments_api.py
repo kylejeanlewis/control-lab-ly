@@ -1,29 +1,31 @@
-# %% -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 This module surfaces the actions available for the devices from QInstruments.
 
 Classes:
-    QInstruments
+    QInstrumentsDevice
 """
 # Standard library imports
 from __future__ import annotations
 import logging
 import numpy as np
 import time
-from typing import Optional, Union
+from types import SimpleNamespace
+from typing import Any
 
 # Third party imports
-import serial   # pip install pyserial
+import serial       # pip install pyserial
 
 # Local application imports
 from .qinstruments_lib import ELMStateCode, ELMStateString, ShakeStateCode, ShakeStateString
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
-class QInstruments:
+class QInstrumentsDevice:
     """
-    QInstruments surfaces available actions to control devices from QInstruments, including orbital shakers,
+    QInstrumentsDevice surfaces available actions to control devices from QInstruments, including orbital shakers,
     heat plates, and cold plates.
     
     ### Constructor
@@ -52,7 +54,7 @@ class QInstruments:
     - `getErrorList`: returns a list with errors and warnings which can occur during processing
     - `getSerial`: returns the device serial number
     - `getVersion`: returns the firmware version number
-    - `info`: prints the boot screen text
+    - `info`: retrieve the boot screen text
     - `resetDevice`: restarts the controller
     - `setBuzzer`: ring the buzzer for duration in milliseconds
     - `version`: returns the model type and firmware version number
@@ -122,13 +124,13 @@ class QInstruments:
     - `write`: write command to device
     """
     
-    _default_flags: dict[str, bool] = {'busy': False, 'connected': False}
-    def __init__(self, 
-        port: str, 
-        baudrate:int = 9600, 
-        timeout:int = 1, 
-        verbose:bool = False, 
-        **kwargs
+    def __init__(self,
+        port: str|None = None, 
+        baudrate: int = 9600, 
+        timeout: int = 1, 
+        *,
+        init_timeout: int = 5,
+        message_end: str = '\r'
     ):
         """
         Instantiate the class
@@ -139,12 +141,58 @@ class QInstruments:
             timeout (int, optional): timeout in seconds. Defaults to 1.
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
-        self.connection_details = {}
-        self.device = None
-        self.flags = self._default_flags.copy()
+        self.port = port
+        self.baudrate = baudrate
+        self.timeout = timeout
+        self.init_timeout = init_timeout
+        self.message_end = message_end
         self.model = ''
-        self.verbose = verbose
-        self._connect(port=port, baudrate=baudrate, timeout=timeout)
+        self.flags = SimpleNamespace(verbose=False)
+        
+        self.serial = serial.Serial()
+        self.serial.port = self.port
+        self.serial.baudrate = self.baudrate
+        self.serial.timeout = self.timeout
+        return
+    
+    @property
+    def connection_details(self) -> dict:
+        """
+        Get connection details
+
+        Returns:
+            dict: connection details
+        """
+        return {
+            'port': self.port,
+            'baudrate': self.baudrate,
+            'timeout': self.timeout
+        }
+    
+    @property
+    def is_connected(self) -> bool:
+        """
+        Check if the device is connected
+
+        Returns:
+            bool: whether the device is connected
+        """
+        return self.serial.is_open
+    
+    @property
+    def verbose(self) -> bool:
+        """Get verbosity of class"""
+        return self.flags.verbose
+    @verbose.setter
+    def verbose(self, value:bool):
+        """Set verbosity of class"""
+        assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
+        self.flags.verbose = value
+        level = logging.INFO if value else logging.WARNING
+        logger.setLevel(level)
+        for handler in logger.handlers:
+            if isinstance(handler, type(logging.StreamHandler())):
+                handler.setLevel(level)
         return
         
     # Initialization methods
@@ -173,15 +221,15 @@ class QInstruments:
         self.query("flashLed")
         return
 
-    def getCLED(self) -> Optional[bool]:
+    def getCLED(self) -> bool|None:
         """
         Returns the status LED state
         
         Returns:
-            Optional[bool]: whether the LED is enabled
+            bool|None: whether the LED is enabled
         """
         response = self.query("getCLED", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         state = bool(int(response)%2)
         return state
@@ -193,7 +241,7 @@ class QInstruments:
         Returns:
             str: model type
         """
-        return self.query("getDescription", slow=True)
+        return self.query("getDescription", lines=True)
         
     def getErrorList(self) -> list[str]:
         """
@@ -202,7 +250,7 @@ class QInstruments:
         Returns:
             list[str]: list of errors and warnings
         """
-        response = self.query("getErrorList", slow=True)
+        response = self.query("getErrorList", lines=True)
         error_list = response[1:-1].split("; ")
         return error_list
         
@@ -213,7 +261,7 @@ class QInstruments:
         Returns:
             str: device serial number
         """
-        return self.query("getSerial", slow=True)
+        return self.query("getSerial", lines=True)
         
     def getVersion(self) -> str:
         """
@@ -222,13 +270,11 @@ class QInstruments:
         Returns:
             str: firmware version number
         """
-        return self.query("getVersion", slow=True)
+        return self.query("getVersion", lines=True)
         
     def info(self):
-        """Prints the boot screen text"""
-        response = self.query("info", slow=True)
-        print(response)
-        return 
+        """Retrieve the boot screen text"""
+        return self.query("info", lines=True)
         
     def resetDevice(self, timeout:int = 30):
         """
@@ -258,7 +304,7 @@ class QInstruments:
         if 50 <= duration <= 999:
             self.query(f"setBuzzer{int(duration)}")
         else:
-            print("Please input duration of between 50 and 999 milliseconds.")
+            logger.warning("Please input duration of between 50 and 999 milliseconds.")
         return
         
     def version(self) -> str:
@@ -268,7 +314,7 @@ class QInstruments:
         Returns:
             str: model type and firmware version number
         """
-        return self.query("version", slow=True)
+        return self.query("version", lines=True)
     
     # ECO methods
     def leaveEcoMode(self, timeout:int = 5):
@@ -301,187 +347,181 @@ class QInstruments:
         while not response:
             if time.perf_counter() - start_time > timeout:
                 break
-            response = self.read()
+            response = self.read()[0]
         return
         
     # Shaking methods
-    def getShakeAcceleration(self) -> Optional[float]:
+    def getShakeAcceleration(self) -> float|None:
         """
         Returns the acceleration/deceleration value
 
         Returns:
-            Optional[float]: acceleration/deceleration value
+            float|None: acceleration/deceleration value
         """
         response = self.query("getShakeAcceleration", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
         
-    def getShakeAccelerationMax(self) -> Optional[float]:
+    def getShakeAccelerationMax(self) -> float|None:
         """
         Get the maximum acceleration/deceleration time in seconds
 
         Returns:
-            Optional[float]: acceleration/deceleration time in seconds
+            float|None: acceleration/deceleration time in seconds
         """
         response = self.query("getShakeAccelerationMax", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
     
-    def getShakeAccelerationMin(self) -> Optional[float]:
+    def getShakeAccelerationMin(self) -> float|None:
         """
         Get the minimum acceleration/deceleration time in seconds
 
         Returns:
-            Optional[float]: acceleration/deceleration time in seconds
+            float|None: acceleration/deceleration time in seconds
         """
         response = self.query("getShakeAccelerationMin", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
     
-    def getShakeActualSpeed(self) -> Optional[float]:
+    def getShakeActualSpeed(self) -> float|None:
         """
         Returns the current mixing speed
 
         Returns:
-            Optional[float]: current mixing speed
+            float|None: current mixing speed
         """
         response = self.query("getShakeActualSpeed", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
     
-    def getShakeDefaultDirection(self) -> Optional[bool]:
+    def getShakeDefaultDirection(self) -> bool|None:
         """
         Returns the mixing direction when the device starts up
 
         Returns:
-            Optional[bool]: whether mixing direction is counterclockwise
+            bool|None: whether mixing direction is counterclockwise
         """
         response = self.query("getShakeDefaultDirection", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         state = bool(int(response)%2)
         return state
         
-    def getShakeDirection(self) -> Optional[bool]:
+    def getShakeDirection(self) -> bool|None:
         """
         Returns the current mixing direction
 
         Returns:
-            Optional[bool]: whether mixing direction is counterclockwise
+            bool|None: whether mixing direction is counterclockwise
         """
         response = self.query("getShakeDirection", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         state = bool(int(response)%2)
         return state
         
-    def getShakeMaxRpm(self) -> Optional[float]:
+    def getShakeMaxRpm(self) -> float|None:
         """
         Returns the device specific maximum target speed (i.e. hardware limits)
 
         Returns:
-            Optional[float]: maximum target shake speed
+            float|None: maximum target shake speed
         """
         response = self.query("getShakeMaxRpm", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
     
-    def getShakeMinRpm(self) -> Optional[float]:
+    def getShakeMinRpm(self) -> float|None:
         """
         Returns the device specific minimum target speed (i.e. hardware limits)
 
         Returns:
-            Optional[float]: minimum target shake speed
+            float|None: minimum target shake speed
         """
         response = self.query("getShakeMinRpm", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
     
-    def getShakeRemainingTime(self) -> Optional[float]:
+    def getShakeRemainingTime(self) -> float|None:
         """
         Returns the remaining time in seconds if device was started with the command `shakeOnWithRuntime`
 
         Returns:
-            Optional[float]: minimum target shake speed
+            float|None: minimum target shake speed
         """
         response = self.query("getShakeRemainingTime", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
     
-    def getShakeSpeedLimitMax(self) -> Optional[float]:
+    def getShakeSpeedLimitMax(self) -> float|None:
         """
         Returns the upper limit for the target speed
 
         Returns:
-            Optional[float]: upper limit for the target speed
+            float|None: upper limit for the target speed
         """
         response = self.query("getShakeSpeedLimitMax", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
     
-    def getShakeSpeedLimitMin(self) -> Optional[float]:
+    def getShakeSpeedLimitMin(self) -> float|None:
         """
         Returns the lower limit for the target speed
 
         Returns:
-            Optional[float]: lower limit for the target speed
+            float|None: lower limit for the target speed
         """
         response = self.query("getShakeSpeedLimitMin", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
     
-    def getShakeState(self, verbose:bool = True) -> Optional[int]:
+    def getShakeState(self) -> int|None:
         """
         Returns shaker state as an integer
         
-        Args:
-            verbose (bool, optional): whether to print out state. Defaults to True.
-        
         Returns:
-            Optional[int]: shaker state as integer
+            int|None: shaker state as integer
         """
         response = self.query("getShakeState", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         code = f"ss{int(response)}"
-        if verbose and code in ShakeStateCode._member_names_:
-            print(ShakeStateCode[code].value)
+        if code in ShakeStateCode._member_names_:
+            logger.info(ShakeStateCode[code].value)
         return int(response)
         
-    def getShakeStateAsString(self, verbose:bool = True) -> str:
+    def getShakeStateAsString(self) -> str|None:
         """
         Returns shaker state as a string
         
-        Args:
-            verbose (bool, optional): whether to print out state. Defaults to True.
-        
         Returns:
-            Optional[str]: shaker state as string
+            str|None: shaker state as string
         """
         response = self.query("getShakeStateAsString")
         code = response.replace("+","t").replace("-","_")
-        if verbose and code in ShakeStateString._member_names_:
-            print(ShakeStateString[code].value)
+        if code in ShakeStateString._member_names_:
+            logger.info(ShakeStateString[code].value)
         return response
         
-    def getShakeTargetSpeed(self) -> Optional[float]:
+    def getShakeTargetSpeed(self) -> float|None:
         """
         Returns the target mixing speed
 
         Returns:
-            Optional[float]: target mixing speed
+            float|None: target mixing speed
         """
         response = self.query("getShakeTargetSpeed", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
     
@@ -606,87 +646,87 @@ class QInstruments:
         return
     
     # Temperature methods
-    def getTemp40Calibr(self) -> Optional[float]:
+    def getTemp40Calibr(self) -> float|None:
         """
         Returns the offset value at the 40°C calibration point
 
         Returns:
-            Optional[float]: offset value at the 40°C calibration point
+            float|None: offset value at the 40°C calibration point
         """
         response = self.query("getTemp40Calibr", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
     
-    def getTemp90Calibr(self) -> Optional[float]:
+    def getTemp90Calibr(self) -> float|None:
         """
         Returns the offset value at the 90°C calibration point
 
         Returns:
-            Optional[float]: offset value at the 90°C calibration point
+            float|None: offset value at the 90°C calibration point
         """
         response = self.query("getTemp90Calibr", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
     
-    def getTempActual(self) -> Optional[float]:
+    def getTempActual(self) -> float|None:
         """
         Returns the current temperature in celsius
 
         Returns:
-            Optional[float]: current temperature in celsius
+            float|None: current temperature in celsius
         """
         response = self.query("getTempActual", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
         
-    def getTempLimiterMax(self) -> Optional[float]:
+    def getTempLimiterMax(self) -> float|None:
         """
         Returns the upper limit for the target temperature in celsius
 
         Returns:
-            Optional[float]: upper limit for the target temperature in celsius
+            float|None: upper limit for the target temperature in celsius
         """
         response = self.query("getTempLimiterMax", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
     
-    def getTempLimiterMin(self) -> Optional[float]:
+    def getTempLimiterMin(self) -> float|None:
         """
         Returns the lower limit for the target temperature in celsius
 
         Returns:
-            Optional[float]: lower limit for the target temperature in celsius
+            float|None: lower limit for the target temperature in celsius
         """
         response = self.query("getTempLimiterMin", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
     
-    def getTempMax(self) -> Optional[float]:
+    def getTempMax(self) -> float|None:
         """
         Returns the device specific maximum target temperature in celsius (i.e. hardware limits)
 
         Returns:
-            Optional[float]: device specific maximum target temperature in celsius
+            float|None: device specific maximum target temperature in celsius
         """
         response = self.query("getTempMax", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
     
-    def getTempMin(self) -> Optional[float]:
+    def getTempMin(self) -> float|None:
         """
         Returns the device specific minimum target temperature in celsius (i.e. hardware limits)
 
         Returns:
-            Optional[float]: device specific minimum target temperature in celsius
+            float|None: device specific minimum target temperature in celsius
         """
         response = self.query("getTempMin", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
     
@@ -698,20 +738,20 @@ class QInstruments:
             bool: whether temperature control is enabled
         """
         response = self.query("getTempState", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         state = bool(int(response)%2)
         return state
     
-    def getTempTarget(self) -> Optional[float]:
+    def getTempTarget(self) -> float|None:
         """
         Returns the target temperature
 
         Returns:
-            Optional[float]: target temperature
+            float|None: target temperature
         """
         response = self.query("getTempTarget", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         return response
         
@@ -789,7 +829,7 @@ class QInstruments:
             bool: whether ELM self-test is enabled at device startup
         """
         response = self.query("getElmSelftest", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         state = bool(int(response)%2)
         return state
@@ -802,42 +842,36 @@ class QInstruments:
             bool: whether ELM is unlocked after device startup
         """
         response = self.query("getElmStartupPosition", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         state = bool(int(response)%2)
         return state
     
-    def getElmState(self, verbose:bool = True) -> Optional[int]:
+    def getElmState(self) -> int|None:
         """
         Returns the ELM status
         
-        Args:
-            verbose (bool, optional): whether to print out state. Defaults to True.
-        
         Returns:
-            Optional[int]: ELM status as integer
+            int|None: ELM status as integer
         """
         response = self.query("getElmState", numeric=True)
-        if response is np.nan:
+        if response is None:
             return None
         code = f"es{int(response)}"
-        if verbose and code in ELMStateCode._member_names_:
-            print(ELMStateCode[code].value)
+        if code in ELMStateCode._member_names_:
+            logger.info(ELMStateCode[code].value)
         return int(response)
     
-    def getElmStateAsString(self, verbose:bool = True) -> str:
+    def getElmStateAsString(self) -> str|None:
         """
         Returns the ELM status as a string
         
-        Args:
-            verbose (bool, optional): whether to print out state. Defaults to True.
-        
         Returns:
-            Optional[str]: ELM status as string
+            str|None: ELM status as string
         """
         response = self.query("getElmStateAsString")
-        if verbose and response in ELMStateString._member_names_:
-            print(ELMStateString[response].value)
+        if response in ELMStateString._member_names_:
+            logger.info(ELMStateString[response].value)
         return response
     
     def setElmLockPos(self, timeout:int = 5):
@@ -852,7 +886,7 @@ class QInstruments:
         while not response:
             if time.perf_counter() - start_time > timeout:
                 break
-            response = self.read()
+            response = self.read()[0]
         return
     
     def setElmSelftest(self, enable:bool):
@@ -889,41 +923,61 @@ class QInstruments:
         while not response:
             if time.perf_counter() - start_time > timeout:
                 break
-            response = self.read()
+            response = self.read()[0]
         return
     
     # General methods
+    def clear(self):
+        """
+        Clear the input and output buffers
+        """
+        self.serial.reset_input_buffer()
+        self.serial.reset_output_buffer()
+        return
+    
     def connect(self):
-        """Reconnect to device using existing connection details"""
-        return self._connect(**self.connection_details)
+        """
+        Connect to the device
+        """
+        try:
+            self.serial.open()
+            logger.info(f"Connected to {self.port} at {self.baudrate} baud")
+            time.sleep(self.init_timeout)
+        except serial.SerialException as e:
+            logger.error(f"Failed to connect to {self.port} at {self.baudrate} baud")
+            # logger.error(e)
+        self.model = self.getDescription()
+        return
     
     def disconnect(self):
-        """Disconnect from device"""
+        """
+        Disconnect from the device
+        """
         try:
-            self.device.close()
-        except Exception as e:
-            if self.verbose:
-                print(e)
-        self.setFlag(connected=False)
+            self.serial.close()
+            logger.info(f"Disconnected from {self.port}")
+        except serial.SerialException as e:
+            logger.error(f"Failed to disconnect from {self.port}")
+            logger.error(e)
         return
     
     def query(self, 
             command:str, 
             numeric:bool = False, 
-            slow:bool = False, 
+            lines:bool = False, 
             timeout_s:float = 0.3
-        ) -> Union[str, float]:
+        ) -> Any:
         """
         Write command to and read response from device
 
         Args:
             command (str): command string
             numeric(bool, optional): whether to expect a numeric response. Defaults to False.
-            slow (bool, optional): whether to expect a slow response. Defaults to False.
+            lines (bool, optional): whether to expect a slow response. Defaults to False.
             timeout_s (float, optional): duration to wait before timeout. Defaults to 0.3.
         
         Returns:
-            Union[str, float]: response (string / float)
+            str|float|None: response (string / float)
         """
         start_time = time.perf_counter()
         self.write(command)
@@ -931,115 +985,59 @@ class QInstruments:
         while not response:
             if time.perf_counter() - start_time > timeout_s:
                 break
-            time.sleep(timeout_s)
-            if slow:
-                time.sleep(1)
-            response = self.read(slow=slow)
-        # print(time.perf_counter() - start_time)
+            time.sleep(timeout_s + int(lines))
+            response = self.read(lines=lines)
         if response.startswith('u ->'):
             raise AttributeError(f'{self.model} does not have the method: {command}')
-            print(f'{self.model} does not have the method: {command}')
-            if numeric:
-                return np.nan
-            return ''
         if not numeric:
             return response
-        if response.replace('.','',1).replace('-','',1).isdigit():
+        try:
             value = float(response)
             return value
-        print(f"Response value is non-numeric: {repr(response)}")
-        return np.nan
+        except ValueError:
+            logger.warning(f"Unable to parse response: {response!r}")
+        return
 
-    def read(self, slow:bool = False) -> str:
+    def read(self, lines:bool = False) -> str|list[str]:
         """
         Read response from device
         
         Args:
-            slow (bool, optional): whether to expect a slow response. Defaults to False. 
+            lines (bool, optional): whether to expect a slow response. Defaults to False. 
 
         Returns:
             str: response string
         """
-        response = ''
+        data = ''
         try:
-            if slow:
-                response = self.device.read_all()   # response template: <response><\r><\n>
+            if lines:
+                data = self.serial.read_all()       # response template: <response><\r><\n>
+                data = data.decode().strip() 
             else:
-                response = self.device.readline()
-        except Exception as e:
-            if self.verbose:
-                print(e)
-        else:
-            response = response.decode('utf-8').strip()
-            if self.verbose and len(response):
-                print(response)
-        return response
+                data = self.serial.readline().decode().strip()
+            logger.info(f"Received: {data}")
+            self.serial.reset_output_buffer()
+        except serial.SerialException as e:
+            logger.info(f"Failed to receive data")
+        return data
     
-    def setFlag(self, **kwargs):
+    def write(self, data:str) -> bool:
         """
-        Set flags by using keyword arguments
-
-        Kwargs:
-            key, value: (flag name, boolean) pairs
-        """
-        if not all([type(v)==bool for v in kwargs.values()]):
-            raise ValueError("Ensure all assigned flag values are boolean.")
-        self.flags.update(kwargs)
-        # for key, value in kwargs.items():
-        #     self.flags[key] = value
-        return
-    
-    def write(self, command:str) -> bool:
-        """
-        Write command to device
+        Write data to the device
 
         Args:
-            command (str): <command code><value>
-
+            data (str): data to write
+        
         Returns:
-            bool: whether command was sent successfully
+            bool: whether the write was successful
         """
-        fstring = f'{command}\r' # command template: <long_form><\r> | <short_form><\r>
-        # bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
-        if self.verbose:
-            print(fstring)
+        data = f"{data}{self.message_end}" if not data.endswith(self.message_end) else data
         try:
-            # Typical timeout wait is 400ms
-            self.device.write(fstring.encode('utf-8'))
-        except AttributeError:
-            pass
-        except Exception as e:
-            if self.verbose:
-                print(e)
+            self.serial.write(data.encode())
+            logger.info(f"Sent: {data}")
+        except serial.SerialException as e:
+            logger.info(f"Failed to send: {data}")
+            # logger.error(e)
             return False
         return True
-
-    # Protected method(s)
-    def _connect(self, port:str, baudrate:int = 9600, timeout:int = 1):
-        """
-        Connection procedure for tool
-
-        Args:
-            port (str): COM port address
-            baudrate (int, optional): baudrate. Defaults to 9600.
-            timeout (int, optional): timeout in seconds. Defaults to 1.
-        """
-        self.connection_details = {
-            'port': port,
-            'baudrate': baudrate,
-            'timeout': timeout
-        }
-        device = None
-        try:
-            device = serial.Serial(port, baudrate, timeout=timeout)
-            self.device = device
-        except Exception as e:
-            print(f"Could not connect to {port}")
-            if self.verbose:
-                print(e)
-        else:
-            print(f"Connection opened to {port}")
-            time.sleep(5)
-            self.model = self.getDescription()
-        return
     
