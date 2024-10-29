@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
 from __future__ import annotations
-from logging import getLogger
+import gc
+import logging
 import socket
+import time
+from types import SimpleNamespace
+from typing import Protocol, Any
 import uuid
+import weakref
 
 # Third party imports
 import serial                       # pip install pyserial
@@ -12,8 +17,9 @@ import serial.tools.list_ports
 # Local application imports
 from . import factory
 
-logger = getLogger(__name__)
-logger.info(f"Import: OK <{__name__}>")
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
+logger.debug(f"Import: OK <{__name__}>")
 
 def get_addresses(registry:dict|None) -> dict|None:
     """
@@ -78,11 +84,52 @@ def get_ports() -> list[str]:
         logger.warning("No ports detected!")
     return ports
 
+class Device(Protocol):
+    """
+    Protocol for device classes
+    """
+    connection_details: dict
+    is_connected: bool
+    verbose: bool
+    def clear(self):
+        """Clear the input and output buffers"""
+        raise NotImplementedError
+
+    def connect(self):
+        """Connect to the device"""
+        raise NotImplementedError
+
+    def disconnect(self):
+        """Disconnect from the device"""
+        raise NotImplementedError
+
+    def query(self, data:str) -> Any:
+        """Query the device"""
+        raise NotImplementedError
+
+    def read(self, **kwargs) -> str|list[str]:
+        """Read data from the device"""
+        raise NotImplementedError
+
+    def write(self, data:str) -> bool:
+        """Write data to the device"""
+        raise NotImplementedError
+
+
 class SerialDevice:
     """
     Class for handling serial devices
     """
-    def __init__(self, port:str, baudrate:int, timeout:int=1):
+    
+    def __init__(self,
+        port: str|None = None, 
+        baudrate: int = 9600, 
+        timeout: int = 1, 
+        init_timeout: int = 2,
+        message_end: str = '\n',
+        *,
+        simulation: bool = False
+    ):
         """
         Constructor for SerialDevice
 
@@ -90,11 +137,111 @@ class SerialDevice:
             port (str): port for the device
             baudrate (int): baudrate for the device
             timeout (int, optional): timeout for the device. Defaults to 1.
+            init_timeout (int, optional): timeout for initialization. Defaults to 2.
         """
+        if hasattr(self,'_port'):
+            print(len(gc.get_referrers(self)))
+            return
+        self._port = ''
+        self._baudrate = 0
+        self._timeout = 0
+        self.init_timeout = init_timeout
+        self.message_end = message_end
+        self.flags = SimpleNamespace(verbose=False, connected=False, simulation=simulation)
+        
+        self.serial = serial.Serial()
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
-        self.device: serial.Serial|None = None
+        return
+    
+    def __repr__(self):
+        return f"{super().__repr__()} ref={len(gc.get_referrers(self))}"
+    
+    def __del__(self):
+        self.disconnect()
+        return
+    
+    @property
+    def port(self) -> str:
+        """Get port for the device"""
+        return self._port
+    @port.setter
+    def port(self, value:str):
+        """Set port for the device"""
+        self._port = value
+        self.serial.port = value
+        return
+    
+    @property
+    def baudrate(self) -> int:
+        """Get baudrate for the device"""
+        return self._baudrate
+    @baudrate.setter
+    def baudrate(self, value:int):
+        """Set baudrate for the device"""
+        self._baudrate = value
+        self.serial.baudrate = value
+        return
+    
+    @property
+    def timeout(self) -> int:
+        """Get timeout for the device"""
+        return self._timeout
+    @timeout.setter
+    def timeout(self, value:int):
+        """Set timeout for the device"""
+        self._timeout = value
+        self.serial.timeout = value
+        return
+    
+    @property
+    def connection_details(self) -> dict:
+        """
+        Get connection details
+
+        Returns:
+            dict: connection details
+        """
+        return {
+            'port': self.port,
+            'baudrate': self.baudrate,
+            'timeout': self.timeout
+        }
+    
+    @property
+    def is_connected(self) -> bool:
+        """
+        Check if the device is connected
+
+        Returns:
+            bool: whether the device is connected
+        """
+        connected = self.flags.connected if self.flags.simulation else self.serial.is_open
+        return connected
+    
+    @property
+    def verbose(self) -> bool:
+        """Get verbosity of class"""
+        return self.flags.verbose
+    @verbose.setter
+    def verbose(self, value:bool):
+        """Set verbosity of class"""
+        assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
+        self.flags.verbose = value
+        level = logging.INFO if value else logging.WARNING
+        logger.setLevel(level)
+        for handler in logger.handlers:
+            if isinstance(handler, type(logging.StreamHandler())):
+                handler.setLevel(level)
+        return
+    
+    def clear(self):
+        """
+        Clear the input and output buffers
+        """
+        self.serial.reset_input_buffer()
+        self.serial.reset_output_buffer()
         return
 
     def connect(self):
@@ -102,11 +249,16 @@ class SerialDevice:
         Connect to the device
         """
         try:
-            self.device = serial.Serial(port=self.port, baudrate=self.baudrate, timeout=self.timeout)
-            logger.info(f"Connected to {self.port} at {self.baudrate} baud")
+            if self.is_connected:
+                return
+            self.serial.open()
         except serial.SerialException as e:
             logger.error(f"Failed to connect to {self.port} at {self.baudrate} baud")
-            logger.error(e)
+            logger.debug(e)
+        else:
+            logger.info(f"Connected to {self.port} at {self.baudrate} baud")
+            time.sleep(self.init_timeout)
+        self.flags.connected = True
         return
 
     def disconnect(self):
@@ -114,14 +266,18 @@ class SerialDevice:
         Disconnect from the device
         """
         try:
-            self.device.close()
-            logger.info(f"Disconnected from {self.port}")
+            if not self.is_connected:
+                return
+            self.serial.close()
         except serial.SerialException as e:
             logger.error(f"Failed to disconnect from {self.port}")
-            logger.error(e)
+            logger.debug(e)
+        else:
+            logger.info(f"Disconnected from {self.port}")
+        self.flags.connected = False
         return
     
-    def query(self, data:str) -> list[str]:
+    def query(self, data:Any) -> Any:
         """
         Query the device
 
@@ -131,25 +287,29 @@ class SerialDevice:
         Returns:
             list[str]: data read from the device
         """
-        self.write(data)
-        return self.read()
+        ret = self.write(str(data))
+        if ret:
+            return self.read()
+        return
     
-    def read(self) -> list[str]:
+    def read(self, lines:bool = False) -> str|list[str]:
         """
         Read data from the device
 
         Returns:
             list[str]: data read from the device
         """
-        data = []
+        data = ''
         try:
-            data = self.device.readlines()
-            data = [d.decode().strip() for d in data]
+            if lines:
+                data = self.serial.readlines()
+                data = [d.decode().strip() for d in data]
+            else:
+                data = self.serial.readline().decode().strip()
             logger.info(f"Received: {data}")
-            self.device.reset_output_buffer()
+            self.serial.reset_output_buffer()
         except serial.SerialException as e:
-            logger.error(f"Failed to receive data")
-            logger.error(e)
+            logger.info(f"Failed to receive data")
         return data
 
     def write(self, data:str) -> bool:
@@ -162,13 +322,13 @@ class SerialDevice:
         Returns:
             bool: whether the write was successful
         """
-        data = f"{data}\n" if not data.endswith('\n') else data
+        assert isinstance(data, str), "Ensure data is a string"
+        data = f"{data}{self.message_end}" if not data.endswith(self.message_end) else data
         try:
-            self.device.write(data.encode())
+            self.serial.write(data.encode())
             logger.info(f"Sent: {data}")
         except serial.SerialException as e:
-            logger.error(f"Failed to send: {data}")
-            logger.error(e)
+            logger.info(f"Failed to send: {data}")
             return False
         return True
 
@@ -177,7 +337,7 @@ class SocketDevice:
     """
     Class for handling socket devices
     """
-    def __init__(self, host:str, port:int, timeout:int=1):
+    def __init__(self, host:str, port:int, timeout:int=1, *, simulation:bool=False):
         """
         Constructor for SocketDevice
 
@@ -189,7 +349,60 @@ class SocketDevice:
         self.host = host
         self.port = port
         self.timeout = timeout
-        self.device: socket.socket|None = None
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.flags = SimpleNamespace(verbose=False, connected=False, simulation=simulation)
+        
+        self.socket.settimeout(self.timeout)
+        return
+
+    @property
+    def connection_details(self) -> dict:
+        """
+        Get connection details
+
+        Returns:
+            dict: connection details
+        """
+        return {
+            'host': self.host,
+            'port': self.port,
+            'timeout': self.timeout
+        }
+    
+    @property
+    def is_connected(self) -> bool:
+        """
+        Check if the device is connected
+
+        Returns:
+            bool: whether the device is connected
+        """
+        connected = self.flags.connected if self.flags.simulation else (self.socket.fileno() != -1)
+        return connected
+    
+    @property
+    def verbose(self) -> bool:
+        """Get verbosity of class"""
+        return self.flags.verbose
+    @verbose.setter
+    def verbose(self, value:bool):
+        """Set verbosity of class"""
+        assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
+        self.flags.verbose = value
+        level = logging.INFO if value else logging.WARNING
+        logger.setLevel(level)
+        for handler in logger.handlers:
+            if isinstance(handler, type(logging.StreamHandler())):
+                handler.setLevel(level)
+        return
+    
+    def clear(self):
+        """
+        Clear the input and output buffers
+        """
+        self.socket.settimeout(0)
+        self.socket.recv(1024)
+        self.socket.settimeout(self.timeout)
         return
 
     def connect(self):
@@ -197,13 +410,15 @@ class SocketDevice:
         Connect to the device
         """
         try:
-            self.device = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.device.settimeout(self.timeout)
-            self.device.connect((self.host, self.port))
-            logger.info(f"Connected to {self.host} at {self.port}")
+            if self.is_connected:
+                return
+            self.socket.connect((self.host, self.port))
         except socket.error as e:
             logger.error(f"Failed to connect to {self.host} at {self.port}")
-            logger.error(e)
+            logger.debug(e)
+        else:
+            logger.info(f"Connected to {self.host} at {self.port}")
+        self.flags.connected = True
         return
 
     def disconnect(self):
@@ -211,14 +426,18 @@ class SocketDevice:
         Disconnect from the device
         """
         try:
-            self.device.close()
-            logger.info(f"Disconnected from {self.host}")
+            if not self.is_connected:
+                return
+            self.socket.close()
         except socket.error as e:
             logger.error(f"Failed to disconnect from {self.host}")
-            logger.error(e)
+            logger.debug(e)
+        else:
+            logger.info(f"Disconnected from {self.host}")
+        self.flags.connected = False
         return
     
-    def query(self, data:str) -> list[str]:
+    def query(self, data:str) -> Any:
         """
         Query the device
 
@@ -231,7 +450,7 @@ class SocketDevice:
         self.write(data)
         return self.read()
     
-    def read(self) -> list[str]:
+    def read(self) -> str|list[str]:
         """
         Read data from the device
 
@@ -240,11 +459,10 @@ class SocketDevice:
         """
         data = []
         try:
-            data = self.device.recv(1024).decode().strip().split('\n')
+            data = self.socket.recv(1024).decode().strip().split('\n')
             logger.info(f"Received: {data}")
         except socket.error as e:
-            logger.error(f"Failed to receive data")
-            logger.error(e)
+            logger.info(f"Failed to receive data")
         return data
 
     def write(self, data:str) -> bool:
@@ -259,11 +477,10 @@ class SocketDevice:
         """
         data = f"{data}\n" if not data.endswith('\n') else data
         try:
-            self.device.sendall(data.encode())
+            self.socket.sendall(data.encode())
             logger.info(f"Sent: {data}")
         except socket.error as e:
-            logger.error(f"Failed to send: {data}")
-            logger.error(e)
+            logger.info(f"Failed to send: {data}")
         return False
 
 
@@ -272,7 +489,7 @@ class DeviceFactory:
     Factory class for creating devices
     """
     @staticmethod
-    def createDevice(device_type:str, *args, **kwargs) -> SerialDevice|SocketDevice|None:
+    def createDevice(device_type:str, *args, **kwargs) -> Device:
         """
         Create a device
 
@@ -280,19 +497,12 @@ class DeviceFactory:
             device_type (str): type of device to create
 
         Returns:
-            SerialDevice|SocketDevice|None: created device
+            Device: created device
         """
-        match device_type:
-            case 'serial':
-                return SerialDevice(*args, **kwargs)
-            case 'socket':
-                return SocketDevice(*args, **kwargs)
-            case _:
-                logger.warning(f"Unknown device type: {device_type}")
-        return None
+        return device_type(*args, **kwargs)
     
     @staticmethod
-    def createDeviceFromDict(device_dict:dict) -> SerialDevice|SocketDevice|None:
+    def createDeviceFromDict(device_dict:dict) -> Device:
         """
         Create a device from a dictionary
 
@@ -300,11 +510,19 @@ class DeviceFactory:
             device_dict (dict): dictionary containing device details
 
         Returns:
-            SerialDevice|SocketDevice|None: created device
+            Device: created device
         """
-        return DeviceFactory.createDevice(device_dict['type'], **device_dict['details'])
+        device_type = device_dict.pop('device_type', None)
+        if device_type is not None:
+            assert callable(device_type), "Ensure device_type is a callable class"
+            return DeviceFactory.createDevice(device_type, **device_dict)
+        if 'baudrate' in device_dict:
+            device_type = SerialDevice
+        elif 'host' in device_dict:
+            device_type = SocketDevice
+        return DeviceFactory.createDevice(device_type, **device_dict)
 
 
-__where__ = "misc.Connections"
+__where__ = "misc.Connection"
 from .factory import include_this_module
 include_this_module(get_local_only=True)
