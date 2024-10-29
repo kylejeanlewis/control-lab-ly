@@ -34,6 +34,7 @@ from . import factory
 from . import helper
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 here = str(Path(__file__).parent.absolute()).replace('\\', '/')

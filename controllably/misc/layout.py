@@ -18,6 +18,7 @@ from typing import Optional, Union
 from . import helper
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 class Well:

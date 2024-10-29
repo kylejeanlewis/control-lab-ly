@@ -43,6 +43,7 @@ from . import decorators
 from . import factory
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 safety_countdown = 3

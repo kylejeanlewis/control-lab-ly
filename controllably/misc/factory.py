@@ -30,6 +30,7 @@ from typing import Callable, Optional
 
 # Local application imports
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 HOME_PACKAGES = ['controllably','lab']
