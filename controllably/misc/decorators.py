@@ -8,12 +8,13 @@ Functions:
 # Standard library imports
 from enum import Enum
 from functools import wraps
-from logging import getLogger
+import logging
 import time
 from typing import Callable
 
-logger = getLogger(__name__)
-logger.info(f"Import: OK <{__name__}>")
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
+logger.debug(f"Import: OK <{__name__}>")
 
 class Safety(Enum):
     """
