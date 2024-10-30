@@ -1,4 +1,4 @@
-# %% -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 This module holds the base class for maker tools.
 
@@ -7,13 +7,18 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
-from abc import ABC, abstractmethod
+from copy import deepcopy
 import logging
+from types import SimpleNamespace
+
+# Local application imports
+from ..misc.connection import DeviceFactory
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
-class Maker(ABC):
+class Maker:
     """
     Abstract Base Class (ABC) for Maker objects (i.e. tools that process materials / samples).
     ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
@@ -33,7 +38,6 @@ class Maker(ABC):
     #### Abstract
     - `execute`: execute task
     - `shutdown`: shutdown procedure for tool
-    - `_connect`: connection procedure for tool
     #### Public
     - `connect`: establish connection with device
     - `disconnect`: disconnect from device
@@ -43,91 +47,81 @@ class Maker(ABC):
     - `setFlag`: set flags by using keyword arguments
     """
     
-    _default_flags: dict[str, bool] = {'busy': False, 'connected': False}
-    def __init__(self, verbose:bool = False, **kwargs):
+    _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, verbose=False)
+    def __init__(self, *, verbose:bool = False, **kwargs):
         """
         Instantiate the class
 
         Args:
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
-        self.channel = 0
-        self.connection_details = {}
-        self.device = None
-        self.flags = self._default_flags.copy()
+        self.device = DeviceFactory.createDeviceFromDict(kwargs)
+        self.flags: SimpleNamespace = deepcopy(self._default_flags)
         self.verbose = verbose
         return
     
     def __del__(self):
         self.shutdown()
-        
-    @abstractmethod
+        return
+    
+    @property
+    def connection_details(self) -> dict:
+        """Get connection details"""
+        return self.device.connection_details
+    
+    @property
+    def is_busy(self) -> bool:
+        """Check and return whether the device is busy"""
+        return self.flags.busy
+    
+    @property
+    def is_connected(self) -> bool:
+        """Get connection status"""
+        return self.device.is_connected
+    
+    @property
+    def verbose(self) -> bool:
+        """Get verbosity of class"""
+        return self.flags.verbose
+    @verbose.setter
+    def verbose(self, value:bool):
+        """Set verbosity of class"""
+        assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
+        self.flags.verbose = value
+        self.device.verbose = value
+        level = logging.INFO if value else logging.WARNING
+        logger.setLevel(level)
+        for handler in logger.handlers:
+            if isinstance(handler, type(logging.StreamHandler())):
+                handler.setLevel(level)
+        return
+    
+    def connect(self):
+        """Reconnect to device using existing connection details"""
+        self.device.connect()
+        return
+    
+    def disconnect(self):
+        """Disconnect from device"""
+        self.device.disconnect()
+        return
+    
     def execute(self, *args, **kwargs):
         """Execute task"""
-        
-    @abstractmethod
+        logger.info("Executing task")
+        raise NotImplementedError("Method `execute` must be implemented in subclass")
+    
+    def resetFlags(self):
+        """Reset all flags to class attribute `_default_flags`"""
+        self.flags = deepcopy(self._default_flags)
+        return
+    
+    def run(self, *args, **kwargs):
+        """Alias for `execute()`"""
+        return self.execute(*args, **kwargs)
+    
     def shutdown(self):
         """Shutdown procedure for tool"""
         self.disconnect()
         self.resetFlags()
         return
-        
-    @abstractmethod
-    def _connect(self, *args, **kwargs):
-        """Connection procedure for tool"""
-        self.connection_details = {}
-        self.device = None
-        self.setFlag(connected=True)
-        return
-    
-    def connect(self):
-        """Reconnect to device using existing connection details"""
-        return self._connect(**self.connection_details)
-    
-    def disconnect(self):
-        """Disconnect from device"""
-        try:
-            self.device.close()
-        except Exception as e:
-            if self.verbose:
-                print(e)
-        self.setFlag(connected=False)
-        return
-    
-    def isBusy(self) -> bool:
-        """
-        Checks and returns whether the device is busy
-        
-        Returns:
-            bool: whether the device is busy
-        """
-        return self.flags.get('busy', False)
-    
-    def isConnected(self) -> bool:
-        """
-        Checks and returns whether the device is connected
-
-        Returns:
-            bool: whether the device is connected
-        """
-        if not self.flags.get('connected', False):
-            print(f"{self.__class__} is not connected. Details: {self.connection_details}")
-        return self.flags.get('connected', False)
-    
-    def resetFlags(self):
-        """Reset all flags to class attribute `_default_flags`"""
-        self.flags = self._default_flags.copy()
-        return
-    
-    def setFlag(self, **kwargs):
-        """
-        Set flags by using keyword arguments
-
-        Kwargs:
-            key, value: (flag name, boolean) pairs
-        """
-        if not all([type(v)==bool for v in kwargs.values()]):
-            raise ValueError("Ensure all assigned flag values are boolean.")
-        self.flags.update(kwargs)
-        return
-    
