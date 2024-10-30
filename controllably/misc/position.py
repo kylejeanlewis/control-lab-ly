@@ -1,34 +1,41 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
 from __future__ import annotations
-from dataclasses import dataclass
-from logging import getLogger
+from dataclasses import dataclass, field
+import itertools
+import json
+import logging
+import matplotlib.pyplot as plt
 from pathlib import Path
-from typing import Sequence
+from types import SimpleNamespace
+from typing import Sequence, Any, Iterator
 
 # Third party imports
 import numpy as np
 from scipy.spatial.transform import Rotation
 
+# Local application imports
 from .helper import read_json
 
-logger = getLogger(__name__)
-logger.info(f"Import: OK <{__name__}>")
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
+logger.debug(f"Import: OK <{__name__}>")
+
+MTP_DIMENSIONS = (127.76,85.48,0)
+OBB_DIMENSIONS = (300,300,0)
 
 @dataclass
 class Position:
-    _coordinates: Sequence[float]
+    _coordinates: Sequence[float] = (0,0,0)
     _rotation: Rotation = Rotation.from_euler('zyx',(0,0,0),degrees=True)
     rotation_type: str = 'euler'
     degrees: bool = True
     
     def __post_init__(self):
-        if not isinstance(self._rotation, Rotation):
-            raise Exception('Please input a Rotation object')
-        if len(self._coordinates) != 3:
-            raise Exception('Please input x,y,z coordinates')
-        else:
-            self._coordinates = tuple(self._coordinates)
+        assert isinstance(self._rotation, Rotation), "Please input a Rotation object"
+        assert self.rotation_type in ['quaternion','matrix','angle_axis','euler','mrp','davenport'], f"Invalid rotation type: {self.rotation_type}"
+        assert isinstance(self._coordinates,(Sequence,np.ndarray)) and len(self._coordinates) == 3, "Please input x,y,z coordinates"
+        self._coordinates = tuple(self._coordinates)
         return
     
     def __repr__(self):
@@ -38,9 +45,8 @@ class Position:
     def coordinates(self) -> np.ndarray[float]:
         return np.array(self._coordinates)
     @coordinates.setter
-    def coordinates(self, value: Sequence[float]):
-        if len(value) != 3:
-            raise Exception('Please input x,y,z coordinates')
+    def coordinates(self, value: Sequence[float]|np.ndarray[float]):
+        assert isinstance(value, (Sequence,np.ndarray)) and len(value) == 3, "Please input x,y,z coordinates"
         self._coordinates = tuple(value)
         return
     
@@ -64,8 +70,7 @@ class Position:
         return
     @rotation.setter
     def rotation(self, value: Rotation):
-        if not isinstance(value, Rotation):
-            raise Exception('Please input a Rotation object')
+        assert isinstance(value, Rotation), "Please input a Rotation object"
         self._rotation = value
         return
     
@@ -100,7 +105,19 @@ class Position:
         rotation = self._rotation.as_euler('zyx', degrees=self.degrees)
         return rotation[2]
     
+    def apply(self, on:Position) -> Position:
+        return on.translate(self.coordinates).orientate(self._rotation)
+    
+    def orientate(self, by:Rotation) -> Position:
+        self._rotation = by*self._rotation
+        return self
+    
+    def translate(self, by:Sequence[float]) -> Position:
+        self.coordinates = self.coordinates + np.array(by)
+        return self
+    
 
+@dataclass
 class Well:
     """
     Well represents a single well in a Labware object
@@ -136,99 +153,85 @@ class Well:
     - `fromMiddle`: offset from middle of well
     - `fromTop`: offset from top of well
     """
+    name: str
+    _details: dict[str, str|float|tuple[float]]
+    parent: Labware
     
-    def __init__(self, 
-        labware_info: dict, 
-        name: str, 
-        details: dict[str, float|tuple[float]]
-    ):
-        """
-        Instantiate the class
-
-        Args:
-            labware_info (dict): dictionary of truncated Labware information (name, slot, reference point)
-            name (str): name of well
-            details (dict[str, float|tuple[float]]): well details
-        """
-        self.content = {}
-        self.details = details  # depth,totalLiquidVolume,shape,diameter,x,y,z
-        self.name = name
-        self.reference_point = labware_info.get('reference_point', (0,0,0))
-        self.volume = 0
-        
-        self._labware_name = labware_info.get('name','')
-        self._labware_slot = labware_info.get('slot','')
-        self._labware_orientation = labware_info.get('orientation', np.array((0,0,0)))
-        pass
+    x: float = field(init=False, default=0)
+    y: float = field(init=False, default=0)
+    z: float = field(init=False, default=0)
+    shape: str = field(init=False, default='')
+    depth: float = field(init=False, default=0)
+    volume: float = field(init=False, default=0)
+    capacity: float = field(init=False, default=0)
+    dimensions: tuple[float] = field(init=False, default=(0,))
+    
+    def __post_init__(self):
+        self.x = self._details.get('x', 0)
+        self.y = self._details.get('y', 0)
+        self.z = self._details.get('z', 0)
+        self.shape = self._details.get('shape', '')
+        self.depth = self._details.get('depth', 0)
+        self.capacity = self._details.get('totalLiquidVolume', 0)
+        match self.shape:
+            case 'circular':
+                self.dimensions = (self._details.get('diameter', 0),)
+            case 'rectangular':
+                self.dimensions = (self._details.get('xDimension',0), self._details.get('yDimension',0))
+            case _:
+                logging.error(f"Invalid shape: {self.shape}")
+        return
     
     def __repr__(self) -> str:
-        return f"{self.name} in {self._labware_name} at Slot {self._labware_slot}" 
+        return f"{self.name} ({self.__class__.__name__}:{id(self)}) -> {self.parent!r}" 
+    
+    def __str__(self) -> str:
+        return f"{self.name} in {self.parent!s}" 
     
     # Properties
     @property
-    def base_area(self) -> float:
-        """Base area in mm^2"""
-        area_mm2 = 1
-        if self.shape == 'circular':
-            area_mm2 = 3.141592/4 * self.dimensions[0]**2
-        elif self.shape == 'rectangular':
-            area_mm2 = self.dimensions[0] * self.dimensions[1]
-        return area_mm2
+    def reference(self) -> Position:
+        return self.parent.bottom_left_corner
     
+    @property
+    def offset(self) -> np.ndarray:
+        return np.array((self.x,self.y,self.z))
+    
+    @property
+    def center(self) -> np.ndarray:
+        return self.reference.coordinates + self.reference._rotation.apply(self.offset)
+     
     @property
     def bottom(self) -> np.ndarray:
         return self.center
     
     @property
-    def center(self) -> np.ndarray:
-        return np.array(self.reference_point) + self.offset
+    def middle(self) -> np.ndarray:
+        return self.center + np.array((0,0,self.depth/2))
+        
+    @property
+    def top(self) -> np.ndarray:
+        return self.center + np.array((0,0,self.depth))
     
     @property
-    def depth(self) -> float:
-        return self.details.get('depth', 0)
-    
-    @property
-    def diameter(self) -> float:
-        return self.details.get('diameter', 0)
-    
-    @property
-    def dimensions(self) -> tuple[float]:
-        """Dimensions of base in mm"""
-        dim = []
-        if self.shape == 'circular':
-            dim.append(self.diameter)
-        elif self.shape == 'rectangular':
-            dim.append(self.details.get('xDimension',0))
-            dim.append(self.details.get('yDimension',0))
-        return tuple(dim)
+    def base_area(self) -> float:
+        """Base area in mm^2"""
+        area = 0
+        match self.shape:
+            case 'circular':
+                area = 3.141592/4 * self.dimensions[0]**2
+            case 'rectangular':
+                dimensions = self.dimensions
+                area =  dimensions[0]*dimensions[1]
+            case _:
+                logging.error(f"Invalid shape: {self.shape}")
+        assert area > 0, f"Invalid base area: {area}"
+        return area
     
     @property
     def level(self) -> float:
         return self.volume / self.base_area
         
-    @property
-    def middle(self) -> np.ndarray:
-        depth = self.details.get('depth', 0)
-        return self.center + np.array((0,0,depth/2))
-        
-    @property
-    def offset(self) -> np.ndarray:
-        x = self.details.get('x', 0)
-        y = self.details.get('y', 0)
-        z = self.details.get('z', 0)
-        vector = np.array((x,y,z))
-        orientation = Rotation.from_euler('zyx', self._labware_orientation, degrees=True)
-        return orientation.apply(vector)
-    
-    @property
-    def shape(self) -> str:
-        return self.details.get('shape', '')
-    
-    @property
-    def top(self) -> np.ndarray:
-        depth = self.details.get('depth', 0)
-        return self.center + np.array((0,0,depth))
-    
     def fromBottom(self, offset:tuple[float]) -> np.ndarray:
         """
         Offset from bottom of well
@@ -265,6 +268,18 @@ class Well:
         """
         return self.top + np.array(offset)
     
+    def _draw(self, ax, **kwargs):
+        """Draw well on matplotlib axis"""
+        match self.shape:
+            case 'circular':
+                ax.add_patch(plt.Circle(self.center, self.dimensions[0]/2, fill=False, **kwargs))
+            case 'rectangular':
+                ax.add_patch(plt.Rectangle(self.bottom, *self.dimensions, fill=False, **kwargs))
+            case _:
+                logging.error(f"Invalid shape: {self.shape}")
+        return
+    
+    # Deprecated methods
     def from_bottom(self, offset:tuple[float]) -> np.ndarray:
         """
         Offset from bottom of well
@@ -275,7 +290,7 @@ class Well:
         Returns:
             tuple: bottom of well with offset
         """
-        print("'from_bottom()' method to be deprecated. Use 'fromBottom()' instead.")
+        logger.warning("'from_bottom()' method to be deprecated. Use 'fromBottom()' instead.")
         return self.fromBottom(offset=offset)
     
     def from_middle(self, offset:tuple[float]) -> np.ndarray:
@@ -288,7 +303,7 @@ class Well:
         Returns:
             tuple: middle of well with offset
         """
-        print("'from_middle()' method to be deprecated. Use 'fromMiddle()' instead.")
+        logger.warning("'from_middle()' method to be deprecated. Use 'fromMiddle()' instead.")
         return self.fromMiddle(offset=offset)
     
     def from_top(self, offset:tuple[float]) -> np.ndarray:
@@ -301,10 +316,11 @@ class Well:
         Returns:
             tuple: top of well with offset
         """
-        print("'from_top()' method to be deprecated. Use 'fromTop()' instead.")
+        logger.warning("'from_top()' method to be deprecated. Use 'fromTop()' instead.")
         return self.fromTop(offset=offset)
 
 
+@dataclass
 class Labware:
     """
     Labware represents a single Labware on the Deck
@@ -337,116 +353,128 @@ class Labware:
     - `at`: alias for `getWell()`
     - `getWell`: get `Well` using its name
     """
+    name: str
+    _details: dict[str, Any]
+    parent: Slot|None = None
     
-    def __init__(self, 
-        slot: str, 
-        bottom_left_coordinates: tuple[float], 
-        orientation: tuple[float],
-        labware_file: str, 
-        package: str|None = None
-    ):
+    x: float = field(init=False, default=0)
+    y: float = field(init=False, default=0)
+    z: float = field(init=False, default=0)
+    _dimensions: tuple[float] = field(init=False, default=(0,0,0))
+    exclusion_zone: BoundingBox|None = field(init=False, default=None)
+    _wells: dict[str, Well] = field(init=False, default_factory=dict)
+    _ordering: list[list[str]] = field(init=False, default_factory=list)
+    is_stackable: bool = field(init=False, default=False)
+    is_tiprack: bool = field(init=False, default=False)
+    slot_above: Slot|None = field(init=False, default=None)
+    
+    def __post_init__(self):
+        dimensions = self._details.get('dimensions',{})
+        self.x = dimensions.get('xDimension', 0)/2
+        self.y = dimensions.get('yDimension', 0)/2
+        self.z = dimensions.get('zDimension', 0)/2
+        self._dimensions = (self.x*2,self.y*2,self.z*2)
+        self.is_stackable = self._details.get('parameters',{}).get('isStackable', False)
+        self.is_tiprack = self._details.get('parameters',{}).get('isTiprack', False)
+        self._ordering = self._details.get('ordering', [[]])
+        self._wells = {name:Well(name=name, _details=details, parent=self) for name,details in self._details.get('wells',{}).items()}
+        
+        buffer = self._details.get('parameters',{}).get('boundary_buffer', ((0,0,0),(0,0,0)))
+        self.exclusion_zone = BoundingBox(self.reference, self.dimensions, buffer)
+        
+        details_above = self._details.get('slotAbove','')
+        if self.is_stackable and details_above:
+            below_name = self.parent.name if isinstance(self.parent, Slot) else 'None'
+            above_name = below_name[:-1] + chr(ord(below_name[-1]) + 1)
+            if below_name[-1].isdigit() or below_name[-2] != '_':
+                above_name = below_name + '_a'
+            self.slot_above = Slot(
+                name=above_name, 
+                _details=details_above, 
+                parent=self,
+                bottom_left_corner=self.bottom_left_corner.translate(by=(0,0,self.z))
+            )
+            self.slot_above.slot_below = self.parent
+        return
+    
+    def __repr__(self) -> str:
+        return f"{self.name} ({self.__class__.__name__}:{id(self)}) -> {self.parent.name} ({self.parent.__class__.__name__}:{id(self.parent)})" 
+    
+    def __str__(self) -> str:
+        return f"{self.name} ({len(self._wells)}x) on {self.parent.name}" 
+    
+    @classmethod
+    def fromConfigs(cls, details:dict[str, Any], parent:Slot|None = None):
         """
-        Instantiate the class
+        Load Labware details from JSON file
 
         Args:
-            slot (str): deck slot number
-            bottom_left_coordinates (tuple[float]): coordinates of bottom left corner (i.e. reference point)
+            json_file (str): filepath of Labware JSON file
+            package (str|None, optional): name of package to look in. Defaults to None.
+        """
+        name = details.get('metadata',{}).get('displayName', '')
+        return cls(name=name, _details=details, parent=parent)
+    
+    @classmethod
+    def fromFile(cls, labware_file:str|Path, parent:Slot|None = None):
+        """
+        Load Labware from file
+
+        Args:
             labware_file (str): filepath of Labware JSON file
             package (str|None, optional): name of package to look in. Defaults to None.
         """
-        self.details = read_json(json_file=labware_file, package=package)
-        self.name = self.details.get('metadata',{}).get('displayName', '')
-        self.order_wells_by_rows = False
-        self._reference_point = tuple(bottom_left_coordinates)
-        self._orientation = Rotation.from_euler('zyx', orientation, degrees=True)
-        self.slot = slot
-        self._wells = {}
-        self._load_wells()
-        pass
-    
-    def __repr__(self) -> str:
-        return f"{self.name} at Slot {self.slot}" 
+        assert isinstance(labware_file,(str,Path)), "Please input a valid filepath"
+        filepath = Path(labware_file)
+        assert filepath.is_file(), "Please input a valid Labware filepath"
+        with open(filepath, 'r') as file:
+            details = json.load(file) # TODO read from file
+        return cls.fromConfigs(details=details, parent=parent)
     
     # Properties
     @property
-    def center(self) -> dict[np.ndarray, np.ndarray]:
-        dimensions = self.details.get('dimensions',{})
-        x = dimensions.get('xDimension', 0)
-        y = dimensions.get('yDimension', 0)
-        z = dimensions.get('zDimension', 0)
-        # return self.reference_point, np.array((x/2,y/2,z))
-        return dict(reference=np.array(self.reference_point), center=np.array((x/2,y/2,z)))
+    def reference(self) -> Position:
+        reference = self.parent.bottom_left_corner if isinstance(self.parent, Slot) else Position()
+        return reference
+        
+    @property
+    def offset(self) -> np.ndarray:
+        return np.array((self.x,self.y,self.z))
     
     @property
-    def columns(self) -> dict[str, int]:
-        columns_list = self.columns_list
-        return {str(c+1): columns_list[c] for c in range(len(columns_list))}
+    def center(self) -> np.ndarray:
+        return self.reference.coordinates + self.reference._rotation.apply(self.offset)
     
     @property
-    def columns_list(self) -> list[list[int]]:
-        return self.details.get('ordering', [[]])
+    def bottom_left_corner(self) -> Position:
+        return self.reference
     
     @property
     def dimensions(self) -> np.ndarray:
-        dimensions = self.details.get('dimensions',{})
-        x = dimensions.get('xDimension', 0)
-        y = dimensions.get('yDimension', 0)
-        z = dimensions.get('zDimension', 0)
-        vector = np.array((x,y,z))
-        return self._orientation.apply(vector)
-
-    @property
-    def info(self) -> dict[str, str|tuple[float]]:
-        return {'name':self.name, 'reference_point':self.reference_point, 'orientation': self.orientation, 'slot':self.slot}
+        return self.reference._rotation.apply(self._dimensions)
     
     @property
-    def orientation(self) -> np.ndarray:
-        return self._orientation.as_euler('zyx', degrees=True)
+    def columns(self) -> dict[int, list[str]]:
+        return {i+1: ordering for i,ordering in enumerate(self._ordering)}
     
     @property
-    def reference_point(self) -> np.ndarray:
-        return np.array(self._reference_point)
-    @reference_point.setter
-    def reference_point(self, value:tuple[float]):
-        self._reference_point = value
-        return
-    
-    @property
-    def rows(self) -> dict[str, int]:
-        first_column = self.details.get('ordering', [[]])[0]
-        rows_list = self.rows_list
-        return {w[0]: rows_list[r] for r,w in enumerate(first_column)}
-    
-    @property
-    def rows_list(self) -> list[list[int]]:
-        columns = self.columns_list
-        return [list(z) for z in zip(*columns)]
+    def rows(self) -> dict[str, list[str]]:
+        first_column = self._ordering[0]
+        rows_list = self.listRows()
+        return {name[0]: rows_list[r] for r,name in enumerate(first_column)}
        
     @property
-    def wells(self) -> dict[str, Well]:
-        if self.order_wells_by_rows:
-            return {w:self._wells[w] for l in self.rows_list for w in l}
+    def wells_columns(self) -> dict[str, list[Well]]:
         return self._wells
     
     @property
-    def wells_list(self) -> list[Well]:
-        if self.order_wells_by_rows:
-            return [self._wells[w] for l in self.rows_list for w in l]
-        return [self._wells[well] for well in self.details.get('wells',{})]
+    def wells_rows(self) -> dict[str, list[Well]]:
+        return {name:self._wells[name] for row in self.listRows() for name in row}
 
-    def at(self, name:str) -> Well:
-        """
-        Get `Well` using its name.
-        Alias for `getWell()`.
+    @property
+    def at(self) -> SimpleNamespace:
+        return SimpleNamespace(**self._wells)
 
-        Args:
-            name (str): name of well
-
-        Returns:
-            Well: `Well` object
-        """
-        return self.getWell(name=name)
-    
     def getWell(self, name:str) -> Well:
         """
         Get `Well` using its name
@@ -457,8 +485,47 @@ class Labware:
         Returns:
             Well: `Well` object
         """
-        return self.wells.get(name)
+        assert name in self._wells, f"Well '{name}' not found in Labware '{self.name}'"
+        return self._wells.get(name)
     
+    def listColumns(self) -> list[list[str]]:
+        return self._ordering
+    
+    def listRows(self) -> list[list[str]]:
+        return [list(r) for r in zip(*self._ordering)]
+    
+    def listWells(self, by:str) -> list[Well]:
+        if by in ('c','col','cols','column','columns'):
+            return self.wells_columns
+        elif by in ('r','row','rows'):
+            return self.wells_rows
+        raise ValueError(f"Invalid argument: {by}")
+    
+    def show(self, zoom_out:bool = False) -> plt.Figure:
+        fig, ax = plt.subplots()
+        self._draw(ax=ax)
+        
+        if zoom_out:
+            ax.set_xlim(-self.dimensions[0], self.dimensions[0]*2)
+            ax.set_ylim(-self.dimensions[1], self.dimensions[1]*2)
+        else:
+            reference = self.reference.coordinates
+            ax.set_xlim(reference[0], reference[0] + self.dimensions[0])
+            ax.set_ylim(reference[1], reference[1] + self.dimensions[1])
+        x_inch,y_inch = fig.get_size_inches()
+        inches_per_line = max(x_inch/self.dimensions[0], y_inch/self.dimensions[1])
+        new_size = tuple(np.array(self.dimensions[:2]) * inches_per_line)
+        fig.set_size_inches(new_size)
+        return fig
+        
+    def _draw(self, ax, **kwargs):
+        """Draw Labware on matplotlib axis"""
+        ax.add_patch(plt.Rectangle(self.reference.coordinates, *self.dimensions[:2], fill=False, **kwargs))
+        for well in self._wells.values():
+            well._draw(ax, **kwargs)
+        return
+    
+    # Deprecated methods
     def get_well(self, name:str) -> Well:
         """
         Get `Well` using its name
@@ -469,18 +536,104 @@ class Labware:
         Returns:
             Well: `Well` object
         """
-        print("'get_well()' method to be deprecated. Use 'getWell()' instead.")
+        logger.warning("'get_well()' method to be deprecated. Use 'getWell()' instead.")
         return self.getWell(name=name)
     
-    # Protected method(s)
-    def _load_wells(self):
-        """Load wells into memory"""
-        wells = self.details.get('wells',{})
-        for well in wells:
-            self._wells[well] = Well(labware_info=self.info, name=well, details=wells[well])
+
+@dataclass
+class Slot:
+    name: str
+    _details: dict[str, Any]
+    parent: Deck|Labware
+    
+    x: float = field(init=False, default=0)
+    y: float = field(init=False, default=0)
+    z: float = field(init=False, default=0)
+    _dimensions: tuple[float] = field(init=False, default=MTP_DIMENSIONS)
+    bottom_left_corner: Position = field(init=False, default_factory=Position)
+    loaded_labware: Labware|None = field(init=False, default=None)
+    slot_above: Slot|None = field(init=False, default=None)
+    slot_below: Slot|None = field(init=False, default=None)
+    
+    def __post_init__(self):
+        corner_offset = self._details.get('cornerOffset',(0,0,0))
+        new_corner_offset = self.reference.coordinates + self.reference._rotation.apply(corner_offset)
+        orientation = self._details.get('orientation',(0,0,0))
+        bottom_left_corner = Position(new_corner_offset, Rotation.from_euler('zyx',orientation,degrees=True))
+        self.bottom_left_corner = bottom_left_corner.orientate(self.reference._rotation)
+        
+        dimensions = np.array(self._details.get('dimensions',self._dimensions))
+        self.x,self.y,self.z = dimensions/2
+        self._dimensions = tuple(dimensions)
+        
+        
+        labware_file = Path(self._details.get('labware_file',''))
+        if labware_file.is_file():
+            self.loadLabwareFromFile(labware_file=labware_file)
+        return
+    
+    def __repr__(self) -> str:
+        loaded_labware_ref = 'Vacant'
+        if isinstance(self.loaded_labware, Labware):
+            labware = self.loaded_labware
+            loaded_labware_ref = f"{labware.name} ({labware.__class__.__name__}:{id(labware)})" 
+        return f"{self.name} ({self.__class__.__name__}:{id(self)}) on {self.parent.name} ({self.parent.__class__.__name__}:{id(self.parent)}) <- {loaded_labware_ref}" 
+    
+    def __str__(self) -> str:
+        loaded_labware_name = f"with {self.loaded_labware.name}" if isinstance(self.loaded_labware, Labware) else '[Vacant]'
+        return f"{self.name} on {self.parent.name} {loaded_labware_name}" 
+    
+    @property
+    def reference(self) -> Position:
+        return self.parent.bottom_left_corner
+    
+    @property
+    def offset(self) -> np.ndarray:
+        return np.array((self.x,self.y,self.z))
+    
+    @property
+    def center(self) -> np.ndarray:
+        return self.reference.coordinates + self.reference._rotation.apply(self.offset)
+    
+    @property
+    def dimensions(self) -> np.ndarray:
+        return self.bottom_left_corner._rotation.apply(self._dimensions)
+    
+    @property
+    def exclusion_zone(self) -> BoundingBox|None:
+        return self.loaded_labware.exclusion_zone if isinstance(self.loaded_labware, Labware) else None
+
+    def loadLabware(self, labware:Labware):
+        self.loaded_labware = labware
+        self.slot_above = self.loaded_labware.slot_above
+        return
+    
+    def loadLabwareFromConfigs(self, details:dict[str, Any]):
+        labware = Labware.fromConfigs(details=details, parent=self)
+        return self.loadLabware(labware=labware)
+        
+    def loadLabwareFromFile(self, labware_file:str):
+        labware = Labware.fromFile(labware_file=labware_file, parent=self)
+        return self.loadLabware(labware=labware)
+        
+    def removeLabware(self):
+        assert self.loaded_labware is not None, "No Labware loaded in slot"
+        if self.loaded_labware.is_stackable:
+            assert self.loaded_labware.slot_above.loaded_labware is None, "Another Labware is stacked above"
+        self.loaded_labware.slot_above.slot_below = None
+        self.loaded_labware = None
+        self.slot_above = None
+        return
+
+    def _draw(self, ax, **kwargs):
+        """Draw Slot on matplotlib axis"""
+        ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, linestyle=":", **kwargs))
+        if  isinstance(self.loaded_labware, Labware):
+            self.loaded_labware._draw(ax, **kwargs)
         return
 
 
+@dataclass
 class Deck:
     """
     Deck object
@@ -506,52 +659,121 @@ class Deck:
     - `loadLayout`: load deck layout from layout file
     - `removeLabware`: remove Labware in slot using slot id or name
     """
+    name: str
+    _details: dict[str, Any]
+    parent: Deck|None = None
+    _nesting_lineage: tuple[Path] = (None,)
     
-    def __init__(self, layout_file:str|None = None, package:str|None = None, repository:str|None = None):
-        """
-        Instantiate the class
-
-        Args:
-            layout_file (str|None, optional): filepath of deck layout JSON file. Defaults to None.
-            package (str|None, optional): name of package to look in. Defaults to None.
-            repository (str|None, optional): name of repository to look in. Defaults to None.
-        """
-        self.details = {}
-        self._slots = {}
-        self.names = {}
-        self.origin = Position((0,0,0))
-        self.exclusion_zones: dict[str,np.ndarray] = {}
-        self.loadLayout(layout_file=layout_file, package=package, repository=repository)
-        pass
+    x: float = field(init=False, default=0)
+    y: float = field(init=False, default=0)
+    z: float = field(init=False, default=0)
+    _dimensions: tuple[float] = field(init=False, default=OBB_DIMENSIONS)
+    bottom_left_corner: Position = field(init=False, default_factory=Position)
+    _slots: dict[str, Slot] = field(init=False, default_factory=dict)
+    _zones: dict[str, Deck] = field(init=False, default_factory=dict)
     
-    def __repr__(self) -> str:
-        labwares = [''] + [repr(labware) for labware in self.slots.values()]
-        labware_string = '\n'.join(labwares)
-        return f"Deck with Labwares:{labware_string}" 
-    
-    @property
-    def slots(self) -> dict[str, Labware]:
-        return self._slots
-    
-    def at(self, slot:int|str) -> Labware|None:
-        """
-        Get Labware in slot using slot id or name, with mixed input.
-        Alias for `getSlot()`.
-
-        Args:
-            slot (int|str): id or name of slot
-
-        Returns:
-            Labware|None: Labware in slot
-        """
-        if type(slot) == int:
-            return self.getSlot(index=slot)
-        elif type(slot) == str:
-            return self.getSlot(name=slot)
-        print("Input a valid slot id or name of Labware in slot.")
+    def __post_init__(self):
+        dimensions = np.array(self._details.get('dimensions',(0,0,0)))
+        self.x,self.y,self.z = dimensions/2
+        self._dimensions = tuple(dimensions)
+        
+        corner_offset = self._details.get('cornerOffset',(0,0,0))
+        new_corner_offset = self.reference.coordinates + self.reference._rotation.apply(corner_offset)
+        orientation = self._details.get('orientation',(0,0,0))
+        bottom_left_corner = Position(new_corner_offset, Rotation.from_euler('zyx',orientation,degrees=True))
+        self.bottom_left_corner = bottom_left_corner.orientate(self.reference._rotation)
+        
+        self._slots = {f"slot_{int(idx):02}":Slot(name=f"slot_{int(idx):02}", _details=details, parent=self) for idx,details in self._details.get('slots',{}).items()}
+        for name,details in self._details.get('zones',{}).items():
+            deck_file = Path(details.get('deck_file',''))
+            if deck_file.is_file():
+                parent_lineage = self.parent._nesting_lineage if isinstance(self.parent,Deck) else self._nesting_lineage
+                if deck_file in parent_lineage:
+                    parent_str = '\n+ '.join([p.as_uri() for p in parent_lineage if p is not None])
+                    logging.error(f"Nested deck lineage:\n{parent_str}")
+                    raise ValueError(f"Deck '{deck_file}' is already in the nested deck lineage")
+                else:
+                    self.loadNestedDeck(name=f"zone_{name}", details=details)
         return
     
-    def getSlot(self, index:int|None = None, name:str|None = None) -> Labware|None:
+    def __repr__(self) -> str:
+        slots_ref = [f"\\__ {slot!r}" for slot in self.slots.values() if isinstance(slot, Slot)]
+        zones_ref = [f"\\__ {zone!r}" for zone in self.zones.values()]
+        return f"{self.name} ({self.__class__.__name__}:{id(self)})\n{'\n'.join(slots_ref)}\n\n{'\n'.join(zones_ref)}" 
+    
+    def __str__(self) -> str:
+        slots_name = [f"+ {slot!s}" for slot in self.slots.values()]
+        zones_name = [f"+ {zone!s}" for zone in self.zones.values()]
+        return f"{self.name} comprising:\n{'\n'.join(slots_name)}\n{'\n'.join(zones_name)}"
+    
+    @classmethod
+    def fromConfigs(cls, details:str, parent:Deck|None = None, _nesting_lineage:Sequence[Path|None]=(None,)):
+        """
+        Load deck layout from layout file
+
+        Args:
+            json_file (str): filepath of deck layout JSON file
+            package (str|None, optional): name of package to look in. Defaults to None.
+        """
+        name = details.get('name',None)
+        name = details.get('metadata',{}).get('displayName', '') if name is None else name
+        return cls(name=name, _details=details, parent=parent, _nesting_lineage=tuple(_nesting_lineage))
+    
+    @classmethod
+    def fromFile(cls, deck_file:str, parent:Deck|None = None):
+        """
+        Load deck layout from layout file
+
+        Args:
+            layout_file (str): filepath of deck layout JSON file
+            package (str|None, optional): name of package to look in. Defaults to None.
+        """
+        assert isinstance(deck_file,(str,Path)), "Please input a valid filepath"
+        filepath = Path(deck_file)
+        assert filepath.is_file(), "Please input a valid Deck filepath"
+        with open(filepath, 'r') as file:
+            details = json.load(file) # TODO read from file
+        return cls.fromConfigs(details=details, parent=parent, _nesting_lineage=(filepath,))
+    
+    # Properties
+    @property
+    def reference(self) -> Position:
+        reference = self.parent.bottom_left_corner if isinstance(self.parent, Deck) else Position()
+        return reference
+    
+    @property
+    def offset(self) -> np.ndarray:
+        return np.array((self.x,self.y,self.z))
+    
+    @property
+    def center(self) -> np.ndarray:
+        return self.reference.coordinates + self.reference._rotation.apply(self.offset)
+    
+    @property
+    def dimensions(self) -> np.ndarray:
+        return self.bottom_left_corner._rotation.apply(self._dimensions)
+    
+    @property
+    def exclusion_zones(self) -> dict[str, np.ndarray]:
+        raise NotImplementedError("Exclusion zones not implemented yet")
+    
+    @property
+    def slots(self) -> dict[str, Slot]:
+        return self._slots
+    
+    @property
+    def zones(self) -> dict[str, Deck]:
+        return self._zones
+    
+    @property
+    def at(self) -> SimpleNamespace:
+        return SimpleNamespace(**self._slots)
+    
+    @property
+    def on(self) -> SimpleNamespace:
+        return SimpleNamespace(**self._zones)
+    
+    def getSlot(self, value:int|str) -> Labware|None:
         """
         Get Labware in slot using slot id or name
 
@@ -565,12 +787,70 @@ class Deck:
         Returns:
             Labware|None: Labware in slot
         """
-        if not any((index, name)) or all((index, name)):
-            raise ValueError('Please input either slot id or name.')
-        if index is None and name is not None:
-            index = self.names.get(name)
-        return self._slots.get(str(index))
+        if isinstance(value, int):
+            value = f"slot_{value:02}"
+        return self._slots.get(value, None)
     
+    def loadNestedDeck(self, name:str, details:dict[str, Any]):
+        deck_file = Path(details.pop('deck_file',''))
+        assert deck_file.is_file(), "Please input a valid Deck filepath"
+        with open(deck_file, 'r') as file:
+            nested_details = json.load(file)
+            nested_details.update(details)
+            nested_details.update(dict(name=name))
+        _nesting_lineage = (*self._nesting_lineage, deck_file)
+        deck = Deck.fromConfigs(details=nested_details, parent=self, _nesting_lineage=_nesting_lineage)
+        deck.name = name if not self.name.startswith('zone') else f"{self.name}_sub{name}"
+        self._zones[name] = deck
+        self._slots[name] = SimpleNamespace(**deck._slots)
+        return
+    
+    def show(self, zoom_out:bool = False) -> plt.Figure:
+        fig, ax = plt.subplots()
+        color_iterator = iter(plt.rcParams['axes.prop_cycle'].by_key()['color'])
+        color_iterator = itertools.chain(['none'], color_iterator, itertools.cycle(['black']))
+        self._draw(ax=ax, color_iterator=color_iterator)
+        
+        if zoom_out:
+            ax.set_xlim(-self.dimensions[0], self.dimensions[0]*2)
+            ax.set_ylim(-self.dimensions[1], self.dimensions[1]*2)
+        else:
+            reference = self.reference.coordinates
+            ax.set_xlim(reference[0], reference[0] + self.dimensions[0])
+            ax.set_ylim(reference[1], reference[1] + self.dimensions[1])
+        x_inch,y_inch = fig.get_size_inches()
+        inches_per_line = max(x_inch/self.dimensions[0], y_inch/self.dimensions[1])
+        new_size = tuple(np.array(self.dimensions[:2]) * inches_per_line)
+        fig.set_size_inches(new_size)
+        return fig
+    
+    def _draw(self, ax, outline:bool=False, color_iterator:Iterator|None = None, **kwargs):
+        """Draw Deck on matplotlib axis"""
+        bg_color = next(color_iterator) if isinstance(color_iterator,Iterator) else None
+        ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], alpha=0.25, color=bg_color, **kwargs))
+        ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, **kwargs))
+        
+        for zone in self._zones.values():
+            if isinstance(zone, Deck):
+                zone._draw(ax, outline=True, color_iterator=color_iterator, **kwargs)
+        if outline:
+            return
+        
+        def draw_slots(ax, slots:dict[str, Slot|SimpleNamespace], **kwargs):
+            for slot in slots.values():
+                if isinstance(slot, Slot):
+                    slot._draw(ax, **kwargs)
+                elif isinstance(slot, SimpleNamespace):
+                    draw_slots(ax, vars(slot), **kwargs)
+            return
+        draw_slots(ax, self._slots, **kwargs)
+        # for slot in self._slots.values():
+        #     if isinstance(slot, Slot):
+        #         slot._draw(ax, **kwargs)
+            
+        return
+    
+    # Deprecated methods
     def isExcluded(self, coordinates:tuple[float]) -> bool:
         """
         Checks and returns whether the coordinates are in an excluded region.
@@ -581,18 +861,18 @@ class Deck:
         Returns:
             bool: whether the coordinates are in an excluded region
         """
-        coordinates = np.array(coordinates)
-        for key, value in self.exclusion_zones.items():
-            l_bound, u_bound = value.min(1), value.max(1)
-            if key == 'boundary':
-                if any(np.less(coordinates, l_bound)) and any(np.greater(coordinates, u_bound)):
-                    print(f"Deck limits reached! {value}")
-                    return True
-                continue
-            if all(np.greater(coordinates, l_bound)) and all(np.less(coordinates, u_bound)):
-                name = [k for k,v in self.names.items() if str(v)==key][0] if key in self.names.values() else f'Labware in Slot {key}'
-                print(f"{name} is in the way! {value}")
-                return True
+        # coordinates = np.array(coordinates)
+        # for key, value in self.exclusion_zones.items():
+        #     l_bound, u_bound = value.min(1), value.max(1)
+        #     if key == 'boundary':
+        #         if any(np.less(coordinates, l_bound)) and any(np.greater(coordinates, u_bound)):
+        #             print(f"Deck limits reached! {value}")
+        #             return True
+        #         continue
+        #     if all(np.greater(coordinates, l_bound)) and all(np.less(coordinates, u_bound)):
+        #         name = [k for k,v in self.names.items() if str(v)==key][0] if key in self.names.values() else f'Labware in Slot {key}'
+        #         print(f"{name} is in the way! {value}")
+        #         return True
         return False
     
     def loadLabware(self, 
@@ -648,19 +928,6 @@ class Deck:
         Raises:
             Exception: lease input either `layout_file` or `layout_dict`
         """
-        if layout_file is None and layout_dict is None:
-            return
-        elif layout_file is not None and layout_dict is not None:
-            raise Exception("Please input either `layout_file` or `layout_dict`.")
-        elif layout_file is not None:
-            self.details = read_json(json_file=layout_file, package=package)
-        else:
-            self.details = layout_dict
-        origin_position = self.details.get('origin_position', ((0,0,0),(0,0,0)))
-        if len(origin_position) != 2 or isinstance(origin_position[0], (int,float)):
-            origin_position = (origin_position, (0,0,0))
-        self.origin = Position(origin_position[0], Rotation.from_euler('zyx', origin_position[1], degrees=True))
-        
         slots = self.details.get('slots', {})
         root = str(Path().absolute()).split(repository)[0].replace('\\','/')
         for slot in sorted(list(slots)):
@@ -709,7 +976,7 @@ class Deck:
         Returns:
             Labware|None: Labware in slot
         """
-        print("'get_slot()' method to be deprecated. Use 'getSlot()' instead.")
+        logger.warning("'get_slot()' method to be deprecated. Use 'getSlot()' instead.")
         return self.getSlot(index=index, name=name)
     
     def is_excluded(self, coordinates:tuple[float]) -> bool:
@@ -722,7 +989,7 @@ class Deck:
         Returns:
             bool: whether the coordinates are in an excluded region
         """
-        print("'is_excluded()' method to be deprecated. Use 'isExcluded()' instead.")
+        logger.warning("'is_excluded()' method to be deprecated. Use 'isExcluded()' instead.")
         return self.isExcluded(coordinates=coordinates)
     
     def load_labware(self, 
@@ -742,7 +1009,7 @@ class Deck:
             name (str|None, optional): nickname of Labware. Defaults to None.
             exclusion_height (float|None, optional): height clearance from top of Labware. Defaults to None.
         """
-        print("'load_labware()' method to be deprecated. Use 'loadLabware()' instead.")
+        logger.warning("'load_labware()' method to be deprecated. Use 'loadLabware()' instead.")
         return self.loadLabware(slot=slot, labware_file=labware_file, package=package, name=name, exclusion_height=exclusion_height)
     
     def load_layout(
@@ -764,7 +1031,7 @@ class Deck:
         Raises:
             Exception: lease input either `layout_file` or `layout_dict`
         """
-        print("'load_layout()' method to be deprecated. Use 'loadLayout()' instead.")
+        logger.warning("'load_layout()' method to be deprecated. Use 'loadLayout()' instead.")
         return self.loadLayout(layout_file=layout_file, layout_dict=layout_dict, package=package, labware_package=labware_package)
 
     def remove_labware(self, index:int|None = None, name:str|None = None):
@@ -778,9 +1045,25 @@ class Deck:
         Raises:
             Exception: Please input either slot id or name
         """
-        print("'remove_labware()' method to be deprecated. Use 'removeLabware()' instead.")
+        logger.warning("'remove_labware()' method to be deprecated. Use 'removeLabware()' instead.")
         return self.removeLabware(index=index, name=name)
 
+
+@dataclass
+class BoundingBox:
+    reference: Position
+    dimensions: Sequence[float]
+    buffer: Sequence[Sequence[float]] = ((0,0,0),(0,0,0))
+    
+    def __post_init__(self):
+        assert len(self.dimensions) == 3, "Please input x,y,z dimensions"
+        assert len(self.buffer) == 2, "Please input lower and upper buffer"
+        assert all([len(b) == 3 for b in self.buffer]), "Please input x,y,z buffer"
+        return
+    
+    def __get__(self, instance, owner):
+        bounds = np.array(self.reference.coordinates, self.reference.translate(self.dimensions).coordinates)
+        return bounds + np.array(self.buffer)
 
 __where__ = "misc.Position"
 from .factory import include_this_module
