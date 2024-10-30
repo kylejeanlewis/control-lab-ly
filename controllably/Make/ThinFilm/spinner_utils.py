@@ -1,4 +1,4 @@
-# %% -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 This module holds the class for spin-coaters.
 
@@ -9,18 +9,20 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 import logging
-import numpy as np
 from threading import Thread
 import time
+from typing import Sequence
 
 # Third party imports
-import serial   # pip install pyserial
+import numpy as np
 
 # Local application imports
 from ...misc import Helper
+from ...misc.compound import Multichannel
 from ..make_utils import Maker
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 class Spinner(Maker):
@@ -49,15 +51,11 @@ class Spinner(Maker):
     - `spin`: execute a spin step
     """
     
-    _default_flags = {
-        'busy': False,
-        'connected': False
-    }
-    
     def __init__(self, 
-        port: str, 
-        channel: int = 0, 
-        position: tuple[float] = (0,0,0), 
+        port: str,
+        *,
+        baudrate: int = 9600,
+        verbose: bool = False,
         **kwargs
     ):
         """
@@ -68,68 +66,57 @@ class Spinner(Maker):
             channel (int, optional): channel id. Defaults to 0.
             position (tuple[float], optional): x,y,z position of spinner. Defaults to (0,0,0).
         """
-        super().__init__(**kwargs)
-        self.channel = channel
-        self._position = tuple(position)
-        self.speed = 0
-        self._connect(port)
+        super().__init__(port=port, baudrate=baudrate, verbose=verbose, **kwargs)
+        self._speed = 0
+        self._threads = {}
+        
+        self.connect()
         return
     
     # Properties
     @property
     def port(self) -> str:
-        return self.connection_details.get('port', '')
+        return self.device.connection_details.get('port', '')
     
     @property
-    def position(self) -> np.ndarray:
-        return np.array(self._position)
+    def speed(self) -> int:
+        return self._speed
     
-    def execute(self, soak_time:int = 0, spin_speed:int = 2000, spin_time:int = 1, *args, **kwargs):
+    def setSpeed(self, speed:int):
         """
-        Alias for `run()`
-        
-        Execute the soak and spin steps
+        Set the spin speed of the spinner
 
         Args:
-            soak_time (int, optional): soak time. Defaults to 0.
-            spin_speed (int, optional): spin speed. Defaults to 2000.
-            spin_time (int, optional): spin time. Defaults to 1.
+            speed (int): spin speed in rpm
         """
-        return self.run(soak_time=soak_time, spin_speed=spin_speed, spin_time=spin_time)
-    
-    def run(self, soak_time:int = 0, spin_speed:int = 2000, spin_time:int = 1, **kwargs):
-        """
-        Execute the soak and spin steps
-
-        Args:
-            soak_time (int, optional): soak time. Defaults to 0.
-            spin_speed (int, optional): spin speed. Defaults to 2000.
-            spin_time (int, optional): spin time. Defaults to 1.
-        """
-        self.setFlag(busy=True)
-        self.soak(soak_time)
-        self.spin(spin_speed, spin_time)
-        self.setFlag(busy=False)
+        self.device.query(speed)
+        self._speed = speed
         return
     
-    def shutdown(self):
-        """Shutdown procedure for tool"""
-        return super().shutdown()
-
-    def soak(self, time_s:int, **kwargs):
+    def soak(self, time_s:int, blocking:bool = True):
         """
         Executes a soak step
 
         Args:
             time_s (int): soak time in seconds
         """
-        self.speed = 0
-        print(f"Soaking    (channel {self.channel}): {time_s}s")
-        if time_s:
+        assert time_s >= 0, "Ensure the soak time is a non-negative integer"
+        def inner():
+            self.flags.busy = True
+            logger.info(f"Soaking   : {time_s}s")
+            self.setSpeed(0)
             time.sleep(time_s)
+            self.flags.busy = False
+            return
+        if blocking:
+            inner()
+        else:
+            thread = Thread(target=inner)
+            thread.start()
+            self._threads['soak'] = thread
         return
 
-    def spin(self, speed:int, time_s:int, **kwargs):
+    def spin(self, speed:int, time_s:int, blocking:bool = True):
         """
         Executes a spin step
 
@@ -137,97 +124,59 @@ class Spinner(Maker):
             speed (int): spin speed in rpm
             time_s (int): spin time in seconds
         """
-        self._query(speed)
-        self.speed = speed
-        print(f"Duration   (channel {self.channel}): {time_s}s")
-        interval = 1
-        start_time = time.perf_counter()
-        while(True):
-            time.sleep(0.1)
-            if (interval <= time.perf_counter() - start_time):
-                interval += 1
-            if (time_s <= time.perf_counter() - start_time):
-                break
-        self._query(0)
-        self.speed = 0
-        return
-
-    # Protected method(s)
-    def _connect(self, port:str, baudrate:int = 9600, timeout:int = 1):
-        """
-        Connection procedure for tool
-
-        Args:
-            port (str): COM port address
-            baudrate (int, optional): baudrate. Defaults to 9600.
-            timeout (int, optional): timeout in seconds. Defaults to 1.
-        """
-        self.connection_details = {
-            'port': port,
-            'baudrate': baudrate,
-            'timeout': timeout
-        }
-        device = None
-        try:
-            device = serial.Serial(port, baudrate, timeout=timeout)
-        except Exception as e:
-            print(f"Could not connect to {port}")
-            if self.verbose:
-                print(e)
+        assert speed >= 0, "Ensure the spin speed is a non-negative integer"
+        assert time_s >= 0, "Ensure the spin time is a non-negative integer"
+        def inner():
+            self.flags.busy = True
+            logger.info(f"Spin speed: {speed}")
+            logger.info(f"Duration  : {time_s}s")
+            self.setSpeed(speed)
+            start_time = time.perf_counter()
+            while (time_s <= time.perf_counter() - start_time):
+                time.sleep(0.1)
+            self.setSpeed(0)
+            self.flags.busy = False
+            return
+        if blocking:
+            inner()
         else:
-            time.sleep(2)   # Wait for grbl to initialize
-            device.reset_input_buffer()
-            print(f"Connection opened to {port}")
-            self.setFlag(connected=True)
-        self.device = device
+            thread = Thread(target=inner)
+            thread.start()
+            self._threads['spin'] = thread
         return
     
-    def _diagnostic(self):
-        """Run diagnostic test"""
-        thread = Thread(target=self.run, name=f'maker_diag_{self.channel}')
-        thread.start()
-        time.sleep(1)
-        return
-    
-    def _query(self, command:str) ->list[str]:
+    # Overridden method(s)
+    def execute(self, soak_time:int = 0, spin_speed:int = 2000, spin_time:int = 1, blocking:bool = True, *args, **kwargs):
         """
-        Write command to and read response from device
+        Execute the soak and spin steps
 
         Args:
-            command (str): command string to send to device
-
-        Returns:
-            list[str]: list of response string(s) from device
+            soak_time (int, optional): soak time. Defaults to 0.
+            spin_speed (int, optional): spin speed. Defaults to 2000.
+            spin_time (int, optional): spin time. Defaults to 1.
         """
-        responses = [b'']
-        self._write(command)
-        try:
-            responses = self.device.readline()
-        except Exception as e:
-            if self.verbose:
-                print(e)
+        def inner():
+            self.flags.busy = True
+            self.soak(soak_time)
+            self.spin(spin_speed, spin_time)
+            self.flags.busy = False
+            return
+        if blocking:
+            inner()
         else:
-            if self.verbose:
-                print(responses)
+            thread = Thread(target=inner)
+            thread.start()
+            self._threads['execute'] = thread
         return
     
-    def _write(self, speed:int):
-        """
-        Relay spin speed to spinner
-
-        Args:
-            speed (int): spin speed in rpm
-        """
-        fstring = f"{speed}\n"
-        if self.verbose:
-            print(fstring)
-        try:
-            self.device.write(fstring.encode('utf-8'))
-        except AttributeError:
-            pass
-        print(f"Spin speed (channel {self.channel}): {speed}")
+    def shutdown(self):
+        for thread in self._threads.values():
+            thread.join()
+        self.disconnect()
+        self.resetFlags()
         return
 
+Multi_Spinner = Multichannel.factory(Spinner)
 
 class SpinnerAssembly(Maker):
     """
