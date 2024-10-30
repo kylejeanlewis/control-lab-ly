@@ -108,13 +108,19 @@ class Position:
     def apply(self, on:Position) -> Position:
         return on.translate(self.coordinates).orientate(self._rotation)
     
-    def orientate(self, by:Rotation) -> Position:
-        self._rotation = by*self._rotation
-        return self
+    def orientate(self, by:Rotation, inplace:bool = True) -> Position:
+        if inplace:
+            self._rotation = by*self._rotation
+            return self
+        rotation = by*self._rotation
+        return Position(self.coordinates, rotation)
     
-    def translate(self, by:Sequence[float]) -> Position:
-        self.coordinates = self.coordinates + np.array(by)
-        return self
+    def translate(self, by:Sequence[float], inplace:bool = True) -> Position:
+        if inplace:
+            self.coordinates = self.coordinates + np.array(by)
+            return self
+        coordinates = self.coordinates + np.array(by)
+        return Position(coordinates, self._rotation)
     
 
 @dataclass
@@ -754,8 +760,18 @@ class Deck:
         return self.bottom_left_corner._rotation.apply(self._dimensions)
     
     @property
-    def exclusion_zones(self) -> dict[str, np.ndarray]:
-        raise NotImplementedError("Exclusion zones not implemented yet")
+    def exclusion_zone(self) -> dict[str, BoundingBox]:
+        bounds = dict()
+        for slot in self._slots.values():
+            if not isinstance(slot, Slot):
+                continue
+            if not isinstance(slot.loaded_labware, Labware):
+                continue
+            bounds[slot.loaded_labware.name] = slot.loaded_labware.exclusion_zone
+        for zone_name, zone in self._zones.items():
+            for name,bound in zone.exclusion_zone.items():
+                bounds[f"{zone_name}_{name}"] = bound
+        return bounds
     
     @property
     def slots(self) -> dict[str, Slot]:
@@ -790,6 +806,26 @@ class Deck:
         if isinstance(value, int):
             value = f"slot_{value:02}"
         return self._slots.get(value, None)
+    
+    def isExcluded(self, coordinates:Sequence[float]) -> bool:
+        """
+        Checks and returns whether the coordinates are in an excluded region.
+
+        Args:
+            coordinates (tuple[float]): target coordinates
+
+        Returns:
+            bool: whether the coordinates are in an excluded region
+        """
+        assert len(coordinates) == 3, "Please input valid x,y,z coordinates"
+        collides_with = []
+        for name,bounds in self.exclusion_zone.items():
+            if coordinates in bounds:
+                collides_with.append(name)
+        if len(collides_with) == 0:
+            return False
+        logging.warning(f"Coordinates {tuple(coordinates)} collides with {collides_with}")
+        return True
     
     def loadNestedDeck(self, name:str, details:dict[str, Any]):
         deck_file = Path(details.pop('deck_file',''))
@@ -851,30 +887,6 @@ class Deck:
         return
     
     # Deprecated methods
-    def isExcluded(self, coordinates:tuple[float]) -> bool:
-        """
-        Checks and returns whether the coordinates are in an excluded region.
-
-        Args:
-            coordinates (tuple[float]): target coordinates
-
-        Returns:
-            bool: whether the coordinates are in an excluded region
-        """
-        # coordinates = np.array(coordinates)
-        # for key, value in self.exclusion_zones.items():
-        #     l_bound, u_bound = value.min(1), value.max(1)
-        #     if key == 'boundary':
-        #         if any(np.less(coordinates, l_bound)) and any(np.greater(coordinates, u_bound)):
-        #             print(f"Deck limits reached! {value}")
-        #             return True
-        #         continue
-        #     if all(np.greater(coordinates, l_bound)) and all(np.less(coordinates, u_bound)):
-        #         name = [k for k,v in self.names.items() if str(v)==key][0] if key in self.names.values() else f'Labware in Slot {key}'
-        #         print(f"{name} is in the way! {value}")
-        #         return True
-        return False
-    
     def loadLabware(self, 
         slot: int, 
         labware_file: str, 
@@ -892,6 +904,7 @@ class Deck:
             name (str|None, optional): nickname of Labware. Defaults to None.
             exclusion_height (float|None, optional): height clearance from top of Labware. Defaults to None.
         """
+        raise DeprecationWarning("Method to be deprecated.")
         if name:
             self.names[name] = slot
         reference_position = tuple( self.details.get('reference_positions',{}).get(str(slot),((0,0,0),(0,0,0))) )
@@ -928,6 +941,7 @@ class Deck:
         Raises:
             Exception: lease input either `layout_file` or `layout_dict`
         """
+        raise DeprecationWarning("Method to be deprecated.")
         slots = self.details.get('slots', {})
         root = str(Path().absolute()).split(repository)[0].replace('\\','/')
         for slot in sorted(list(slots)):
@@ -951,6 +965,7 @@ class Deck:
         Raises:
             Exception: Please input either slot id or name
         """
+        raise DeprecationWarning("Method to be deprecated.")
         if not any((index, name)) or all((index, name)):
             raise Exception('Please input either slot id or name.')
         if index is None and name is not None:
@@ -976,6 +991,7 @@ class Deck:
         Returns:
             Labware|None: Labware in slot
         """
+        raise DeprecationWarning("Method to be deprecated.")
         logger.warning("'get_slot()' method to be deprecated. Use 'getSlot()' instead.")
         return self.getSlot(index=index, name=name)
     
@@ -1059,11 +1075,20 @@ class BoundingBox:
         assert len(self.dimensions) == 3, "Please input x,y,z dimensions"
         assert len(self.buffer) == 2, "Please input lower and upper buffer"
         assert all([len(b) == 3 for b in self.buffer]), "Please input x,y,z buffer"
+        self.dimensions = np.array(self.dimensions)
+        self.buffer = np.array(self.buffer)
         return
     
-    def __get__(self, instance, owner):
-        bounds = np.array(self.reference.coordinates, self.reference.translate(self.dimensions).coordinates)
+    def __contains__(self, point:Sequence[float]) -> bool:
+        assert len(point) == 3, "Please input x,y,z coordinates"
+        return all([b[0] <= p <= b[1] for b,p in zip(list(zip(*self.bounds)), point)])
+    
+    @property
+    def bounds(self):
+        bounds = np.array([self.reference.coordinates, self.reference.translate(self.dimensions, inplace=False).coordinates])
         return bounds + np.array(self.buffer)
+    
+    
 
 __where__ = "misc.Position"
 from .factory import include_this_module
