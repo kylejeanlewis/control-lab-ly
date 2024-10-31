@@ -14,6 +14,9 @@ from typing import Sequence, Any, Iterator
 import numpy as np
 from scipy.spatial.transform import Rotation
 
+# Local application imports
+from .file_handler import read_config_file
+
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
@@ -458,8 +461,7 @@ class Labware:
         assert isinstance(labware_file,(str,Path)), "Please input a valid filepath"
         filepath = Path(labware_file)
         assert filepath.is_file(), "Please input a valid Labware filepath"
-        with open(filepath, 'r') as file:
-            details = json.load(file) # TODO read from file
+        details = read_config_file(filepath)
         return cls.fromConfigs(details=details, parent=parent)
     
     # Properties
@@ -721,7 +723,7 @@ class Deck:
                 parent_lineage = self.parent._nesting_lineage if isinstance(self.parent,Deck) else self._nesting_lineage
                 if deck_file in parent_lineage:
                     parent_str = '\n+ '.join([p.as_uri() for p in parent_lineage if p is not None])
-                    logging.error(f"Nested deck lineage:\n{parent_str}")
+                    logger.error(f"Nested deck lineage:\n{parent_str}")
                     raise ValueError(f"Deck '{deck_file}' is already in the nested deck lineage")
                 else:
                     self.loadNestedDeck(name=f"zone_{name}", details=details)
@@ -762,8 +764,7 @@ class Deck:
         assert isinstance(deck_file,(str,Path)), "Please input a valid filepath"
         filepath = Path(deck_file)
         assert filepath.is_file(), "Please input a valid Deck filepath"
-        with open(filepath, 'r') as file:
-            details = json.load(file) # TODO read from file
+        details = read_config_file(filepath)
         return cls.fromConfigs(details=details, parent=parent, _nesting_lineage=(filepath,))
     
     # Properties
@@ -849,7 +850,7 @@ class Deck:
                 collides_with.append(name)
         if len(collides_with) == 0:
             return False
-        logging.warning(f"Coordinates {tuple(coordinates)} collides with {collides_with}")
+        logger.warning(f"Coordinates {tuple(coordinates)} collides with {collides_with}")
         return True
     
     def loadNestedDeck(self, name:str, details:dict[str, Any]):
