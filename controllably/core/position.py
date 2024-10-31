@@ -79,22 +79,20 @@ class Position:
     
     @property
     def rotation(self) -> np.ndarray:
-        match self.rotation_type:
-            case 'quaternion':
-                return self._rotation.as_quat()
-            case 'matrix':
-                return self._rotation.as_matrix()
-            case 'angle_axis':
-                return self._rotation.as_rotvec()
-            case 'euler':
-                return self._rotation.as_euler('zyx', degrees=self.degrees)
-            case 'mrp':
-                return self._rotation.as_mrp()
-            case 'davenport':
-                return self._rotation.as_davenport()
-            case _:
-                raise ValueError(f"Invalid rotation type: {self.rotation_type}")
-        return
+        if self.rotation_type == 'quaternion':
+            return self._rotation.as_quat()
+        elif self.rotation_type == 'matrix':
+            return self._rotation.as_matrix()
+        elif self.rotation_type == 'angle_axis':
+            return self._rotation.as_rotvec()
+        elif self.rotation_type == 'euler':
+            return self._rotation.as_euler('zyx', degrees=self.degrees)
+        elif self.rotation_type == 'mrp':
+            return self._rotation.as_mrp()
+        elif self.rotation_type == 'davenport':
+            return self._rotation.as_davenport()
+        raise ValueError(f"Invalid rotation type: {self.rotation_type}")
+    
     @rotation.setter
     def rotation(self, value: Rotation):
         assert isinstance(value, Rotation), "Please input a Rotation object"
@@ -209,13 +207,12 @@ class Well:
         self.shape = self._details.get('shape', '')
         self.depth = self._details.get('depth', 0)
         self.capacity = self._details.get('totalLiquidVolume', 0)
-        match self.shape:
-            case 'circular':
-                self.dimensions = (self._details.get('diameter', 0),)
-            case 'rectangular':
-                self.dimensions = (self._details.get('xDimension',0), self._details.get('yDimension',0))
-            case _:
-                logging.error(f"Invalid shape: {self.shape}")
+        if self.shape == 'circular':
+            self.dimensions = (self._details.get('diameter', 0),)
+        elif self.shape == 'rectangular':    
+            self.dimensions = (self._details.get('xDimension',0), self._details.get('yDimension',0))
+        else:
+            logger.error(f"Invalid shape: {self.shape}")
         return
     
     def __repr__(self) -> str:
@@ -253,14 +250,13 @@ class Well:
     def base_area(self) -> float:
         """Base area in mm^2"""
         area = 0
-        match self.shape:
-            case 'circular':
-                area = 3.141592/4 * self.dimensions[0]**2
-            case 'rectangular':
-                dimensions = self.dimensions
-                area =  dimensions[0]*dimensions[1]
-            case _:
-                logging.error(f"Invalid shape: {self.shape}")
+        if self.shape == 'circular':
+            area = np.pi/4 * self.dimensions[0]**2
+        elif self.shape == 'rectangular':
+            dimensions = self.dimensions
+            area =  dimensions[0]*dimensions[1]
+        else:   
+            logger.error(f"Invalid shape: {self.shape}")
         assert area > 0, f"Invalid base area: {area}"
         return area
     
@@ -306,13 +302,12 @@ class Well:
     
     def _draw(self, ax, **kwargs):
         """Draw well on matplotlib axis"""
-        match self.shape:
-            case 'circular':
-                ax.add_patch(plt.Circle(self.center, self.dimensions[0]/2, fill=False, **kwargs))
-            case 'rectangular':
-                ax.add_patch(plt.Rectangle(self.bottom, *self.dimensions, fill=False, **kwargs))
-            case _:
-                logging.error(f"Invalid shape: {self.shape}")
+        if self.shape == 'circular':
+            ax.add_patch(plt.Circle(self.center, self.dimensions[0]/2, fill=False, **kwargs))
+        elif self.shape == 'rectangular':    
+            ax.add_patch(plt.Rectangle(self.bottom, *self.dimensions, fill=False, **kwargs))
+        else:
+            logger.error(f"Invalid shape: {self.shape}")
         return
     
     # Deprecated methods
