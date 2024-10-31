@@ -130,7 +130,8 @@ class QInstrumentsDevice:
         timeout: int = 1, 
         *,
         init_timeout: int = 5,
-        message_end: str = '\r'
+        message_end: str = '\r',
+        **kwargs
     ):
         """
         Instantiate the class
