@@ -7,19 +7,25 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
-from abc import ABC, abstractmethod
+from copy import deepcopy
 import logging
+from types import SimpleNamespace
+from typing import Sequence
+
 import math
+
+# Third party imports
 import numpy as np
-from typing import Optional
+from scipy.spatial.transform import Rotation
 
 # Local application imports
-from ..misc import Layout
+from ..core.connection import DeviceFactory, Device
+from ..core.position import Deck, Position, get_transform
 
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
 
-class Mover(ABC):
+class Mover:
     """
     Abstract Base Class (ABC) for Mover objects (i.e. tools that move objects in space).
     ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
@@ -93,7 +99,284 @@ class Mover(ABC):
     - `updatePosition`: update attributes to current position
     """
     
-    _default_flags: dict[str, bool] = {'busy': False, 'connected': False}
+    _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, verbose=False)
+    def __init__(self,
+        *,
+        robot_position: Position = Position(),
+        home_position: Position = Position(),
+        tool_offset: Position = Position(),
+        calibrated_offset: Position = Position(),
+        scale: float = 1.0,
+        
+        deck: Deck|None = None,
+        verbose:bool = False, 
+        **kwargs
+    ):
+        """
+        Instantiate the class
+
+        Args:
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
+        self.device: Device = kwargs.get('device', DeviceFactory.createDeviceFromDict(kwargs))
+        self.flags: SimpleNamespace = deepcopy(self._default_flags)
+        self.verbose = verbose
+        
+        # Category specific attributes
+        self.deck: Deck = deck
+        self._robot_position = robot_position
+        self._home_position = home_position
+        self._tool_offset = tool_offset
+        self._calibrated_offset = calibrated_offset
+        self._scale = scale
+        
+        self._speed_factor = 1.0
+        self._speed_max = dict(general=20)
+        return
+    
+    def __del__(self):
+        self.shutdown()
+        return
+    
+    @property
+    def connection_details(self) -> dict:
+        """Get connection details"""
+        return self.device.connection_details
+    
+    @property
+    def is_busy(self) -> bool:
+        """Check and return whether the device is busy"""
+        return self.flags.busy
+    
+    @property
+    def is_connected(self) -> bool:
+        """Get connection status"""
+        return self.device.is_connected
+    
+    @property
+    def verbose(self) -> bool:
+        """Get verbosity of class"""
+        return self.flags.verbose
+    @verbose.setter
+    def verbose(self, value:bool):
+        """Set verbosity of class"""
+        assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
+        self.flags.verbose = value
+        self.device.verbose = value
+        level = logging.INFO if value else logging.WARNING
+        logger.setLevel(level)
+        for handler in logger.handlers:
+            if isinstance(handler, type(logging.StreamHandler())):
+                handler.setLevel(level)
+        return
+    
+    def connect(self):
+        """Reconnect to device using existing connection details"""
+        self.device.connect()
+        return
+    
+    def disconnect(self):
+        """Disconnect from device"""
+        self.device.disconnect()
+        return
+    
+    def resetFlags(self):
+        """Reset all flags to class attribute `_default_flags`"""
+        self.flags = deepcopy(self._default_flags)
+        return
+    
+    def shutdown(self):
+        """Shutdown procedure for tool"""
+        self.disconnect()
+        self.resetFlags()
+        return
+
+    # Category specific properties and methods
+    @property
+    def robot_position(self) -> Position:
+        """Current position of the robot"""
+        return self._robot_position
+    
+    @property
+    def home_position(self) -> Position:
+        """Home position of the robot"""
+        return self._home_position
+    
+    @property
+    def tool_offset(self) -> Position:
+        """Tool offset from robot to end effector"""
+        return self._tool_offset
+    
+    @property
+    def calibrated_offset(self) -> Position:
+        """Calibrated offset from robot to work position"""
+        return self._calibrated_offset
+    
+    @property
+    def tool_position(self) -> Position:
+        """Robot position of the tool end effector"""
+        coordinates = self.robot_position.coordinates + self.tool_offset.coordinates
+        rotation = self.robot_position.rotation + self.tool_offset.rotation
+        return Position(coordinates, Rotation.from_euler('zyx', rotation, degrees=True))
+    
+    @property
+    def work_position(self) -> Position:
+        """Work position of the robot"""
+        return self.transformRobotToWork(self.robot_position, self.calibrated_offset, self.scale)
+    
+    @property
+    def worktool_position(self) -> Position:
+        """Work position of the tool end effector"""
+        return self.transformRobotToWork(self.tool_position, self.calibrated_offset, self.scale)
+    
+    @property
+    def position(self) -> Position:
+        """Work position of the tool end effector"""
+        return self.worktool_position
+    
+    @property
+    def scale(self) -> float:
+        """Factor to scale the basis vectors by"""
+        return self._scale
+    
+    def halt(self) -> Position:
+        ...
+    
+    def home(self, axis:str|None = None) -> Position:
+        ...
+    
+    def move(self,
+        axis: str,
+        by: float,
+        speed_factor: float|None = None
+    ) -> Position:
+        ...
+        
+    def moveBy(self,
+        by: Sequence[float]|Position,
+        speed_factor: float|None = None
+    ) -> Position:
+        ...
+        
+    def moveTo(self,
+        to: Sequence[float]|Position,
+        speed_factor: float|None = None,
+        robot: bool = False
+    ) -> Position:
+        ...
+    
+    def moveRobotTo(self,
+        to: Sequence[float]|Position,
+        speed_factor: float|None = None
+    ) -> Position:
+        return self.moveTo(to=to, speed_factor=speed_factor, robot=True)
+        
+    def moveToolTo(self,
+        to: Sequence[float]|Position,
+        speed_factor: float|None = None
+    ) -> Position:
+        return self.moveTo(to=to, speed_factor=speed_factor, robot=False)
+    
+    def rotate(self,
+        axis: str,
+        by: float,
+        speed_factor: float|None = None
+    ) -> Position:
+        ...
+        
+    def rotateBy(self,
+        by: Sequence[float]|Position|Rotation,
+        speed_factor: float|None = None
+    ) -> Position:
+        ...
+        
+    def rotateTo(self,
+        to: Sequence[float]|Position|Rotation,
+        speed_factor: float|None = None,
+        robot: bool = False
+    ) -> Position:
+        ...
+        
+    def rotateRobotTo(self,
+        to: Sequence[float]|Position|Rotation,
+        speed_factor: float|None = None
+    ) -> Position:
+        return self.rotateTo(to=to, speed_factor=speed_factor, robot=True)
+    
+    def rotateToolTo(self,
+        to: Sequence[float]|Position|Rotation,
+        speed_factor: float|None = None
+    ) -> Position:
+        return self.rotateTo(to=to, speed_factor=speed_factor, robot=False)
+    
+    def safeMoveTo(self,
+        to: Sequence[float]|Position,
+        speed_factor: float|None = None,
+        robot: bool = False
+    ) -> Position:
+        ...
+    
+    def setSpeedFactor(self, 
+        speed_factor:float, 
+        default:bool = False
+    ) -> tuple[float]:
+        ...
+        
+    def updatePosition(self) -> Position:
+        ...
+        
+    @staticmethod
+    def calibrate(
+        internal_points: np.ndarray,
+        external_points: np.ndarray
+    ) -> tuple[Position,float]:
+        return get_transform(internal_points, external_points)
+    
+    @staticmethod
+    def transformRobotToWork(
+        internal_position: Position,
+        offset: Position,
+        scale: float = 1.0
+    ) -> Position:
+        translate = offset.coordinates
+        rotate = offset._rotation
+        scale = scale
+        # Translate-Rotate-Scale
+        coordinates = scale*rotate.apply(translate+internal_position.coordinates)
+        rotation = rotate * internal_position.rotation
+        return Position(coordinates, rotation)
+    
+    @staticmethod
+    def transformWorkToRobot(
+        external_position: Position,
+        offset: Position,
+        scale: float = 1.0
+    ) -> Position:
+        inv_scale = 1 / scale
+        inv_offset = offset.invert()
+        inv_rotate = inv_offset._rotation
+        inv_translate = inv_offset.coordinates
+        # Invert: Scale-Rotate-Translate
+        coordinates = inv_translate+inv_rotate.apply(inv_scale*external_position.coordinates)
+        rotation = inv_rotate * external_position.rotation
+        return Position(coordinates, rotation)
+    
+    # =========
+    # isFeasible
+    # reset
+    # setSpeed
+    # [prop] max_speeds
+    # [prop] speed
+    # [prop] speed_factor
+    # getConfigSettings
+    # loadDeck
+    # setHeight
+    # setImplementOffset
+    # calculate_travel_time
+    # get_move_wait_time
+    # =========
+    
+    
     _default_heights: dict[str, float] = {}
     _default_move_time_buffer: float = 0
     _place: str = '.'.join(__name__.split('.')[1:-1])
@@ -188,7 +471,7 @@ class Mover(ABC):
     def moveBy(self, 
         vector: tuple[float] = (0,0,0), 
         angles: tuple[float] = (0,0,0), 
-        speed_factor: Optional[float] = None,
+        speed_factor: float|None = None,
         **kwargs
     ) -> bool:
         """
@@ -197,7 +480,7 @@ class Mover(ABC):
         Args:
             vector (tuple[float], optional): x,y,z vector to move in. Defaults to (0,0,0).
             angles (tuple[float], optional): a,b,c angles to move in. Defaults to (0,0,0).
-            speed_factor (Optional[float], optional): speed factor of travel. Defaults to None.
+            speed_factor (float|None, optional): speed factor of travel. Defaults to None.
 
         Returns:
             bool: whether the movement is successful
@@ -211,20 +494,20 @@ class Mover(ABC):
  
     @abstractmethod
     def moveTo(self, 
-        coordinates: Optional[tuple[float]] = None, 
-        orientation: Optional[tuple[float]] = None, 
+        coordinates: tuple[float]|None = None, 
+        orientation: tuple[float]|None = None, 
         tool_offset: bool = False, 
-        speed_factor: Optional[float] = None,
+        speed_factor: float|None = None,
         **kwargs
     ) -> bool:
         """
         Move the robot to target position
 
         Args:
-            coordinates (Optional[tuple[float]], optional): x,y,z coordinates to move to. Defaults to None.
-            orientation (Optional[tuple[float]], optional): a,b,c orientation to move to. Defaults to None.
+            coordinates (tuple[float]|None, optional): x,y,z coordinates to move to. Defaults to None.
+            orientation (tuple[float]|None, optional): a,b,c orientation to move to. Defaults to None.
             tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
-            speed_factor (Optional[float], optional): speed factor of travel. Defaults to None.
+            speed_factor (float|None, optional): speed factor of travel. Defaults to None.
 
         Returns:
             bool: whether movement is successful
@@ -522,25 +805,25 @@ class Mover(ABC):
             print(f"{self.__class__} is not connected. Details: {self.connection_details}")
         return self.flags.get('connected', False)
  
-    def loadDeck(self, layout_file:Optional[str] = None, layout_dict:Optional[dict] = None, **kwargs):
+    def loadDeck(self, layout_file:str|None = None, layout_dict:dict|None = None, **kwargs):
         """
         Load Labware objects onto the deck from file or dictionary
         
         Args:
-            layout_file (Optional[str], optional): filename of layout .json file. Defaults to None.
-            layout_dict (Optional[dict], optional): dictionary of layout. Defaults to None.
+            layout_file (str|None, optional): filename of layout .json file. Defaults to None.
+            layout_dict (dict|None, optional): dictionary of layout. Defaults to None.
         """
         self.deck.loadLayout(layout_file=layout_file, layout_dict=layout_dict, **kwargs)
         return
     
-    def move(self, axis:str, value:float, speed_factor:Optional[float] = None, **kwargs) -> bool:
+    def move(self, axis:str, value:float, speed_factor:float|None = None, **kwargs) -> bool:
         """
         Move the robot in a specific axis by a specific value
 
         Args:
             axis (str): axis to move in (x,y,z,a,b,c,j1,j2,j3,j4,j5,j6)
             value (float): value to move by, in mm (translation) or degree (rotation)
-            speed (Optional[float], optional): speed factor of travel. Defaults to None.
+            speed (float|None, optional): speed factor of travel. Defaults to None.
 
         Returns:
             bool: whether movement is successful
@@ -572,24 +855,24 @@ class Mover(ABC):
         return
     
     def safeMoveTo(self, 
-        coordinates: Optional[tuple[float]] = None, 
-        orientation: Optional[tuple[float]] = None, 
+        coordinates: tuple[float]|None = None, 
+        orientation: tuple[float]|None = None, 
         tool_offset: bool = True, 
-        travel_speed_ratio: Optional[float] = None,
-        ascent_speed_ratio: Optional[float] = None, 
-        descent_speed_ratio: Optional[float] = None, 
+        travel_speed_ratio: float|None = None,
+        ascent_speed_ratio: float|None = None, 
+        descent_speed_ratio: float|None = None, 
         **kwargs
     ) -> bool:
         """
         Safe version of moveTo by moving in Z-axis first
 
         Args:
-            coordinates (Optional[tuple[float]], optional): x,y,z coordinates to move to. Defaults to None.
-            orientation (Optional[tuple[float]], optional): a,b,c orientation to move to. Defaults to None.
+            coordinates (tuple[float]|None, optional): x,y,z coordinates to move to. Defaults to None.
+            orientation (tuple[float]|None, optional): a,b,c orientation to move to. Defaults to None.
             tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
-            travel_speed_ratio (Optional[float], optional): speed ratio of lateral travel. Defaults to None.
-            ascent_speed_ratio (Optional[float], optional): speed ratio of ascent. Defaults to None.
-            descent_speed_ratio (Optional[float], optional): speed ratio of descent. Defaults to None.
+            travel_speed_ratio (float|None, optional): speed ratio of lateral travel. Defaults to None.
+            ascent_speed_ratio (float|None, optional): speed ratio of ascent. Defaults to None.
+            descent_speed_ratio (float|None, optional): speed ratio of descent. Defaults to None.
             
         Returns:
             bool: whether movement is successful
@@ -685,8 +968,8 @@ class Mover(ABC):
         return
     
     def updatePosition(self, 
-        coordinates: Optional[tuple[float]] = None, 
-        orientation: Optional[tuple[float]] = None, 
+        coordinates: tuple[float]|None = None, 
+        orientation: tuple[float]|None = None, 
         vector: tuple = (0,0,0), 
         angles: tuple = (0,0,0)
     ):
@@ -694,8 +977,8 @@ class Mover(ABC):
         Update atributes to current position
 
         Args:
-            coordinates (Optional[tuple[float]], optional): x,y,z coordinates. Defaults to None.
-            orientation (Optional[tuple[float]], optional): a,b,c angles. Defaults to None.
+            coordinates (tuple[float]|None, optional): x,y,z coordinates. Defaults to None.
+            orientation (tuple[float]|None, optional): a,b,c angles. Defaults to None.
             vector (tuple, optional): x,y,z vector. Defaults to (0,0,0).
             angles (tuple, optional): a,b,c angles. Defaults to (0,0,0).
         """
@@ -716,8 +999,8 @@ class Mover(ABC):
     def _calculate_travel_time(self, 
         distance: float, 
         speed: float, 
-        acceleration: Optional[float] = None,
-        deceleration: Optional[float] = None
+        acceleration: float|None = None,
+        deceleration: float|None = None
     ) -> float:
         """
         Calculate the travel time of motion
@@ -725,8 +1008,8 @@ class Mover(ABC):
         Args:
             distance (float): distance (linear or angular) travelled
             speed (float): speed (linear or angular) of motion
-            acceleration (Optional[float], optional): acceleration from target speed. Defaults to None.
-            deceleration (Optional[float], optional): deceleration from target speed. Defaults to None.
+            acceleration (float|None, optional): acceleration from target speed. Defaults to None.
+            deceleration (float|None, optional): deceleration from target speed. Defaults to None.
 
         Returns:
             float: travel time in seconds
@@ -757,7 +1040,7 @@ class Mover(ABC):
     def _get_move_wait_time(self, 
         distances: np.ndarray, 
         speeds: np.ndarray, 
-        accels: Optional[np.ndarray] = None
+        accels: np.ndarray|None = None
     ) -> float:
         """
         Get the amount of time to wait to complete movement
@@ -765,7 +1048,7 @@ class Mover(ABC):
         Args:
             distances (np.ndarray): array of distances to travel
             speeds (np.ndarray): array of axis speeds
-            accels (Optional[np.ndarray], optional): array of axis accelerations. Defaults to None.
+            accels (np.ndarray|None, optional): array of axis accelerations. Defaults to None.
 
         Returns:
             float: wait time to complete travel
@@ -781,8 +1064,8 @@ class Mover(ABC):
         return move_time
 
     def _transform_in(self, 
-        coordinates: Optional[tuple] = None, 
-        vector: Optional[tuple] = None, 
+        coordinates: tuple|None = None, 
+        vector: tuple|None = None, 
         stretch: bool = False, 
         tool_offset: bool = False
     ) -> tuple[float]:
@@ -790,8 +1073,8 @@ class Mover(ABC):
         Order of transformations (scale, rotate, translate)
 
         Args:
-            coordinates (Optional[tuple[float]], optional): position coordinates. Defaults to None.
-            vector (Optional[tuple[float]], optional): vector. Defaults to None.
+            coordinates (tuple[float]|None, optional): position coordinates. Defaults to None.
+            vector (tuple[float]|None, optional): vector. Defaults to None.
             stretch (bool, optional): whether to scale. Defaults to False.
             tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
 
@@ -815,8 +1098,8 @@ class Mover(ABC):
         return tuple( translate + np.matmul(self.orientate_matrix.T, scale * np.array(to_be_transformed)) )
 
     def _transform_out(self, 
-        coordinates: Optional[tuple] = None, 
-        vector: Optional[tuple] = None, 
+        coordinates: tuple|None = None, 
+        vector: tuple|None = None, 
         stretch: bool = False, 
         tool_offset: bool = False
     ) -> tuple[float]:
