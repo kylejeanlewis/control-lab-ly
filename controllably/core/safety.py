@@ -19,6 +19,25 @@ SUPERVISED = -10
 DEBUG = 0
 DELAY = 3
 
+safety_mode = None
+
+def set_level(level:int) -> None:
+    """
+    Set the safety level for the safety measures
+
+    Args:
+        level (int): safety level
+    """
+    global safety_mode
+    safety_mode = level
+    return
+
+def reset_level() -> None:
+    """Reset the safety level to None"""
+    global safety_mode
+    safety_mode = None
+    return
+
 def guard(mode:int = DEBUG) -> Callable:
     """
     Wrapper for creating guardrails for functions, especially involving movement
@@ -32,6 +51,8 @@ def guard(mode:int = DEBUG) -> Callable:
     Returns:
         Callable: wrapped function
     """
+    global safety_mode
+    mode = safety_mode if safety_mode is not None else mode
     assert isinstance(mode, int), f"mode must be an integer, not {type(mode)}"
     def inner(func:Callable) -> Callable:
         """
@@ -46,7 +67,7 @@ def guard(mode:int = DEBUG) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs) -> Callable:
             str_method = repr(func).split(' ')[1]
-            str_args = ','.join([repr(a) for a in args[1:]])
+            str_args = ','.join([repr(a) for a in args if a not in ('cls', 'self')])
             str_kwargs = ','.join([f'{k}={v}' for k,v in kwargs.items()])
             str_inputs = ','.join(filter(None, [str_args, str_kwargs]))
             str_call = f"{str_method}({str_inputs})"
@@ -59,6 +80,7 @@ def guard(mode:int = DEBUG) -> Callable:
                 input(f"Press 'Enter' to continue")
             else:               # DELAY
                 logger.warning(f"[DELAY] {str_call}")
+                logger.warning(f"Waiting for {mode} seconds")
                 time.sleep(mode)
             return func(*args, **kwargs)
         return wrapper
