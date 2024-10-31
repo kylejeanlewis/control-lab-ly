@@ -15,7 +15,7 @@ import serial                       # pip install pyserial
 import serial.tools.list_ports
 
 # Local application imports
-from . import factory
+from ..misc import factory
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -521,6 +521,5 @@ class DeviceFactory:
         return DeviceFactory.createDevice(device_type, **device_dict)
 
 
-__where__ = "misc.Connection"
-from .factory import include_this_module
-include_this_module(get_local_only=True)
+__where__ = "core.Connection"
+factory.include_this_module(get_local_only=True)

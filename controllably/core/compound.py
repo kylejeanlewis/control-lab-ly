@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from typing import Protocol, Callable, Sequence
 
 # Local application imports
-from ..misc.connection import DeviceFactory, Device
+from .connection import DeviceFactory, Device
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -403,3 +403,6 @@ class Multichannel(Combined):
         self.active_channel = channel
         return
     
+__where__ = "core.Compound"
+from ..misc import factory
+factory.include_this_module(get_local_only=True)

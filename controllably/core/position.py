@@ -14,9 +14,6 @@ from typing import Sequence, Any, Iterator
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-# Local application imports
-from .helper import read_json
-
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
@@ -1090,6 +1087,6 @@ class BoundingBox:
     
     
 
-__where__ = "misc.Position"
-from .factory import include_this_module
-include_this_module(get_local_only=True)
+__where__ = "core.Position"
+from ..misc import factory
+factory.include_this_module(get_local_only=True)
