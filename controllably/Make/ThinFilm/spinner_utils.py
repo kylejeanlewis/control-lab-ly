@@ -14,7 +14,7 @@ import time
 
 # Local application imports
 from ...misc import Helper
-from ...misc.compound import Ensemble
+from ...core.compound import Ensemble
 from ..make_utils import Maker
 
 logger = logging.getLogger(__name__)
