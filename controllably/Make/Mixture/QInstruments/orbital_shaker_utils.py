@@ -102,6 +102,7 @@ class BioShake(Maker):
             port (str): COM port address
         """
         super().__init__(device_type=QInstrumentsDevice, port=port, verbose=verbose, **kwargs)
+        assert isinstance(self.device, QInstrumentsDevice), f"Device ({self.device}) not supported for {self.__class__.__name__}"
         self.device: QInstrumentsDevice = self.device
         self.buffer_df = pd.DataFrame(columns=list(COLUMNS))
         
