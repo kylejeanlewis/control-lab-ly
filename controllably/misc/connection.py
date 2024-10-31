@@ -128,7 +128,8 @@ class SerialDevice:
         init_timeout: int = 2,
         message_end: str = '\n',
         *,
-        simulation: bool = False
+        simulation: bool = False,
+        **kwargs
     ):
         """
         Constructor for SerialDevice
@@ -139,9 +140,6 @@ class SerialDevice:
             timeout (int, optional): timeout for the device. Defaults to 1.
             init_timeout (int, optional): timeout for initialization. Defaults to 2.
         """
-        if hasattr(self,'_port'):
-            print(len(gc.get_referrers(self)))
-            return
         self._port = ''
         self._baudrate = 0
         self._timeout = 0
@@ -337,7 +335,7 @@ class SocketDevice:
     """
     Class for handling socket devices
     """
-    def __init__(self, host:str, port:int, timeout:int=1, *, simulation:bool=False):
+    def __init__(self, host:str, port:int, timeout:int=1, *, simulation:bool=False, **kwargs):
         """
         Constructor for SocketDevice
 
