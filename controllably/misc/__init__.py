@@ -24,7 +24,7 @@ Other constants and variables:
 """
 from . import factory as Factory
 from . import helper as Helper
-from . import position as Layout
+from . import layout as Layout
 from .factory import include_this_module, modules
 from .misc_utils import *
 
