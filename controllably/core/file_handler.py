@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import logging
 import os
@@ -57,4 +57,17 @@ def read_config_file(filepath:str) -> dict:
             raise ValueError(f"Unsupported file type: {file_type}")
     return
 
+def readable_duration(total_time:float) -> str:
+    """
+    Display time duration (s) as HH:MM:SS text
 
+    Args:
+        total_time (float): duration in seconds
+
+    Returns:
+        str: formatted time string
+    """
+    delta = timedelta(seconds=total_time)
+    strings = str(delta).split(' ')
+    strings[-1] = "{}h {}min {}sec".format(*strings[-1].split(':'))
+    return ' '.join(strings)
