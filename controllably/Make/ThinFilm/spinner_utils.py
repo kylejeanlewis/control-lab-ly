@@ -11,14 +11,10 @@ from __future__ import annotations
 import logging
 from threading import Thread
 import time
-from typing import Sequence
-
-# Third party imports
-import numpy as np
 
 # Local application imports
 from ...misc import Helper
-from ...misc.compound import Multichannel
+from ...misc.compound import Ensemble
 from ..make_utils import Maker
 
 logger = logging.getLogger(__name__)
@@ -176,154 +172,154 @@ class Spinner(Maker):
         self.resetFlags()
         return
 
-Multi_Spinner = Multichannel.factory(Spinner)
+Multi_Spinner = Ensemble.factory(Spinner)
 
-class SpinnerAssembly(Maker):
-    """
-    SpinnerAssembly provides methods to control multiple spin coater controller units
+# class SpinnerAssembly(Maker):
+#     """
+#     SpinnerAssembly provides methods to control multiple spin coater controller units
     
-    ### Constructor
-    Args:
-        `ports` (list[str]): COM port addresses
-        `channels` (list[int]): channel ids
-        `positions` (list[tuple[float]]): x,y,z positions of spinners
+#     ### Constructor
+#     Args:
+#         `ports` (list[str]): COM port addresses
+#         `channels` (list[int]): channel ids
+#         `positions` (list[tuple[float]]): x,y,z positions of spinners
     
-    ### Attributes
-    - `channels` (dict[int, Spinner]): dictionary of {channel id, `Spinner` objects}
+#     ### Attributes
+#     - `channels` (dict[int, Spinner]): dictionary of {channel id, `Spinner` objects}
     
-    ### Methods
-    - `disconnect`: disconnect from device
-    - `execute`: alias for `run()`
-    - `isBusy`: checks and returns whether any of the spinners are still busy
-    - `isConnected`: checks and returns whether all spinners are connected
-    - `run`: executes the soak and spin steps
-    - `shutdown`: shutdown procedure for tool
-    - `soak`: executes a soak step
-    - `spin`: execute a spin step
-    """
+#     ### Methods
+#     - `disconnect`: disconnect from device
+#     - `execute`: alias for `run()`
+#     - `isBusy`: checks and returns whether any of the spinners are still busy
+#     - `isConnected`: checks and returns whether all spinners are connected
+#     - `run`: executes the soak and spin steps
+#     - `shutdown`: shutdown procedure for tool
+#     - `soak`: executes a soak step
+#     - `spin`: execute a spin step
+#     """
     
-    _default_flags = {
-        'busy': False,
-        'connected': False
-    }
+#     _default_flags = {
+#         'busy': False,
+#         'connected': False
+#     }
     
-    def __init__(self, 
-        ports: list[str], 
-        channels: list[int], 
-        positions: list[tuple[float]],
-        **kwargs
-    ):
-        """
-        Instantiate the class
+#     def __init__(self, 
+#         ports: list[str], 
+#         channels: list[int], 
+#         positions: list[tuple[float]],
+#         **kwargs
+#     ):
+#         """
+#         Instantiate the class
 
-        Args:
-            ports (list[str]): COM port addresses
-            channels (list[int]): channel ids
-            positions (list[tuple[float]]): x,y,z positions of spinners
-        """
-        super().__init__(**kwargs)
-        self.channels = {}
-        self._threads = {}
+#         Args:
+#             ports (list[str]): COM port addresses
+#             channels (list[int]): channel ids
+#             positions (list[tuple[float]]): x,y,z positions of spinners
+#         """
+#         super().__init__(**kwargs)
+#         self.channels = {}
+#         self._threads = {}
         
-        self._connect(port=ports, channel=channels, position=positions, verbose=self.verbose)
-        return
+#         self._connect(port=ports, channel=channels, position=positions, verbose=self.verbose)
+#         return
 
-    def disconnect(self):
-        """Disconnect from device"""
-        for channel in self.channels.values():
-            channel.disconnect()
-        return super().disconnect() 
+#     def disconnect(self):
+#         """Disconnect from device"""
+#         for channel in self.channels.values():
+#             channel.disconnect()
+#         return super().disconnect() 
     
-    def execute(self, soak_time:int, spin_speed:int, spin_time:int, channel:int, *args, **kwargs):
-        """
-        Alias for `run()`
+#     def execute(self, soak_time:int, spin_speed:int, spin_time:int, channel:int, *args, **kwargs):
+#         """
+#         Alias for `run()`
         
-        Execute the soak and spin steps
+#         Execute the soak and spin steps
 
-        Args:
-            soak_time (int): soak time
-            spin_speed (int): spin speed
-            spin_time (int): spin time
-            channel (int): channel id
-        """
-        return self.run(soak_time=soak_time, spin_speed=spin_speed, spin_time=spin_time, channel=channel)
+#         Args:
+#             soak_time (int): soak time
+#             spin_speed (int): spin speed
+#             spin_time (int): spin time
+#             channel (int): channel id
+#         """
+#         return self.run(soak_time=soak_time, spin_speed=spin_speed, spin_time=spin_time, channel=channel)
         
-    def isBusy(self) -> bool:
-        """
-        Checks and returns whether any of the spinners are still busy
+#     def isBusy(self) -> bool:
+#         """
+#         Checks and returns whether any of the spinners are still busy
 
-        Returns:
-            bool: whether any of the spinners are still busy
-        """
-        return any([channel.isBusy() for channel in self.channels.values()])
+#         Returns:
+#             bool: whether any of the spinners are still busy
+#         """
+#         return any([channel.isBusy() for channel in self.channels.values()])
     
-    def isConnected(self) -> bool:
-        """
-        Checks and returns whether all spinners are connected
+#     def isConnected(self) -> bool:
+#         """
+#         Checks and returns whether all spinners are connected
 
-        Returns:
-            bool: whether all spinners are connected
-        """
-        return all([channel.isConnected() for channel in self.channels.values()])
+#         Returns:
+#             bool: whether all spinners are connected
+#         """
+#         return all([channel.isConnected() for channel in self.channels.values()])
     
-    def run(self, soak_time:int, spin_speed:int, spin_time:int, channel:int):
-        """
-        Execute the soak and spin steps
+#     def run(self, soak_time:int, spin_speed:int, spin_time:int, channel:int):
+#         """
+#         Execute the soak and spin steps
 
-        Args:
-            soak_time (int): soak time
-            spin_speed (int): spin speed
-            spin_time (int): spin time
-            channel (int): channel id
-        """
-        thread = Thread(target=self.channels[channel].run, args=(soak_time, spin_speed, spin_time))
-        thread.start()
-        self._threads[f'channel_{channel}_run'] = thread
-        return
+#         Args:
+#             soak_time (int): soak time
+#             spin_speed (int): spin speed
+#             spin_time (int): spin time
+#             channel (int): channel id
+#         """
+#         thread = Thread(target=self.channels[channel].run, args=(soak_time, spin_speed, spin_time))
+#         thread.start()
+#         self._threads[f'channel_{channel}_run'] = thread
+#         return
     
-    def shutdown(self):
-        """Shutdown procedure for tool"""
-        for thread in self._threads.values():
-            thread.join()
-        return super().shutdown()
+#     def shutdown(self):
+#         """Shutdown procedure for tool"""
+#         for thread in self._threads.values():
+#             thread.join()
+#         return super().shutdown()
     
-    def soak(self, seconds:int, channel:int):
-        """
-        Executes a soak step
+#     def soak(self, seconds:int, channel:int):
+#         """
+#         Executes a soak step
 
-        Args:
-            time_s (int): soak time in seconds
-            channel (int): channel id
-        """
-        thread = Thread(target=self.channels[channel].soak, args=(seconds,))
-        thread.start()
-        self._threads[f'channel_{channel}_soak'] = thread
-        return
+#         Args:
+#             time_s (int): soak time in seconds
+#             channel (int): channel id
+#         """
+#         thread = Thread(target=self.channels[channel].soak, args=(seconds,))
+#         thread.start()
+#         self._threads[f'channel_{channel}_soak'] = thread
+#         return
     
-    def spin(self, speed:int, seconds:int, channel:int):
-        """
-        Executes a spin step
+#     def spin(self, speed:int, seconds:int, channel:int):
+#         """
+#         Executes a spin step
 
-        Args:
-            speed (int): spin speed in rpm
-            time_s (int): spin time in seconds
-            channel (int): channel id
-        """
-        thread = Thread(target=self.channels[channel].spin, args=(speed, seconds))
-        thread.start()
-        self._threads[f'channel_{channel}_spin'] = thread
-        return
+#         Args:
+#             speed (int): spin speed in rpm
+#             time_s (int): spin time in seconds
+#             channel (int): channel id
+#         """
+#         thread = Thread(target=self.channels[channel].spin, args=(speed, seconds))
+#         thread.start()
+#         self._threads[f'channel_{channel}_spin'] = thread
+#         return
 
-    # Protected method(s)
-    def _connect(self, **kwargs):
-        """Connection procedure for tool"""
-        properties = Helper.zip_inputs('channel', **kwargs)
-        self.channels = {key: Spinner(**value) for key,value in properties.items()}
-        return
+#     # Protected method(s)
+#     def _connect(self, **kwargs):
+#         """Connection procedure for tool"""
+#         properties = Helper.zip_inputs('channel', **kwargs)
+#         self.channels = {key: Spinner(**value) for key,value in properties.items()}
+#         return
     
-    def _diagnostic(self):
-        """Run diagnostic test"""
-        for channel in self.channels.values():
-            channel._diagnostic()
-        return
+#     def _diagnostic(self):
+#         """Run diagnostic test"""
+#         for channel in self.channels.values():
+#             channel._diagnostic()
+#         return
     
