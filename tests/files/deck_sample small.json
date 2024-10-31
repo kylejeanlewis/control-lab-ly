@@ -1,0 +1,33 @@
+{
+    "metadata": {
+        "displayName": "Deck Square",
+        "displayCategory": "deck",
+        "displayVolumeUnits": "µL",
+        "displayLengthUnits": "mm",
+        "tags": []
+    },
+    "dimensions": [300,300,0],
+    "cornerOffset": [0,0,0],
+    "orientation": [0,0,0],
+    "slots": {
+        "5": {
+            "dimensions": [127.76,85.48,0],
+            "cornerOffset": [10.5,6.5,0],
+            "orientation": [0,0,0],
+            "labware_file": ""
+        },
+        "6": {
+            "dimensions": [127.76,85.48,0],
+            "cornerOffset": [160.5,6.5,0],
+            "orientation": [0,0,0],
+            "labware_file": ""
+        },
+        "7": {
+            "dimensions": [127.76,85.48,0],
+            "cornerOffset": [10.5,106.5,0],
+            "orientation": [0,0,0],
+            "labware_file": "C:/Users/chang/GitHub/control-lab-le/corning_24_wellplate_3400ul.json"
+        }
+    },
+    "zones":{}
+}
