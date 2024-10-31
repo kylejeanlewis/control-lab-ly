@@ -1,4 +1,20 @@
 # %%
+import test_init
+from controllably.core import safety
+
+safety.set_level(safety.SUPERVISED)
+
+@safety.guard()
+def move(position:tuple[int,int,int], stop:bool = False) -> None:
+    print(f"Moving{position}")
+    if stop:
+        print("STOP")
+    return
+
+move((1,1,1), stop=True)
+move((1,1,1))
+
+# %%
 import numpy as np
 from scipy.spatial.transform import Rotation
 
