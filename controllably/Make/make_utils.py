@@ -12,7 +12,7 @@ import logging
 from types import SimpleNamespace
 
 # Local application imports
-from ..misc.connection import DeviceFactory
+from ..misc.connection import DeviceFactory, Device
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -55,7 +55,7 @@ class Maker:
         Args:
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
-        self.device = DeviceFactory.createDeviceFromDict(kwargs)
+        self.device: Device = kwargs.get('device', DeviceFactory.createDeviceFromDict(kwargs))
         self.flags: SimpleNamespace = deepcopy(self._default_flags)
         self.verbose = verbose
         return
