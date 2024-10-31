@@ -1,4 +1,62 @@
 # %%
+from typing import Sequence
+
+def zip_kwargs_to_dict(primary_key:str, kwargs:dict) -> dict:
+    """
+    Checks and zips multiple keyword arguments of lists into dictionary
+    
+    Args:
+        primary_keyword (str): primary keyword to be used as key
+    
+    Kwargs:
+        key, list[...]: {keyword, list of values} pairs
+
+    Raises:
+        Exception: Ensure the lengths of inputs are the same
+
+    Returns:
+        dict: dictionary of (primary keyword, kwargs)
+    """
+    length = len(kwargs[primary_key])
+    for key, value in kwargs.items():
+        if isinstance(value, Sequence):
+            continue
+        if isinstance(value, set):
+            kwargs[key] = list(value)
+            continue
+        kwargs[key] = [value]*length
+    keys = list(kwargs.keys())
+    assert all(len(kwargs[key]) == length for key in keys), f"Ensure the lengths of these inputs are the same: {', '.join(keys)}"
+    primary_values = kwargs.pop(primary_key)
+    other_values = [v for v in zip(*kwargs.values())]
+    sub_dicts = [dict(zip(keys[1:], values)) for values in other_values]
+    new_dict = dict(zip(primary_values, sub_dicts))
+    return new_dict
+
+kwargs = dict(
+    name=['A','B','C'],
+    value=[1,2,3],
+    other=5
+)
+
+zip_kwargs_to_dict('name', kwargs)
+
+# %%
+import datetime
+
+seconds = 1e6
+delta = datetime.timedelta(seconds=seconds)
+
+strings = str(delta).split(' ')
+strings[-1] = "{}h {}min {}sec".format(*strings[-1].split(':'))
+' '.join(strings)
+
+# %%
+print("{}h {}min {}sec".format(*str(delta).split(':')))
+
+# %%
+
+# %%
 import test_init
 from controllably.core import safety
 
