@@ -12,7 +12,7 @@ import logging
 from types import SimpleNamespace
 
 # Local application imports
-from ..misc.connection import DeviceFactory, Device
+from ..core.connection import DeviceFactory, Device
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -58,6 +58,8 @@ class Maker:
         self.device: Device = kwargs.get('device', DeviceFactory.createDeviceFromDict(kwargs))
         self.flags: SimpleNamespace = deepcopy(self._default_flags)
         self.verbose = verbose
+        
+        # Category specific attributes
         return
     
     def __del__(self):
@@ -106,22 +108,24 @@ class Maker:
         self.device.disconnect()
         return
     
-    def execute(self, *args, **kwargs):
-        """Execute task"""
-        logger.info("Executing task")
-        raise NotImplementedError("Method `execute` must be implemented in subclass")
-    
     def resetFlags(self):
         """Reset all flags to class attribute `_default_flags`"""
         self.flags = deepcopy(self._default_flags)
         return
-    
-    def run(self, *args, **kwargs):
-        """Alias for `execute()`"""
-        return self.execute(*args, **kwargs)
     
     def shutdown(self):
         """Shutdown procedure for tool"""
         self.disconnect()
         self.resetFlags()
         return
+
+    # Category specific properties and methods
+    def execute(self, *args, **kwargs):
+        """Execute task"""
+        logger.info("Executing task")
+        raise NotImplementedError
+    
+    def run(self, *args, **kwargs):
+        """Alias for `execute()`"""
+        return self.execute(*args, **kwargs)
+    
