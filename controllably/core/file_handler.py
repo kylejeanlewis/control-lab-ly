@@ -2,14 +2,18 @@
 # Standard library imports
 from __future__ import annotations
 import json
-from logging import getLogger
+import logging
 
 # Third party imports
 import yaml
 
-logger = getLogger(__name__)
-logger.info(f"Import: OK <{__name__}>")
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
+logger.debug(f"Import: OK <{__name__}>")
 
+def create_project_structure():
+    ...
+    return
 
 def read_config_file(filepath:str) -> dict:
     """
