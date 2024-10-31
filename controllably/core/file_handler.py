@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
 from __future__ import annotations
+from datetime import datetime
 import json
 import logging
+import os
+from pathlib import Path
 
 # Third party imports
 import yaml
@@ -10,6 +13,25 @@ import yaml
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
+
+here = str(Path(__file__).parent.absolute()).replace('\\', '/')
+"""Path to this current file"""
+
+def create_folder(base:Path|str = '', sub:Path|str = '') -> str:
+    """
+    Check and create folder if it does not exist
+
+    Args:
+        parent_folder (Optional[str], optional): parent folder directory. Defaults to None.
+        child_folder (Optional[str], optional): child folder directory. Defaults to None.
+    
+    Returns:
+        str: name of main folder
+    """
+    main_folder = Path(datetime.now().strftime("%Y%m%d_%H%M"))
+    new_folder = Path(base) / main_folder / Path(sub)
+    os.makedirs(new_folder)
+    return main_folder
 
 def create_project_structure():
     ...
@@ -34,3 +56,5 @@ def read_config_file(filepath:str) -> dict:
         else:
             raise ValueError(f"Unsupported file type: {file_type}")
     return
+
+
