@@ -21,6 +21,36 @@ logger.debug(f"Import: OK <{__name__}>")
 MTP_DIMENSIONS = (127.76,85.48,0)
 OBB_DIMENSIONS = (300,300,0)
 
+def get_transform(initial_points: np.ndarray, final_points:np.ndarray) -> tuple[Position,float]:
+    """
+    Get transformation matrix from initial to final points, with the first point in each set being the center of rotation.
+
+    Args:
+        initial_points (np.ndarray): initial points
+        final_points (np.ndarray): final points
+
+    Returns:
+        np.ndarray: transformation matrix
+    """
+    assert isinstance(initial_points, np.ndarray) and isinstance(final_points, np.ndarray), "Please input numpy arrays"
+    assert initial_points.shape == final_points.shape, "Initial and final points must have the same shape"
+    assert initial_points.shape[1] == 3, "Please input 3D points"
+    assert initial_points.shape[0]%2 == 0, "Even number of points required"
+    
+    # align centroids
+    initial_centroid = initial_points[0]
+    final_centroid = final_points[0]
+    translation = final_centroid - initial_centroid
+    
+    # center points
+    initial_vectors = initial_points - initial_centroid
+    final_vectors = final_points - final_centroid
+    # align vectors
+    rotation = Rotation.align_vectors(final_vectors, initial_vectors)[0]
+    
+    scale = np.linalg.norm(final_vectors) / np.linalg.norm(initial_vectors)
+    return Position(translation, rotation), scale
+
 @dataclass
 class Position:
     _coordinates: Sequence[float] = (0,0,0)
@@ -104,6 +134,9 @@ class Position:
     
     def apply(self, on:Position) -> Position:
         return on.translate(self.coordinates).orientate(self._rotation)
+    
+    def invert(self) -> Position:
+        return Position(-self.coordinates, self._rotation.inv())
     
     def orientate(self, by:Rotation, inplace:bool = True) -> Position:
         if inplace:
