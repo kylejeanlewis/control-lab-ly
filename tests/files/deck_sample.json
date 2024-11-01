@@ -22,25 +22,25 @@
             "dimensions": [600,300,0],
             "cornerOffset": [600,600,0],
             "orientation": [-90,0,0],
-            "deck_file": "C:/Users/chang/GitHub/control-lab-le/deck_sample big.json"
+            "deck_file": "control-lab-le/tests/files/deck_sample big.json"
         },
         "B":{ 
             "dimensions": [300,300,0],
             "cornerOffset": [300,300,0],
             "orientation": [0,0,0],
-            "deck_file": "C:/Users/chang/GitHub/control-lab-le/deck_sample small.json"
+            "deck_file": "control-lab-le/tests/files/deck_sample small.json"
         },
         "C":{ 
             "dimensions": [300,300,0],
             "cornerOffset": [0,300,0],
             "orientation": [0,0,0],
-            "deck_file": "C:/Users/chang/GitHub/control-lab-le/deck_sample small.json"
+            "deck_file": "control-lab-le/tests/files/deck_sample small.json"
         },
         "D":{ 
             "dimensions": [300,300,0],
             "cornerOffset": [300,300,0],
             "orientation": [-180,0,0],
-            "deck_file": "C:/Users/chang/GitHub/control-lab-le/deck_sample small.json"
+            "deck_file": "control-lab-le/tests/files/deck_sample small.json"
         }
     }
 }
