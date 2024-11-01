@@ -1,4 +1,12 @@
 # %%
+from pathlib import Path
+
+
+p = Path('~/control-lab-le/tests/files/corning_24_wellplate_3400ul.json')
+REPO = list(p.parents)[-2]
+p.absolute()
+
+# %%
 from typing import Sequence
 
 def zip_kwargs_to_dict(primary_key:str, kwargs:dict) -> dict:
