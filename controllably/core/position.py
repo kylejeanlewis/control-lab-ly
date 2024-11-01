@@ -637,6 +637,7 @@ class Slot:
         return self.loaded_labware.exclusion_zone if isinstance(self.loaded_labware, Labware) else None
 
     def loadLabware(self, labware:Labware):
+        assert self.loaded_labware is None, "Labware already loaded in slot"
         self.loaded_labware = labware
         self.slot_above = self.loaded_labware.slot_above
         return
@@ -649,14 +650,15 @@ class Slot:
         labware = Labware.fromFile(labware_file=labware_file, parent=self)
         return self.loadLabware(labware=labware)
         
-    def removeLabware(self):
+    def removeLabware(self) -> Labware:
         assert self.loaded_labware is not None, "No Labware loaded in slot"
         if self.loaded_labware.is_stackable:
             assert self.loaded_labware.slot_above.loaded_labware is None, "Another Labware is stacked above"
         self.loaded_labware.slot_above.slot_below = None
+        labware = self.loaded_labware
         self.loaded_labware = None
         self.slot_above = None
-        return
+        return labware
 
     def _draw(self, ax, **kwargs):
         """Draw Slot on matplotlib axis"""
@@ -912,6 +914,44 @@ class Deck:
             
         return
     
+    def loadLabware(self, dst_slot: Slot, labware:Labware):
+        """
+        Load Labware into slot
+
+        Args:
+            dst_slot (int): slot id
+            labware (Labware): Labware object
+        """
+        assert isinstance(dst_slot, Slot), "Please input a valid slot"
+        dst_slot.loadLabware(labware=labware)
+        return
+    
+    def removeLabware(self, src_slot:Slot) -> Labware:
+        """
+        Remove Labware in slot using slot id or name
+
+        Args:
+            src_slot (int|str): slot id or name
+        """
+        assert isinstance(src_slot, Slot), "Please input a valid slot"
+        return src_slot.removeLabware()
+    
+    def transferLabware(self, src_slot:int|str, dst_slot:int|str):
+        """
+        Transfer Labware from source slot to destination slot
+
+        Args:
+            src_slot (int|str): source slot id or name
+            dst_slot (int|str): destination slot id or name
+        """
+        assert isinstance(src_slot, Slot), "Please input a valid source slot"
+        assert isinstance(dst_slot, Slot), "Please input a valid destination slot"
+        labware = src_slot.removeLabware()
+        dst_slot.loadLabware(labware=labware)
+        return
+    
+    
+    
     # Deprecated methods
     def loadLabware(self, 
         slot: int, 
@@ -1107,13 +1147,16 @@ class BoundingBox:
     
     def __contains__(self, point:Sequence[float]) -> bool:
         assert len(point) == 3, "Please input x,y,z coordinates"
-        return all([b[0] <= p <= b[1] for b,p in zip(list(zip(*self.bounds)), point)])
+        return all([min(b) <= p <= max(b) for b,p in zip(list(zip(*self.bounds)), point)])
     
     @property
     def bounds(self):
         bounds = np.array([self.reference.coordinates, self.reference.translate(self.dimensions, inplace=False).coordinates])
         return bounds + np.array(self.buffer)
-    
+
+@dataclass
+class Workspace(BoundingBox):
+    ...
     
 
 __where__ = "core.Position"
