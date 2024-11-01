@@ -14,7 +14,7 @@ from typing import Optional, Protocol
 import numpy as np
 
 # Local application imports
-from ...misc.position import Well
+from ...core.position import Well
 from ..compound_utils import CompoundSetup
 
 logger = logging.getLogger(__name__)
