@@ -1,10 +1,16 @@
 # %%
+import os
 from pathlib import Path
 
-
+path_string = '~/control-lab-le/tests/files/corning_24_wellplate_3400ul.json'
 p = Path('~/control-lab-le/tests/files/corning_24_wellplate_3400ul.json')
-REPO = list(p.parents)[-2]
-p.absolute()
+REPO = list(p.parents)[-3]
+print(REPO)
+p.resolve()
+a = os.path.normpath(path_string).split(os.path.sep)
+b = os.getcwd().split(os.path.sep)
+c = b[:b.index(a[1])] + a[1:]
+path = os.path.join(*c)
 
 # %%
 from typing import Sequence
