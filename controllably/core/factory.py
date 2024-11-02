@@ -296,22 +296,6 @@ def unregister(dot_notation:str):
     # return
     ...
 
-def update_root_directory(d: dict, repo:str):
-    """
-    Updates relative filepaths in library with root directory
-
-    Args:
-        d (dict): library of relative filepaths
-        repo (str): name of repository
-    """
-    root = str(Path().absolute()).split(repo)[0].replace('\\','/')
-    for k,v in list(d.items()):
-        if isinstance(v, dict):
-            update_root_directory(v, repo)
-        elif type(v) == str:
-            d[k] = v.replace(repo, f"{root}{repo}")
-    return
-
 def zip_kwargs_to_dict(primary_key:str, kwargs:dict) -> dict:
     """
     Checks and zips multiple keyword arguments of lists into dictionary
