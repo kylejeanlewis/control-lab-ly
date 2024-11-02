@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 import itertools
 import json
 import logging
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 from pathlib import Path
 from types import SimpleNamespace
@@ -15,7 +16,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 
 # Local application imports
-from .file_handler import read_config_file
+from .file_handler import read_config_file, resolve_repo_filepath
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -303,7 +304,7 @@ class Well:
         """
         return self.top + np.array(offset)
     
-    def _draw(self, ax, **kwargs):
+    def _draw(self, ax, zoom_out:bool = False, **kwargs):
         """Draw well on matplotlib axis"""
         if self.shape == 'circular':
             ax.add_patch(plt.Circle(self.center, self.dimensions[0]/2, fill=False, **kwargs))
@@ -414,7 +415,7 @@ class Labware:
         self._wells = {name:Well(name=name, _details=details, parent=self) for name,details in self._details.get('wells',{}).items()}
         
         buffer = self._details.get('parameters',{}).get('boundary_buffer', ((0,0,0),(0,0,0)))
-        self.exclusion_zone = BoundingBox(self.reference, self.dimensions, buffer)
+        self.exclusion_zone = BoundingBox(self.bottom_left_corner, self.dimensions, buffer)
         
         details_above = self._details.get('slotAbove','')
         if self.is_stackable and details_above:
@@ -450,16 +451,17 @@ class Labware:
         return cls(name=name, _details=details, parent=parent)
     
     @classmethod
-    def fromFile(cls, labware_file:str|Path, parent:Slot|None = None):
+    def fromFile(cls, labware_file:str|Path, parent:Slot|None = None, from_repo:bool = True):
         """
         Load Labware from file
 
         Args:
             labware_file (str): filepath of Labware JSON file
             package (str|None, optional): name of package to look in. Defaults to None.
+            from_repo (bool, optional): whether to load from repository. Defaults to True.
         """
         assert isinstance(labware_file,(str,Path)), "Please input a valid filepath"
-        filepath = Path(labware_file)
+        filepath = Path(labware_file) if not from_repo else resolve_repo_filepath(labware_file)
         assert filepath.is_file(), "Please input a valid Labware filepath"
         details = read_config_file(filepath)
         return cls.fromConfigs(details=details, parent=parent)
@@ -467,8 +469,7 @@ class Labware:
     # Properties
     @property
     def reference(self) -> Position:
-        reference = self.parent.bottom_left_corner if isinstance(self.parent, Slot) else Position()
-        return reference
+        return self.parent.bottom_left_corner if isinstance(self.parent, Slot) else Position()
         
     @property
     def offset(self) -> np.ndarray:
@@ -476,7 +477,7 @@ class Labware:
     
     @property
     def center(self) -> np.ndarray:
-        return self.reference.coordinates + self.reference._rotation.apply(self.offset)
+        return self.bottom_left_corner.coordinates + self.bottom_left_corner._rotation.apply(self.offset)
     
     @property
     def bottom_left_corner(self) -> Position:
@@ -484,7 +485,7 @@ class Labware:
     
     @property
     def dimensions(self) -> np.ndarray:
-        return self.reference._rotation.apply(self._dimensions)
+        return self.bottom_left_corner._rotation.apply(self._dimensions)
     
     @property
     def columns(self) -> dict[int, list[str]]:
@@ -536,26 +537,27 @@ class Labware:
     
     def show(self, zoom_out:bool = False) -> plt.Figure:
         fig, ax = plt.subplots()
-        self._draw(ax=ax)
+        self._draw(ax=ax, zoom_out=zoom_out)
         
-        if zoom_out:
-            ax.set_xlim(-self.dimensions[0], self.dimensions[0]*2)
-            ax.set_ylim(-self.dimensions[1], self.dimensions[1]*2)
-        else:
-            reference = self.reference.coordinates
-            ax.set_xlim(reference[0], reference[0] + self.dimensions[0])
-            ax.set_ylim(reference[1], reference[1] + self.dimensions[1])
+        reference = self.bottom_left_corner.coordinates
+        lower_buffer = self.dimensions if zoom_out else np.array((0,0,0))
+        upper_buffer = 2*self.dimensions if zoom_out else self.dimensions
+        lower_bounds = reference - lower_buffer
+        upper_bounds = reference + upper_buffer
+        ax.set_xlim(min(lower_bounds[0],upper_bounds[0]), max(lower_bounds[0],upper_bounds[0]))
+        ax.set_ylim(min(lower_bounds[1],upper_bounds[1]), max(lower_bounds[1],upper_bounds[1]))
+        
         x_inch,y_inch = fig.get_size_inches()
         inches_per_line = max(x_inch/self.dimensions[0], y_inch/self.dimensions[1])
-        new_size = tuple(np.array(self.dimensions[:2]) * inches_per_line)
+        new_size = tuple(abs(np.array(self.dimensions[:2]) * inches_per_line))
         fig.set_size_inches(new_size)
         return fig
         
-    def _draw(self, ax, **kwargs):
+    def _draw(self, ax, zoom_out:bool = False, **kwargs):
         """Draw Labware on matplotlib axis"""
-        ax.add_patch(plt.Rectangle(self.reference.coordinates, *self.dimensions[:2], fill=False, **kwargs))
+        ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, **kwargs))
         for well in self._wells.values():
-            well._draw(ax, **kwargs)
+            well._draw(ax, zoom_out=zoom_out, **kwargs)
         return
     
     # Deprecated methods
@@ -599,8 +601,8 @@ class Slot:
         self.x,self.y,self.z = dimensions/2
         self._dimensions = tuple(dimensions)
         
-        
         labware_file = Path(self._details.get('labware_file',''))
+        labware_file = resolve_repo_filepath(labware_file) if not labware_file.is_absolute() else labware_file
         if labware_file.is_file():
             self.loadLabwareFromFile(labware_file=labware_file)
         return
@@ -626,7 +628,7 @@ class Slot:
     
     @property
     def center(self) -> np.ndarray:
-        return self.reference.coordinates + self.reference._rotation.apply(self.offset)
+        return self.bottom_left_corner.coordinates + self.bottom_left_corner._rotation.apply(self.offset)
     
     @property
     def dimensions(self) -> np.ndarray:
@@ -638,6 +640,7 @@ class Slot:
 
     def loadLabware(self, labware:Labware):
         assert self.loaded_labware is None, "Labware already loaded in slot"
+        labware.parent = self
         self.loaded_labware = labware
         self.slot_above = self.loaded_labware.slot_above
         return
@@ -646,25 +649,32 @@ class Slot:
         labware = Labware.fromConfigs(details=details, parent=self)
         return self.loadLabware(labware=labware)
         
-    def loadLabwareFromFile(self, labware_file:str):
-        labware = Labware.fromFile(labware_file=labware_file, parent=self)
+    def loadLabwareFromFile(self, labware_file:str, from_repo:bool = True):
+        labware = Labware.fromFile(labware_file=labware_file, parent=self, from_repo=from_repo)
         return self.loadLabware(labware=labware)
         
     def removeLabware(self) -> Labware:
         assert self.loaded_labware is not None, "No Labware loaded in slot"
         if self.loaded_labware.is_stackable:
             assert self.loaded_labware.slot_above.loaded_labware is None, "Another Labware is stacked above"
-        self.loaded_labware.slot_above.slot_below = None
+            self.loaded_labware.slot_above.slot_below = None
         labware = self.loaded_labware
         self.loaded_labware = None
         self.slot_above = None
         return labware
 
-    def _draw(self, ax, **kwargs):
+    def _draw(self, ax, zoom_out:bool = False, **kwargs):
         """Draw Slot on matplotlib axis"""
         ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, linestyle=":", **kwargs))
         if  isinstance(self.loaded_labware, Labware):
-            self.loaded_labware._draw(ax, **kwargs)
+            self.loaded_labware._draw(ax, zoom_out=zoom_out,**kwargs)
+        elif not zoom_out:
+            ax.text(
+                *self.center[:2], self.name, 
+                ha='center', va='center', 
+                rotation=self.bottom_left_corner.rotation[0], 
+                fontsize=8, color='black', alpha=0.25
+            )
         return
 
 
@@ -721,6 +731,7 @@ class Deck:
         self._slots = {f"slot_{int(idx):02}":Slot(name=f"slot_{int(idx):02}", _details=details, parent=self) for idx,details in self._details.get('slots',{}).items()}
         for name,details in self._details.get('zones',{}).items():
             deck_file = Path(details.get('deck_file',''))
+            deck_file = resolve_repo_filepath(deck_file) if not deck_file.is_absolute() else deck_file
             if deck_file.is_file():
                 parent_lineage = self.parent._nesting_lineage if isinstance(self.parent,Deck) else self._nesting_lineage
                 if deck_file in parent_lineage:
@@ -755,16 +766,17 @@ class Deck:
         return cls(name=name, _details=details, parent=parent, _nesting_lineage=tuple(_nesting_lineage))
     
     @classmethod
-    def fromFile(cls, deck_file:str, parent:Deck|None = None):
+    def fromFile(cls, deck_file:str, parent:Deck|None = None, from_repo:bool = True):
         """
         Load deck layout from layout file
 
         Args:
             layout_file (str): filepath of deck layout JSON file
             package (str|None, optional): name of package to look in. Defaults to None.
+            from_repo (bool, optional): whether to load from repository. Defaults to True.
         """
         assert isinstance(deck_file,(str,Path)), "Please input a valid filepath"
-        filepath = Path(deck_file)
+        filepath = Path(deck_file) if not from_repo else resolve_repo_filepath(deck_file)
         assert filepath.is_file(), "Please input a valid Deck filepath"
         details = read_config_file(filepath)
         return cls.fromConfigs(details=details, parent=parent, _nesting_lineage=(filepath,))
@@ -772,8 +784,7 @@ class Deck:
     # Properties
     @property
     def reference(self) -> Position:
-        reference = self.parent.bottom_left_corner if isinstance(self.parent, Deck) else Position()
-        return reference
+        return self.parent.bottom_left_corner if isinstance(self.parent, Deck) else Position()
     
     @property
     def offset(self) -> np.ndarray:
@@ -781,7 +792,7 @@ class Deck:
     
     @property
     def center(self) -> np.ndarray:
-        return self.reference.coordinates + self.reference._rotation.apply(self.offset)
+        return self.bottom_left_corner.coordinates + self.bottom_left_corner._rotation.apply(self.offset)
     
     @property
     def dimensions(self) -> np.ndarray:
@@ -857,6 +868,7 @@ class Deck:
     
     def loadNestedDeck(self, name:str, details:dict[str, Any]):
         deck_file = Path(details.pop('deck_file',''))
+        deck_file = resolve_repo_filepath(deck_file) if not deck_file.is_absolute() else deck_file
         assert deck_file.is_file(), "Please input a valid Deck filepath"
         with open(deck_file, 'r') as file:
             nested_details = json.load(file)
@@ -871,47 +883,43 @@ class Deck:
     
     def show(self, zoom_out:bool = False) -> plt.Figure:
         fig, ax = plt.subplots()
-        color_iterator = iter(plt.rcParams['axes.prop_cycle'].by_key()['color'])
+        color_map = {v:k for k,v in mcolors.get_named_colors_mapping().items()}
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        color_iterator = iter([color_map[c] for c in colors])
         color_iterator = itertools.chain(['none'], color_iterator, itertools.cycle(['black']))
-        self._draw(ax=ax, color_iterator=color_iterator)
+        self._draw(ax=ax, zoom_out=zoom_out, color_iterator=color_iterator)
         
-        if zoom_out:
-            ax.set_xlim(-self.dimensions[0], self.dimensions[0]*2)
-            ax.set_ylim(-self.dimensions[1], self.dimensions[1]*2)
-        else:
-            reference = self.reference.coordinates
-            ax.set_xlim(reference[0], reference[0] + self.dimensions[0])
-            ax.set_ylim(reference[1], reference[1] + self.dimensions[1])
+        reference = self.bottom_left_corner.coordinates
+        lower_buffer = self.dimensions if zoom_out else np.array((0,0,0))
+        upper_buffer = 2*self.dimensions if zoom_out else self.dimensions
+        lower_bounds = reference - lower_buffer
+        upper_bounds = reference + upper_buffer
+        ax.set_xlim(min(lower_bounds[0],upper_bounds[0]), max(lower_bounds[0],upper_bounds[0]))
+        ax.set_ylim(min(lower_bounds[1],upper_bounds[1]), max(lower_bounds[1],upper_bounds[1]))
         x_inch,y_inch = fig.get_size_inches()
         inches_per_line = max(x_inch/self.dimensions[0], y_inch/self.dimensions[1])
-        new_size = tuple(np.array(self.dimensions[:2]) * inches_per_line)
+        new_size = tuple(abs(np.array(self.dimensions[:2]) * inches_per_line))
         fig.set_size_inches(new_size)
         return fig
     
-    def _draw(self, ax, outline:bool=False, color_iterator:Iterator|None = None, **kwargs):
+    def _draw(self, ax, zoom_out:bool = False, *, color_iterator:Iterator|None = None, **kwargs):
         """Draw Deck on matplotlib axis"""
         bg_color = next(color_iterator) if isinstance(color_iterator,Iterator) else None
-        ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], alpha=0.25, color=bg_color, **kwargs))
+        ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], alpha=0.5, color=bg_color, **kwargs))
         ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, **kwargs))
-        
+        print(f"{bg_color.replace('tab:','')} -> {self.name.replace('_sub','.')}")
         for zone in self._zones.values():
             if isinstance(zone, Deck):
-                zone._draw(ax, outline=True, color_iterator=color_iterator, **kwargs)
-        if outline:
-            return
+                zone._draw(ax, zoom_out=zoom_out, color_iterator=color_iterator, **kwargs)
         
         def draw_slots(ax, slots:dict[str, Slot|SimpleNamespace], **kwargs):
             for slot in slots.values():
                 if isinstance(slot, Slot):
-                    slot._draw(ax, **kwargs)
-                elif isinstance(slot, SimpleNamespace):
-                    draw_slots(ax, vars(slot), **kwargs)
+                    slot._draw(ax, zoom_out=zoom_out, **kwargs)
+                # elif isinstance(slot, SimpleNamespace):
+                #     draw_slots(ax, vars(slot), **kwargs)
             return
         draw_slots(ax, self._slots, **kwargs)
-        # for slot in self._slots.values():
-        #     if isinstance(slot, Slot):
-        #         slot._draw(ax, **kwargs)
-            
         return
     
     def loadLabware(self, dst_slot: Slot, labware:Labware):
