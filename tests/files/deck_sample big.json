@@ -6,7 +6,7 @@
         "displayLengthUnits": "mm",
         "tags": []
     },
-    "dimensions": [600,600,0],
+    "dimensions": [600,300,0],
     "cornerOffset": [0,0,0],
     "orientation": [0,0,0],
     "slots": {
@@ -35,12 +35,5 @@
             "labware_file": "control-lab-le/tests/files/corning_24_wellplate_3400ul.json"
         }
     },
-    "zones":{
-        "D":{ 
-            "dimensions": [300,300,0],
-            "cornerOffset": [300,-300,0],
-            "orientation": [0,0,0],
-            "deck_file": "control-lab-le/tests/files/deck_sample small.json"
-        }
-    }
+    "zones":{}
 }
