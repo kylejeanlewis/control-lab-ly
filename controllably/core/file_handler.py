@@ -14,9 +14,6 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
-here = str(Path(__file__).parent.absolute()).replace('\\', '/')
-"""Path to this current file"""
-
 def create_folder(base:Path|str = '', sub:Path|str = '') -> str:
     """
     Check and create folder if it does not exist
@@ -37,7 +34,7 @@ def create_project_structure():
     ...
     return
 
-def read_config_file(filepath:str) -> dict:
+def read_config_file(filepath:str|Path) -> dict:
     """
     Read configuration file and return as dictionary
 
@@ -47,6 +44,7 @@ def read_config_file(filepath:str) -> dict:
     Returns:
         dict: configuration file as dictionary
     """
+    filepath = str(filepath)
     file_type = filepath.split('.')[-1]
     with open(filepath, 'r') as file:
         if file_type in ('jsn', 'json', 'jsonl'):
@@ -71,3 +69,23 @@ def readable_duration(total_time:float) -> str:
     strings = str(delta).split(' ')
     strings[-1] = "{}h {}min {}sec".format(*strings[-1].split(':'))
     return ' '.join(strings)
+
+def resolve_repo_filepath(filepath:str|Path) -> Path:
+    """
+    Resolve relative path to absolute path
+
+    Args:
+        filepath (str): relative path to file
+
+    Returns:
+        str: absolute path to file
+    """
+    filepath = str(filepath)
+    if len(filepath) == 0 or filepath == '.':
+        return Path('')
+    if os.path.isabs(filepath):
+        return Path(filepath)
+    parent = [os.path.sep] + os.getcwd().split(os.path.sep)[1:]
+    path = os.path.normpath(filepath).split(os.path.sep)
+    full_path = os.path.abspath(os.path.join(*parent[:parent.index(path[0])], *path))
+    return Path(full_path)
