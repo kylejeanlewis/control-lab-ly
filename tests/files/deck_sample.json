@@ -19,10 +19,10 @@
     },
     "zones":{
         "A":{ 
-            "dimensions": [600,300,0],
-            "cornerOffset": [600,600,0],
+            "dimensions": [600,600,0],
+            "cornerOffset": [300,600,0],
             "orientation": [-90,0,0],
-            "deck_file": "control-lab-le/tests/files/deck_sample big.json"
+            "deck_file": "control-lab-le/tests/files/deck_sample duo.json"
         },
         "B":{ 
             "dimensions": [300,300,0],
