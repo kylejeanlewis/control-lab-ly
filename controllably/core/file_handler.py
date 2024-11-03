@@ -2,13 +2,18 @@
 # Standard library imports
 from __future__ import annotations
 from datetime import datetime, timedelta
+from importlib import resources
 import json
 import logging
 import os
 from pathlib import Path
+import shutil
 
 # Third party imports
 import yaml
+
+# Local application imports
+from . import connection
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -29,10 +34,6 @@ def create_folder(base:Path|str = '', sub:Path|str = '') -> str:
     new_folder = Path(base) / main_folder / Path(sub)
     os.makedirs(new_folder)
     return main_folder
-
-def create_project_structure():
-    ...
-    return
 
 def read_config_file(filepath:str|Path) -> dict:
     """
@@ -89,3 +90,22 @@ def resolve_repo_filepath(filepath:str|Path) -> Path:
     path = os.path.normpath(filepath).split(os.path.sep)
     full_path = os.path.abspath(os.path.join(*parent[:parent.index(path[0])], *path))
     return Path(full_path)
+
+def start_project_here(dst:Path|str|None = None):
+    """Create new tools configs folder"""
+    src = resources.files('controllably') / 'core/_templates'
+    dst = Path.cwd() if dst is None else Path(dst)
+    logger.debug(f"Creating new project in: {dst}")
+    for directory in src.iterdir():
+        new_dst = dst / directory.name
+        if new_dst.exists():
+            logger.warning(f"Folder/file already exists: {new_dst}")
+            continue
+        if directory.is_file():
+            shutil.copy2(src=directory, dst=dst / directory.name)
+        if directory.is_dir():
+            shutil.copytree(src=directory, dst=dst / directory.name)
+    print(f"New project created in: {dst}")
+    print(f"Please update the configuration files in: {dst/'tools/registry.yaml'}")
+    print(f"Current machine id: {connection.get_node()}")
+    return
