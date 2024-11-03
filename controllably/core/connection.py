@@ -48,8 +48,6 @@ def get_node() -> str:
     print(node_out)
     return node_id
 
-
-
 def get_ports() -> list[str]:
     """
     Get available ports
