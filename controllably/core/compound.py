@@ -9,6 +9,7 @@ from typing import Protocol, Callable, Sequence
 
 # Local application imports
 from .connection import DeviceFactory, Device
+from .factory import load_parts
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -60,7 +61,7 @@ class Compound:
     @classmethod
     def fromConfig(cls, config:dict):
         details = config.pop('details')
-        parts = {name:Part(**detail) for name,detail in details.items()}
+        parts = {name:load_parts(**settings) for name,settings in details.items()}
         return cls(parts=parts, **config)
     
     @property
@@ -139,7 +140,7 @@ class Ensemble(Compound):
         assert type(cls._channel_class) == type, "Use the `factory` method to generate the desired class first"
         
         parent = cls._channel_class
-        parts_list = [parent(**detail) for detail in details]
+        parts_list = [parent(**settings) for settings in details]
         parts = {chn:part for chn,part in zip(channels,parts_list)}
         assert len(channels) == len(parts), "Ensure the number of channels match the number of parts"
         return cls(parts=parts, **kwargs)
@@ -234,7 +235,7 @@ class Combined:
     def fromConfig(cls, config:dict):
         details = config.pop('details')
         device = DeviceFactory.createDeviceFromDict(config)
-        parts = {name:detail.get('part_class',Part)(device=device, **detail) for name,detail in details.items()}
+        parts = {name:load_parts(device=device, **settings) for name,settings in details.items()}
         return cls(device=device, parts=parts, **config)
     
     @property
@@ -319,7 +320,7 @@ class Multichannel(Combined):
         assert type(cls._channel_class) == type, "Use the `factory` method to generate the desired class first"
         
         parent = cls._channel_class
-        parts_list = [parent(**detail) for detail in details]
+        parts_list = [parent(**settings) for settings in details]
         parts = {chn:part for chn,part in zip(channels,parts_list)}
         assert len(channels) == len(parts), "Ensure the number of channels match the number of parts"
         return cls(parts=parts, **kwargs)
@@ -390,9 +391,6 @@ class Multichannel(Combined):
             return {chn:self.channels[chn] for chn in channel}
         raise ValueError(f"Invalid channel input: {channel}")
     
-    # def _get_device(self) -> Device:
-    #     return self.device
-    
     def setActiveChannel(self, channel:int|None = None):
         """Set the active channel"""
         if channel is None:
@@ -403,6 +401,3 @@ class Multichannel(Combined):
         self.active_channel = channel
         return
     
-__where__ = "core.Compound"
-from ..misc import factory
-factory.include_this_module(get_local_only=True)
