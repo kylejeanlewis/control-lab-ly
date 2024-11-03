@@ -1,16 +1,26 @@
 # %%
+import inspect
+import pprint
+import sys
+
+import test_init
+from controllably.core.factory import get_imported_modules
+
+mod = get_imported_modules('library')
+pprint.pprint(mod)
+
+# %%
+import importlib.resources
 import os
 from pathlib import Path
 
-path_string = '~/control-lab-le/tests/files/corning_24_wellplate_3400ul.json'
-p = Path('~/control-lab-le/tests/files/corning_24_wellplate_3400ul.json')
-REPO = list(p.parents)[-3]
-print(REPO)
-p.resolve()
-a = os.path.normpath(path_string).split(os.path.sep)
-b = os.getcwd().split(os.path.sep)
-c = b[:b.index(a[1])] + a[1:]
-path = os.path.join(*c)
+path_string = 'control-lab-le/tests/files/corning_24_wellplate_3400ul.json'
+p = Path('control-lab-le/tests/files/corning_24_wellplate_3400ul.json')
+
+parent = [os.path.sep] + os.getcwd().split(os.path.sep)[1:]
+path = os.path.normpath(path_string).split(os.path.sep)
+full_path = os.path.abspath(os.path.join(*parent[:parent.index(path[0])], *path))
+full_path
 
 # %%
 from typing import Sequence
@@ -151,11 +161,11 @@ from pathlib import Path
 import test_init
 from controllably.core.position import Labware, Deck
 
-labware_file = Path(r'C:\Users\chang\Downloads\corning_24_wellplate_3400ul.json')
-labware = Labware.fromFile(labware_file)
-labware.show()
+# labware_file = Path(r'C:\Users\chang\GitHub\control-lab-le\tests\files\corning_24_wellplate_3400ul.json')
+# labware = Labware.fromFile(labware_file)
+# labware.show()
 
-deck_file = Path(r'C:\Users\chang\GitHub\control-lab-le\deck_sample.json')
+deck_file = Path(r'C:\Users\chang\GitHub\control-lab-le\tests\files\deck_sample.json')
 deck = Deck.fromFile(deck_file)
 deck.show()
 deck
