@@ -1,0 +1,28 @@
+_Device01_:                                     # name of simple device (user-defined)
+  module: _module_name_01_                      # device module
+  class: _submodule_1A_._class_1A_              # device class
+  settings:
+    port: __device_01__                         # port addresses defined in registry.yaml
+    _setting_A_: {'tuple': [300,0,200]}         # use keys to define the type of iterable
+    _setting_B_: {'array': [[0,1,0],[-1,0,0]]}  # only tuple and np.array supported
+
+_Device02_:                                     # name of 'Compound' device (user-defined)
+  module: Compound                            
+  class: _submodule_2A_._class_2A_
+  settings:
+    _setting_C_: 1                              # other settings for your 'Compound' device
+    component_config:                           # nest component configuration settings here
+      _Component01_:                            # name of component
+        module: _module_name_03_
+        class: _submodule_3A_._class_3A_
+        settings:
+          ip_address: '192.0.0.1'               # IP addresses do not vary between machines
+      _Component02_: 
+        module: _module_name_04_
+        class: _submodule_4A_._class_4A_
+        settings:
+          _setting_D_: 2                        # settings for your component device
+
+SHORTCUTS:
+  _Nickname1_: '_Device02_._Component01_'
+  _Nickname2_: '_Device02_._Component02_'

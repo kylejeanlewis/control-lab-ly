@@ -1,0 +1,42 @@
+{
+	"reference_points":{
+		"1": ["_x01_","_y01_","_z01_"],
+		"2": ["_x02_","_y02_","_z02_"],
+		"3": ["_x03_","_y03_","_z03_"],
+		"4": ["_x04_","_y04_","_z04_"],
+		"5": ["_x05_","_y05_","_z05_"],
+		"6": ["_x06_","_y06_","_z06_"]
+	},
+    "slots":{
+		"1": {
+			"name": "_name_01_",
+			"exclusion_height": -1,
+			"filepath": "_repo_name_/.../_labware_01_.json"
+		},
+		"2": {
+			"name": "__name_02__",
+			"exclusion_height": -1,
+			"filepath": "_repo_name_/.../_labware_02_.json"
+		},
+		"3": {
+			"name": "_name_03_",
+			"exclusion_height": -1,
+			"filepath": "_repo_name_/.../_labware_03_.json"
+		},
+		"4": {
+			"name": "_name_04_",
+			"exclusion_height": -1,
+			"filepath": "_repo_name_/.../_labware_04_.json"
+		},
+		"5": {
+			"name": "_name_05_",
+			"exclusion_height": -1,
+			"filepath": "_repo_name_/.../_labware_05_.json"
+		},
+		"6": {
+			"name": "_name_06_",
+			"exclusion_height": -1,
+			"filepath": "_repo_name_/.../_labware_06_.json"
+		}
+	}
+}
