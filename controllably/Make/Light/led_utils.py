@@ -12,10 +12,7 @@ from dataclasses import dataclass, field
 import logging
 from threading import Thread
 import time
-from typing import Optional
-
-# Third party imports
-import serial   # pip install pyserial
+from types import SimpleNamespace
 
 # Local application imports
 from ..make_utils import Maker
@@ -24,7 +21,7 @@ logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
 
 @dataclass
-class LED:
+class _LED:
     """
     LED dataclass represents a single LED unit
 
@@ -86,7 +83,7 @@ class LEDArray(Maker):
         `verbose` (bool, optional): whether to print outputs. Defaults to False.
     
     ### Attributes
-    - `channels` (dict[int, LED]): dictionary of {channel id, `LED` objects}
+    - `channels` (dict[int, _LED]): dictionary of {channel id, `_LED` objects}
     
     ### Properties
     - `port` (str): COM port address
@@ -102,14 +99,16 @@ class LEDArray(Maker):
     - `turnOff`: turn of specified LED channels
     """
     
-    _default_flags = {
-        'busy': False,
-        'connected': False,
-        'execute_now': False,
-        'timing_loop': False
-    }
-    
-    def __init__(self, port:str, channels:tuple[int] = (0,), **kwargs):
+    _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, execute_now=False, timing_loop=False)
+    def __init__(
+        self, 
+        port:str, 
+        channels:tuple[int] = (0,), 
+        *,
+        baudrate: int = 9600,
+        verbose: bool = False,
+        **kwargs
+    ):
         """
         Instantiate the class
 
@@ -117,37 +116,25 @@ class LEDArray(Maker):
             port (str): COM port addressed
             channels (tuple[int], optional): tuple of channels. Defaults to (0,).
         """
-        super().__init__(**kwargs)
-        self.channels = {chn: LED(chn) for chn in channels}
+        super().__init__(port=port, baudrate=baudrate, verbose=verbose, **kwargs)
+        self.channels = {chn: _LED(chn) for chn in channels}
         self._threads = {}
         self._timed_channels = []
-        self._connect(port)
+        
+        self.connect()
         return
     
     # Properties
     @property
     def port(self) -> str:
-        return self.connection_details.get('port', '')
+        return self.device.connection_details.get('port', '')
     
-    def execute(self, value:int, time_s:int = 0, channel:Optional[int] = None, *args, **kwargs):
-        """
-        Alias for `setPower()`
-        
-        Set the power value(s) for channel(s)
-
-        Args:
-            value (int): 8-bit integer for LED power (i.e. 0~255)
-            time_s (int, optional): duration in seconds. Defaults to 0.
-            channel (Optional[int], optional): channel id. Defaults to None.
-        """
-        return self.setPower(value=value, time_s=time_s, channel=channel)
-    
-    def getPower(self, channel:Optional[int] = None) -> list[int]:
+    def getPower(self, channel:int|None = None) -> list[int]:
         """
         Get power level(s) of channel(s)
 
         Args:
-            channel (Optional[int], optional): channel index. Defaults to None.
+            channel (int|None, optional): channel index. Defaults to None.
 
         Returns:
             list[int]: list of power level(s)
@@ -170,25 +157,14 @@ class LEDArray(Maker):
         self._timed_channels = [chn.channel for chn in self.channels.values() if (chn._end_time>now and chn._duration)]
         return self._timed_channels
     
-    def isBusy(self) -> bool:
-        """
-        Checks and returns whether the LED array is still busy
-
-        Returns:
-            bool: whether the LED array is still busy
-        """
-        busy = bool(len(self.getTimedChannels()))
-        busy = busy | any([chn._duration for chn in self.channels.values()])
-        return busy
-    
-    def setPower(self, value:int, time_s:int = 0, channel:Optional[int] = None):
+    def setPower(self, value:int, time_s:int = 0, channel:int|None = None):
         """
         Set the power value(s) for channel(s)
 
         Args:
             value (int): 8-bit integer for LED power (i.e. 0~255)
             time_s (int, optional): duration in seconds. Defaults to 0.
-            channel (Optional[int], optional): channel id. Defaults to None.
+            channel (int|None, optional): channel id. Defaults to None.
         """
         if channel is None:
             for chn in self.channels.values():
@@ -201,12 +177,6 @@ class LEDArray(Maker):
             self._update_power()
         return
     
-    def shutdown(self):
-        """Shutdown procedure for tool"""
-        for thread in self._threads.values():
-            thread.join()
-        return super().shutdown()
-    
     def startTiming(self):
         """Start counting down time left with LEDs on"""
         print("Timing...")
@@ -218,48 +188,53 @@ class LEDArray(Maker):
             self._threads['timing_loop'] = thread
         return
     
-    def turnOff(self, channel:Optional[int] = None):
+    def turnOff(self, channel:int|None = None):
         """
         Turn off the LED corresponding to the channel(s)
 
         Args:
-            channel (Optional[int], optional): channel id. Defaults to None.
+            channel (int|None, optional): channel id. Defaults to None.
         """
         print(f"Turning off LED {channel}")
         self.setPower(0, channel=channel)
         return
-
-    # Protected method(s)
-    def _connect(self, port:str, baudrate:int = 9600, timeout:int = 1):
+    
+    # Overwritten method(s)
+    @property
+    def is_busy(self) -> bool:
         """
-        Connection procedure for tool
+        Checks and returns whether the LED array is still busy
+
+        Returns:
+            bool: whether the LED array is still busy
+        """
+        busy = bool(len(self.getTimedChannels()))
+        busy = busy | any([chn._duration for chn in self.channels.values()])
+        self.flags.busy = busy
+        return busy
+    
+    def execute(self, value:int, time_s:int = 0, channel:int|None = None, *args, **kwargs):
+        """
+        Alias for `setPower()`
+        
+        Set the power value(s) for channel(s)
 
         Args:
-            port (str): COM port address
-            baudrate (int, optional): baudrate. Defaults to 9600.
-            timeout (int, optional): timeout in seconds. Defaults to 1.
+            value (int): 8-bit integer for LED power (i.e. 0~255)
+            time_s (int, optional): duration in seconds. Defaults to 0.
+            channel (int|None, optional): channel id. Defaults to None.
         """
-        self.connection_details = {
-            'port': port,
-            'baudrate': baudrate,
-            'timeout': timeout
-        }
-        device = None
-        try:
-            device = serial.Serial(port, baudrate, timeout=timeout)
-        except Exception as e:
-            print(f"Could not connect to {port}")
-            if self.verbose:
-                print(e)
-        else:
-            time.sleep(5)   # Wait for grbl to initialize
-            device.reset_input_buffer()
-            self.turnOff()
-            print(f"Connection opened to {port}")
-            self.setFlag(connected=True)
-        self.device = device
+        return self.setPower(value=value, time_s=time_s, channel=channel)
+    
+    def shutdown(self):
+        """Shutdown procedure for tool"""
+        for thread in self._threads.values():
+            thread.join()
+        self.disconnect()
+        self.resetFlags()
         return
-        
+    
+    # Protected method(s)
     def _loop_timer(self):
         """Loop for counting time and flagging channels"""
         self.setFlag(timing_loop=True)
@@ -295,17 +270,12 @@ class LEDArray(Maker):
         """
         if not any([chn.update_power for chn in self.channels.values()]):
             return ''
-        command = f"{';'.join([str(v) for v in self.getPower()])}\n"
-        try:
-            self.device.write(command.encode('utf-8'))
-        except AttributeError:
-            pass
+        command = ';'.join([str(v) for v in self.getPower()])
+        self.device.write(command)
         now = time.perf_counter()
         for chn in self.channels.values():
             if chn.update_power:
                 chn._end_time = now + chn._duration
                 chn.update_power = False
-        if self.verbose:
-            print(command)
         return command
     
