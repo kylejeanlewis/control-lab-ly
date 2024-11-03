@@ -8,14 +8,10 @@ import time
 from types import SimpleNamespace
 from typing import Protocol, Any
 import uuid
-import weakref
 
 # Third party imports
 import serial                       # pip install pyserial
 import serial.tools.list_ports
-
-# Local application imports
-from ..misc import factory
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -52,20 +48,7 @@ def get_node() -> str:
     print(node_out)
     return node_id
 
-def get_plans(configs:dict, registry:dict|None = None) -> dict:
-    """
-    Get available configurations
-    
-    Args:
-        configs (dict): dictionary of configurations
-        registry (dict|None, optional): dictionary of addresses. Defaults to None.
-    
-    Returns:
-        dict: dictionary of available configurations
-    """
-    addresses = get_addresses(registry)
-    configs = factory.get_details(configs, addresses)
-    return configs
+
 
 def get_ports() -> list[str]:
     """
@@ -519,7 +502,3 @@ class DeviceFactory:
         elif 'host' in device_dict:
             device_type = SocketDevice
         return DeviceFactory.createDevice(device_type, **device_dict)
-
-
-__where__ = "core.Connection"
-factory.include_this_module(get_local_only=True)
