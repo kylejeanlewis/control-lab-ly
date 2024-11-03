@@ -415,7 +415,7 @@ class Labware:
         self._wells = {name:Well(name=name, _details=details, parent=self) for name,details in self._details.get('wells',{}).items()}
         
         buffer = self._details.get('parameters',{}).get('boundary_buffer', ((0,0,0),(0,0,0)))
-        self.exclusion_zone = BoundingBox(self.bottom_left_corner, self.dimensions, buffer)
+        self.exclusion_zone = BoundingBox(self.bottom_left_corner, self._dimensions, buffer)
         
         details_above = self._details.get('slotAbove','')
         if self.is_stackable and details_above:
@@ -605,6 +605,12 @@ class Slot:
         labware_file = resolve_repo_filepath(labware_file) if not labware_file.is_absolute() else labware_file
         if labware_file.is_file():
             self.loadLabwareFromFile(labware_file=labware_file)
+            assert isinstance(self.loaded_labware, Labware), "Labware not loaded"
+            self.loaded_labware.exclusion_zone = BoundingBox(
+                self.loaded_labware.bottom_left_corner, 
+                self.loaded_labware._dimensions, 
+                self._details.get('labware_boundary_buffer', ((0,0,0),(0,0,0)))
+            )
         return
     
     def __repr__(self) -> str:
@@ -806,7 +812,7 @@ class Deck:
                 continue
             if not isinstance(slot.loaded_labware, Labware):
                 continue
-            bounds[slot.loaded_labware.name] = slot.loaded_labware.exclusion_zone
+            bounds[slot.name] = slot.loaded_labware.exclusion_zone
         for zone_name, zone in self._zones.items():
             for name,bound in zone.exclusion_zone.items():
                 bounds[f"{zone_name}_{name}"] = bound
@@ -1141,11 +1147,12 @@ class Deck:
 
 @dataclass
 class BoundingBox:
-    reference: Position
-    dimensions: Sequence[float]
+    reference: Position = field(default_factory=Position)
+    dimensions: Sequence[float] = (0,0,0)
     buffer: Sequence[Sequence[float]] = ((0,0,0),(0,0,0))
     
     def __post_init__(self):
+        assert isinstance(self.reference, Position), "Please input a valid reference position of type `Position`"
         assert len(self.dimensions) == 3, "Please input x,y,z dimensions"
         assert len(self.buffer) == 2, "Please input lower and upper buffer"
         assert all([len(b) == 3 for b in self.buffer]), "Please input x,y,z buffer"
@@ -1154,15 +1161,15 @@ class BoundingBox:
         return
     
     def __contains__(self, point:Sequence[float]) -> bool:
-        assert len(point) == 3, "Please input x,y,z coordinates"
-        return all([min(b) <= p <= max(b) for b,p in zip(list(zip(*self.bounds)), point)])
+        return self.contains(point=point)
     
     @property
     def bounds(self):
-        bounds = np.array([self.reference.coordinates, self.reference.translate(self.dimensions, inplace=False).coordinates])
-        return bounds + np.array(self.buffer)
-
-@dataclass
-class Workspace(BoundingBox):
-    ...
+        dimensions = self.reference._rotation.apply(self.dimensions)
+        other_corner = self.reference.coordinates + dimensions
+        bounds = np.array([self.reference.coordinates, other_corner])
+        return bounds + self.reference._rotation.apply(self.buffer)
     
+    def contains(self, point:Sequence[float]) -> bool:
+        assert len(point) == 3, "Please input x,y,z coordinates"
+        return all([min(b) <= p <= max(b) for b,p in zip(list(zip(*self.bounds)), point)])
