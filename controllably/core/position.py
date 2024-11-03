@@ -1166,7 +1166,3 @@ class BoundingBox:
 class Workspace(BoundingBox):
     ...
     
-
-__where__ = "core.Position"
-from ..misc import factory
-factory.include_this_module(get_local_only=True)
