@@ -1,123 +1,97 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
-from dataclasses import dataclass
+from collections import namedtuple
+from dataclasses import dataclass, field
+import importlib
+import inspect
 import logging
 from pathlib import Path
-from types import SimpleNamespace
+import sys
 from typing import Callable, Sequence
+
+# Third party imports
+import numpy as np
+
+# Local application imports
+from . import connection
+from . import file_handler
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
+def dict_to_named_tuple(d:dict, tuple_name:str = 'Setup') -> tuple:
+    """
+    creating named tuple from dictionary
 
-@dataclass
-class ModuleDirectory:
-    ...
-modules_dict = dict()
-modules = ...
+    Args:
+        d (dict): dictionary to be transformed
+        tuple_name (str, optional): name of new namedtuple type. Defaults to 'Setup'.
 
-def create_named_tuple_from_dict(d:dict, type_name:str = 'Setup') -> tuple:
-    # """
-    # creating named tuple from dictionary
-
-    # Args:
-    #     d (dict): dictionary to be transformed
-    #     type_name (str, optional): name of new namedtuple type. Defaults to 'Setup'.
-
-    # Returns:
-    #     tuple: named tuple from dictionary
-    # """
-    # field_list = []
-    # object_list = []
-    # for k,v in d.items():
-    #     field_list.append(k)
-    #     object_list.append(v)
+    Returns:
+        tuple: named tuple from dictionary
+    """
+    field_list = []
+    object_list = []
+    for k,v in d.items():
+        field_list.append(k)
+        object_list.append(v)
     
-    # named_tuple = namedtuple(type_name, field_list)
-    # print(f"Objects created: {', '.join(field_list)}")
-    # return named_tuple(*object_list)
-    ...
+    named_tuple = namedtuple(tuple_name, field_list)
+    print(f"Objects created: {', '.join(field_list)}")
+    return named_tuple(*object_list)
 
-def load_setup(config_file:str, registry_file:str|None = None, create_tuple:bool = True) -> dict|tuple:
-    # """
-    # Load and initialise setup
+def get_class(module_name:str, class_name:str) -> Callable:
+    """
+    Retrieve the relevant class from the sub-package
 
-    # Args:
-    #     config_file (str): config filename
-    #     registry_file (str|None, optional): registry filename. Defaults to None.
-    #     create_tuple (bool, optional): whether to return a named tuple, if not returns dictionary. Defaults to True.
+    Args:
+        dot_notation (str): dot notation of Class object
 
-    # Returns:
-    #     Union[dict,tuple]: dictionary or named tuple of setup objects
-    # """
-    # config = helper.get_plans(config_file=config_file, registry_file=registry_file)
-    # setup = factory.load_components(config=config)
-    # shortcuts = config.get('SHORTCUTS',{})
+    Returns:
+        Callable: target Class
+    """
+    _module = importlib.import_module(module_name)
+    _class = getattr(_module, class_name)
+    return _class
+
+def get_imported_modules(interested_modules:str|Sequence[str]|None = None) -> dict:
+    """
+    Get all imported modules
+
+    Returns:
+        dict: dictionary of imported modules
+    """
+    if isinstance(interested_modules, str):
+        interested_modules = [interested_modules]
+    elif isinstance(interested_modules, Sequence):
+        interested_modules = list(interested_modules)
+    else:
+        interested_modules = []
+    modules_of_interest = ['controllably', 'library'] + interested_modules
+    def is_of_interest(module_name:str) -> bool:
+        return any([module in module_name for module in set(modules_of_interest)])
+    imports = {name:mod for name,mod in sys.modules.items() if is_of_interest(name)}
     
-    # for key,value in shortcuts.items():
-    #     parent, child = value.split('.')
-    #     tool = setup.get(parent)
-    #     if tool is None:
-    #         print(f"Tool does not exist ({parent})")
-    #         continue
-    #     if 'components' not in tool.__dict__:
-    #         print(f"Tool ({parent}) does not have components")
-    #         continue
-    #     setup[key] = tool.components.get(child)
-    # if create_tuple:
-    #     return create_named_tuple_from_dict(setup)
-    # return setup
-    ...
-
-def get_class(dot_notation:str) -> Callable:
-    # """
-    # Retrieve the relevant class from the sub-package
-
-    # Args:
-    #     dot_notation (str): dot notation of Class object
-
-    # Returns:
-    #     Callable: target Class
-    # """
-    # print('\n')
-    # top_package = __name__.split('.')[0]
-    # import_path = f'{top_package}.{dot_notation}'
-    # package = importlib.import_module('.'.join(import_path.split('.')[:-1]))
-    # _class = modules.get_class(dot_notation=dot_notation)
-    # return _class
-    ...
-
-def get_details(configs:dict, addresses:dict|None = None) -> dict:
-    # """
-    # Decode dictionary of configuration details to get np.ndarrays and tuples
-
-    # Args:
-    #     configs (dict): dictionary of configuration details
-    #     addresses (Optional[dict], optional): dictionary of registered addresses. Defaults to None.
-
-    # Returns:
-    #     dict: dictionary of configuration details
-    # """
-    # addresses = {} if addresses is None else addresses
-    # for name, details in configs.items():
-    #     settings = details.get('settings', {})
-        
-    #     for key,value in settings.items():
-    #         if key == 'component_config':
-    #             value = get_details(value, addresses=addresses)
-    #         if type(value) == str:
-    #             if key in ['cam_index', 'port'] and value.startswith('__'):
-    #                 settings[key] = addresses.get(key, {}).get(settings[key], value)
-    #         if type(value) == dict:
-    #             if "tuple" in value:
-    #                 settings[key] = tuple(value['tuple'])
-    #             elif "array" in value:
-    #                 settings[key] = np.array(value['array'])
-
-    #     configs[name] = details
-    # return configs
-    ...
+    objects = {}
+    for mod in imports.values():
+        members = dict(mem for mem in inspect.getmembers(mod) if not mem[0].startswith('_'))
+        for name,obj in members.items():
+            if not hasattr(obj, '__module__'):
+                continue
+            parent = obj.__module__
+            if is_of_interest(parent):
+                objects[name] = (obj,parent)
+                
+    modules = dict()
+    for obj_name, (obj,mod) in objects.items():
+        _temp = modules
+        for level in mod.split('.'):
+            if level not in _temp:
+                _temp[level] = dict()
+            _temp = _temp[level]
+        _temp[obj_name] = obj
+    return modules
 
 def get_method_names(obj:Callable) -> list[str]:
     """
@@ -131,131 +105,107 @@ def get_method_names(obj:Callable) -> list[str]:
     """
     return [attr for attr in dir(obj) if callable(getattr(obj, attr)) and not attr.startswith('__')]
 
-def include_this_module(
-    where: str|None = None, 
-    module_name: str|None = None, 
-    get_local_only: bool = True
-):
-    # """
-    # Include the module py file that this function is called from
-
-    # Args:
-    #     where (str|None, optional): location within structure to include module. Defaults to None.
-    #     module_name (str|None, optional): dot notation name of module. Defaults to None.
-    #     get_local_only (bool, optional): whether to only include objects defined in caller py file. Defaults to True.
-    # """
-    # module_doc = "< No documentation >"
-    # frm = inspect.stack()[1]
-    # current_mod = inspect.getmodule(frm[0])
-    # doc = inspect.getdoc(current_mod)
-    # module_doc = module_doc if doc is None else doc
-    # if module_name is None:
-    #     module_name = current_mod.__name__
+def get_plans(configs:dict, registry:dict|None = None) -> dict:
+    """
+    Get available configurations
     
-    # objs = inspect.getmembers(sys.modules[module_name])
-    # __where__ = [obj for name,obj in objs if name == "__where__"]
-    # where = f"{__where__[0]}." if (len(__where__) and where is None) else where
-    # classes = [(nm,obj) for nm,obj in objs if inspect.isclass(obj)]
-    # functions = [(nm,obj) for nm,obj in objs if inspect.isfunction(obj)]
-    # objs = classes + functions
-    # if get_local_only:
-    #     objs = [obj for obj in objs if obj[1].__module__ == module_name]
+    Args:
+        configs (dict): dictionary of configurations
+        registry (dict|None, optional): dictionary of addresses. Defaults to None.
     
-    # for name,obj in objs:
-    #     if name == inspect.stack()[0][3]:
-    #         continue
-    #     mod_name = obj.__module__ if where is None else where
-    #     register(obj, '.'.join(mod_name.split('.')[:-1]), module_docs=module_doc)
-    # return
-    ...
+    Returns:
+        dict: dictionary of available configurations
+    """
+    addresses = connection.get_addresses(registry)
+    configs = parse_configs(configs, addresses)
+    return configs
 
-def load_components(config:dict) -> dict:
-    # """
-    # Load components of compound tools
+def load_parts(configs:dict, **kwargs) -> dict:
+    """
+    Load parts of compound tools
 
-    # Args:
-    #     config (dict): dictionary of configuration parameters
+    Args:
+        config (dict): dictionary of configuration parameters
 
-    # Returns:
-    #     dict: dictionary of component tools
-    # """
-    # components = {}
-    # for name, details in config.items():
-    #     _module = details.get('module')
-    #     if _module is None:
-    #         continue
-    #     dot_notation = [_module, details.get('class', '')]
-    #     _class = get_class('.'.join(dot_notation))
-    #     settings = details.get('settings', {})
-    #     components[name] = _class(**settings)
-    # return components
-    ...
+    Returns:
+        dict: dictionary of part tools
+    """
+    parts = {}
+    for name, details in configs.items():
+        module_name = details.get('module')
+        class_name = details.get('class')
+        _class = get_class(module_name, class_name)
+        settings = details.get('settings', {})
+        parts[name] = _class(**settings)
+    return parts
 
-def register(new_object:Callable, where:str, module_docs:str|None = None):
-    # """
-    # Register the object into target location within structure
+def load_setup_from_files(
+    config_file:Path|str, 
+    registry_file:Path|str|None = None, 
+    create_tuple:bool = True
+) -> dict|tuple:
+    """
+    Load and initialise setup
 
-    # Args:
-    #     new_object (Callable): new Callable object (Class or function) to be registered
-    #     where (str): location within structure to register the object in
-    #     module_docs (str|None, optional): module documentation. Defaults to None.
-    # """
-    # module_docs = "< No documentation >" if module_docs is None else module_docs
-    # keys = where.split('.')
-    # temp = modules._modules
-    # for key in keys:
-    #     if key in HOME_PACKAGES:
-    #         continue
-    #     if key not in temp:
-    #         temp[key] = DottableDict()
-    #     temp = temp[key]
-    # if "_doc_" not in temp:
-    #     temp["_doc_"] = module_docs
+    Args:
+        config_file (str): config filename
+        registry_file (str|None, optional): registry filename. Defaults to None.
+        create_tuple (bool, optional): whether to return a named tuple, if not returns dictionary. Defaults to True.
+
+    Returns:
+        Union[dict,tuple]: dictionary or named tuple of setup objects
+    """
+    config_file = Path(config_file)
+    registry_file = Path(registry_file) if registry_file is not None else None
+    configs = file_handler.read_config_file(config_file)
+    registry = file_handler.read_config_file(registry_file) if registry_file is not None else None
+    plans = get_plans(configs, registry)
+    shortcuts = plans.get('SHORTCUTS',{})
+    setup = load_parts(config=plans)
     
-    # name = new_object.__name__
-    # if name in temp:
-    #     overwrite = input(f"An object with the same name ({name}) already exists, Overwrite? [y/n]")
-    #     if not overwrite or overwrite.lower()[0] == 'n':
-    #         print(f"Skipping {name}...")
-    #         return
-    # temp[new_object.__name__] = new_object
-    # return
-    ...
+    for name,value in shortcuts.items():
+        parent, child = value.split('.')
+        tool = setup.get(parent, None)
+        if tool is None:
+            print(f"Tool does not exist ({parent})")
+            continue
+        if not hasattr(tool, '_parts'):
+            print(f"Tool ({parent}) does not have parts")
+            continue
+        setup[name] = tool._parts.get(child)
+    if create_tuple:
+        return dict_to_named_tuple(setup, tuple_name=config_file.stem)
+    return setup
 
-def unregister(dot_notation:str):
-    # """
-    # Unregister an object from structure, using its dot notation reference
+def parse_configs(configs:dict, addresses:dict|None = None) -> dict:
+    """
+    Decode dictionary of configuration details to get np.ndarrays and tuples
 
-    # Args:
-    #     dot_notation (str): dot notation reference to target object
-    # """
-    # keys = dot_notation.split('.')
-    # keys, name = keys[:-1], keys[-1]
-    # temp = modules._modules
-    # for key in keys:
-    #     if key in HOME_PACKAGES:
-    #         continue
-    #     temp = temp[key]
-    # temp.pop(name)
-    
-    # # Clean up empty dictionaries
-    # def remove_empty_dicts(d: dict):
-    #     """
-    #     Purge empty dictionaries from nested dictionary
+    Args:
+        configs (dict): dictionary of configuration details
+        addresses (dict|None, optional): dictionary of registered addresses. Defaults to None.
 
-    #     Args:
-    #         d (dict): dictionary to be purged
-    #     """
-    #     for k, v in list(d.items()):
-    #         if isinstance(v, dict):
-    #             remove_empty_dicts(v)
-    #         if not v:
-    #             del d[k]
-    #     if list(d.keys()) == ['_doc_']:
-    #         del d['_doc_']
-    # remove_empty_dicts(modules._modules)
-    # return
-    ...
+    Returns:
+        dict: dictionary of configuration details
+    """
+    addresses = {} if addresses is None else addresses
+    for name, details in configs.items():
+        settings = details.get('settings', {})
+        
+        for key,value in settings.items():
+            if key == 'component_config':
+                value = parse_configs(value, addresses=addresses)
+            if type(value) == str:
+                if key in ('cam_index', 'port') and value.startswith('__'):
+                    settings[key] = addresses.get(key, {}).get(settings[key], value)
+            if type(value) == dict:
+                if "tuple" in value:
+                    settings[key] = tuple(value['tuple'])
+                elif "array" in value:
+                    settings[key] = np.array(value['array'])
+
+        configs[name] = details
+    return configs
 
 def zip_kwargs_to_dict(primary_key:str, kwargs:dict) -> dict:
     """
