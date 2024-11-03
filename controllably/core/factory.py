@@ -17,18 +17,6 @@ class ModuleDirectory:
 modules_dict = dict()
 modules = ...
 
-def create_configs():
-    # """Create new tools configs folder"""
-    # cwd = os.getcwd().replace('\\', '/')
-    # src = f"{here}/templates/tools"
-    # dst = f"{cwd}/tools"
-    # if not os.path.exists(dst):
-    #     print("Creating tools folder...\n")
-    #     copytree(src=src, dst=dst)
-    #     helper.get_node()
-    # return
-    ...
-
 def create_named_tuple_from_dict(d:dict, type_name:str = 'Setup') -> tuple:
     # """
     # creating named tuple from dictionary
@@ -49,33 +37,6 @@ def create_named_tuple_from_dict(d:dict, type_name:str = 'Setup') -> tuple:
     # named_tuple = namedtuple(type_name, field_list)
     # print(f"Objects created: {', '.join(field_list)}")
     # return named_tuple(*object_list)
-    ...
-
-def create_setup(setup_name:str|None = None):
-    # """
-    # Create new setup folder
-
-    # Args:
-    #     setup_name (str|None, optional): name of new setup. Defaults to None.
-    # """
-    # cwd = os.getcwd().replace('\\', '/')
-    # if setup_name is None:
-    #     setup_num = 1
-    #     while True:
-    #         setup_name = f'Setup{str(setup_num).zfill(2)}'
-    #         if not os.path.exists(f"{cwd}/tools/{setup_name}"):
-    #             break
-    #         setup_num += 1
-    # src = f"{here}/templates/setup"
-    # cfg = f"{cwd}/tools"
-    # dst = f"{cfg}/{setup_name}"
-    # if not os.path.exists(cfg):
-    #     create_configs()
-    # if not os.path.exists(dst):
-    #     print(f"Creating setup folder ({setup_name})...\n")
-    #     copytree(src=src, dst=dst)
-    #     helper.get_node()
-    # return
     ...
 
 def load_setup(config_file:str, registry_file:str|None = None, create_tuple:bool = True) -> dict|tuple:
