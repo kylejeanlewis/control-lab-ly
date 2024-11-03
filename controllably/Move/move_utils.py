@@ -501,6 +501,7 @@ class Mover:
     
 
     
+class _deprecated_Mover:
     
     _default_heights: dict[str, float] = {}
     _default_move_time_buffer: float = 0
