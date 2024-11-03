@@ -7,6 +7,7 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
+from abc import abstractmethod
 from copy import deepcopy
 import logging
 from types import SimpleNamespace
@@ -20,7 +21,7 @@ from scipy.spatial.transform import Rotation
 
 # Local application imports
 from ..core.connection import DeviceFactory, Device
-from ..core.position import Deck, Position, get_transform
+from ..core.position import Deck, Position, get_transform, BoundingBox
 
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
@@ -107,8 +108,8 @@ class Mover:
         tool_offset: Position = Position(),
         calibrated_offset: Position = Position(),
         scale: float = 1.0,
-        
         deck: Deck|None = None,
+        workspace: BoundingBox|None = None,
         verbose:bool = False, 
         **kwargs
     ):
@@ -124,6 +125,9 @@ class Mover:
         
         # Category specific attributes
         self.deck: Deck = deck
+        self.workspace: BoundingBox = workspace
+        self.safe_height: float = kwargs.get('safe_height', home_position.z)
+        
         self._robot_position = robot_position
         self._home_position = home_position
         self._tool_offset = tool_offset
@@ -215,9 +219,7 @@ class Mover:
     @property
     def tool_position(self) -> Position:
         """Robot position of the tool end effector"""
-        coordinates = self.robot_position.coordinates + self.tool_offset.coordinates
-        rotation = self.robot_position.rotation + self.tool_offset.rotation
-        return Position(coordinates, Rotation.from_euler('zyx', rotation, degrees=True))
+        return self.transformRobotToTool(self.robot_position, self.tool_offset)
     
     @property
     def work_position(self) -> Position:
@@ -239,11 +241,48 @@ class Mover:
         """Factor to scale the basis vectors by"""
         return self._scale
     
+    @property
+    def speed(self) -> float:
+        """Travel speed of robot"""
+        return self.speed_factor * self.speed_max['general']
+    
+    @property
+    def speed_factor(self) -> float:
+        """Fraction of maximum travel speed of robot"""
+        return self._speed_factor
+    
+    @property
+    def speed_max(self) -> dict[str, float]:
+        """Maximum speed(s) of robot"""
+        return self._speed_max
+    
     def halt(self) -> Position:
         ...
     
     def home(self, axis:str|None = None) -> Position:
         ...
+    
+    def isFeasible(self, coordinates: Sequence[float], external: bool = True, tool_offset:bool = True) -> bool:
+        position = Position(coordinates)
+        if external:
+            ex_pos = position
+            in_pos = self.transformWorkToRobot(ex_pos, self.calibrated_offset, self.scale)
+            in_pos = self.transformToolToRobot(in_pos, self.tool_offset) if tool_offset else in_pos
+        else:
+            in_pos = position
+            ex_pos = self.transformRobotToTool(in_pos, self.tool_offset) if tool_offset else in_pos
+            ex_pos = self.transformRobotToWork(ex_pos, self.calibrated_offset, self.scale)
+        within_range = True
+        if isinstance(self.workspace, BoundingBox):
+            within_range = self.workspace.contains(in_pos.coordinates)
+        deck_safe = True
+        if isinstance(self.deck, Deck):
+            deck_safe = not self.deck.isExcluded(ex_pos.coordinates)
+        return all([within_range, deck_safe])
+    
+    def loadDeckFromFile(self, deck_file:str):
+        self.deck = Deck.fromFile(deck_file=deck_file)
+        return
     
     def move(self,
         axis: str,
@@ -276,6 +315,9 @@ class Mover:
         speed_factor: float|None = None
     ) -> Position:
         return self.moveTo(to=to, speed_factor=speed_factor, robot=False)
+    
+    def reset(self):
+        raise NotImplementedError
     
     def rotate(self,
         axis: str,
@@ -316,12 +358,29 @@ class Mover:
     ) -> Position:
         ...
     
+    def setSafeHeight(self, height: float):
+        if isinstance(self.workspace, BoundingBox):
+            assert (0,0,height) in self.workspace, f"Ensure safe height is within workspace"
+        if isinstance(self.deck, Deck):
+            deck_heights = {name: max(bounds.bounds[:,2]) for name,bounds in self.deck.exclusion_zone.items()}
+            heights_list = [height for height in deck_heights.values()]
+            assert height > max(set(heights_list)), f"Ensure safe height is above all deck heights: {deck_heights}"
+        self.safe_height = height
+        return
+    
     def setSpeedFactor(self, 
         speed_factor:float, 
         default:bool = False
     ) -> tuple[float]:
         ...
         
+    def setToolOffset(self,
+        offset: Sequence[float]|Position
+    ) -> Position:
+        old_tool_offset = self.tool_offset
+        self._tool_offset = Position(offset)
+        return old_tool_offset
+    
     def updatePosition(self) -> Position:
         ...
         
@@ -361,20 +420,86 @@ class Mover:
         rotation = inv_rotate * external_position.rotation
         return Position(coordinates, rotation)
     
-    # =========
-    # isFeasible
-    # reset
-    # setSpeed
-    # [prop] max_speeds
-    # [prop] speed
-    # [prop] speed_factor
-    # getConfigSettings
-    # loadDeck
-    # setHeight
-    # setImplementOffset
-    # calculate_travel_time
-    # get_move_wait_time
-    # =========
+    @staticmethod
+    def transformRobotToTool(
+        internal_position: Position,
+        offset: Position
+    ) -> Position:
+        coordinates = internal_position.coordinates + offset.coordinates
+        rotation = internal_position.rotation + offset.rotation
+        return Position(coordinates, Rotation.from_euler('zyx', rotation, degrees=True))
+    
+    @staticmethod
+    def transformToolToRobot(
+        external_position: Position,
+        offset: Position
+    ) -> Position:
+        coordinates = external_position.coordinates - offset.coordinates
+        rotation = external_position.rotation - offset.rotation
+        return Position(coordinates, Rotation.from_euler('zyx', rotation, degrees=True))
+    
+    @staticmethod
+    def _calculate_travel_time(
+        distance: float, 
+        speed: float, 
+        acceleration: float|None = None,
+        deceleration: float|None = None
+    ) -> float:
+        """
+        Calculate the travel time of motion
+
+        Args:
+            distance (float): distance (linear or angular) travelled
+            speed (float): speed (linear or angular) of motion
+            acceleration (float|None, optional): acceleration from target speed. Defaults to None.
+            deceleration (float|None, optional): deceleration from target speed. Defaults to None.
+
+        Returns:
+            float: travel time in seconds
+        """
+        travel_time = 0
+        speed2 = speed*speed
+        accel_distance = 0 if not acceleration else speed2 / (2*acceleration)
+        decel_distance = 0 if not deceleration else speed2 / (2*deceleration)
+        ramp_distance = accel_distance + decel_distance
+        if ramp_distance <= distance:
+            travel_time = (distance - ramp_distance) / speed
+            accel_time = 0 if not acceleration else speed / acceleration
+            decel_time = 0 if not deceleration else speed / deceleration
+            travel_time += (accel_time + decel_time)
+        else:
+            time2 = (2*distance)* (acceleration + deceleration)/(acceleration*deceleration)
+            travel_time = time2**0.5
+        travel_time = 0.0 if np.isnan(travel_time) else travel_time
+        return travel_time
+    
+    @classmethod
+    def _get_move_wait_time(cls, 
+        distances: np.ndarray, 
+        speeds: np.ndarray, 
+        accels: np.ndarray|None = None
+    ) -> float:
+        """
+        Get the amount of time to wait to complete movement
+
+        Args:
+            distances (np.ndarray): array of distances to travel
+            speeds (np.ndarray): array of axis speeds
+            accels (np.ndarray|None, optional): array of axis accelerations. Defaults to None.
+
+        Returns:
+            float: wait time to complete travel
+        """
+        accels = np.zeros(len(speeds)) if accels is None else accels
+        times = [cls._calculate_travel_time(d,s,a,a) for d,s,a in zip(distances, speeds, accels)]
+        move_time = max(times[:2]) + times[2]
+        logger.debug(f'distances: {distances}')
+        logger.debug(f'speeds: {speeds}')
+        logger.debug(f'accels: {accels}')
+        logger.debug(f'times: {times}')
+        return move_time
+    
+
     
     
     _default_heights: dict[str, float] = {}
@@ -382,7 +507,7 @@ class Mover:
     _place: str = '.'.join(__name__.split('.')[1:-1])
     def __init__(self, 
         coordinates: tuple[float] = (0,0,0),
-        deck: Layout.Deck = Layout.Deck(),
+        # deck: Layout.Deck = Layout.Deck(),
         home_coordinates: tuple[float] = (0,0,0),
         home_orientation: tuple[float] = (0,0,0),
         implement_offset: tuple[float] = (0,0,0),
@@ -412,7 +537,7 @@ class Mover:
             translate_vector (tuple[float], optional): transformation (translation) vector to get from robot to end effector. Defaults to (0,0,0).
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
-        self.deck = deck
+        # self.deck = deck
         self._coordinates = coordinates
         self._orientation = orientation
         self._home_coordinates = home_coordinates
