@@ -8,7 +8,6 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 import logging
-import numpy as np
 import time
 from types import SimpleNamespace
 from typing import Any
