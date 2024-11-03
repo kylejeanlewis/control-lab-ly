@@ -161,9 +161,9 @@ from pathlib import Path
 import test_init
 from controllably.core.position import Labware, Deck
 
-# labware_file = Path(r'C:\Users\chang\GitHub\control-lab-le\tests\files\corning_24_wellplate_3400ul.json')
-# labware = Labware.fromFile(labware_file)
-# labware.show()
+labware_file = Path(r'C:\Users\chang\GitHub\control-lab-le\tests\files\corning_24_wellplate_3400ul.json')
+labware = Labware.fromFile(labware_file)
+labware.show()
 
 deck_file = Path(r'C:\Users\chang\GitHub\control-lab-le\tests\files\deck_sample.json')
 deck = Deck.fromFile(deck_file)
