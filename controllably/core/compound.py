@@ -61,7 +61,7 @@ class Compound:
     @classmethod
     def fromConfig(cls, config:dict):
         details = config.pop('details')
-        parts = {name:load_parts(**settings) for name,settings in details.items()}
+        parts = {name:load_parts(settings) for name,settings in details.items()}
         return cls(parts=parts, **config)
     
     @property
@@ -235,7 +235,7 @@ class Combined:
     def fromConfig(cls, config:dict):
         details = config.pop('details')
         device = DeviceFactory.createDeviceFromDict(config)
-        parts = {name:load_parts(device=device, **settings) for name,settings in details.items()}
+        parts = {name:load_parts(settings, device=device) for name,settings in details.items()}
         return cls(device=device, parts=parts, **config)
     
     @property
