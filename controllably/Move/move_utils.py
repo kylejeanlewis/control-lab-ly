@@ -24,6 +24,7 @@ from ..core.connection import DeviceFactory, Device
 from ..core.position import Deck, Position, get_transform, BoundingBox
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 class Mover:
@@ -110,6 +111,7 @@ class Mover:
         scale: float = 1.0,
         deck: Deck|None = None,
         workspace: BoundingBox|None = None,
+        safe_height: float|None = None,
         verbose:bool = False, 
         **kwargs
     ):
@@ -126,7 +128,7 @@ class Mover:
         # Category specific attributes
         self.deck: Deck = deck
         self.workspace: BoundingBox = workspace
-        self.safe_height: float = kwargs.get('safe_height', home_position.z)
+        self.safe_height: float = safe_height if safe_height is not None else home_position.z
         
         self._robot_position = robot_position
         self._home_position = home_position
