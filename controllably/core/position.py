@@ -308,8 +308,11 @@ class Well:
         """Draw well on matplotlib axis"""
         if self.shape == 'circular':
             ax.add_patch(plt.Circle(self.center, self.dimensions[0]/2, fill=False, **kwargs))
-        elif self.shape == 'rectangular':    
-            ax.add_patch(plt.Rectangle(self.bottom, *self.dimensions, fill=False, **kwargs))
+        elif self.shape == 'rectangular':
+            dimensions = self.reference._rotation.apply(np.array([*self.dimensions,0]))
+            corner = self.bottom - dimensions/2
+            print(corner, dimensions)
+            ax.add_patch(plt.Rectangle(corner[:2], *dimensions[:2], fill=False, **kwargs))
         else:
             logger.error(f"Invalid shape: {self.shape}")
         return
