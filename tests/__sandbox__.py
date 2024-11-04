@@ -1,4 +1,24 @@
 # %%
+import test_init
+from controllably.Move.Cartesian import Marlin
+
+mover = Marlin('COM21')
+
+# %%
+import test_init
+from controllably.Make.ThinFilm import Multi_Spinner, Spinner
+details = [
+    dict(port='COM17', verbose=True),
+    dict(port='COM18', verbose=True),
+    dict(port='COM19', verbose=True),
+    dict(port='COM20', verbose=True),
+]
+spinners = Multi_Spinner.create(channels=[1,2,3,4], details=details, verbose=True)
+
+# %%
+spinners.spin(1000,5,blocking=True)
+
+# %%
 import inspect
 import pprint
 import sys
@@ -161,11 +181,11 @@ from pathlib import Path
 import test_init
 from controllably.core.position import Labware, Deck
 
-labware_file = Path(r'C:\Users\chang\GitHub\control-lab-le\tests\files\corning_24_wellplate_3400ul.json')
+labware_file = Path('control-lab-le/tests/files/labware/corning_24_wellplate_3400ul.json')
 labware = Labware.fromFile(labware_file)
 labware.show()
 
-deck_file = Path(r'C:\Users\chang\GitHub\control-lab-le\tests\files\deck_sample.json')
+deck_file = Path('control-lab-le/tests/files/deck/deck_main.json')
 deck = Deck.fromFile(deck_file)
 deck.show()
 deck
