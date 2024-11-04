@@ -282,9 +282,9 @@ class SerialDevice:
         try:
             if lines:
                 data = self.serial.readlines()
-                data = [d.decode().strip() for d in data]
+                data = [d.decode("utf-8", "replace").strip() for d in data]
             else:
-                data = self.serial.readline().decode().strip()
+                data = self.serial.readline().decode("utf-8", "replace").strip()
             logger.info(f"Received: {data}")
             self.serial.reset_output_buffer()
         except serial.SerialException as e:
@@ -438,7 +438,7 @@ class SocketDevice:
         """
         data = []
         try:
-            data = self.socket.recv(1024).decode().strip().split('\n')
+            data = self.socket.recv(1024).decode("utf-8", "replace").strip().split('\n')
             logger.info(f"Received: {data}")
         except socket.error as e:
             logger.info(f"Failed to receive data")

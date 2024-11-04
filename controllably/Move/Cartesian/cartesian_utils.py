@@ -373,7 +373,7 @@ class Gantry(Mover):
             self.device.reset_output_buffer()
         except Exception as e:
             logger.exception(e, exc_info=self.verbose)
-        return [r.decode().strip() for r in responses]
+        return [r.decode("utf-8", "replace").strip() for r in responses]
     
     def _read(self) -> list[str]:
         """

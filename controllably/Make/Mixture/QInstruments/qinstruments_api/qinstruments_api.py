@@ -1012,9 +1012,9 @@ class QInstrumentsDevice:
         try:
             if lines:
                 data = self.serial.read_all()       # response template: <response><\r><\n>
-                data = data.decode().strip() 
+                data = data.decode("utf-8", "replace").strip() 
             else:
-                data = self.serial.readline().decode().strip()
+                data = self.serial.readline().decode("utf-8", "replace").strip()
             logger.info(f"Received: {data}")
             self.serial.reset_output_buffer()
         except serial.SerialException as e:

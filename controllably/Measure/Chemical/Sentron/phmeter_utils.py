@@ -235,7 +235,7 @@ class SentronProbe(Measurer):
             if self.verbose:
                 print(e)
         else:
-            response = response.decode('utf-8').strip()
+            response = response.decode('utf-8','replace').strip()
             if self.verbose:
                 print(response)
         return response

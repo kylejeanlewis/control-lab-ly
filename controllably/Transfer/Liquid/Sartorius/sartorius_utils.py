@@ -846,7 +846,7 @@ class Sartorius(LiquidHandler):
             response = self.device.readline()
             if len(response) == 0:
                 response = self.device.readline()
-            response = response[2:-2].decode('utf-8')
+            response = response[2:-2].decode('utf-8','replace')
         except AttributeError:
             pass
         except Exception as e:
