@@ -127,7 +127,7 @@ class Spinner(Maker):
             logger.info(f"Duration  : {time_s}s")
             self.setSpeed(speed)
             start_time = time.perf_counter()
-            while (time_s <= time.perf_counter() - start_time):
+            while (time_s >= (time.perf_counter() - start_time)):
                 time.sleep(0.1)
             self.setSpeed(0)
             self.flags.busy = False
