@@ -17,10 +17,11 @@ import numpy as np
 import serial # pip install pyserial
 
 # Local application imports
-from ...misc import Helper
-from ..move_utils import Mover
+from ...core.position import BoundingBox
+from .. import Mover
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
     
 class Gantry(Mover):
@@ -62,6 +63,9 @@ class Gantry(Mover):
         limits: tuple[tuple[float]] = ((0, 0, 0), (0, 0, 0)), 
         safe_height: Optional[float] = None, 
         accel_max: Optional[dict[str, float]] = None,
+        *,
+        baudrate: int = 115200,
+        verbose: bool = False,
         **kwargs
     ):
         """
@@ -72,22 +76,24 @@ class Gantry(Mover):
             limits (tuple[tuple[float]], optional): lower and upper limits of gantry. Defaults to ((0, 0, 0), (0, 0, 0)).
             safe_height (Optional[float], optional): height at which obstacles can be avoided. Defaults to None.
         """
-        super().__init__(**kwargs)
+        workspace = BoundingBox(buffer=limits)
+        super().__init__(
+            port=port, baudrate=baudrate, verbose=verbose, 
+            workspace=workspace, safe_height=safe_height, **kwargs
+        )
         self._accel_max = dict(general=np.nan)
         self._limits = ((0, 0, 0), (0, 0, 0))
         
         self.limits = limits
-        if safe_height is not None:
-            self.setHeight(safe=safe_height)
         
-        self._connect(port)
-        if 'speed_max' not in kwargs:
-            self.getMaxSpeeds()
-        if accel_max is None:
-            self.getAcceleration()
-        else:
-            self._accel_max = accel_max
-        self.home()
+        # self._connect(port)
+        # if 'speed_max' not in kwargs:
+        #     self.getMaxSpeeds()
+        # if accel_max is None:
+        #     self.getAcceleration()
+        # else:
+        #     self._accel_max = accel_max
+        # self.home()
         return
     
     @abstractmethod
@@ -158,15 +164,6 @@ class Gantry(Mover):
     @property
     def port(self) -> str:
         return self.connection_details.get('port', '')
-
-    def disconnect(self):
-        """ Disconnect from device """
-        try:
-            self.device.close()
-        except Exception as e:
-            logger.exception(e, exc_info=self.verbose)
-        self.setFlag(connected=False)
-        return
     
     def isFeasible(self, 
         coordinates: tuple[float], 
@@ -185,15 +182,15 @@ class Gantry(Mover):
         Returns:
             bool: whether the target coordinate is feasible
         """
-        if transform_in:
-            coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
-        coordinates = np.array(coordinates)
-        l_bound, u_bound = self.limits
+        # if transform_in:
+        #     coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
+        # coordinates = np.array(coordinates)
+        # l_bound, u_bound = self.limits
         
-        if all(np.greater_equal(coordinates, l_bound)) and all(np.less_equal(coordinates, u_bound)):
-            return not self.deck.isExcluded(self._transform_out(coordinates, tool_offset=True))
-        logger.warning(f"Range limits reached! {self.limits}")
-        return False
+        # if all(np.greater_equal(coordinates, l_bound)) and all(np.less_equal(coordinates, u_bound)):
+        #     return not self.deck.isExcluded(self._transform_out(coordinates, tool_offset=True))
+        # logger.warning(f"Range limits reached! {self.limits}")
+        # return False
 
     def moveBy(self,
         vector: tuple[float] = (0,0,0), 
@@ -214,7 +211,7 @@ class Gantry(Mover):
         """
         return super().moveBy(vector=vector, speed_factor=speed_factor)
     
-    @Helper.safety_measures
+    # @Helper.safety_measures
     def moveTo(self, 
         coordinates: tuple[float], 
         orientation: Optional[tuple[float]] = None,
@@ -250,14 +247,14 @@ class Gantry(Mover):
         moves = [positionXY] if coordinates[2]==self.coordinates[2] else moves
         moves = [position_Z] if (coordinates[0]==self.coordinates[0] and coordinates[1]==self.coordinates[1]) else moves
         
-        self._query("G90")
+        self.device.query("G90")
         for move in moves:
             if distances[2] and 'Z' in move:
                 _max_feedrate = self.max_feedrate
                 self.max_feedrate = self.max_speeds[2]
             
             self.setSpeedFactor(speed_factor)
-            self._query(f"G1 {move}")
+            self.device.query(f"G1 {move}")
             
             if distances[2] and 'Z' in move:
                 self.max_feedrate = _max_feedrate
@@ -297,7 +294,7 @@ class Gantry(Mover):
             return False, self.speed
         prevailing_speed = self.speed
         speed = min(speed, self.max_feedrate)
-        self._query(f"F{int(speed*60)}")                                # feed rate (i.e. speed) in mm/min
+        self.device.query(f"F{int(speed*60)}")                                # feed rate (i.e. speed) in mm/min
         self._speed_factor = speed/self.max_feedrate
         return True, prevailing_speed
     
@@ -327,88 +324,88 @@ class Gantry(Mover):
         return super().shutdown()
     
     # Protected method(s)
-    def _connect(self, port:str, baudrate:int = 115200, timeout:int = 1):
-        """
-        Connection procedure for tool
+    # def _connect(self, port:str, baudrate:int = 115200, timeout:int = 1):
+    #     """
+    #     Connection procedure for tool
 
-        Args:
-            port (str): COM port address
-            baudrate (int, optional): baudrate. Defaults to 115200.
-            timeout (int, optional): timeout in seconds. Defaults to 1.
-        """
-        self.connection_details = {
-            'port': port,
-            'baudrate': baudrate,
-            'timeout': timeout
-        }
-        device = None
-        try:
-            device = serial.Serial(port, baudrate, timeout=timeout)
-        except Exception as e:
-            logger.warning(f"Could not connect to {port}")
-            logger.exception(e, exc_info=self.verbose)
-            self.max_feedrate = np.linalg.norm(self.max_speeds[:2])
-        else:
-            self.device = device
-            time.sleep(2)
-            logger.info(f"Connection opened to {port}")
-            self.setFlag(connected=True)
-        return
+    #     Args:
+    #         port (str): COM port address
+    #         baudrate (int, optional): baudrate. Defaults to 115200.
+    #         timeout (int, optional): timeout in seconds. Defaults to 1.
+    #     """
+        # self.connection_details = {
+        #     'port': port,
+        #     'baudrate': baudrate,
+        #     'timeout': timeout
+        # }
+        # device = None
+        # try:
+        #     device = serial.Serial(port, baudrate, timeout=timeout)
+        # except Exception as e:
+        #     logger.warning(f"Could not connect to {port}")
+        #     logger.exception(e, exc_info=self.verbose)
+        #     self.max_feedrate = np.linalg.norm(self.max_speeds[:2])
+        # else:
+        #     self.device = device
+        #     time.sleep(2)
+        #     logger.info(f"Connection opened to {port}")
+        #     self.setFlag(connected=True)
+        # return
 
-    def _query(self, command:str) -> list[str]:
-        """
-        Write command to and read response from device
+    # def _query(self, command:str) -> list[str]:
+    #     """
+    #     Write command to and read response from device
 
-        Args:
-            command (str): command string to send to device
+    #     Args:
+    #         command (str): command string to send to device
 
-        Returns:
-            list[str]: list of response string(s) from device
-        """
-        responses = [b'']
-        self._write(command)
-        responses = self._read()
-        try:
-            self.device.flush()
-            self.device.reset_output_buffer()
-        except Exception as e:
-            logger.exception(e, exc_info=self.verbose)
-        return [r.decode("utf-8", "replace").strip() for r in responses]
+    #     Returns:
+    #         list[str]: list of response string(s) from device
+    #     """
+    #     responses = [b'']
+    #     self._write(command)
+    #     responses = self._read()
+    #     try:
+    #         self.device.flush()
+    #         self.device.reset_output_buffer()
+    #     except Exception as e:
+    #         logger.exception(e, exc_info=self.verbose)
+    #     return [r.decode("utf-8", "replace").strip() for r in responses]
     
-    def _read(self) -> list[str]:
-        """
-        Read responses from device
+    # def _read(self) -> list[str]:
+    #     """
+    #     Read responses from device
 
-        Returns:
-            list[str]: list of response string(s) from device
-        """
-        responses = []
-        try:
-            responses = self.device.readlines()
-        except Exception as e:
-            logger.exception(e, exc_info=self.verbose)
-        else:
-            if self.verbose and len(responses):
-                logger.debug(responses)
-        return responses
+    #     Returns:
+    #         list[str]: list of response string(s) from device
+    #     """
+    #     responses = []
+    #     try:
+    #         responses = self.device.readlines()
+    #     except Exception as e:
+    #         logger.exception(e, exc_info=self.verbose)
+    #     else:
+    #         if self.verbose and len(responses):
+    #             logger.debug(responses)
+    #     return responses
 
-    def _write(self, command:str) -> bool:
-        """
-        Write command to device
+    # def _write(self, command:str) -> bool:
+    #     """
+    #     Write command to device
 
-        Args:
-            command (str): command string to send to device
+    #     Args:
+    #         command (str): command string to send to device
 
-        Returns:
-            bool: whether the command is sent successfully
-        """
-        command = f"{command}\n" if not command.endswith('\n') else command
-        if self.verbose:
-            logger.debug(command)
-        try:
-            self.device.write(command.encode('utf-8'))
-        except Exception as e:
-            if self.verbose:
-                print(e)
-            return False
-        return True
+    #     Returns:
+    #         bool: whether the command is sent successfully
+    #     """
+    #     command = f"{command}\n" if not command.endswith('\n') else command
+    #     if self.verbose:
+    #         logger.debug(command)
+    #     try:
+    #         self.device.write(command.encode('utf-8'))
+    #     except Exception as e:
+    #         if self.verbose:
+    #             print(e)
+    #         return False
+    #     return True
