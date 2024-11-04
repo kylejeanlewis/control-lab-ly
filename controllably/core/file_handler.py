@@ -50,7 +50,7 @@ def read_config_file(filepath:str|Path) -> dict:
     with open(filepath, 'r') as file:
         if file_type in ('jsn', 'json', 'jsonl'):
             return json.load(file)
-        elif file_type == ('yml', 'yaml'):
+        elif file_type in ('yml', 'yaml'):
             return yaml.safe_load(file)
         else:
             raise ValueError(f"Unsupported file type: {file_type}")
