@@ -1,0 +1,62 @@
+{
+    "ordering": [
+        [
+            "A1"
+        ]
+    ],
+    "brand": {
+        "brand": "Generic",
+        "brandId": []
+    },
+    "metadata": {
+        "displayName": "Generic 1 Bin",
+        "displayCategory": "reservoir",
+        "displayVolumeUnits": "µL",
+        "tags": []
+    },
+    "dimensions": {
+        "xDimension": 100,
+        "yDimension": 205,
+        "zDimension": 100
+    },
+    "wells": {
+        "A1": {
+            "depth": 55,
+            "totalLiquidVolume": 1,
+            "shape": "rectangular",
+            "xDimension": 94,
+            "yDimension": 200,
+            "x": 50,
+            "y": 102.5,
+            "z": 45
+        }
+    },
+    "groups": [
+        {
+            "metadata": {
+                "wellBottomShape": "sloped"
+            },
+            "wells": [
+                "A1"
+            ]
+        }
+    ],
+    "parameters": {
+        "format": "irregular",
+        "quirks": [
+            "centerMultichannelOnWells",
+            "touchTipDisabled"
+        ],
+        "isTiprack": false,
+        "isMagneticModuleCompatible": false,
+        "loadName": "generic_1_bin"
+    },
+    "namespace": "custom_beta",
+    "version": 1,
+    "schemaVersion": 2,
+    "cornerOffsetFromSlot": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+    }
+}

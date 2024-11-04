@@ -9,38 +9,31 @@
     "dimensions": [900,600,0],
     "cornerOffset": [0,0,0],
     "orientation": [0,0,0],
-    "slots": {
-        "11": {
-            "dimensions": [127.76,85.48,0],
-            "cornerOffset": [650,10,0],
-            "orientation": [0,0,0],
-            "labware_file": ""
-        }
-    },
+    "slots": {},
     "zones":{
         "A":{ 
-            "dimensions": [600,600,0],
-            "cornerOffset": [300,600,0],
+            "dimensions": [600,300,0],
+            "cornerOffset": [600,600,0],
             "orientation": [-90,0,0],
-            "deck_file": "control-lab-le/tests/files/deck_sample duo.json"
+            "deck_file": "control-lab-le/tests/files/deck/deck_overkill.json"
         },
         "B":{ 
             "dimensions": [300,300,0],
             "cornerOffset": [300,300,0],
             "orientation": [0,0,0],
-            "deck_file": "control-lab-le/tests/files/deck_sample small.json"
+            "deck_file": "control-lab-le/tests/files/deck/deck_dancefloor.json"
         },
         "C":{ 
             "dimensions": [300,300,0],
             "cornerOffset": [0,300,0],
             "orientation": [0,0,0],
-            "deck_file": "control-lab-le/tests/files/deck_sample small.json"
+            "deck_file": "control-lab-le/tests/files/deck/deck_fourfingers.json"
         },
         "D":{ 
             "dimensions": [300,300,0],
             "cornerOffset": [300,300,0],
             "orientation": [-180,0,0],
-            "deck_file": "control-lab-le/tests/files/deck_sample small.json"
+            "deck_file": "control-lab-le/tests/files/deck/deck_orionsbelt.json"
         }
     }
 }
