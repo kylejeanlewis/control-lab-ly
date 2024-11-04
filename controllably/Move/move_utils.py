@@ -362,7 +362,7 @@ class Mover:
     
     def setSafeHeight(self, height: float):
         if isinstance(self.workspace, BoundingBox):
-            assert (0,0,height) in self.workspace, f"Ensure safe height is within workspace"
+            assert (*self.workspace.reference[:2],height) in self.workspace, f"Ensure safe height is within workspace"
         if isinstance(self.deck, Deck):
             deck_heights = {name: max(bounds.bounds[:,2]) for name,bounds in self.deck.exclusion_zone.items()}
             heights_list = [height for height in deck_heights.values()]
