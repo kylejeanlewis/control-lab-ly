@@ -131,6 +131,7 @@ def load_parts(configs:dict, **kwargs) -> dict:
         dict: dictionary of part tools
     """
     parts = {}
+    configs.update(kwargs)
     for name, details in configs.items():
         module_name = details.get('module')
         class_name = details.get('class')
