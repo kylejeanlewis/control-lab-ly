@@ -9,11 +9,13 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 import logging
-import numpy as np
 import time
+from types import SimpleNamespace
+
+# Third-party imports
+import numpy as np
 
 # Local application imports
-from ...misc import Helper
 from .cartesian_utils import Gantry
 
 logger = logging.getLogger(__name__)
@@ -43,11 +45,7 @@ class Marlin(Gantry):
     - `setTemperature`: set the temperature of the 3-D printer platform bed
     """
     
-    _default_flags: dict[str, bool] = {
-        'busy': False, 
-        'connected': False, 
-        'temperature_reached': False
-    }
+    _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, verbose=False, temperature_reached=False)
     temperature_range = (0,110)
     def __init__(self, 
         port: str, 
@@ -64,7 +62,7 @@ class Marlin(Gantry):
             safe_height (float, optional): height at which obstacles can be avoided. Defaults to 30.
         """
         super().__init__(port=port, limits=limits, safe_height=safe_height, **kwargs)
-        self.home_coordinates = (0,0,self.heights['safe'])
+        self.home_coordinates = (0,0,self.safe_height)
         self.set_temperature = None
         self.temperature = None
         self.tolerance = 1.5
@@ -187,7 +185,7 @@ class Marlin(Gantry):
         logger.info(f"End of temperature hold")
         return
 
-    @Helper.safety_measures
+    # @Helper.safety_measures
     def home(self) -> bool:
         """Make the robot go home"""
         self._query("G91")
@@ -212,7 +210,7 @@ class Marlin(Gantry):
         
         # Lift to safe height
         self._query("G90")
-        self._query(f"G0 Z{self.heights['safe']}")
+        self._query(f"G0 Z{self.safe_height}")
         logger.info(f'Move for {move_time}s...')
         time.sleep(move_time)
         
@@ -285,7 +283,7 @@ class Marlin(Gantry):
         command = command.replace('G1', 'G0')
         if command.startswith('F'):
             command = f'G0 {command}'
-        return super()._query(command)
+        return self.device.query(command)
 
 
 class Ender(Marlin):
