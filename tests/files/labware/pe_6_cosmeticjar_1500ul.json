@@ -1,0 +1,117 @@
+{
+    "ordering": [
+        [
+            "A1",
+            "B1"
+        ],
+        [
+            "A2",
+            "B2"
+        ],
+        [
+            "A3",
+            "B3"
+        ]
+    ],
+    "brand": {
+        "brand": "polyelectric",
+        "brandId": []
+    },
+    "metadata": {
+        "displayName": "Polyelectric 6 Well Plate 15000 µL",
+        "displayCategory": "wellPlate",
+        "displayVolumeUnits": "µL",
+        "tags": []
+    },
+    "dimensions": {
+        "xDimension": 128,
+        "yDimension": 85.85,
+        "zDimension": 29.11
+    },
+    "wells": {
+        "A1": {
+            "depth": 24,
+            "totalLiquidVolume": 15000,
+            "shape": "circular",
+            "diameter": 33.9,
+            "x": 22,
+            "y": 64,
+            "z": 5.11
+        },
+        "B1": {
+            "depth": 24,
+            "totalLiquidVolume": 15000,
+            "shape": "circular",
+            "diameter": 33.9,
+            "x": 22,
+            "y": 21.85,
+            "z": 5.11
+        },
+        "A2": {
+            "depth": 24,
+            "totalLiquidVolume": 15000,
+            "shape": "circular",
+            "diameter": 33.9,
+            "x": 64.15,
+            "y": 64,
+            "z": 5.11
+        },
+        "B2": {
+            "depth": 24,
+            "totalLiquidVolume": 15000,
+            "shape": "circular",
+            "diameter": 33.9,
+            "x": 64.15,
+            "y": 21.85,
+            "z": 5.11
+        },
+        "A3": {
+            "depth": 24,
+            "totalLiquidVolume": 15000,
+            "shape": "circular",
+            "diameter": 33.9,
+            "x": 106.3,
+            "y": 64,
+            "z": 5.11
+        },
+        "B3": {
+            "depth": 24,
+            "totalLiquidVolume": 15000,
+            "shape": "circular",
+            "diameter": 33.9,
+            "x": 106.3,
+            "y": 21.85,
+            "z": 5.11
+        }
+    },
+    "groups": [
+        {
+            "metadata": {
+                "wellBottomShape": "flat"
+            },
+            "wells": [
+                "A1",
+                "B1",
+                "A2",
+                "B2",
+                "A3",
+                "B3"
+            ]
+        }
+    ],
+    "parameters": {
+        "format": "irregular",
+        "quirks": [],
+        "isTiprack": false,
+        "isMagneticModuleCompatible": false,
+        "loadName": "pe_6_cosmeticjar_1500ul"
+    },
+    "namespace": "custom_beta",
+    "version": 1,
+    "schemaVersion": 2,
+    "cornerOffsetFromSlot": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+    }
+}
