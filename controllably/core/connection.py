@@ -268,7 +268,7 @@ class SerialDevice:
         """
         ret = self.write(str(data))
         if ret:
-            return self.read()
+            return self.read(lines=True)
         return
     
     def read(self, lines:bool = False) -> str|list[str]:
