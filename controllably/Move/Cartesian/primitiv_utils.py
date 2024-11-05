@@ -9,9 +9,12 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 import logging
-import numpy as np
 import time
+from types import SimpleNamespace
 from typing import Optional
+
+# Third-party imports
+import numpy as np
 
 # Local application imports
 from ...misc import Helper
@@ -41,7 +44,7 @@ class Grbl(Gantry):
     - `stop`: stop movement immediately
     """
     
-    _default_flags = {'busy': False, 'connected': False, 'jog':False}
+    _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, verbose=False, jog=False)
     def __init__(self, 
         port: str, 
         limits: tuple[tuple[float]] = ((-410,-290,-120), (0,0,0)), 
