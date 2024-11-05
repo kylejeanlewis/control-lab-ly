@@ -1,4 +1,4 @@
-# %% -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 This module holds the base class for mover tools.
 
@@ -259,10 +259,10 @@ class Mover:
         return self._speed_max
     
     def halt(self) -> Position:
-        ...
+        raise NotImplementedError
     
     def home(self, axis:str|None = None) -> Position:
-        ...
+        raise NotImplementedError
     
     def isFeasible(self, coordinates: Sequence[float], external: bool = True, tool_offset:bool = True) -> bool:
         position = Position(coordinates)
@@ -291,20 +291,40 @@ class Mover:
         by: float,
         speed_factor: float|None = None
     ) -> Position:
-        ...
+        assert axis.lower() in 'xyzabc', f"Ensure axis is one of 'x,y,z,a,b,c'"
+        default = dict(x=0, y=0, z=0, a=0, b=0, c=0)
+        default.update({axis: by})
+        vector = np.array([default[k] for k in 'xyz'])
+        rotation = np.array([default[k] for k in 'abc'])
+        move_position = Position(vector, Rotation.from_euler('zyx', rotation, degrees=True))
+        return self.moveBy(by=move_position, speed_factor=speed_factor)
         
     def moveBy(self,
         by: Sequence[float]|Position,
-        speed_factor: float|None = None
+        speed_factor: float|None = None,
+        robot: bool = False
     ) -> Position:
-        ...
-        
+        if isinstance(by, Sequence):
+            assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
+        move_by = by if isinstance(by, Position) else Position(by)
+        old_position = self.robot_position if robot else self.tool_position
+        new_position = move_by.apply(old_position)
+        return self.moveTo(to=new_position, speed_factor=speed_factor, robot=robot)
+
     def moveTo(self,
         to: Sequence[float]|Position,
         speed_factor: float|None = None,
         robot: bool = False
     ) -> Position:
-        ...
+        if isinstance(to, Sequence):
+            assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
+        new_position = to if isinstance(to, Position) else Position(to)
+        
+        if not self.isFeasible(new_position.coordinates, external=(not robot), tool_offset=(not robot)):
+            logger.warning(f"Target position is not feasible")
+            return self.robot_position if robot else self.tool_position
+        logger.debug(f"Moving to {new_position} at speed factor {speed_factor}")
+        raise NotImplementedError
     
     def moveRobotTo(self,
         to: Sequence[float]|Position,
@@ -326,20 +346,42 @@ class Mover:
         by: float,
         speed_factor: float|None = None
     ) -> Position:
-        ...
+        assert axis.lower() in 'abc', f"Ensure axis is one of 'a,b,c'"
+        default = dict(a=0, b=0, c=0)
+        default.update({axis: by})
+        vector = np.array((0,0,0))
+        rotation = np.array([default[k] for k in 'abc'])
+        rotate_position = Position(vector, Rotation.from_euler('zyx', rotation, degrees=True))
+        return self.rotateBy(by=rotate_position, speed_factor=speed_factor)
         
     def rotateBy(self,
         by: Sequence[float]|Position|Rotation,
-        speed_factor: float|None = None
+        speed_factor: float|None = None,
+        robot: bool = False
     ) -> Position:
-        ...
+        if isinstance(by, Sequence):
+            assert len(by) == 3, f"Ensure `by` is a 3-element sequence for a,b,c"
+        rotate_by = by if isinstance(by, Position) else Position(by)
+        old_position = self.robot_position if robot else self.tool_position
+        new_position = move_position.apply(old_position)
+        return self.rotateTo(to=new_position, speed_factor=speed_factor, robot=robot)
         
     def rotateTo(self,
         to: Sequence[float]|Position|Rotation,
         speed_factor: float|None = None,
         robot: bool = False
     ) -> Position:
-        ...
+        if isinstance(to, Sequence):
+            assert len(to) == 3, f"Ensure `to` is a 3-element sequence for a,b,c"
+        move_position = to if isinstance(to, Position) else Position(_rotation=Rotation.from_euler('zyx', to, degrees=True))
+        
+        if not self.isFeasible(move_position.coordinates, external=(not robot), tool_offset=(not robot)):
+            logger.warning(f"Target position is not feasible")
+            return self.robot_position if robot else self.tool_position
+        old_position = self.robot_position if robot else self.tool_position
+        new_position = move_position.apply(old_position)
+        logger.debug(f"Moving from {old_position} to {new_position} at speed factor {speed_factor}")
+        raise NotImplementedError
         
     def rotateRobotTo(self,
         to: Sequence[float]|Position|Rotation,
