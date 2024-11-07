@@ -1,8 +1,17 @@
 # %%
 import test_init
-from controllably.Move.Cartesian import Marlin
+from controllably.Move.grbl_api.grbl_api import GRBL
+
+grbl = GRBL('COM22', baudrate=115200, timeout=1, simulation=True, verbose=True)
+grbl.connect()
+grbl.read(True)
+
+# %%
+import test_init
+from controllably.Move.Cartesian import Marlin, Grbl
 
 mover = Marlin('COM21')
+# mover = Grbl('COM22')
 
 # %%
 import test_init
@@ -185,7 +194,7 @@ labware_file = Path('control-lab-le/tests/files/labware/corning_24_wellplate_340
 labware = Labware.fromFile(labware_file)
 labware.show()
 
-deck_file = Path('control-lab-le/tests/files/deck/deck_main.json')
+deck_file = Path('control-lab-le/tests/files/deck/deck_phbotv2.json')
 deck = Deck.fromFile(deck_file)
 deck.show()
 deck
