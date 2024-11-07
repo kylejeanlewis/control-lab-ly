@@ -110,6 +110,7 @@ class SerialDevice:
         message_end: str = '\n',
         *,
         simulation: bool = False,
+        verbose: bool = False,
         **kwargs
     ):
         """
@@ -132,6 +133,8 @@ class SerialDevice:
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
+        
+        self.verbose = verbose
         return
     
     def __repr__(self):
