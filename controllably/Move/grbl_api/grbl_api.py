@@ -100,6 +100,8 @@ class GRBL(SerialDevice):
             if not (response.startswith('[') and response.endswith(']')):
                 continue
             response = response[1:-1]
+            if response.startswith('PRB'):
+                continue
             parameter,values = response.split(":")
             values = [float(c) for c in values.split(",")]
             parameters.append((parameter, values))
