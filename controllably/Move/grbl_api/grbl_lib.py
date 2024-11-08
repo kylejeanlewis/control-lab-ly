@@ -9,11 +9,11 @@ Other types:
 """
 # Standard library imports
 from collections import namedtuple
-from dataclasses import dataclass
 from enum import Enum
 import logging
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 Message = namedtuple('Message', ['message','description'])
