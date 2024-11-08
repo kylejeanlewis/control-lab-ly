@@ -58,12 +58,12 @@ def get_transform(initial_points: np.ndarray, final_points:np.ndarray) -> tuple[
 @dataclass
 class Position:
     _coordinates: Sequence[float] = (0,0,0)
-    _rotation: Rotation = Rotation.from_euler('zyx',(0,0,0),degrees=True)
+    Rotation: Rotation = Rotation.from_euler('zyx',(0,0,0),degrees=True)
     rotation_type: str = 'euler'
     degrees: bool = True
     
     def __post_init__(self):
-        assert isinstance(self._rotation, Rotation), "Please input a Rotation object"
+        assert isinstance(self.Rotation, Rotation), "Please input a Rotation object"
         assert self.rotation_type in ['quaternion','matrix','angle_axis','euler','mrp','davenport'], f"Invalid rotation type: {self.rotation_type}"
         assert isinstance(self._coordinates,(Sequence,np.ndarray)) and len(self._coordinates) == 3, "Please input x,y,z coordinates"
         self._coordinates = tuple(self._coordinates)
@@ -84,28 +84,28 @@ class Position:
     @property
     def rotation(self) -> np.ndarray:
         if self.rotation_type == 'quaternion':
-            return self._rotation.as_quat()
+            return self.Rotation.as_quat()
         elif self.rotation_type == 'matrix':
-            return self._rotation.as_matrix()
+            return self.Rotation.as_matrix()
         elif self.rotation_type == 'angle_axis':
-            return self._rotation.as_rotvec()
+            return self.Rotation.as_rotvec()
         elif self.rotation_type == 'euler':
-            return self._rotation.as_euler('zyx', degrees=self.degrees)
+            return self.Rotation.as_euler('zyx', degrees=self.degrees)
         elif self.rotation_type == 'mrp':
-            return self._rotation.as_mrp()
+            return self.Rotation.as_mrp()
         elif self.rotation_type == 'davenport':
-            return self._rotation.as_davenport()
+            return self.Rotation.as_davenport()
         raise ValueError(f"Invalid rotation type: {self.rotation_type}")
     
     @rotation.setter
     def rotation(self, value: Rotation):
         assert isinstance(value, Rotation), "Please input a Rotation object"
-        self._rotation = value
+        self.Rotation = value
         return
     
     @property
     def rot_matrix(self) -> np.ndarray: 
-        return self._rotation.as_matrix()
+        return self.Rotation.as_matrix()
     
     @property
     def x(self) -> float:
@@ -121,30 +121,30 @@ class Position:
     
     @property
     def a(self) -> float:
-        rotation = self._rotation.as_euler('zyx', degrees=self.degrees)
+        rotation = self.Rotation.as_euler('zyx', degrees=self.degrees)
         return rotation[0]
     
     @property
     def b(self) -> float:
-        rotation = self._rotation.as_euler('zyx', degrees=self.degrees)
+        rotation = self.Rotation.as_euler('zyx', degrees=self.degrees)
         return rotation[1]
     
     @property
     def c(self) -> float:
-        rotation = self._rotation.as_euler('zyx', degrees=self.degrees)
+        rotation = self.Rotation.as_euler('zyx', degrees=self.degrees)
         return rotation[2]
     
     def apply(self, on:Position) -> Position:
-        return on.translate(self.coordinates).orientate(self._rotation)
+        return on.translate(self.coordinates).orientate(self.Rotation)
     
     def invert(self) -> Position:
-        return Position(-self.coordinates, self._rotation.inv())
+        return Position(-self.coordinates, self.Rotation.inv())
     
     def orientate(self, by:Rotation, inplace:bool = True) -> Position:
         if inplace:
-            self._rotation = by*self._rotation
+            self.Rotation = by*self.Rotation
             return self
-        rotation = by*self._rotation
+        rotation = by*self.Rotation
         return Position(self.coordinates, rotation)
     
     def translate(self, by:Sequence[float], inplace:bool = True) -> Position:
@@ -152,7 +152,7 @@ class Position:
             self.coordinates = self.coordinates + np.array(by)
             return self
         coordinates = self.coordinates + np.array(by)
-        return Position(coordinates, self._rotation)
+        return Position(coordinates, self.Rotation)
     
 
 @dataclass
@@ -236,7 +236,7 @@ class Well:
     
     @property
     def center(self) -> np.ndarray:
-        return self.reference.coordinates + self.reference._rotation.apply(self.offset)
+        return self.reference.coordinates + self.reference.Rotation.apply(self.offset)
      
     @property
     def bottom(self) -> np.ndarray:
@@ -309,7 +309,7 @@ class Well:
         if self.shape == 'circular':
             ax.add_patch(plt.Circle(self.center, self.dimensions[0]/2, fill=False, **kwargs))
         elif self.shape == 'rectangular':
-            dimensions = self.reference._rotation.apply(np.array([*self.dimensions,0]))
+            dimensions = self.reference.Rotation.apply(np.array([*self.dimensions,0]))
             corner = self.bottom - dimensions/2
             print(corner, dimensions)
             ax.add_patch(plt.Rectangle(corner[:2], *dimensions[:2], fill=False, **kwargs))
@@ -480,7 +480,7 @@ class Labware:
     
     @property
     def center(self) -> np.ndarray:
-        return self.bottom_left_corner.coordinates + self.bottom_left_corner._rotation.apply(self.offset)
+        return self.bottom_left_corner.coordinates + self.bottom_left_corner.Rotation.apply(self.offset)
     
     @property
     def bottom_left_corner(self) -> Position:
@@ -488,7 +488,7 @@ class Labware:
     
     @property
     def dimensions(self) -> np.ndarray:
-        return self.bottom_left_corner._rotation.apply(self._dimensions)
+        return self.bottom_left_corner.Rotation.apply(self._dimensions)
     
     @property
     def columns(self) -> dict[int, list[str]]:
@@ -595,10 +595,10 @@ class Slot:
     
     def __post_init__(self):
         corner_offset = self._details.get('cornerOffset',(0,0,0))
-        new_corner_offset = self.reference.coordinates + self.reference._rotation.apply(corner_offset)
+        new_corner_offset = self.reference.coordinates + self.reference.Rotation.apply(corner_offset)
         orientation = self._details.get('orientation',(0,0,0))
         bottom_left_corner = Position(new_corner_offset, Rotation.from_euler('zyx',orientation,degrees=True))
-        self.bottom_left_corner = bottom_left_corner.orientate(self.reference._rotation)
+        self.bottom_left_corner = bottom_left_corner.orientate(self.reference.Rotation)
         
         dimensions = np.array(self._details.get('dimensions',self._dimensions))
         self.x,self.y,self.z = dimensions/2
@@ -637,11 +637,11 @@ class Slot:
     
     @property
     def center(self) -> np.ndarray:
-        return self.bottom_left_corner.coordinates + self.bottom_left_corner._rotation.apply(self.offset)
+        return self.bottom_left_corner.coordinates + self.bottom_left_corner.Rotation.apply(self.offset)
     
     @property
     def dimensions(self) -> np.ndarray:
-        return self.bottom_left_corner._rotation.apply(self._dimensions)
+        return self.bottom_left_corner.Rotation.apply(self._dimensions)
     
     @property
     def exclusion_zone(self) -> BoundingBox|None:
@@ -732,10 +732,10 @@ class Deck:
         self._dimensions = tuple(dimensions)
         
         corner_offset = self._details.get('cornerOffset',(0,0,0))
-        new_corner_offset = self.reference.coordinates + self.reference._rotation.apply(corner_offset)
+        new_corner_offset = self.reference.coordinates + self.reference.Rotation.apply(corner_offset)
         orientation = self._details.get('orientation',(0,0,0))
         bottom_left_corner = Position(new_corner_offset, Rotation.from_euler('zyx',orientation,degrees=True))
-        self.bottom_left_corner = bottom_left_corner.orientate(self.reference._rotation)
+        self.bottom_left_corner = bottom_left_corner.orientate(self.reference.Rotation)
         
         self._slots = {f"slot_{int(idx):02}":Slot(name=f"slot_{int(idx):02}", _details=details, parent=self) for idx,details in self._details.get('slots',{}).items()}
         for name,details in self._details.get('zones',{}).items():
@@ -762,7 +762,7 @@ class Deck:
         return f"{self.name} comprising:\n{'\n'.join(slots_name)}\n{'\n'.join(zones_name)}"
     
     @classmethod
-    def fromConfigs(cls, details:str, parent:Deck|None = None, _nesting_lineage:Sequence[Path|None]=(None,)):
+    def fromConfigs(cls, details:dict[str, Any], parent:Deck|None = None, _nesting_lineage:Sequence[Path|None]=(None,)):
         """
         Load deck layout from layout file
 
@@ -801,11 +801,11 @@ class Deck:
     
     @property
     def center(self) -> np.ndarray:
-        return self.bottom_left_corner.coordinates + self.bottom_left_corner._rotation.apply(self.offset)
+        return self.bottom_left_corner.coordinates + self.bottom_left_corner.Rotation.apply(self.offset)
     
     @property
     def dimensions(self) -> np.ndarray:
-        return self.bottom_left_corner._rotation.apply(self._dimensions)
+        return self.bottom_left_corner.Rotation.apply(self._dimensions)
     
     @property
     def exclusion_zone(self) -> dict[str, BoundingBox]:
@@ -925,8 +925,6 @@ class Deck:
             for slot in slots.values():
                 if isinstance(slot, Slot):
                     slot._draw(ax, zoom_out=zoom_out, **kwargs)
-                # elif isinstance(slot, SimpleNamespace):
-                #     draw_slots(ax, vars(slot), **kwargs)
             return
         draw_slots(ax, self._slots, **kwargs)
         return
@@ -1168,10 +1166,10 @@ class BoundingBox:
     
     @property
     def bounds(self):
-        dimensions = self.reference._rotation.apply(self.dimensions)
+        dimensions = self.reference.Rotation.apply(self.dimensions)
         other_corner = self.reference.coordinates + dimensions
         bounds = np.array([self.reference.coordinates, other_corner])
-        return bounds + self.reference._rotation.apply(self.buffer)
+        return bounds + self.reference.Rotation.apply(self.buffer)
     
     def contains(self, point:Sequence[float]) -> bool:
         assert len(point) == 3, "Please input x,y,z coordinates"
