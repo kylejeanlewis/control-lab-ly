@@ -162,4 +162,20 @@ class GRBL(SerialDevice):
             current_position = [float(c) for c in status_parts[1].split(':')[1].split(',')]
         return (state, current_position)
     
+    def clearAlarms(self):
+        """
+        """
+        self.query('$X')
+        return
     
+    def halt(self):
+        """
+        """
+        self.query('!')
+        return
+    
+    def resume(self):
+        """
+        """
+        self.query('~')
+        return
