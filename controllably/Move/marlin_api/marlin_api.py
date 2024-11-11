@@ -62,6 +62,78 @@ class Marlin(SerialDevice):
                 handler.setLevel(level)
         return
     
+    def checkSettings(self) -> list[tuple[str, str]]:               # TODO: Parse settings from responses
+        """
+        """
+        relevant_settings = dict(
+            M201 = 'Maximum Acceleration',
+            M203 = 'Maximum Feedrate',
+            # M204 = 'Acceleration',
+            # M205 = 'Advanced Settings',
+            # M206 = 'Home Offset',
+            # M207 = 'Calibrate Z Axis',
+        )
+        responses = self.query('M503')
+        settings = []
+        for response in responses:
+            response = response.strip()
+        #     if '=' not in response:
+        #         continue
+        #     setting,value = response.split("=")
+        #     setting_int = int(setting[1:]) if setting[1:].isnumeric() else setting[1:]
+        #     setting_ = f'sc{setting_int}'
+        #     assert setting_ in Setting.__members__, f"Setting  not found: {setting_}"
+        #     logger.info(f"[{setting}]: {Setting[setting_].value.message} = {value}")
+        #     settings.append((setting, value))
+        return settings
+    
+    def checkStatus(self) -> tuple[str, list[float]]:
+        """
+        """
+        responses = self.query('M114')      # Check the current position
+        # responses = self.query('M105')      # Check the current temperature
+        state = ''
+        relevant_responses = []
+        for response in responses:
+            response = response.strip()
+            if 'Count' not in response:
+                continue
+            relevant_responses.append(response)
+        xyz = relevant_responses[-1].split("E")[0].split(" ")[:-1]
+        current_position = [float(c[2:]) for c in xyz]
+        return (state, current_position)
+    
+    def halt(self) -> Position:
+        """
+        """
+        self.query('M410')
+        time.sleep(1)
+        _, coordinates = self.checkStatus()
+        return Position(coordinates)
+    
+    # Overwritten methods
+    def connect(self):
+        """
+        """
+        super().connect()
+        startup_lines = self.read(True)
+        # self._version = startup_lines[0].split(' ')[1]
+        return
+    
+    def query(self, data: Any) -> list[str]:
+        """
+        """
+        # data = data.replace('G1', 'G0')   # TODO: check if this is necessary
+        if data.startswith('F'):
+            data = f'G0 {data}'
+        responses = super().query(data)
+        # for response in responses:
+        #     logger.debug(f"Response: {response}")
+        #     self.checkAlarms(response)
+        #     self.checkErrors(response)
+        return responses
+
+    # Methods not implemented
     def checkAlarms(self, response: str):   # NOTE: This method is not implemented
         """
         """
@@ -92,31 +164,6 @@ class Marlin(SerialDevice):
         #     parameters.append((parameter, values))
         return parameters
     
-    def checkSettings(self) -> list[tuple[str, str]]:               # TODO: Parse settings from responses
-        """
-        """
-        relevant_settings = dict(
-            M201 = 'Maximum Acceleration',
-            M203 = 'Maximum Feedrate',
-            # M204 = 'Acceleration',
-            # M205 = 'Advanced Settings',
-            # M206 = 'Home Offset',
-            # M207 = 'Calibrate Z Axis',
-        )
-        responses = self.query('M503')
-        settings = []
-        for response in responses:
-            response = response.strip()
-        #     if '=' not in response:
-        #         continue
-        #     setting,value = response.split("=")
-        #     setting_int = int(setting[1:]) if setting[1:].isnumeric() else setting[1:]
-        #     setting_ = f'sc{setting_int}'
-        #     assert setting_ in Setting.__members__, f"Setting  not found: {setting_}"
-        #     logger.info(f"[{setting}]: {Setting[setting_].value.message} = {value}")
-        #     settings.append((setting, value))
-        return settings
-    
     def checkState(self) -> dict[str, str]: # NOTE: This method is not implemented
         """
         """
@@ -141,36 +188,12 @@ class Marlin(SerialDevice):
         #     ))
         return state
     
-    def checkStatus(self) -> tuple[str, list[float]]:
-        """
-        """
-        responses = self.query('M114')      # Check the current position
-        # responses = self.query('M105')      # Check the current temperature
-        state = ''
-        relevant_responses = []
-        for response in responses:
-            response = response.strip()
-            if 'Count' not in response:
-                continue
-            relevant_responses.append(response)
-        xyz = relevant_responses[-1].split("E")[0].split(" ")[:-1]
-        current_position = [float(c[2:]) for c in xyz]
-        return (state, current_position)
-    
     def clearAlarms(self):                  # NOTE: This method is not implemented
         """
         """
         logger.debug(f"[{self.__class__.__name__}] Not implemented")
         # self.query('$X')
         return
-    
-    def halt(self) -> Position:
-        """
-        """
-        self.query('M410')
-        time.sleep(1)
-        _, coordinates = self.checkStatus()
-        return Position(coordinates)
     
     def resume(self):                       # NOTE: This method is not implemented
         """
@@ -179,24 +202,3 @@ class Marlin(SerialDevice):
         # self.query('~')
         return
     
-    # Overwritten methods
-    def connect(self):
-        """
-        """
-        super().connect()
-        startup_lines = self.read(True)
-        # self._version = startup_lines[0].split(' ')[1]
-        return
-    
-    def query(self, data: Any) -> list[str]:
-        """
-        """
-        # data = data.replace('G1', 'G0')   # TODO: check if this is necessary
-        if data.startswith('F'):
-            data = f'G0 {data}'
-        responses = super().query(data)
-        # for response in responses:
-        #     logger.debug(f"Response: {response}")
-        #     self.checkAlarms(response)
-        #     self.checkErrors(response)
-        return responses
