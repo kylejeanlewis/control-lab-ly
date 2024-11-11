@@ -2,10 +2,12 @@
 # Standard library imports
 from __future__ import annotations
 import logging
+import time
 from typing import Any
 
 # Local application imports
 from ...core.connection import SerialDevice
+from ...core.position import Position
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -162,11 +164,13 @@ class Marlin(SerialDevice):
         # self.query('$X')
         return
     
-    def halt(self):
+    def halt(self) -> Position:
         """
         """
         self.query('M410')
-        return
+        time.sleep(1)
+        _, coordinates = self.checkStatus()
+        return Position(coordinates)
     
     def resume(self):                       # NOTE: This method is not implemented
         """

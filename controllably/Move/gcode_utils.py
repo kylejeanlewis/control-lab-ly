@@ -70,7 +70,7 @@ class GCodeDevice(Protocol):
         """Clear the alarms of the device"""
         raise NotImplementedError
     
-    def halt(self):
+    def halt(self) -> Position:
         """Halt the device"""
         raise NotImplementedError
     
@@ -99,6 +99,11 @@ class GCode(Mover):
         self.device: GRBL|Marlin = self.device
         return
     
+    def halt(self) -> Position:
+        position = self.device.halt()
+        self.position = position
+        return  position
+    
     def home(self, axis: str|None = None) -> Position:
         if isinstance(self.device, GRBL):
             if axis is not None:
@@ -106,6 +111,8 @@ class GCode(Mover):
             command = '$H' if axis is None else f'$H{axis.upper()}'
             self.query(command)
         elif isinstance(self.device, Marlin):
+            if axis is not None:
+                logger.warning("Ignoring homing axis parameter for Marlin firmware")
             self.query('G90 G28')
         else:
             raise NotImplementedError

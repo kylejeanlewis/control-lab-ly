@@ -6,6 +6,7 @@ from typing import Any
 
 # Local application imports
 from ...core.connection import SerialDevice
+from ...core.position import Position
 from .grbl_lib import Alarm, Error, Setting, Status
 
 logger = logging.getLogger(__name__)
@@ -163,11 +164,12 @@ class GRBL(SerialDevice):
         self.query('$X')
         return
     
-    def halt(self):
+    def halt(self) -> Position:
         """
         """
         self.query('!')
-        return
+        _,coordinates = self.checkStatus()
+        return Position(coordinates)
     
     def resume(self):
         """
