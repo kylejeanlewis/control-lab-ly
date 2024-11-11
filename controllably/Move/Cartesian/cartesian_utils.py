@@ -58,14 +58,14 @@ class Gantry(GCode):
         return
     
     # Overwritten methods
-    def connect(self):
-        self.device.connect()
-        self.device.clearAlarms()
-        self.setSpeedFactor(1.0)
-        self.device.checkSettings()
-        _, coordinates = self.device.checkStatus()
-        print(coordinates)
-        return
+    # def connect(self):
+    #     self.device.connect()
+    #     self.device.clearAlarms()
+    #     self.setSpeedFactor(1.0)
+    #     self.device.checkSettings()
+    #     _, coordinates = self.device.checkStatus()
+    #     print(coordinates)
+    #     return
     
     
 class _Gantry(Mover):
