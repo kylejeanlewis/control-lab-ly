@@ -55,17 +55,19 @@ class Gantry(GCode):
         
         self.connect()
         self.home()
+        if not any([any(l) for l in limits]):
+            settings = self.device.checkSettings()
+            _,coordinates,_ = self.device.checkStatus()
+            device_limits = np.array(settings.get('limit_x'),settings.get('limit_y'),settings.get('limit_z'))
+            device_limits = device_limits * (coordinates/abs(coordinates))
+            limits = np.array([coordinates,device_limits])
+            limits = np.array([limits.min(axis=0),limits.max(axis=0)])
+            self.workspace = BoundingBox(buffer=limits)
         return
     
-    # Overwritten methods
-    # def connect(self):
-    #     self.device.connect()
-    #     self.device.clearAlarms()
-    #     self.setSpeedFactor(1.0)
-    #     self.device.checkSettings()
-    #     _, coordinates = self.device.checkStatus()
-    #     print(coordinates)
-    #     return
+    @property
+    def limits(self):
+        return self.workspace.buffer
     
     
 class _Gantry(Mover):
