@@ -40,7 +40,7 @@ class Marlin(SerialDevice):
         self._version = '1.1' if simulation else ''
         return
     
-    def __version__(self) -> str:
+    def __version__(self) -> str:           # TODO: Implement firmware version check
         return self._version
     
     @property
