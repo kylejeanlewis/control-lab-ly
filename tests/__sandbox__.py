@@ -1,5 +1,25 @@
 # %%
 import test_init
+from controllably.Move.Cartesian import Gantry
+
+mover = Gantry('COM22', limits=((-100,-100,-100),(0,0,0)), verbose=True)
+
+# %%
+mover.moveTo((-10,-10,-50), jog=True)
+
+# %%
+mover.safeMoveTo((-100,-10,-30))
+
+# %%
+mover.moveBy((50,-10,-10), jog=False, rapid=True)
+
+# %%
+mover.move('x', -10, jog=True)
+# %%
+mover.home()
+
+# %%
+import test_init
 from controllably.Move.grbl_api.grbl_api import GRBL
 
 grbl = GRBL('COM22', baudrate=115200, timeout=1, simulation=True, verbose=True)
