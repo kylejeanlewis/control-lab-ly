@@ -3,6 +3,7 @@
 from __future__ import annotations
 import logging
 import time
+from types import SimpleNamespace
 from typing import Sequence, Protocol, Any
 
 # Third-party imports
@@ -19,7 +20,7 @@ logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 LOOP_INTERVAL = 0.1
-TIMEOUT = 60
+TIMEOUT = 30
 
 class GCodeDevice(Protocol):
     connection_details: dict
@@ -37,11 +38,11 @@ class GCodeDevice(Protocol):
         """Disconnect from the device"""
         raise NotImplementedError
 
-    def query(self, data:str) -> Any:
+    def query(self, data:Any, lines:bool = True) -> list[str]|None:
         """Query the device"""
         raise NotImplementedError
 
-    def read(self, **kwargs) -> str|list[str]:
+    def read(self, lines:bool = False) -> str|list[str]:
         """Read data from the device"""
         raise NotImplementedError
 
@@ -66,6 +67,7 @@ class GCode(Mover):
     """
     Refer to https://www.cnccookbook.com/g-code-m-code-command-list-cnc-mills/ for more information on G-code commands.
     """
+    _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, verbose=False, jog=False)
     def __init__(self,
         port: str,
         *,
@@ -93,15 +95,12 @@ class GCode(Mover):
                 assert axis.upper() in 'XYZ', "Ensure axis is X,Y,Z for GRBL"
             command = '$H' if axis is None else f'$H{axis.upper()}'
             self.query(command, wait=True)
-            time.sleep(2)
         elif isinstance(self.device, Marlin):
             if axis is not None:
                 logger.warning("Ignoring homing axis parameter for Marlin firmware")
-            self.query('G90 G28')
+            self.query('G90 G28', wait=True)
         else:
             raise NotImplementedError
-        _,coordinates,_home_offset = self.device.checkStatus() if self.is_connected else ('', self.home_position.coordinates, np.array([0,0,0]))
-        # self._home_position = Position(coordinates-_home_offset)
         self.updateRobotPosition(to=self.home_position)
         return self.robot_position
         
@@ -187,10 +186,23 @@ class GCode(Mover):
             assert self.device.__version__().startswith("1.1"), "Ensure GRBL version is at least 1.1"
             data = data.replace('G0 ', '').replace('G1 ', '')
             data = f'$J={data} F{self.speed}'
+            self.device.write(data)
+            return self.device.read()
+        
         status,_,_ = self.device.checkStatus()
+        start_time = time.perf_counter()
+        while status not in ('Idle',):
+            time.sleep(LOOP_INTERVAL)
+            status,_,_ = self.device.checkStatus()
+            if status == 'Jog':
+                raise RuntimeError("Jog mode still active")
+            if time.perf_counter() - start_time > TIMEOUT:
+                logger.error(f"Timeout: {status} | {data}")
+                break
+        
         self.device.write(data)
         response = self.device.read()
-        if jog or not wait:
+        if not wait:
             return response
         
         start_time = time.perf_counter()
