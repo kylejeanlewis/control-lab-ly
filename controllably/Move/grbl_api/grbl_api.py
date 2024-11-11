@@ -38,7 +38,11 @@ class GRBL(SerialDevice):
             simulation=simulation,
             **kwargs
         )
+        self._version = '1.1' if simulation else ''
         return
+    
+    def __version__(self) -> str:
+        return self._version
     
     @property
     def verbose(self) -> bool:
@@ -48,6 +52,7 @@ class GRBL(SerialDevice):
     def verbose(self, value:bool):
         """Set verbosity of class"""
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
+        super().flags.verbose = value
         self.flags.verbose = value
         level = logging.INFO if value else logging.WARNING
         logger.setLevel(level)
@@ -55,16 +60,6 @@ class GRBL(SerialDevice):
             if isinstance(handler, type(logging.StreamHandler())):
                 handler.setLevel(level)
         return
-    
-    def query(self, data: Any) -> list[str]:
-        """
-        """
-        responses = super().query(data)
-        for response in responses:
-            logger.debug(f"Response: {response}")
-            self.checkAlarms(response)
-            self.checkErrors(response)
-        return responses
     
     def checkAlarms(self, response: str):
         """
@@ -90,7 +85,7 @@ class GRBL(SerialDevice):
         logger.warning(f"ERROR {error_int:02}: {Error[error_].value.message}")
         return
     
-    def checkParameters(self):
+    def checkParameters(self) -> list[tuple[str, list[float]]]:
         """
         """
         responses = self.query('$#')
@@ -107,7 +102,7 @@ class GRBL(SerialDevice):
             parameters.append((parameter, values))
         return parameters
     
-    def checkSettings(self):
+    def checkSettings(self) -> list[tuple[str, str]]:
         """
         """
         responses = self.query('$$')
@@ -124,7 +119,7 @@ class GRBL(SerialDevice):
             settings.append((setting, value))
         return settings
     
-    def checkState(self):
+    def checkState(self) -> dict[str, str]:
         """
         """
         responses = self.query('$G')
@@ -147,7 +142,7 @@ class GRBL(SerialDevice):
             ))
         return state
     
-    def checkStatus(self):
+    def checkStatus(self) -> tuple[str, list[float]]:
         """
         """
         responses = self.query('?')
@@ -179,3 +174,22 @@ class GRBL(SerialDevice):
         """
         self.query('~')
         return
+    
+    # Overwritten methods
+    def connect(self):
+        """
+        """
+        super().connect()
+        startup_lines = self.read(True)
+        self._version = startup_lines[0].split(' ')[1]
+        return
+    
+    def query(self, data: Any) -> list[str]:
+        """
+        """
+        responses = super().query(data)
+        for response in responses:
+            logger.debug(f"Response: {response}")
+            self.checkAlarms(response)
+            self.checkErrors(response)
+        return responses
