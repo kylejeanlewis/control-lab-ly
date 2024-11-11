@@ -41,41 +41,17 @@ class GCodeDevice(Protocol):
     def write(self, data:str) -> bool:
         """Write data to the device"""
         raise NotImplementedError
-    
-    def checkAlarms(self):
-        """Check the alarms of the device"""
-        raise NotImplementedError
-    
-    def checkErrors(self):
-        """Check the errors of the device"""
-        raise NotImplementedError
-
-    def checkParameters(self) -> list[tuple[str, list[float]]]:
-        """Check the parameters of the device"""
-        raise NotImplementedError
 
     def checkSettings(self) -> list[tuple[str, str]]:
         """Check the settings of the device"""
-        raise NotImplementedError
-    
-    def checkState(self) -> dict[str, str]:
-        """Check the state of the device"""
         raise NotImplementedError
     
     def checkStatus(self) -> tuple[str, Sequence[float]]:
         """Check the status of the device"""
         raise NotImplementedError
     
-    def clearAlarms(self):
-        """Clear the alarms of the device"""
-        raise NotImplementedError
-    
     def halt(self) -> Position:
         """Halt the device"""
-        raise NotImplementedError
-    
-    def resume(self):
-        """Resume the device"""
         raise NotImplementedError
     
 
@@ -223,7 +199,6 @@ class GCode(Mover):
     # Overwritten methods
     def connect(self):
         self.device.connect()
-        self.device.clearAlarms()
         self.setSpeedFactor(1.0)
         self.device.checkSettings()
         _, coordinates = self.device.checkStatus()
