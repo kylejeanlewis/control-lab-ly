@@ -37,7 +37,7 @@ class Gantry(GCode):
         scale: float = 1.0,
         deck: Deck|None = None,
         safe_height: float|None = None,                     # in terms of robot coordinate system
-        speed_max: float = 600,
+        speed_max: float = 600,                             # in mm/min # TODO: implement checking device for speed_max
         device_type_name: str = 'GRBL',
         baudrate: int = 115200, 
         verbose: bool = False, 

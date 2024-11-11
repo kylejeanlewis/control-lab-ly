@@ -112,7 +112,7 @@ class Mover:
         deck: Deck|None = None,
         workspace: BoundingBox|None = None,
         safe_height: float|None = None,                     # in terms of robot coordinate system
-        speed_max: float = 20,
+        speed_max: float = 600,                             # in mm/min
         verbose:bool = False, 
         **kwargs
     ):
