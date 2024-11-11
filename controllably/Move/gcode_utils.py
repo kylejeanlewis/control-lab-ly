@@ -8,6 +8,7 @@ from typing import Sequence, Protocol, Any
 from ..core.position import Position
 from . import Mover
 from .grbl_api import GRBL
+from .marlin_api import Marlin
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -49,15 +50,15 @@ class GCodeDevice(Protocol):
         """Check the errors of the device"""
         raise NotImplementedError
 
-    def checkParameters(self):
+    def checkParameters(self) -> list[tuple[str, list[float]]]:
         """Check the parameters of the device"""
         raise NotImplementedError
 
-    def checkSettings(self):
+    def checkSettings(self) -> list[tuple[str, str]]:
         """Check the settings of the device"""
         raise NotImplementedError
     
-    def checkState(self):
+    def checkState(self) -> dict[str, str]:
         """Check the state of the device"""
         raise NotImplementedError
     
@@ -85,19 +86,29 @@ class GCode(Mover):
     def __init__(self,
         port: str,
         *,
+        device_type_name: str = 'GRBL',
         baudrate: int = 115200,
         verbose: bool = False,
         **kwargs
     ):
         """
         """
-        super().__init__(device_type=GRBL, port=port, baudrate=baudrate, verbose=verbose, **kwargs)
-        assert isinstance(self.device, GRBL), "Ensure device is of type GRBL"
-        self.device: GRBL = self.device
+        device_type = globals().get(device_type_name, GRBL)
+        super().__init__(device_type=device_type, port=port, baudrate=baudrate, verbose=verbose, **kwargs)
+        assert isinstance(self.device, (GRBL,Marlin)), "Ensure device is of type `GRBL` or `Marlin`"
+        self.device: GRBL|Marlin = self.device
         return
     
     def home(self, axis: str|None = None) -> Position:
-        self.device.query('G90 G28')
+        if isinstance(self.device, GRBL):
+            if axis is not None:
+                assert axis.upper() in 'XYZ', "Ensure axis is X,Y,Z for GRBL"
+            command = '$H' if axis is None else f'$H{axis.upper()}'
+            self.query(command)
+        elif isinstance(self.device, Marlin):
+            self.query('G90 G28')
+        else:
+            raise NotImplementedError
         self.updateRobotPosition(to=self.home_position)
         return self.robot_position
         
@@ -105,6 +116,7 @@ class GCode(Mover):
         by: Sequence[float]|Position,
         speed_factor: float|None = None,
         *,
+        jog: bool = False,
         rapid: bool = False,
         robot: bool = False
     ) -> Position:
@@ -123,13 +135,19 @@ class GCode(Mover):
             by_coordinates = inv_tool_offset.Rotation.apply(inv_calibrated_offset.Rotation.apply(move_by.coordinates))
             by_rotation = inv_tool_offset.Rotation * inv_calibrated_offset.Rotation * move_by.Rotation
             move_by = Position(by_coordinates, by_rotation)
+        if not self.isFeasible(self.position.coordinates + move_by.coordinates, external=False, tool_offset=False):
+            logger.warning(f"Target movement {move_by} is not feasible")
+            return self.robot_position if robot else self.tool_position
         
         # Implementation of relative movement
-        by = move_by.coordinates
         mode = 'G0' if rapid else 'G1'
+        command_xy = f'G91 {mode} X{move_by.x} Y{move_by.y}'
+        command_z = f'G91 {mode} Z{move_by.z}'
+        commands = (command_z, command_xy) if (move_by.z > 0) else (command_xy, command_z)
         self.setSpeedFactor(speed_factor, persist=False)
-        self.device.query(f'G91 {mode} X{by[0]} Y{by[1]} Z{by[2]}')
-        self.device.query('G90')
+        for command in commands:
+            self.query(command, jog=jog)
+        self.query('G90')
         self.setSpeedFactor(self.speed_factor, persist=False)
         
         # Update position
@@ -140,6 +158,7 @@ class GCode(Mover):
         to: Sequence[float]|Position,
         speed_factor: float|None = None,
         *,
+        jog: bool = False,
         rapid: bool = False,
         robot: bool = False
     ) -> Position:
@@ -151,17 +170,31 @@ class GCode(Mover):
         
         # Convert to robot coordinates
         move_to = move_to if robot else self.transformToolToRobot(self.transformWorkToRobot(move_to))
+        if not self.isFeasible(move_to.coordinates, external=False, tool_offset=False):
+            logger.warning(f"Target position {move_to} is not feasible")
+            return self.robot_position if robot else self.tool_position
         
         # Implementation of absolute movement
-        to = move_to.coordinates
         mode = 'G0' if rapid else 'G1'
+        command_xy = f'G90 {mode} X{move_to.x} Y{move_to.y}'
+        command_z = f'G90 {mode} Z{move_to.z}'
+        commands = (command_z, command_xy) if (self.position.z < move_to.z) else (command_xy, command_z)
         self.setSpeedFactor(speed_factor, persist=False)
-        self.device.query(f'G90 {mode} X{to[0]} Y{to[1]} Z{to[2]}')
+        for command in commands:
+            self.query(command, jog=jog)
         self.setSpeedFactor(self.speed_factor, persist=False)
         
         # Update position
         self.updateRobotPosition(to=move_to)
         return self.robot_position if robot else self.tool_position
+    
+    def query(self, data:str, *, jog:bool = False) -> Any:
+        if jog:
+            assert isinstance(self.device, GRBL), "Ensure device is of type `GRBL`"
+            assert self.device.__version__().startswith("1.1"), "Ensure GRBL version is at least 1.1"
+            data = data.replace('G0 ', '').replace('G1 ', '')
+            data = f'$J={data} F{self.speed}'
+        return self.device.query(data)
     
     def reset(self):
         self.disconnect()
@@ -169,13 +202,18 @@ class GCode(Mover):
         return
     
     def setSpeedFactor(self, speed_factor:float, persist:bool = True) -> float:
-        feed_rate = self.speed
-        self.query(f'G90 F{feed_rate}')
+        if isinstance(self.device, GRBL):
+            feed_rate = self.speed_max * speed_factor
+            self.query(f'G90 F{feed_rate}')
+        elif isinstance(self.device, Marlin):
+            self.query(f'M220 F{speed_factor}')
+        else:
+            raise NotImplementedError
         if persist:
             self.speed_factor = speed_factor
         return speed_factor
     
-    # Overridden methods
+    # Overwritten methods
     def connect(self):
         self.device.connect()
         self.device.clearAlarms()
