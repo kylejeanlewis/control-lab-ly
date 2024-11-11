@@ -253,6 +253,11 @@ class Mover:
     def speed_factor(self) -> float:
         """Fraction of maximum travel speed of robot"""
         return self._speed_factor
+    @speed_factor.setter
+    def speed_factor(self, value: float):
+        assert isinstance(value, float) and 0<value<=1, "Ensure assigned speed factor is a float between 0 and 1"
+        self._speed_factor = value
+        return
     
     @property
     def speed_max(self) -> dict[str, float]:
@@ -324,15 +329,15 @@ class Mover:
         return self.moveBy(by=move_position, speed_factor=speed_factor, jog=jog, rapid=rapid)
         
     def moveBy(self,
-        by: Sequence[float]|Position,
+        by: Sequence[float]|Position|np.ndarray,
         speed_factor: float|None = None,
         *,
         jog: bool = False,
         rapid: bool = False,
         robot: bool = False
     ) -> Position:
-        assert isinstance(by, (Sequence, Position)), f"Ensure `by` is a Sequence or Position object"
-        if isinstance(by, Sequence):
+        assert isinstance(by, (Sequence, Position, np.ndarray)), f"Ensure `by` is a Sequence or Position or np.ndarray object"
+        if isinstance(by, (Sequence, np.ndarray)):
             assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
         move_by = by if isinstance(by, Position) else Position(by)
         logger.debug(f"Moving by {move_by} at speed factor {speed_factor}")
@@ -359,15 +364,15 @@ class Mover:
         return self.robot_position if robot else self.tool_position
 
     def moveTo(self,
-        to: Sequence[float]|Position,
+        to: Sequence[float]|Position|np.ndarray,
         speed_factor: float|None = None,
         *,
         jog: bool = False,
         rapid: bool = False,
         robot: bool = False
     ) -> Position:
-        assert isinstance(to, (Sequence, Position)), f"Ensure `to` is a Sequence or Position object"
-        if isinstance(to, Sequence):
+        assert isinstance(to, (Sequence, Position, np.ndarray)), f"Ensure `to` is a Sequence or Position or np.ndarray object"
+        if isinstance(to, (Sequence, np.ndarray)):
             assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
         move_to = to if isinstance(to, Position) else Position(to)
         logger.debug(f"Moving to {move_to} at speed factor {speed_factor}")
@@ -420,14 +425,14 @@ class Mover:
         return self.rotateBy(by=rotation, speed_factor=speed_factor, jog=jog)
         
     def rotateBy(self,
-        by: Sequence[float]|Rotation,
+        by: Sequence[float]|Rotation|np.ndarray,
         speed_factor: float|None = None,
         *,
         jog: bool = False,
         robot: bool = False
     ) -> Rotation:
-        assert isinstance(by, (Sequence, Rotation)), f"Ensure `by` is a Sequence or Rotation object"
-        if isinstance(by, Sequence):
+        assert isinstance(by, (Sequence, Rotation, np.ndarray)), f"Ensure `by` is a Sequence or Rotation or np.ndarray object"
+        if isinstance(by, (Sequence, np.ndarray)):
             assert len(by) == 3, f"Ensure `by` is a 3-element sequence for c,b,a"
         rotate_by = by if isinstance(by, Rotation) else Rotation.from_euler('zyx', by, degrees=True)
         logger.debug(f"Rotating by {rotate_by} at speed factor {speed_factor}")
@@ -444,14 +449,14 @@ class Mover:
         return self.robot_position.Rotation if robot else self.tool_position.Rotation
         
     def rotateTo(self,
-        to: Sequence[float]|Rotation,
+        to: Sequence[float]|Rotation|np.ndarray,
         speed_factor: float|None = None,
         *,
         jog: bool = False,
         robot: bool = False
     ) -> Rotation:
-        assert isinstance(to, (Sequence, Rotation)), f"Ensure `to` is a Sequence or Rotation object"
-        if isinstance(to, Sequence):
+        assert isinstance(to, (Sequence, Rotation, np.ndarray)), f"Ensure `to` is a Sequence or Rotation or np.ndarray object"
+        if isinstance(to, (Sequence, np.ndarray)):
             assert len(to) == 3, f"Ensure `to` is a 3-element sequence for c,b,a"
         rotate_to = to if isinstance(to, Rotation) else Rotation.from_euler('zyx', to, degrees=True)
         logger.debug(f"Rotating to {rotate_to} at speed factor {speed_factor}")
@@ -487,7 +492,7 @@ class Mover:
         return self.rotateTo(to=to, speed_factor=speed_factor, robot=False)
     
     def safeMoveTo(self,
-        to: Sequence[float]|Position,
+        to: Sequence[float]|Position|np.ndarray,
         speed_factor_lateral: float|Sequence[float]|None = None,
         speed_factor_up: float|Sequence[float]|None = None,
         speed_factor_down: float|Sequence[float]|None = None,
@@ -496,8 +501,8 @@ class Mover:
         rotation_before_lateral: bool = False,
         robot: bool = False
     ) -> Position:
-        assert isinstance(to, (Sequence, Position)), f"Ensure `to` is a Sequence or Position object"
-        if isinstance(to, Sequence):
+        assert isinstance(to, (Sequence, Position, np.ndarray)), f"Ensure `to` is a Sequence or Position or np.ndarray object"
+        if isinstance(to, (Sequence, np.ndarray)):
             assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
         speed_factor_lateral = self.speed_factor if speed_factor_lateral is None else speed_factor_lateral
         speed_factor_up = self.speed_factor if speed_factor_up is None else speed_factor_up
@@ -578,7 +583,7 @@ class Mover:
         scale = scale
         # Translate-Rotate-Scale
         coordinates = scale*rotate.apply(translate+internal_position.coordinates)
-        rotation = rotate * internal_position.rotation
+        rotation = rotate * internal_position.Rotation
         return Position(coordinates, rotation)
     
     @staticmethod
@@ -593,7 +598,7 @@ class Mover:
         inv_translate = inv_offset.coordinates
         # Invert: Scale-Rotate-Translate
         coordinates = inv_translate+inv_rotate.apply(inv_scale*external_position.coordinates)
-        rotation = inv_rotate * external_position.rotation
+        rotation = inv_rotate * external_position.Rotation
         return Position(coordinates, rotation)
     
     @staticmethod
