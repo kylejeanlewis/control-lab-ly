@@ -184,6 +184,7 @@ class GRBL(SerialDevice):
         super().connect()
         startup_lines = self.read(True)
         self._version = startup_lines[0].split(' ')[1]
+        self.clearAlarms()
         return
     
     def query(self, data: Any) -> list[str]:
