@@ -312,6 +312,7 @@ class Mover:
         by: float,
         speed_factor: float|None = None,
         *,
+        jog: bool = False,
         rapid: bool = False
     ) -> Position:
         assert axis.lower() in 'xyzabc', f"Ensure axis is one of 'x,y,z,a,b,c'"
@@ -320,12 +321,13 @@ class Mover:
         vector = np.array([default[k] for k in 'xyz'])
         rotation = np.array([default[k] for k in 'abc'])
         move_position = Position(vector, Rotation.from_euler('zyx', rotation, degrees=True))
-        return self.moveBy(by=move_position, speed_factor=speed_factor, rapid=rapid)
+        return self.moveBy(by=move_position, speed_factor=speed_factor, jog=jog, rapid=rapid)
         
     def moveBy(self,
         by: Sequence[float]|Position,
         speed_factor: float|None = None,
         *,
+        jog: bool = False,
         rapid: bool = False,
         robot: bool = False
     ) -> Position:
@@ -344,6 +346,9 @@ class Mover:
             by_coordinates = inv_tool_offset.Rotation.apply(inv_calibrated_offset.Rotation.apply(move_by.coordinates))
             by_rotation = inv_tool_offset.Rotation * inv_calibrated_offset.Rotation * move_by.Rotation
             move_by = Position(by_coordinates, by_rotation)
+        if not self.isFeasible(self.position.coordinates + move_by.coordinates, external=False, tool_offset=False):
+            logger.warning(f"Target movement {move_by} is not feasible")
+            return self.robot_position if robot else self.tool_position
         
         # Implementation of relative movement
         ...
@@ -357,6 +362,7 @@ class Mover:
         to: Sequence[float]|Position,
         speed_factor: float|None = None,
         *,
+        jog: bool = False,
         rapid: bool = False,
         robot: bool = False
     ) -> Position:
@@ -368,6 +374,9 @@ class Mover:
         
         # Convert to robot coordinates
         move_to = move_to if robot else self.transformToolToRobot(self.transformWorkToRobot(move_to))
+        if not self.isFeasible(move_to.coordinates, external=False, tool_offset=False):
+            logger.warning(f"Target position {move_to} is not feasible")
+            return self.robot_position if robot else self.tool_position
         
         # Implementation of absolute movement
         ...
@@ -379,15 +388,19 @@ class Mover:
     
     def moveRobotTo(self,
         to: Sequence[float]|Position,
-        speed_factor: float|None = None
+        speed_factor: float|None = None,
+        *,
+        jog: bool = False
     ) -> Position:
-        return self.moveTo(to=to, speed_factor=speed_factor, robot=True)
+        return self.moveTo(to=to, speed_factor=speed_factor, jog=jog, robot=True)
         
     def moveToolTo(self,
         to: Sequence[float]|Position,
-        speed_factor: float|None = None
+        speed_factor: float|None = None,
+        *,
+        jog: bool = False
     ) -> Position:
-        return self.moveTo(to=to, speed_factor=speed_factor, robot=False)
+        return self.moveTo(to=to, speed_factor=speed_factor, jog=jog, robot=False)
     
     def reset(self):
         raise NotImplementedError
@@ -395,19 +408,22 @@ class Mover:
     def rotate(self,
         axis: str,
         by: float,
-        speed_factor: float|None = None
+        speed_factor: float|None = None,
+        *,
+        jog: bool = False
     ) -> Rotation:
         assert axis.lower() in 'abc', f"Ensure axis is one of 'a,b,c'"
         default = dict(a=0, b=0, c=0)
         default.update({axis: by})
         rotate_angles = np.array([default[k] for k in 'abc'])
         rotation = Rotation.from_euler('zyx', rotate_angles, degrees=True)
-        return self.rotateBy(by=rotation, speed_factor=speed_factor)
+        return self.rotateBy(by=rotation, speed_factor=speed_factor, jog=jog)
         
     def rotateBy(self,
         by: Sequence[float]|Rotation,
         speed_factor: float|None = None,
         *,
+        jog: bool = False,
         robot: bool = False
     ) -> Rotation:
         assert isinstance(by, (Sequence, Rotation)), f"Ensure `by` is a Sequence or Rotation object"
@@ -431,6 +447,7 @@ class Mover:
         to: Sequence[float]|Rotation,
         speed_factor: float|None = None,
         *,
+        jog: bool = False,
         robot: bool = False
     ) -> Rotation:
         assert isinstance(to, (Sequence, Rotation)), f"Ensure `to` is a Sequence or Rotation object"
@@ -455,13 +472,17 @@ class Mover:
         
     def rotateRobotTo(self,
         to: Sequence[float]|Rotation,
-        speed_factor: float|None = None
+        speed_factor: float|None = None,
+        *,
+        jog: bool = False
     ) -> Rotation:
         return self.rotateTo(to=to, speed_factor=speed_factor, robot=True)
     
     def rotateToolTo(self,
         to: Sequence[float]|Rotation,
-        speed_factor: float|None = None
+        speed_factor: float|None = None,
+        *,
+        jog: bool = False
     ) -> Rotation:
         return self.rotateTo(to=to, speed_factor=speed_factor, robot=False)
     
@@ -471,6 +492,7 @@ class Mover:
         speed_factor_up: float|Sequence[float]|None = None,
         speed_factor_down: float|Sequence[float]|None = None,
         *,
+        jog: bool = False,
         rotation_before_lateral: bool = False,
         robot: bool = False
     ) -> Position:
