@@ -140,7 +140,7 @@ class Spinner(Maker):
             self._threads['spin'] = thread
         return
     
-    # Overridden method(s)
+    # Overwritten method(s)
     def execute(self, soak_time:int = 0, spin_speed:int = 2000, spin_time:int = 1, blocking:bool = True, *args, **kwargs):
         """
         Execute the soak and spin steps

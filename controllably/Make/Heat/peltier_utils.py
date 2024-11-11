@@ -249,7 +249,7 @@ class Peltier(Maker):
         self.toggleFeedbackLoop(on=on)
         return
 
-    # Overridden methods
+    # Overwritten methods
     def connect(self):
         self.device.connect()
         self.getTemperature()
