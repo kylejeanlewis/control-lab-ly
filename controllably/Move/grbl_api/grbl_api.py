@@ -117,7 +117,6 @@ class GRBL(SerialDevice):
         """
         """
         responses = self.query('$$')
-        self.read()
         settings = {}
         for response in responses:
             response = response.strip()
@@ -128,8 +127,9 @@ class GRBL(SerialDevice):
             setting_ = f'sc{setting_int}'
             assert setting_ in Setting.__members__, f"Setting  not found: {setting_}"
             logger.info(f"[{setting}]: {Setting[setting_].value.message} = {value}")
+            negative = value.startswith('-')
             value: int|float|str = int(value) if value.isnumeric() else (float(value) if value.replace('.','',1).isdigit() else value)
-            settings[setting] = value
+            settings[setting] = value * (-1**int(negative)) if isinstance(value, (int,float)) else value
         settings['limit_x'] = settings['$130']
         settings['limit_y'] = settings['$131']
         settings['limit_z'] = settings['$132']
@@ -167,7 +167,9 @@ class GRBL(SerialDevice):
         """
         responses = self.query('?',lines=False)
         self.clear()
-        status,current_position = '', np.array([np.nan,np.nan,np.nan])
+        status,current_position = '', np.array([0,0,0])
+        if self.flags.simulation:
+            return 'Idle', current_position, self._home_offset
         for response in responses:
             response = response.strip()
             if not (response.startswith('<') and response.endswith('>')):
@@ -183,14 +185,12 @@ class GRBL(SerialDevice):
         """
         """
         self.query('$X')
-        self.read()
         return
     
     def halt(self) -> Position:
         """
         """
         self.query('!')
-        self.read()
         _,coordinates,_home_offset = self.checkStatus()
         return Position(coordinates-_home_offset)
     
@@ -198,7 +198,6 @@ class GRBL(SerialDevice):
         """
         """
         self.query('~')
-        self.read()
         return
     
     # Overwritten methods
@@ -218,7 +217,7 @@ class GRBL(SerialDevice):
         self._version = version
         return
     
-    def query(self, data: Any, lines:bool = True) -> list[str]:
+    def query(self, data: Any, lines:bool = True) -> list[str]|None:
         """
         """
         responses = super().query(data, lines=lines)
