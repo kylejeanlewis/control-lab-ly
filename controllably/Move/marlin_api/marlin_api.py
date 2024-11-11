@@ -187,9 +187,12 @@ class Marlin(SerialDevice):
     def query(self, data: Any) -> list[str]:
         """
         """
+        # data = data.replace('G1', 'G0')   # TODO: check if this is necessary
+        if data.startswith('F'):
+            data = f'G0 {data}'
         responses = super().query(data)
-        for response in responses:
-            logger.debug(f"Response: {response}")
-            self.checkAlarms(response)
-            self.checkErrors(response)
+        # for response in responses:
+        #     logger.debug(f"Response: {response}")
+        #     self.checkAlarms(response)
+        #     self.checkErrors(response)
         return responses
