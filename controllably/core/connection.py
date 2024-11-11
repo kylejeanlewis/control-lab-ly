@@ -84,11 +84,11 @@ class Device(Protocol):
         """Disconnect from the device"""
         raise NotImplementedError
 
-    def query(self, data:str) -> Any:
+    def query(self, data:str, lines:bool = True) -> Any:
         """Query the device"""
         raise NotImplementedError
 
-    def read(self, **kwargs) -> str|list[str]:
+    def read(self, lines:bool = False) -> str|list[str]:
         """Read data from the device"""
         raise NotImplementedError
 
@@ -259,7 +259,7 @@ class SerialDevice:
         self.flags.connected = False
         return
     
-    def query(self, data:Any) -> Any:
+    def query(self, data:Any, lines:bool = True) -> Any:
         """
         Query the device
 
@@ -271,7 +271,8 @@ class SerialDevice:
         """
         ret = self.write(str(data))
         if ret:
-            return self.read(lines=True)
+            response = self.read(lines=lines)
+            return response if isinstance(response, list) else [response]
         return
     
     def read(self, lines:bool = False) -> str|list[str]:
@@ -419,7 +420,7 @@ class SocketDevice:
         self.flags.connected = False
         return
     
-    def query(self, data:str) -> Any:
+    def query(self, data:str, lines:bool = True) -> Any:
         """
         Query the device
 
@@ -430,9 +431,9 @@ class SocketDevice:
             list[str]: data read from the device
         """
         self.write(data)
-        return self.read()
+        return self.read(lines=lines)
     
-    def read(self) -> str|list[str]:
+    def read(self, lines:bool = False) -> str|list[str]:
         """
         Read data from the device
 
