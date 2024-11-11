@@ -28,7 +28,7 @@ class Gantry(GCode):
     
     def __init__(self, 
         port: str,
-        limits: Sequence[Sequence[float]] = ((0, 0, 0), (0, 0, 0)),
+        limits: Sequence[Sequence[float]] = ((0, 0, 0), (0, 0, 0)),     # in terms of robot coordinate system   # TODO: implement checking device for limits
         *, 
         robot_position: Position = Position(),
         home_position: Position = Position(),               # in terms of robot coordinate system
