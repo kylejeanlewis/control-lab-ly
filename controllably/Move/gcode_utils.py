@@ -2,7 +2,11 @@
 # Standard library imports
 from __future__ import annotations
 import logging
+import time
 from typing import Sequence, Protocol, Any
+
+# Third-party imports
+import numpy as np
 
 # Local application imports
 from ..core.position import Position
@@ -13,6 +17,9 @@ from .marlin_api import Marlin
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
+
+LOOP_INTERVAL = 0.1
+TIMEOUT = 60
 
 class GCodeDevice(Protocol):
     connection_details: dict
@@ -42,11 +49,11 @@ class GCodeDevice(Protocol):
         """Write data to the device"""
         raise NotImplementedError
 
-    def checkSettings(self) -> list[tuple[str, str]]:
+    def checkSettings(self) -> dict[str, int|float|str]:
         """Check the settings of the device"""
         raise NotImplementedError
     
-    def checkStatus(self) -> tuple[str, Sequence[float]]:
+    def checkStatus(self) -> tuple[str, np.ndarray[float], np.ndarray[float]]:
         """Check the status of the device"""
         raise NotImplementedError
     
@@ -85,26 +92,29 @@ class GCode(Mover):
             if axis is not None:
                 assert axis.upper() in 'XYZ', "Ensure axis is X,Y,Z for GRBL"
             command = '$H' if axis is None else f'$H{axis.upper()}'
-            self.query(command)
+            self.query(command, wait=True)
+            time.sleep(2)
         elif isinstance(self.device, Marlin):
             if axis is not None:
                 logger.warning("Ignoring homing axis parameter for Marlin firmware")
             self.query('G90 G28')
         else:
             raise NotImplementedError
+        _,coordinates,_home_offset = self.device.checkStatus() if self.is_connected else ('', self.home_position.coordinates, np.array([0,0,0]))
+        self._home_position = Position(coordinates-_home_offset)
         self.updateRobotPosition(to=self.home_position)
         return self.robot_position
         
     def moveBy(self,
-        by: Sequence[float]|Position,
+        by: Sequence[float]|Position|np.ndarray,
         speed_factor: float|None = None,
         *,
         jog: bool = False,
         rapid: bool = False,
         robot: bool = False
     ) -> Position:
-        assert isinstance(by, (Sequence, Position)), f"Ensure `by` is a Sequence or Position object"
-        if isinstance(by, Sequence):
+        assert isinstance(by, (Sequence, Position, np.ndarray)), f"Ensure `by` is a Sequence or Position or np.ndarray object"
+        if isinstance(by, (Sequence, np.ndarray)):
             assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
         move_by = by if isinstance(by, Position) else Position(by)
         logger.debug(f"Moving by {move_by} at speed factor {speed_factor}")
@@ -129,7 +139,7 @@ class GCode(Mover):
         commands = (command_z, command_xy) if (move_by.z > 0) else (command_xy, command_z)
         self.setSpeedFactor(speed_factor, persist=False)
         for command in commands:
-            self.query(command, jog=jog)
+            self.query(command, jog=jog, wait=True)
         self.query('G90')
         self.setSpeedFactor(self.speed_factor, persist=False)
         
@@ -138,21 +148,21 @@ class GCode(Mover):
         return self.robot_position if robot else self.tool_position
     
     def moveTo(self,
-        to: Sequence[float]|Position,
+        to: Sequence[float]|Position|np.ndarray,
         speed_factor: float|None = None,
         *,
         jog: bool = False,
         rapid: bool = False,
         robot: bool = False
     ) -> Position:
-        assert isinstance(to, (Sequence, Position)), f"Ensure `to` is a Sequence or Position object"
-        if isinstance(to, Sequence):
+        assert isinstance(to, (Sequence, Position, np.ndarray)), f"Ensure `to` is a Sequence or Position or np.ndarray object"
+        if isinstance(to, (Sequence, np.ndarray)):
             assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
         move_to = to if isinstance(to, Position) else Position(to)
         logger.debug(f"Moving by {move_to} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
-        move_to = move_to if robot else self.transformToolToRobot(self.transformWorkToRobot(move_to))
+        move_to = move_to if robot else self.transformToolToRobot(self.transformWorkToRobot(move_to, self.calibrated_offset), self.tool_offset)
         if not self.isFeasible(move_to.coordinates, external=False, tool_offset=False):
             logger.warning(f"Target position {move_to} is not feasible")
             return self.robot_position if robot else self.tool_position
@@ -164,27 +174,42 @@ class GCode(Mover):
         commands = (command_z, command_xy) if (self.position.z < move_to.z) else (command_xy, command_z)
         self.setSpeedFactor(speed_factor, persist=False)
         for command in commands:
-            self.query(command, jog=jog)
+            self.query(command, jog=jog, wait=True)
         self.setSpeedFactor(self.speed_factor, persist=False)
         
         # Update position
         self.updateRobotPosition(to=move_to)
         return self.robot_position if robot else self.tool_position
     
-    def query(self, data:str, *, jog:bool = False) -> Any:
+    def query(self, data:str, *, jog:bool = False, wait:bool = False) -> Any:
         if jog:
             assert isinstance(self.device, GRBL), "Ensure device is of type `GRBL`"
             assert self.device.__version__().startswith("1.1"), "Ensure GRBL version is at least 1.1"
             data = data.replace('G0 ', '').replace('G1 ', '')
             data = f'$J={data} F{self.speed}'
-        return self.device.query(data)
+        status,_,_ = self.device.checkStatus()
+        self.device.write(data)
+        response = self.device.read()
+        if jog or not wait:
+            return response
+        
+        start_time = time.perf_counter()
+        while status not in ('Idle',):
+            time.sleep(LOOP_INTERVAL)
+            status,_,_ = self.device.checkStatus()
+            if time.perf_counter() - start_time > TIMEOUT:
+                logger.error(f"Timeout: {status} | {data}")
+                break
+        return response
     
     def reset(self):
         self.disconnect()
         self.connect()
         return
     
-    def setSpeedFactor(self, speed_factor:float, persist:bool = True) -> float:
+    def setSpeedFactor(self, speed_factor:float|None = None, persist:bool = True) -> float:
+        speed_factor = self.speed_factor if speed_factor is None else speed_factor
+        assert isinstance(speed_factor, float), "Ensure speed factor is a float"
         if isinstance(self.device, GRBL):
             feed_rate = self.speed_max * speed_factor
             self.query(f'G90 F{feed_rate}')
@@ -200,7 +225,6 @@ class GCode(Mover):
     def connect(self):
         self.device.connect()
         self.setSpeedFactor(1.0)
-        self.device.checkSettings()
-        _, coordinates = self.device.checkStatus()
-        print(coordinates)
+        settings = self.device.checkSettings()
+        print(settings)
         return
