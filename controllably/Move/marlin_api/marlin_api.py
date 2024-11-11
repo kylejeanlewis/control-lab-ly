@@ -46,7 +46,7 @@ class Marlin(SerialDevice):
         self._home_offset = np.array([0,0,0])
         return
     
-    def __version__(self) -> str:           # TODO: Implement firmware version check
+    def __version__(self) -> str:
         return self._version
     
     @property
@@ -66,46 +66,80 @@ class Marlin(SerialDevice):
                 handler.setLevel(level)
         return
     
-    def checkSettings(self) -> dict[str, int|float|str]:               # TODO: Parse settings from responses
+    def checkInfo(self) -> dict[str, str]:
         """
         """
-        relevant_settings = dict(
-            M201 = 'Maximum Acceleration',
-            M203 = 'Maximum Feedrate',
-            # M204 = 'Acceleration',
-            # M205 = 'Advanced Settings',
-            # M206 = 'Home Offset',
-            # M207 = 'Calibrate Z Axis',
-        )
+        responses = self.query('M115')  # FIRMWARE_NAME:Marlin 2.1.3 (Aug  1 2024 12:00:00) SOURCE_CODE_URL:github.com/MarlinFirmware/Marlin PROTOCOL_VERSION:1.0 MACHINE_TYPE:3D Printer KINEMATICS:Cartesian EXTRUDER_COUNT:1 UUID:cede2a2f-41a2-4748-9b12-c55c62f367ff
+        info = {}
+        for response in responses:
+            response = response.strip()
+            if 'FIRMWARE_NAME' not in response:
+                continue
+            info_parts = response.split(" ")
+            key, value = '',''
+            for part in info_parts:
+                if ':' in part and part[0].isalpha():
+                    key, value = part.split(":")
+                    info[key] = value
+                    continue
+                info[key] = f"{info[key]} {part}"
+        return info
+    
+    def checkSettings(self) -> dict[str, int|float|str]:
+        """
+        """
         responses = self.query('M503')
         settings = {}
         for response in responses:
             response = response.strip()
-        #     if '=' not in response:
-        #         continue
-        #     setting,value = response.split("=")
-        #     setting_int = int(setting[1:]) if setting[1:].isnumeric() else setting[1:]
-        #     setting_ = f'sc{setting_int}'
-        #     assert setting_ in Setting.__members__, f"Setting  not found: {setting_}"
-        #     logger.info(f"[{setting}]: {Setting[setting_].value.message} = {value}")
-        #     settings.append((setting, value))
+            if response[0] not in ('G','M'):
+                continue
+            out = response.split(" ")
+            setting = out[0]
+            values = out[1:] if len(out) > 1 else ['']
+            if len(values) == 1:
+                settings[setting] = values[0]
+                continue
+            value_dict = {}
+            for value in values:
+                k,v = value[0], value[1:]
+                negative = v.startswith('-')
+                if negative:
+                    v = v[1:]
+                v: int|float|str = int(v) if v.isnumeric() else (float(v) if v.replace('.','',1).isdigit() else v)
+                value_dict[k] = v * (-1**int(negative)) if isinstance(v, (int,float)) else v
+            logger.info(f"[{setting}]: {[value_dict]}")
+            settings[setting] = value_dict
+        settings['max_speed_x'] = settings['M203']['X'] * 60
+        settings['max_speed_y'] = settings['M203']['Y'] * 60
+        settings['max_speed_z'] = settings['M203']['Z'] * 60
+        settings['home_offset_x'] = settings['M206']['X']
+        settings['home_offset_y'] = settings['M206']['Y']
+        settings['home_offset_z'] = settings['M206']['Z']
+        # settings['limit_x'] = settings['$130']
+        # settings['limit_y'] = settings['$131']
+        # settings['limit_z'] = settings['$132']
+        # settings['homing_pulloff'] = settings['$27']
         return settings
     
-    def checkStatus(self) -> tuple[str, np.ndarray[float], np.ndarray[float]]:
+    def checkStatus(self) -> tuple[str, np.ndarray[float], np.ndarray[float]]:  # TODO: Implement status check
         """
         """
-        responses = self.query('M114')      # Check the current position
+        responses = self.query('M114 R')      # Check the current position
         # responses = self.query('M105')      # Check the current temperature
-        state = ''
-        relevant_responses = []
-        for response in responses:
-            response = response.strip()
-            if 'Count' not in response:
-                continue
-            relevant_responses.append(response)
-        xyz = relevant_responses[-1].split("E")[0].split(" ")[:-1]
-        current_position = [float(c[2:]) for c in xyz]
-        return (state, current_position, self._home_offset)
+        status,current_position = '', np.array([0,0,0])
+        # relevant_responses = []
+        if self.flags.simulation:
+            return 'Idle', current_position, self._home_offset
+        # for response in responses:
+        #     response = response.strip()
+        #     if 'Count' not in response:
+        #         continue
+        #     relevant_responses.append(response)
+        # xyz = relevant_responses[-1].split("E")[0].split(" ")[:-1]
+        # current_position = [float(c[2:]) for c in xyz]
+        
+        return (status, current_position, self._home_offset)
     
     def halt(self) -> Position:
         """
@@ -121,10 +155,18 @@ class Marlin(SerialDevice):
         """
         super().connect()
         startup_lines = self.read(True)
-        # self._version = startup_lines[0].split(' ')[1]
+        info = self.checkInfo()
+        firmware = info.get('FIRMWARE_NAME','').split(" ")
+        version = firmware[1] if (len(firmware) > 1) else ''
+        settings = self.checkSettings()
+        self._home_offset = np.array([settings.get('home_offset_x',0),settings.get('home_offset_y',0),settings.get('home_offset_z',0)])
+        
+        print(startup_lines)
+        print(f'Marlin version: {version}')
+        self._version = version
         return
     
-    def query(self, data: Any) -> list[str]:
+    def query(self, data: Any, lines:bool = True) -> list[str]|None:
         """
         """
         # data = data.replace('G1', 'G0')   # TODO: check if this is necessary
@@ -138,19 +180,19 @@ class Marlin(SerialDevice):
         return responses
 
     # Methods not implemented
-    def checkAlarms(self, response: str):   # NOTE: This method is not implemented
+    def checkAlarms(self, response: str) -> bool:           # NOTE: This method is not implemented
         """
         """
         logger.debug(f"[{self.__class__.__name__}] Not implemented")
-        return
+        return False
     
-    def checkErrors(self, response: str):   # NOTE: This method is not implemented
+    def checkErrors(self, response: str) -> bool:           # NOTE: This method is not implemented
         """
         """
         logger.debug(f"[{self.__class__.__name__}] Not implemented")
-        return
+        return False
     
-    def checkParameters(self) -> dict[str, list[float]]:     # NOTE: This method is not implemented
+    def checkParameters(self) -> dict[str, list[float]]:    # NOTE: This method is not implemented
         """
         """
         logger.debug(f"[{self.__class__.__name__}] Not implemented")
@@ -168,7 +210,7 @@ class Marlin(SerialDevice):
         #     parameters.append((parameter, values))
         return parameters
     
-    def checkState(self) -> dict[str, str]: # NOTE: This method is not implemented
+    def checkState(self) -> dict[str, str]:                 # NOTE: This method is not implemented
         """
         """
         logger.debug(f"[{self.__class__.__name__}] Not implemented")
@@ -192,14 +234,14 @@ class Marlin(SerialDevice):
         #     ))
         return state
     
-    def clearAlarms(self):                  # NOTE: This method is not implemented
+    def clearAlarms(self):                                  # NOTE: This method is not implemented
         """
         """
         logger.debug(f"[{self.__class__.__name__}] Not implemented")
         # self.query('$X')
         return
     
-    def resume(self):                       # NOTE: This method is not implemented
+    def resume(self):                                       # NOTE: This method is not implemented
         """
         """
         logger.debug(f"[{self.__class__.__name__}] Not implemented")
