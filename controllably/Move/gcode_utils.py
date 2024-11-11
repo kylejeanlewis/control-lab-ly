@@ -101,7 +101,7 @@ class GCode(Mover):
         else:
             raise NotImplementedError
         _,coordinates,_home_offset = self.device.checkStatus() if self.is_connected else ('', self.home_position.coordinates, np.array([0,0,0]))
-        self._home_position = Position(coordinates-_home_offset)
+        # self._home_position = Position(coordinates-_home_offset)
         self.updateRobotPosition(to=self.home_position)
         return self.robot_position
         
