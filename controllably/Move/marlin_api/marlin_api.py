@@ -5,6 +5,9 @@ import logging
 import time
 from typing import Any
 
+# Third-party imports
+import numpy as np
+
 # Local application imports
 from ...core.connection import SerialDevice
 from ...core.position import Position
@@ -40,6 +43,7 @@ class Marlin(SerialDevice):
             **kwargs
         )
         self._version = '1.1' if simulation else ''
+        self._home_offset = np.array([0,0,0])
         return
     
     def __version__(self) -> str:           # TODO: Implement firmware version check
@@ -53,7 +57,7 @@ class Marlin(SerialDevice):
     def verbose(self, value:bool):
         """Set verbosity of class"""
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
-        super().flags.verbose = value
+        # super().verbose = value
         self.flags.verbose = value
         level = logging.INFO if value else logging.WARNING
         logger.setLevel(level)
@@ -62,7 +66,7 @@ class Marlin(SerialDevice):
                 handler.setLevel(level)
         return
     
-    def checkSettings(self) -> list[tuple[str, str]]:               # TODO: Parse settings from responses
+    def checkSettings(self) -> dict[str, int|float|str]:               # TODO: Parse settings from responses
         """
         """
         relevant_settings = dict(
@@ -74,7 +78,7 @@ class Marlin(SerialDevice):
             # M207 = 'Calibrate Z Axis',
         )
         responses = self.query('M503')
-        settings = []
+        settings = {}
         for response in responses:
             response = response.strip()
         #     if '=' not in response:
@@ -87,7 +91,7 @@ class Marlin(SerialDevice):
         #     settings.append((setting, value))
         return settings
     
-    def checkStatus(self) -> tuple[str, list[float]]:
+    def checkStatus(self) -> tuple[str, np.ndarray[float], np.ndarray[float]]:
         """
         """
         responses = self.query('M114')      # Check the current position
@@ -101,15 +105,15 @@ class Marlin(SerialDevice):
             relevant_responses.append(response)
         xyz = relevant_responses[-1].split("E")[0].split(" ")[:-1]
         current_position = [float(c[2:]) for c in xyz]
-        return (state, current_position)
+        return (state, current_position, self._home_offset)
     
     def halt(self) -> Position:
         """
         """
         self.query('M410')
         time.sleep(1)
-        _, coordinates = self.checkStatus()
-        return Position(coordinates)
+        _,coordinates,_home_offset = self.checkStatus()
+        return Position(coordinates-_home_offset)
     
     # Overwritten methods
     def connect(self):
@@ -146,7 +150,7 @@ class Marlin(SerialDevice):
         logger.debug(f"[{self.__class__.__name__}] Not implemented")
         return
     
-    def checkParameters(self) -> list[tuple[str, list[float]]]:     # NOTE: This method is not implemented
+    def checkParameters(self) -> dict[str, list[float]]:     # NOTE: This method is not implemented
         """
         """
         logger.debug(f"[{self.__class__.__name__}] Not implemented")
