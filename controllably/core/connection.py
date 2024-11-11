@@ -84,7 +84,7 @@ class Device(Protocol):
         """Disconnect from the device"""
         raise NotImplementedError
 
-    def query(self, data:str, lines:bool = True) -> Any:
+    def query(self, data:str, lines:bool = True) -> list[str]|None:
         """Query the device"""
         raise NotImplementedError
 
@@ -259,7 +259,7 @@ class SerialDevice:
         self.flags.connected = False
         return
     
-    def query(self, data:Any, lines:bool = True) -> Any:
+    def query(self, data:Any, lines:bool = True) -> list[str]|None:
         """
         Query the device
 
@@ -282,7 +282,7 @@ class SerialDevice:
         Returns:
             list[str]: data read from the device
         """
-        data = ''
+        data = '' if not lines else []
         try:
             if lines:
                 data = self.serial.readlines()
@@ -420,7 +420,7 @@ class SocketDevice:
         self.flags.connected = False
         return
     
-    def query(self, data:str, lines:bool = True) -> Any:
+    def query(self, data:str, lines:bool = True) -> list[str]|None:
         """
         Query the device
 
@@ -431,7 +431,8 @@ class SocketDevice:
             list[str]: data read from the device
         """
         self.write(data)
-        return self.read(lines=lines)
+        response = self.read(lines=lines)
+        return response if isinstance(response, list) else [response]
     
     def read(self, lines:bool = False) -> str|list[str]:
         """
