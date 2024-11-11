@@ -4,6 +4,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+# Third-party imports
+import numpy as np
+
 # Local application imports
 from ...core.connection import SerialDevice
 from ...core.position import Position
@@ -40,6 +43,7 @@ class GRBL(SerialDevice):
             **kwargs
         )
         self._version = '1.1' if simulation else ''
+        self._home_offset = np.array([0,0,0])
         return
     
     def __version__(self) -> str:
@@ -53,7 +57,7 @@ class GRBL(SerialDevice):
     def verbose(self, value:bool):
         """Set verbosity of class"""
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
-        super().flags.verbose = value
+        # super().verbose = value
         self.flags.verbose = value
         level = logging.INFO if value else logging.WARNING
         logger.setLevel(level)
@@ -62,35 +66,41 @@ class GRBL(SerialDevice):
                 handler.setLevel(level)
         return
     
-    def checkAlarms(self, response: str):
+    def checkAlarms(self, response: str) -> bool:
         """
         """
         if 'ALARM' not in response:
-            return
+            return False
         alarm_id = response.strip().split(":")[1]
         alarm_int = int(alarm_id) if alarm_id.isnumeric() else alarm_id
         alarm_ = f'ac{alarm_int:02}'
         assert alarm_ in Alarm.__members__, f"Alarm not found: {alarm_}"
         logger.warning(f"ALARM {alarm_int:02}: {Alarm[alarm_].value.message}")
-        return
+        return True
     
-    def checkErrors(self, response: str):
+    def checkErrors(self, response: str) -> bool:
         """
         """
         if 'error' not in response:
-            return
+            return False
         error_id = response.strip().split(":")[1]
         error_int = int(error_id) if error_id.isnumeric() else error_id
         error_ = f'er{error_int:02}'
         assert error_ in Error.__members__, f"Error not found: {error_}"
         logger.warning(f"ERROR {error_int:02}: {Error[error_].value.message}")
-        return
+        return True
     
-    def checkParameters(self) -> list[tuple[str, list[float]]]:
+    def checkInfo(self) -> list[str]:
+        """
+        """
+        responses = self.query('$I')
+        return responses
+    
+    def checkParameters(self) -> dict[str, list[float]]:
         """
         """
         responses = self.query('$#')
-        parameters = []
+        parameters = {}
         for response in responses:
             response = response.strip()
             if not (response.startswith('[') and response.endswith(']')):
@@ -100,14 +110,15 @@ class GRBL(SerialDevice):
                 continue
             parameter,values = response.split(":")
             values = [float(c) for c in values.split(",")]
-            parameters.append((parameter, values))
+            parameters[parameter] = values
         return parameters
     
-    def checkSettings(self) -> list[tuple[str, str]]:
+    def checkSettings(self) -> dict[str, int|float|str]:
         """
         """
         responses = self.query('$$')
-        settings = []
+        self.read()
+        settings = {}
         for response in responses:
             response = response.strip()
             if '=' not in response:
@@ -117,7 +128,15 @@ class GRBL(SerialDevice):
             setting_ = f'sc{setting_int}'
             assert setting_ in Setting.__members__, f"Setting  not found: {setting_}"
             logger.info(f"[{setting}]: {Setting[setting_].value.message} = {value}")
-            settings.append((setting, value))
+            value: int|float|str = int(value) if value.isnumeric() else (float(value) if value.replace('.','',1).isdigit() else value)
+            settings[setting] = value
+        settings['limit_x'] = settings['$130']
+        settings['limit_y'] = settings['$131']
+        settings['limit_z'] = settings['$132']
+        settings['max_speed_x'] = settings['$110']
+        settings['max_speed_y'] = settings['$111']
+        settings['max_speed_z'] = settings['$112']
+        settings['homing_pulloff'] = settings['$27']
         return settings
     
     def checkState(self) -> dict[str, str]:
@@ -143,38 +162,43 @@ class GRBL(SerialDevice):
             ))
         return state
     
-    def checkStatus(self) -> tuple[str, list[float]]:
+    def checkStatus(self) -> tuple[str, np.ndarray[float], np.ndarray[float]]:
         """
         """
-        responses = self.query('?')
+        responses = self.query('?',lines=False)
+        self.clear()
+        status,current_position = '', np.array([np.nan,np.nan,np.nan])
         for response in responses:
             response = response.strip()
             if not (response.startswith('<') and response.endswith('>')):
                 continue
             response = response[1:-1]
             status_parts = response.split('|')
-            state = status_parts[0].split(':')[0]
-            logger.info(f"{state}: {Status[state].value}")
-            current_position = [float(c) for c in status_parts[1].split(':')[1].split(',')]
-        return (state, current_position)
+            status = status_parts[0].split(':')[0]
+            logger.info(f"{status}: {Status[status].value}")
+            current_position = np.array([float(c) for c in status_parts[1].split(':')[1].split(',')])
+        return (status, current_position, self._home_offset)
     
     def clearAlarms(self):
         """
         """
         self.query('$X')
+        self.read()
         return
     
     def halt(self) -> Position:
         """
         """
         self.query('!')
-        _,coordinates = self.checkStatus()
-        return Position(coordinates)
+        self.read()
+        _,coordinates,_home_offset = self.checkStatus()
+        return Position(coordinates-_home_offset)
     
     def resume(self):
         """
         """
         self.query('~')
+        self.read()
         return
     
     # Overwritten methods
@@ -183,16 +207,25 @@ class GRBL(SerialDevice):
         """
         super().connect()
         startup_lines = self.read(True)
-        self._version = startup_lines[0].split(' ')[1]
         self.clearAlarms()
+        info = self.checkInfo()
+        version = info[0].split(':')[1]
+        parameters = self.checkParameters()
+        self._home_offset = np.array(parameters.get('G54', [0,0,0]))
+        
+        print(startup_lines)
+        print(f'GRBL version: {version}')
+        self._version = version
         return
     
-    def query(self, data: Any) -> list[str]:
+    def query(self, data: Any, lines:bool = True) -> list[str]:
         """
         """
-        responses = super().query(data)
+        responses = super().query(data, lines=lines)
         for response in responses:
             logger.debug(f"Response: {response}")
-            self.checkAlarms(response)
-            self.checkErrors(response)
+            if response == 'ok':
+                continue
+            if any([self.checkAlarms(response), self.checkErrors(response)]):
+                raise RuntimeError(f"Response: {response}")
         return responses
