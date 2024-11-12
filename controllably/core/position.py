@@ -30,11 +30,11 @@ def get_transform(initial_points: np.ndarray, final_points:np.ndarray) -> tuple[
     Get transformation matrix from initial to final points, with the first point in each set being the center of rotation.
 
     Args:
-        initial_points (np.ndarray): initial points
-        final_points (np.ndarray): final points
+        initial_points (numpy.ndarray): initial points
+        final_points (numpy.ndarray): final points
 
     Returns:
-        np.ndarray: transformation matrix
+        Position, float: transformation Position (i.e. vector and rotation) and scale factor
     """
     assert isinstance(initial_points, np.ndarray) and isinstance(final_points, np.ndarray), "Please input numpy arrays"
     assert initial_points.shape == final_points.shape, "Initial and final points must have the same shape"
@@ -57,7 +57,37 @@ def get_transform(initial_points: np.ndarray, final_points:np.ndarray) -> tuple[
 
 @dataclass
 class Position:
-    _coordinates: Sequence[float] = (0,0,0)
+    """
+    `Position` represents a 3D position with orientation
+
+    ### Constructor:
+        `_coordinates` (Sequence[float]|numpy.ndarray, optional): X,Y,Z coordinates. Defaults to (0,0,0).
+        `Rotation` (Rotation, optional): scipy.spatial.transform.Rotation object. Defaults to Rotation.from_euler('zyx',(0,0,0),degrees=True).
+        `rotation_type` (str, optional): preferred representation of rotation (quaternion, matrix, angle_axis, euler, mrp, davenport). Defaults to 'euler'.
+        `degrees` (bool, optional): whether to use degrees for euler angles. Defaults to True.
+
+    ### Attributes and properties:
+        `coordinates` (numpy.ndarray): X,Y,Z coordinates
+        `degrees` (bool): whether to use degrees for euler angles
+        `Rotation` (Rotation): scipy.spatial.transform.Rotation object
+        `rotation` (numpy.ndarray): rotation in preferred representation
+        `rotation_type` (str): preferred representation of rotation
+        `rot_matrix` (numpy.ndarray): rotation matrix
+        `x` (float): X coordinate
+        `y` (float): Y coordinate
+        `z` (float): Z coordinate
+        `a` (float): euler angle a (rotation about x-axis)
+        `b` (float): euler angle b (rotation about y-axis)
+        `c` (float): euler angle c (rotation about z-axis)
+    
+    ### Methods:
+        `apply`: apply `Position` to another `Position`
+        `invert`: invert vector and rotation
+        `orientate`: orientate self by a rotation
+        `translate`: translate self by a vector
+    """
+    
+    _coordinates: Sequence[float]|np.ndarray = (0,0,0)
     Rotation: Rotation = Rotation.from_euler('zyx',(0,0,0),degrees=True)
     rotation_type: str = 'euler'
     degrees: bool = True
@@ -74,6 +104,7 @@ class Position:
     
     @property
     def coordinates(self) -> np.ndarray[float]:
+        """X,Y,Z coordinates"""
         return np.array(self._coordinates)
     @coordinates.setter
     def coordinates(self, value: Sequence[float]|np.ndarray[float]):
@@ -83,6 +114,7 @@ class Position:
     
     @property
     def rotation(self) -> np.ndarray:
+        """Rotation in preferred representation"""
         if self.rotation_type == 'quaternion':
             return self.Rotation.as_quat()
         elif self.rotation_type == 'matrix':
@@ -96,7 +128,6 @@ class Position:
         elif self.rotation_type == 'davenport':
             return self.Rotation.as_davenport()
         raise ValueError(f"Invalid rotation type: {self.rotation_type}")
-    
     @rotation.setter
     def rotation(self, value: Rotation):
         assert isinstance(value, Rotation), "Please input a Rotation object"
@@ -104,43 +135,75 @@ class Position:
         return
     
     @property
-    def rot_matrix(self) -> np.ndarray: 
+    def rot_matrix(self) -> np.ndarray:
+        """Rotation matrix"""
         return self.Rotation.as_matrix()
     
     @property
     def x(self) -> float:
+        """X coordinate"""
         return self.coordinates[0]
     
     @property
     def y(self) -> float:
+        """Y coordinate"""
         return self.coordinates[1]
     
     @property
     def z(self) -> float:
+        """Z coordinate"""
         return self.coordinates[2]
     
     @property
     def a(self) -> float:
+        """Euler angle a (rotation about x-axis)"""
         rotation = self.Rotation.as_euler('zyx', degrees=self.degrees)
-        return rotation[0]
+        return rotation[2]
     
     @property
     def b(self) -> float:
+        """Euler angle b (rotation about y-axis)"""
         rotation = self.Rotation.as_euler('zyx', degrees=self.degrees)
         return rotation[1]
     
     @property
     def c(self) -> float:
+        """Euler angle c (rotation about z-axis)"""
         rotation = self.Rotation.as_euler('zyx', degrees=self.degrees)
-        return rotation[2]
+        return rotation[0]
     
-    def apply(self, on:Position) -> Position:
-        return on.translate(self.coordinates).orientate(self.Rotation)
+    def apply(self, other:Position) -> Position:
+        """
+        Apply self to other `Position`, first translating and then orientating
+
+        Args:
+            on (Position): other `Position`
+
+        Returns:
+            Position: other `Position` transformed by self
+        """
+        return other.translate(self.coordinates).orientate(self.Rotation)
     
     def invert(self) -> Position:
+        """
+        Invert vector and rotation
+
+        Returns:
+            Position: inverted `Position`
+        """
         return Position(-self.coordinates, self.Rotation.inv())
     
     def orientate(self, by:Rotation, inplace:bool = True) -> Position:
+        """
+        Orientate self by a rotation
+        
+        Args:
+            by (Rotation): rotation to orientate by
+            inplace (bool, optional): whether to update self in place. Defaults to True.
+            
+        Returns:
+            Position: updated `Position`, self if `inplace=True`
+        """
         if inplace:
             self.Rotation = by*self.Rotation
             return self
@@ -148,6 +211,16 @@ class Position:
         return Position(self.coordinates, rotation)
     
     def translate(self, by:Sequence[float], inplace:bool = True) -> Position:
+        """
+        Translate self by a vector
+        
+        Args:
+            by (Sequence[float]): translation vector
+            inplace (bool, optional): whether to update self in place. Defaults to True.
+            
+        Returns:
+            Position: updated `Position`, self if `inplace=True`
+        """
         if inplace:
             self.coordinates = self.coordinates + np.array(by)
             return self
@@ -158,39 +231,40 @@ class Position:
 @dataclass
 class Well:
     """
-    Well represents a single well in a Labware object
-
-    ### Constructor
-    Args:
-        `labware_info` (dict): dictionary of truncated Labware information (name, slot, reference point)
+    `Well` represents a single well in a `Labware` object
+    
+    ### Constructor:
         `name` (str): name of well
-        `details` (dict[str, float|tuple[float]]): well details
-    
-    ### Attributes
-    - `content` (dict): contains the details of the contents within the well
-    - `details` (dict): well details; dictionary of depth, total liquid volume, shape, diameter, x,y,z
-    - `name` (str): name of well
-    - `reference_point` (tuple[int]): bottom left reference corner of Labware
-    - `volume` (float): volume of contents in well
-    
-    ### Properties
-    - `base_area` (float): base area of well in mm^2
-    - `bottom` (np.ndarray): bottom of well
-    - `center` (np.ndarray): center of well
-    - `depth` (float): well depth
-    - `diameter` (float): well diameter
-    - `dimensions` (tuple[float]): dimensions of base in mm
-    - `level` (float): level of contents in well
-    - `middle` (np.ndarray): middle of well
-    - `offset` (np.ndarray): well offset from Labware reference point
-    - `shape` (str): shape of well
-    - `top` (np.ndarray): top of well
-    
-    ### Methods
-    - `fromBottom`: offset from bottom of well
-    - `fromMiddle`: offset from middle of well
-    - `fromTop`: offset from top of well
+        `_details` (dict[str, float|tuple[float]]): well details
+        `parent` (Labware): parent `Labware` object
+        
+    ### Attributes and properties:
+        `name` (str): name of well
+        `details` (dict[str, str|float|tuple[float]]): dictionary read from `Labware` file
+        `parent` (Labware): parent `Labware` object
+        `reference` (Position): reference point of Labware
+        `x` (float): x offset
+        `y` (float): y offset
+        `z` (float): z offset
+        `offset` (numpy.ndarray): well offset from Labware reference point
+        `center` (numpy.ndarray): center of well base
+        `bottom` (numpy.ndarray): bottom of well
+        `middle` (numpy.ndarray): middle of well
+        `top` (numpy.ndarray): top of well
+        `shape` (str): shape of well
+        `depth` (float): well depth
+        `volume` (float): volume of contents in well
+        `capacity` (float): total liquid capacity
+        `dimensions` (tuple[float]): dimensions of base in mm
+        `base_area` (float): base area of well in mm^2
+        `level` (float): height level of contents in well
+        
+    ### Methods:
+        `fromBottom`: offset from bottom of well
+        `fromMiddle`: offset from middle of well
+        `fromTop`: offset from top of well
     """
+    
     name: str
     _details: dict[str, str|float|tuple[float]]
     parent: Labware
@@ -227,27 +301,38 @@ class Well:
     
     # Properties
     @property
+    def details(self) -> dict[str, str|float|tuple[float]]:
+        """Dictionary read from Labware file"""
+        return self._details
+    
+    @property
     def reference(self) -> Position:
+        """Reference point of Labware"""
         return self.parent.bottom_left_corner
     
     @property
     def offset(self) -> np.ndarray:
+        """Well offset from Labware reference point"""
         return np.array((self.x,self.y,self.z))
     
     @property
     def center(self) -> np.ndarray:
+        """Center of well base"""
         return self.reference.coordinates + self.reference.Rotation.apply(self.offset)
      
     @property
     def bottom(self) -> np.ndarray:
+        """Bottom of well"""
         return self.center
     
     @property
     def middle(self) -> np.ndarray:
+        """Middle of well"""
         return self.center + np.array((0,0,self.depth/2))
         
     @property
     def top(self) -> np.ndarray:
+        """Top of well"""
         return self.center + np.array((0,0,self.depth))
     
     @property
@@ -266,46 +351,53 @@ class Well:
     
     @property
     def level(self) -> float:
+        """Height level of contents in well"""
         return self.volume / self.base_area
         
-    def fromBottom(self, offset:tuple[float]) -> np.ndarray:
+    def fromBottom(self, offset:Sequence[float]|np.ndarray) -> np.ndarray:
         """
         Offset from bottom of well
 
         Args:
-            offset (tuple): x,y,z offset
+            offset (Sequence[float]|numpy.ndarray): x,y,z offset
 
         Returns:
             tuple: bottom of well with offset
         """
         return self.bottom + np.array(offset)
     
-    def fromMiddle(self, offset:tuple[float]) -> np.ndarray:
+    def fromMiddle(self, offset:Sequence[float]|np.ndarray) -> np.ndarray:
         """
         Offset from middle of well
 
         Args:
-            offset (tuple): x,y,z offset
+            offset (Sequence[float]|numpy.ndarray): x,y,z offset
 
         Returns:
             tuple: middle of well with offset
         """
         return self.middle + np.array(offset)
     
-    def fromTop(self, offset:tuple[float]) -> np.ndarray:
+    def fromTop(self, offset:Sequence[float]|np.ndarray) -> np.ndarray:
         """
         Offset from top of well
 
         Args:
-            offset (tuple): x,y,z offset
+            offset (Sequence[float]|numpy.ndarray): x,y,z offset
 
         Returns:
             tuple: top of well with offset
         """
         return self.top + np.array(offset)
     
-    def _draw(self, ax, zoom_out:bool = False, **kwargs):
-        """Draw well on matplotlib axis"""
+    def _draw(self, ax: plt.Axes, zoom_out:bool = False, **kwargs):
+        """
+        Draw self on matplotlib axis
+
+        Args:
+            ax (matplotlib.pyplot.Axes): plot axes
+            zoom_out (bool, optional): whether to use zoomed out view. Defaults to False.
+        """
         if self.shape == 'circular':
             ax.add_patch(plt.Circle(self.center, self.dimensions[0]/2, fill=False, **kwargs))
         elif self.shape == 'rectangular':
@@ -361,36 +453,47 @@ class Well:
 @dataclass
 class Labware:
     """
-    Labware represents a single Labware on the Deck
-
-    ### Constructor
-    Args:
-        `slot` (str): deck slot number
-        `bottom_left_coordinates` (tuple[float]): coordinates of bottom left corner of Labware (i.e. reference point)
-        `labware_file` (str): filepath of Labware JSON file
-        `package` (str|None, optional): name of package to look in. Defaults to None.
+    `Labware` represents a single Labware object
     
-    ### Attributes
-    - `details` (dict): dictionary read from Labware file
-    - `name` (str): name of Labware
-    - `slot` (str): deck slot number
+    ### Constructor:
+        `name` (str): name of Labware
+        `_details` (dict[str, Any]): dictionary read from Labware file
+        `parent` (Slot|None, optional): parent `Slot` object. Defaults to None.
+        
+    ### Attributes and properties:
+        `name` (str): name of Labware
+        `details` (dict[str, Any]): dictionary read from Labware file
+        `parent` (Slot|None): parent `Slot` object
+        `reference` (Position): reference point of `Slot`
+        `x` (float): x offset
+        `y` (float): y offset
+        `z` (float): z offset
+        `offset` (numpy.ndarray): Labware offset from Slot reference point
+        `center` (numpy.ndarray): center of Labware
+        `bottom_left_corner` (Position): bottom left corner of Labware
+        `dimensions` (numpy.ndarray): size of Labware
+        `exclusion_zone` (BoundingBox): exclusion zone to avoid
+        `wells_columns` (dict[str, Well]): wells by columns
+        `wells_rows` (dict[str, Well]): wells by rows
+        `columns` (dict[int, list[str]]): columns and wells in columns
+        `rows` (dict[str, list[str]]): rows and wells in rows
+        `at` (SimpleNamespace): namespace of all Wells
+        `is_stackable` (bool): whether Labware is stackable
+        `is_tiprack` (bool): whether Labware is a tiprack
+        `slot_above` (Slot|None): Slot above (for stackable Labware)
     
-    ### Properties
-    - `center` (dict[np.ndarray, np.ndarray]): bottom-left reference point and center of Labware
-    - `columns` (dict[str, int]): Labware columns
-    - `columns_list` (list[list[int]]): Labware columns as list
-    - `dimensions` (np.ndarray): size of Labware
-    - `info` (dict): summary of Labware info
-    - `reference_point` (np.ndarray): coordinates of bottom left corner of Labware
-    - `rows` (dict[str, int]): Labware rows
-    - `rows_list` (list[list[int]]): Labware rows as list
-    - `wells` (dict[str, Well]): Labware wells
-    - `wells_list` (list[Well]): Labware wells as list
+    ### Class methods:
+        `fromConfigs`: factory method to load Labware details from dictionary
+        `fromFile`: factory method to load Labware from file
     
-    ### Methods
-    - `at`: alias for `getWell()`
-    - `getWell`: get `Well` using its name
+    ### Methods:
+        `getWell`: get `Well` using its name
+        `listColumns`: list wells by columns
+        `listRows`: list  wells by rows
+        `listWells`: list wells, by columns or rows
+        `show`: show Labware on matplotlib axis
     """
+    
     name: str
     _details: dict[str, Any]
     parent: Slot|None = None
@@ -444,11 +547,14 @@ class Labware:
     @classmethod
     def fromConfigs(cls, details:dict[str, Any], parent:Slot|None = None):
         """
-        Load Labware details from JSON file
+        Factory method to load Labware details from dictionary
 
         Args:
-            json_file (str): filepath of Labware JSON file
-            package (str|None, optional): name of package to look in. Defaults to None.
+            details (dict): dictionary read from Labware file
+            parent (Slot|None, optional): parent `Slot` object. Defaults to None.
+            
+        Returns:
+            Labware: `Labware` object
         """
         name = details.get('metadata',{}).get('displayName', '')
         return cls(name=name, _details=details, parent=parent)
@@ -456,12 +562,12 @@ class Labware:
     @classmethod
     def fromFile(cls, labware_file:str|Path, parent:Slot|None = None, from_repo:bool = True):
         """
-        Load Labware from file
+        Factory method to load Labware from file
 
         Args:
-            labware_file (str): filepath of Labware JSON file
-            package (str|None, optional): name of package to look in. Defaults to None.
-            from_repo (bool, optional): whether to load from repository. Defaults to True.
+            labware_file (str|Path): filepath of Labware file
+            parent (Slot|None, optional): parent `Slot` object. Defaults to None.
+            from_repo (bool, optional): whether to load from repo. Defaults to True.
         """
         assert isinstance(labware_file,(str,Path)), "Please input a valid filepath"
         filepath = Path(labware_file) if not from_repo else resolve_repo_filepath(labware_file)
@@ -471,45 +577,60 @@ class Labware:
     
     # Properties
     @property
+    def details(self) -> dict[str, str|float|tuple[float]]:
+        """Dictionary read from Labware file"""
+        return self._details
+    
+    @property
     def reference(self) -> Position:
+        """Reference point of `Slot`"""
         return self.parent.bottom_left_corner if isinstance(self.parent, Slot) else Position()
         
     @property
     def offset(self) -> np.ndarray:
+        """Labware offset from Slot reference point"""
         return np.array((self.x,self.y,self.z))
     
     @property
     def center(self) -> np.ndarray:
+        """Center of Labware"""
         return self.bottom_left_corner.coordinates + self.bottom_left_corner.Rotation.apply(self.offset)
     
     @property
     def bottom_left_corner(self) -> Position:
+        """Bottom left corner of Labware"""
         return self.reference
     
     @property
     def dimensions(self) -> np.ndarray:
+        """Size of Labware"""
         return self.bottom_left_corner.Rotation.apply(self._dimensions)
     
     @property
     def columns(self) -> dict[int, list[str]]:
+        """Columns and wells in columns"""
         return {i+1: ordering for i,ordering in enumerate(self._ordering)}
     
     @property
     def rows(self) -> dict[str, list[str]]:
+        """Rows and wells in rows"""
         first_column = self._ordering[0]
         rows_list = self.listRows()
         return {name[0]: rows_list[r] for r,name in enumerate(first_column)}
        
     @property
     def wells_columns(self) -> dict[str, list[Well]]:
+        """Wells by columns"""
         return self._wells
     
     @property
     def wells_rows(self) -> dict[str, list[Well]]:
+        """Wells by rows"""
         return {name:self._wells[name] for row in self.listRows() for name in row}
 
     @property
     def at(self) -> SimpleNamespace:
+        """Namespace of all wells"""
         return SimpleNamespace(**self._wells)
 
     def getWell(self, name:str) -> Well:
@@ -526,12 +647,23 @@ class Labware:
         return self._wells.get(name)
     
     def listColumns(self) -> list[list[str]]:
+        """List wells by columns"""
         return self._ordering
     
     def listRows(self) -> list[list[str]]:
+        """List wells by rows"""
         return [list(r) for r in zip(*self._ordering)]
     
     def listWells(self, by:str) -> list[Well]:
+        """
+        List wells, by columns or rows
+        
+        Args:
+            by (str): 'columns' or 'rows'
+            
+        Returns:
+            list[Well]: list of `Well` objects
+        """
         if by in ('c','col','cols','column','columns'):
             return self.wells_columns
         elif by in ('r','row','rows'):
@@ -539,6 +671,15 @@ class Labware:
         raise ValueError(f"Invalid argument: {by}")
     
     def show(self, zoom_out:bool = False) -> plt.Figure:
+        """
+        Show Labware on matplotlib axis
+        
+        Args:
+            zoom_out (bool, optional): whether to use zoomed out view. Defaults to False.
+            
+        Returns:
+            matplotlib.pyplot.Figure: matplotlib figure
+        """
         fig, ax = plt.subplots()
         self._draw(ax=ax, zoom_out=zoom_out)
         
@@ -556,8 +697,14 @@ class Labware:
         fig.set_size_inches(new_size)
         return fig
         
-    def _draw(self, ax, zoom_out:bool = False, **kwargs):
-        """Draw Labware on matplotlib axis"""
+    def _draw(self, ax:plt.Axes, zoom_out:bool = False, **kwargs):
+        """
+        Draw Labware on matplotlib axis
+        
+        Args:
+            ax (matplotlib.pyplot.Axes): plot axes
+            zoom_out (bool, optional): whether to use zoomed out view. Defaults to False.
+        """
         ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, **kwargs))
         for well in self._wells.values():
             well._draw(ax, zoom_out=zoom_out, **kwargs)
@@ -580,6 +727,38 @@ class Labware:
 
 @dataclass
 class Slot:
+    """
+    `Slot` represents a single Slot object on a `Deck` object or another `Labware` object (for stackable Labware)
+
+    ### Constructor:
+        `name` (str): name of Slot
+        `_details` (dict[str, Any]): dictionary read from Deck file
+        `parent` (Deck|Labware): parent `Deck` or `Labware` object
+        
+    ### Attributes and properties:
+        `name` (str): name of Slot
+        `details` (dict[str, Any]): dictionary read from Slot file
+        `parent` (Deck|Labware): parent `Deck` or `Labware` object
+        `reference` (Position): reference point of parent `Deck` or `Labware`
+        `x` (float): x offset
+        `y` (float): y offset
+        `z` (float): z offset
+        `offset` (numpy.ndarray): Slot offset from parent reference point
+        `center` (numpy.ndarray): center of Slot
+        `bottom_left_corner` (Position): bottom left corner of Slot
+        `dimensions` (numpy.ndarray): size of Slot
+        `exclusion_zone` (BoundingBox): exclusion zone of loaded Labware to avoid
+        `loaded_labware` (Labware|None): Labware loaded in Slot
+        `slot_above` (Slot|None): Slot above
+        `slot_below` (Slot|None): Slot below
+        
+    ### Methods:
+        `loadLabware`: load Labware in Slot
+        `loadLabwareFromConfigs`: load Labware from dictionary
+        `loadLabwareFromFile`: load Labware from file
+        `removeLabware`: remove Labware from Slot
+    """
+    
     name: str
     _details: dict[str, Any]
     parent: Deck|Labware
@@ -627,27 +806,44 @@ class Slot:
         loaded_labware_name = f"with {self.loaded_labware.name}" if isinstance(self.loaded_labware, Labware) else '[Vacant]'
         return f"{self.name} on {self.parent.name} {loaded_labware_name}" 
     
+    # Properties
+    @property
+    def details(self) -> dict[str, str|float|tuple[float]]:
+        """Dictionary read from Deck file"""
+        return self._details
+    
     @property
     def reference(self) -> Position:
+        """Reference point of parent `Deck` or `Labware`"""
         return self.parent.bottom_left_corner
     
     @property
     def offset(self) -> np.ndarray:
+        """Slot offset from parent reference point"""
         return np.array((self.x,self.y,self.z))
     
     @property
     def center(self) -> np.ndarray:
+        """Center of Slot"""
         return self.bottom_left_corner.coordinates + self.bottom_left_corner.Rotation.apply(self.offset)
     
     @property
     def dimensions(self) -> np.ndarray:
+        """Size of Slot"""
         return self.bottom_left_corner.Rotation.apply(self._dimensions)
     
     @property
     def exclusion_zone(self) -> BoundingBox|None:
+        """Exclusion zone of loaded Labware to avoid"""
         return self.loaded_labware.exclusion_zone if isinstance(self.loaded_labware, Labware) else None
 
     def loadLabware(self, labware:Labware):
+        """
+        Load Labware in Slot
+
+        Args:
+            labware (Labware): `Labware` object
+        """
         assert self.loaded_labware is None, "Labware already loaded in slot"
         labware.parent = self
         self.loaded_labware = labware
@@ -655,14 +851,33 @@ class Slot:
         return
     
     def loadLabwareFromConfigs(self, details:dict[str, Any]):
+        """
+        Load Labware from dictionary
+        
+        Args:
+            details (dict): dictionary read from Labware file
+        """
         labware = Labware.fromConfigs(details=details, parent=self)
         return self.loadLabware(labware=labware)
         
     def loadLabwareFromFile(self, labware_file:str, from_repo:bool = True):
+        """
+        Load Labware from file
+        
+        Args:
+            labware_file (str): filepath of Labware file
+            from_repo (bool, optional): whether to load from repo. Defaults to True.
+        """
         labware = Labware.fromFile(labware_file=labware_file, parent=self, from_repo=from_repo)
         return self.loadLabware(labware=labware)
         
     def removeLabware(self) -> Labware:
+        """
+        Remove Labware from Slot
+        
+        Returns:
+            Labware: `Labware` object
+        """
         assert self.loaded_labware is not None, "No Labware loaded in slot"
         if self.loaded_labware.is_stackable:
             assert self.loaded_labware.slot_above.loaded_labware is None, "Another Labware is stacked above"
@@ -672,8 +887,14 @@ class Slot:
         self.slot_above = None
         return labware
 
-    def _draw(self, ax, zoom_out:bool = False, **kwargs):
-        """Draw Slot on matplotlib axis"""
+    def _draw(self, ax:plt.Axes, zoom_out:bool = False, **kwargs):
+        """
+        Draw Slot on matplotlib axis
+        
+        Args:
+            ax (matplotlib.pyplot.Axes): plot axes
+            zoom_out (bool, optional): whether to use zoomed out view. Defaults to False.
+        """
         ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, linestyle=":", **kwargs))
         if  isinstance(self.loaded_labware, Labware):
             self.loaded_labware._draw(ax, zoom_out=zoom_out,**kwargs)
@@ -686,10 +907,7 @@ class Slot:
             )
         return
 
-
-@dataclass
-class Deck:
-    """
+"""
     Deck object
 
     ### Constructor
@@ -713,6 +931,50 @@ class Deck:
     - `loadLayout`: load deck layout from layout file
     - `removeLabware`: remove Labware in slot using slot id or name
     """
+
+@dataclass
+class Deck:
+    """
+    `Deck` represents a single Deck object
+    
+    ### Constructor:
+        `name` (str): name of Deck
+        `_details` (dict[str, Any]): dictionary read from Deck file
+        `parent` (Deck|None, optional): parent `Deck` object. Defaults to None.
+        `_nesting_lineage` (tuple[Path]): lineage of nested decks
+        
+    ### Attributes and properties:
+        `name` (str): name of Deck
+        `details` (dict[str, Any]): dictionary read from Deck file
+        `parent` (Deck|None): parent `Deck` object
+        `reference` (Position): reference point of `Deck`
+        `x` (float): x offset
+        `y` (float): y offset
+        `z` (float): z offset
+        `offset` (numpy.ndarray): Deck offset from parent `Deck` reference point
+        `center` (numpy.ndarray): center of Deck
+        `bottom_left_corner` (Position): bottom left corner of Deck
+        `dimensions` (numpy.ndarray): size of Deck
+        `exclusion_zone` (dict[str, BoundingBox]): exclusion zones to avoid
+        `slots` (dict[str, Slot]): contained `Slot` objects
+        `zones` (dict[str, Deck]): nested `Deck` objects
+        `at` (SimpleNamespace): namespace of all Slots
+        `on` (SimpleNamespace): namespace of all nested Decks
+        
+    ### Class methods:
+        `fromConfigs`: factory method to load Deck details from dictionary
+        `fromFile`: factory method to load Deck from file
+        
+    ### Methods:
+        `getSlot`: get `Slot` using its name or index
+        `isExcluded`: checks and returns whether the coordinates are in an excluded region
+        `loadNestedDeck`: load nested `Deck` object from dictionary
+        `loadLabware`: load `Labware` into `Slot`
+        `removeLabware`: remove Labware from `Slot` using its name or index
+        `transferLabware`: transfer Labware between Slots
+        `show`: show Deck on matplotlib axis
+    """
+    
     name: str
     _details: dict[str, Any]
     parent: Deck|None = None
@@ -764,11 +1026,15 @@ class Deck:
     @classmethod
     def fromConfigs(cls, details:dict[str, Any], parent:Deck|None = None, _nesting_lineage:Sequence[Path|None]=(None,)):
         """
-        Load deck layout from layout file
-
+        Factory method to load Deck details from dictionary
+        
         Args:
-            json_file (str): filepath of deck layout JSON file
-            package (str|None, optional): name of package to look in. Defaults to None.
+            details (dict): dictionary read from Deck file
+            parent (Deck|None, optional): parent `Deck` object. Defaults to None.
+            _nesting_lineage (Sequence[Path|None], optional): lineage of nested decks. Defaults to (None,).
+            
+        Returns:
+            Deck: `Deck` object
         """
         name = details.get('name',None)
         name = details.get('metadata',{}).get('displayName', '') if name is None else name
@@ -777,12 +1043,15 @@ class Deck:
     @classmethod
     def fromFile(cls, deck_file:str, parent:Deck|None = None, from_repo:bool = True):
         """
-        Load deck layout from layout file
-
+        Factory method to load Deck from file
+        
         Args:
-            layout_file (str): filepath of deck layout JSON file
-            package (str|None, optional): name of package to look in. Defaults to None.
-            from_repo (bool, optional): whether to load from repository. Defaults to True.
+            deck_file (str): filepath of Deck file
+            parent (Deck|None, optional): parent `Deck` object. Defaults to None.
+            from_repo (bool, optional): whether to load from repo. Defaults to True.
+            
+        Returns:
+            Deck: `Deck` object
         """
         assert isinstance(deck_file,(str,Path)), "Please input a valid filepath"
         filepath = Path(deck_file) if not from_repo else resolve_repo_filepath(deck_file)
@@ -793,22 +1062,27 @@ class Deck:
     # Properties
     @property
     def reference(self) -> Position:
+        """Reference point of `Deck`"""
         return self.parent.bottom_left_corner if isinstance(self.parent, Deck) else Position()
     
     @property
     def offset(self) -> np.ndarray:
+        """Deck offset from parent `Deck` reference point"""
         return np.array((self.x,self.y,self.z))
     
     @property
     def center(self) -> np.ndarray:
+        """Center of Deck"""
         return self.bottom_left_corner.coordinates + self.bottom_left_corner.Rotation.apply(self.offset)
     
     @property
     def dimensions(self) -> np.ndarray:
+        """Size of Deck"""
         return self.bottom_left_corner.Rotation.apply(self._dimensions)
     
     @property
     def exclusion_zone(self) -> dict[str, BoundingBox]:
+        """Exclusion zones to avoid"""
         bounds = dict()
         for slot in self._slots.values():
             if not isinstance(slot, Slot):
@@ -823,47 +1097,47 @@ class Deck:
     
     @property
     def slots(self) -> dict[str, Slot]:
+        """Contained `Slot` objects"""
         return self._slots
     
     @property
     def zones(self) -> dict[str, Deck]:
+        """Nested `Deck` objects"""
         return self._zones
     
     @property
     def at(self) -> SimpleNamespace:
+        """Namespace of all Slots"""
         return SimpleNamespace(**self._slots)
     
     @property
     def on(self) -> SimpleNamespace:
+        """Namespace of all nested Decks"""
         return SimpleNamespace(**self._zones)
     
-    def getSlot(self, value:int|str) -> Labware|None:
+    def getSlot(self, value:int|str) -> Slot|None:
         """
         Get Labware in slot using slot id or name
-
+        
         Args:
-            index (int|None, optional): slot id number. Defaults to None.
-            name (str|None, optional): nickname of Labware. Defaults to None.
-
-        Raises:
-            ValueError: Please input either slot id or name
-
+            value (int|str): slot id or name
+            
         Returns:
-            Labware|None: Labware in slot
+            Slot: `Slot` object
         """
         if isinstance(value, int):
             value = f"slot_{value:02}"
         return self._slots.get(value, None)
     
-    def isExcluded(self, coordinates:Sequence[float]) -> bool:
+    def isExcluded(self, coordinates:Sequence[float]|np.ndarray) -> bool:
         """
-        Checks and returns whether the coordinates are in an excluded region.
-
+        Checks and returns whether the coordinates are in an excluded region
+        
         Args:
-            coordinates (tuple[float]): target coordinates
-
+            coordinates (Sequence[float]|numpy.ndarray): x,y,z coordinates
+            
         Returns:
-            bool: whether the coordinates are in an excluded region
+            bool: whether coordinates are in an excluded region
         """
         assert len(coordinates) == 3, "Please input valid x,y,z coordinates"
         collides_with = []
@@ -876,6 +1150,13 @@ class Deck:
         return True
     
     def loadNestedDeck(self, name:str, details:dict[str, Any]):
+        """
+        Load nested `Deck` object from dictionary
+        
+        Args:
+            name (str): name of nested `Deck`
+            details (dict): dictionary read from Deck file
+        """
         deck_file = Path(details.pop('deck_file',''))
         deck_file = resolve_repo_filepath(deck_file) if not deck_file.is_absolute() else deck_file
         assert deck_file.is_file(), "Please input a valid Deck filepath"
@@ -891,6 +1172,15 @@ class Deck:
         return
     
     def show(self, zoom_out:bool = False) -> plt.Figure:
+        """
+        Show Deck on matplotlib axis
+        
+        Args:
+            zoom_out (bool, optional): whether to use zoomed out view. Defaults to False.
+            
+        Returns:
+            matplotlib.pyplot.Figure: matplotlib figure
+        """
         fig, ax = plt.subplots()
         color_map = {v:k for k,v in mcolors.get_named_colors_mapping().items()}
         colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
@@ -911,8 +1201,15 @@ class Deck:
         fig.set_size_inches(new_size)
         return fig
     
-    def _draw(self, ax, zoom_out:bool = False, *, color_iterator:Iterator|None = None, **kwargs):
-        """Draw Deck on matplotlib axis"""
+    def _draw(self, ax: plt.Axes, zoom_out:bool = False, *, color_iterator:Iterator|None = None, **kwargs):
+        """
+        Draw Deck on matplotlib axis
+        
+        Args:
+            ax (matplotlib.pyplot.Axes): plot axes
+            zoom_out (bool, optional): whether to use zoomed out view. Defaults to False.
+            color_iterator (Iterator|None, optional): iterator for colors. Defaults to None.
+        """
         bg_color = next(color_iterator) if isinstance(color_iterator,Iterator) else None
         ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], alpha=0.5, color=bg_color, **kwargs))
         ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, **kwargs))
@@ -931,11 +1228,11 @@ class Deck:
     
     def loadLabware(self, dst_slot: Slot, labware:Labware):
         """
-        Load Labware into slot
-
+        Load `Labware` into `Slot`
+        
         Args:
-            dst_slot (int): slot id
-            labware (Labware): Labware object
+            dst_slot (Slot): destination `Slot` object
+            labware (Labware): `Labware` object
         """
         assert isinstance(dst_slot, Slot), "Please input a valid slot"
         dst_slot.loadLabware(labware=labware)
@@ -943,21 +1240,24 @@ class Deck:
     
     def removeLabware(self, src_slot:Slot) -> Labware:
         """
-        Remove Labware in slot using slot id or name
-
+        Remove Labware from `Slot` using its name or index
+        
         Args:
-            src_slot (int|str): slot id or name
+            src_slot (Slot): source `Slot` object
+            
+        Returns:
+            Labware: `Labware` object
         """
         assert isinstance(src_slot, Slot), "Please input a valid slot"
         return src_slot.removeLabware()
     
-    def transferLabware(self, src_slot:int|str, dst_slot:int|str):
+    def transferLabware(self, src_slot:Slot, dst_slot:Slot):
         """
-        Transfer Labware from source slot to destination slot
-
+        Transfer Labware between Slots
+        
         Args:
-            src_slot (int|str): source slot id or name
-            dst_slot (int|str): destination slot id or name
+            src_slot (Slot): source `Slot` object
+            dst_slot (Slot): destination `Slot` object
         """
         assert isinstance(src_slot, Slot), "Please input a valid source slot"
         assert isinstance(dst_slot, Slot), "Please input a valid destination slot"
@@ -1148,12 +1448,33 @@ class Deck:
 
 @dataclass
 class BoundingBox:
+    """
+    `BoundingBox` represents a single BoundingBox object
+
+    ### Constructor:
+        `reference` (Position, optional): reference point. Defaults to Position().
+        `dimensions` (Sequence[float]|numpy.ndarray, optional): x,y,z dimensions. Defaults to (0,0,0).
+        `buffer` (Sequence[Sequence[float]]|numpy.ndarray, optional): lower and upper buffer. Defaults to ((0,0,0),(0,0,0)).
+        
+    ### Attributes and properties:
+        `reference` (Position): reference point
+        `dimensions` (numpy.ndarray): x,y,z dimensions
+        `buffer` (numpy.ndarray): lower and upper buffer
+        `bounds` (numpy.ndarray): lower and upper bounds
+        
+    ### Methods:
+        `contains`: check if point is within BoundingBox
+    """
+    
     reference: Position = field(default_factory=Position)
-    dimensions: Sequence[float] = (0,0,0)
-    buffer: Sequence[Sequence[float]] = ((0,0,0),(0,0,0))
+    dimensions: Sequence[float]|np.ndarray = (0,0,0)
+    buffer: Sequence[Sequence[float]]|np.ndarray = ((0,0,0),(0,0,0))
     
     def __post_init__(self):
         assert isinstance(self.reference, Position), "Please input a valid reference position of type `Position`"
+        assert isinstance(self.dimensions, (Sequence,np.ndarray)), "Please input Sequence or numpy.ndarray for x,y,z dimensions"
+        assert isinstance(self.buffer, (Sequence,np.ndarray)), "Please input Sequence or numpy.ndarray lower and upper buffer"
+        
         assert len(self.dimensions) == 3, "Please input x,y,z dimensions"
         assert len(self.buffer) == 2, "Please input lower and upper buffer"
         assert all([len(b) == 3 for b in self.buffer]), "Please input x,y,z buffer"
@@ -1166,11 +1487,21 @@ class BoundingBox:
     
     @property
     def bounds(self):
+        """Lower and upper bounds"""
         dimensions = self.reference.Rotation.apply(self.dimensions)
         other_corner = self.reference.coordinates + dimensions
         bounds = np.array([self.reference.coordinates, other_corner])
         return bounds + self.reference.Rotation.apply(self.buffer)
     
-    def contains(self, point:Sequence[float]) -> bool:
+    def contains(self, point:Sequence[float]|np.ndarray) -> bool:
+        """
+        Check if point is within BoundingBox
+        
+        Args:
+            point (Sequence[float]|numpy.ndarray): x,y,z coordinates
+            
+        Returns:
+            bool: whether point is within BoundingBox
+        """
         assert len(point) == 3, "Please input x,y,z coordinates"
         return all([min(b) <= p <= max(b) for b,p in zip(list(zip(*self.bounds)), point)])
