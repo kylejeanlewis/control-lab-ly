@@ -128,8 +128,10 @@ class GRBL(SerialDevice):
             assert setting_ in Setting.__members__, f"Setting  not found: {setting_}"
             logger.info(f"[{setting}]: {Setting[setting_].value.message} = {value}")
             negative = value.startswith('-')
+            if negative:
+                    value = value[1:]
             value: int|float|str = int(value) if value.isnumeric() else (float(value) if value.replace('.','',1).isdigit() else value)
-            settings[setting] = value * (-1**int(negative)) if isinstance(value, (int,float)) else value
+            settings[setting] = value * ((-1)**int(negative)) if isinstance(value, (int,float)) else value
         settings['limit_x'] = settings['$130']
         settings['limit_y'] = settings['$131']
         settings['limit_z'] = settings['$132']
