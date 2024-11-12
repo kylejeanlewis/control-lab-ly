@@ -492,9 +492,11 @@ class Labware:
         `z` (float): z offset
         `offset` (numpy.ndarray): Labware offset from Slot reference point
         `center` (numpy.ndarray): center of Labware
+        `top` (numpy.ndarray): top of well
         `bottom_left_corner` (Position): bottom left corner of Labware
         `dimensions` (numpy.ndarray): size of Labware
         `exclusion_zone` (BoundingBox): exclusion zone to avoid
+        `wells` (dict[str, Well]): wells by columns (alias for `wells_columns`)
         `wells_columns` (dict[str, Well]): wells by columns
         `wells_rows` (dict[str, Well]): wells by rows
         `columns` (dict[int, list[str]]): columns and wells in columns
@@ -509,6 +511,7 @@ class Labware:
         `fromFile`: factory method to load Labware from file
     
     ### Methods:
+        `fromTop`: offset from top of well
         `getWell`: get `Well` using its name
         `listColumns`: list wells by columns
         `listRows`: list  wells by rows
@@ -619,6 +622,11 @@ class Labware:
         return self.bottom_left_corner.coordinates + self.bottom_left_corner.Rotation.apply(self.offset)
     
     @property
+    def top(self) -> np.ndarray:
+        """Top of well"""
+        return self.center + np.array((0,0,self.z))
+    
+    @property
     def bottom_left_corner(self) -> Position:
         """Bottom left corner of Labware"""
         return self.reference
@@ -639,7 +647,12 @@ class Labware:
         first_column = self._ordering[0]
         rows_list = self.listRows()
         return {name[0]: rows_list[r] for r,name in enumerate(first_column)}
-       
+    
+    @property
+    def wells(self) -> dict[str, list[Well]]:
+        """Wells by columns (alias for `wells_columns`)"""
+        return self._wells
+    
     @property
     def wells_columns(self) -> dict[str, list[Well]]:
         """Wells by columns"""
@@ -654,6 +667,18 @@ class Labware:
     def at(self) -> SimpleNamespace:
         """Namespace of all wells"""
         return SimpleNamespace(**self._wells)
+    
+    def fromTop(self, offset:Sequence[float]|np.ndarray) -> np.ndarray:
+        """
+        Offset from top of well
+
+        Args:
+            offset (Sequence[float]|numpy.ndarray): x,y,z offset
+
+        Returns:
+            tuple: top of well with offset
+        """
+        return self.top + np.array(offset)
 
     def getWell(self, name:str) -> Well:
         """
