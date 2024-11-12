@@ -1,9 +1,21 @@
 # -*- coding: utf-8 -*-
 """
-This module holds the decorator functions in Control.lab.ly.
+This module contains the functions and decorator for implementing safety measures in the robot.
+The decorator function is used to create guardrails for functions and functions, especially involving movement.
+The module also contains functions to set and reset the safety level for the safety measures.
 
-Functions:
-    safety_measures (decorator)
+Attributes:
+    DEBUG (int): safety mode that logs the function call
+    DELAY (int): safety mode that waits for a few seconds before executing. Defaults to 3.
+    SUPERVISED (int): safety mode that requires user input before executing
+    safety_mode (int): safety mode for the safety measures
+
+## Functions:
+    guard (decorator)
+    set_level
+    reset_level
+    
+<i>Documentation last updated: 2024-11-12</i>
 """
 # Standard library imports
 from functools import wraps
@@ -15,24 +27,31 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
-SUPERVISED = -10
 DEBUG = 0
+"""Safety mode that logs the function call"""
 DELAY = 3
+"""Safety mode that waits for a few seconds before executing. Defaults to 3."""
+SUPERVISED = -10
+"""Safety mode that requires user input before executing"""
 
 safety_mode = None
+"""Safety mode for the safety measures"""
 
-def set_level(level:int) -> None:
+def set_level(mode: int):
     """
     Set the safety level for the safety measures
 
     Args:
-        level (int): safety level
+        mode (int): safety mode
+            - DEBUG (0): logs the function call
+            - DELAY (>=1): waits for a few seconds before executing. Defaults to 3.
+            - SUPERVISED (-10): requires user input before executing
     """
     global safety_mode
-    safety_mode = level
+    safety_mode = mode
     return
 
-def reset_level() -> None:
+def reset_level():
     """Reset the safety level to None"""
     global safety_mode
     safety_mode = None
@@ -40,13 +59,13 @@ def reset_level() -> None:
 
 def guard(mode:int = DEBUG) -> Callable:
     """
-    Wrapper for creating guardrails for functions, especially involving movement
+    Decorator for creating guardrails for functions and functions, especially involving movement
 
     Args:
-        mode (int, optional): mode for implementing safety measure. Defaults to None.
-            SUPERVISED (-10): requires user input before executing
-            DEBUG (0): logs the function call
-            DELAY (3): waits for a few seconds before executing
+        mode (int, optional): mode for implementing safety measure. Defaults to DEBUG.
+            - DEBUG (0): logs the function call
+            - DELAY (>=1): waits for a few seconds before executing. Defaults to 3.
+            - SUPERVISED (-10): requires user input before executing
         
     Returns:
         Callable: wrapped function
