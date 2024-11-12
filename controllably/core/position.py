@@ -17,7 +17,7 @@ Attributes:
 ## Functions:
     `get_transform`: get transformation matrix from initial to final points, with the first point in each set being the center of rotation
 
-<i>Documentation last updated: 2022-11-12</i>
+<i>Documentation last updated: 2024-11-12</i>
 """
 # Standard library imports
 from __future__ import annotations
