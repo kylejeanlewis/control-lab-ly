@@ -2,7 +2,7 @@
 """ 
 This module contains functions to create and manage objects.
 
-Functions:
+## Functions:
     `dict_to_named_tuple`: Creating named tuple from dictionary
     `get_class`: Retrieve the relevant class from the sub-package
     `get_imported_modules`: Get all imported modules
