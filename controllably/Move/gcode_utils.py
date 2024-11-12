@@ -233,6 +233,11 @@ class GCode(Mover):
             self.speed_factor = speed_factor
         return speed_factor
     
+    def toggleCoolantValve(self, state:bool) -> bool:
+        command = 'M8' if state else 'M9'
+        self.query(command)
+        return state
+    
     # Overwritten methods
     def connect(self):
         self.device.connect()
