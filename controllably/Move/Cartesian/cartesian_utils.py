@@ -37,9 +37,11 @@ class Gantry(GCode):
         scale: float = 1.0,
         deck: Deck|None = None,
         safe_height: float|None = None,                         # in terms of robot coordinate system
-        speed_max: float|None = 600,                            # in mm/min # TODO: implement checking device for speed_max
+        speed_max: float|None = None,                           # in mm/min
         device_type_name: str = 'GRBL',
         baudrate: int = 115200, 
+        movement_buffer: int|None = None,
+        movement_timeout: int|None = None,
         verbose: bool = False, 
         simulation: bool = False,
         **kwargs
@@ -51,26 +53,26 @@ class Gantry(GCode):
             robot_position=robot_position, home_position=home_position,
             tool_offset=tool_offset, calibrated_offset=calibrated_offset, scale=scale, 
             deck=deck, workspace=workspace, safe_height=safe_height, speed_max=_speed_max, 
-            device_type_name=device_type_name, verbose=verbose, simulation=simulation,
+            device_type_name=device_type_name, movement_buffer=movement_buffer, 
+            movement_timeout=movement_timeout, verbose=verbose, simulation=simulation,
             **kwargs
         )
         
         self.connect()
         self.home()
         
+        settings = self._settings
         # Set limits if none provided
         if not any([any(l) for l in limits]):
-            settings = self.device.checkSettings()
-            _,coordinates,_ = self.device.checkStatus()
-            device_limits = np.array(settings.get('limit_x',0),settings.get('limit_y',0),settings.get('limit_z',0))
+            coordinates = self.device._home_offset
+            device_limits = np.array([settings.get('limit_x',0),settings.get('limit_y',0),settings.get('limit_z',0)])
             device_limits = device_limits * (coordinates/abs(coordinates)) if any(coordinates) else device_limits
-            limits = np.array([coordinates,device_limits])
+            limits = np.array([coordinates-self.device._home_offset,device_limits])
             limits = np.array([limits.min(axis=0),limits.max(axis=0)])
             self.workspace = BoundingBox(buffer=limits)
         
         # Set maximum speed if none provided
         if speed_max is None:
-            settings = self.device.checkSettings()
             speed_max = max([settings.get('max_speed_x',0),settings.get('max_speed_y',0),settings.get('max_speed_z',0)])
             self._speed_max = 600 if speed_max <= 0 else speed_max
         return
