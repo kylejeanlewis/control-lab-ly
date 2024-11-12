@@ -1,4 +1,16 @@
 # -*- coding: utf-8 -*-
+""" 
+This module contains functions to handle files and folders.
+
+## Functions:
+    `create_folder`: Check and create folder if it does not exist
+    `read_config_file`: Read configuration file and return as dictionary
+    `readable_duration`: Display time duration (s) as HH:MM:SS text
+    `resolve_repo_filepath`: Resolve relative path to absolute path
+    `start_project_here`: Create new project in destination directory
+
+<i>Documentation last updated: 2024-11-12</i>
+"""
 # Standard library imports
 from __future__ import annotations
 from datetime import datetime, timedelta
@@ -19,31 +31,34 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
-def create_folder(base:Path|str = '', sub:Path|str = '') -> str:
+def create_folder(base:Path|str = '', sub:Path|str = '') -> Path:
     """
     Check and create folder if it does not exist
-
-    Args:
-        parent_folder (Optional[str], optional): parent folder directory. Defaults to None.
-        child_folder (Optional[str], optional): child folder directory. Defaults to None.
     
+    Args:
+        base (Path|str, optional): parent folder directory. Defaults to ''.
+        sub (Path|str, optional): child folder directory. Defaults to ''.
+        
     Returns:
-        str: name of main folder
+        Path: name of main folder
     """
     main_folder = Path(datetime.now().strftime("%Y%m%d_%H%M"))
     new_folder = Path(base) / main_folder / Path(sub)
     os.makedirs(new_folder)
     return main_folder
 
-def read_config_file(filepath:str|Path) -> dict:
+def read_config_file(filepath:Path|str) -> dict:
     """
     Read configuration file and return as dictionary
-
+    
     Args:
-        file_path (str): path to configuration file
-
+        filepath (Path|str): path to configuration file
+        
     Returns:
         dict: configuration file as dictionary
+    
+    Raises:
+        ValueError: Unsupported file type
     """
     filepath = str(filepath)
     file_type = filepath.split('.')[-1]
@@ -59,10 +74,10 @@ def read_config_file(filepath:str|Path) -> dict:
 def readable_duration(total_time:float) -> str:
     """
     Display time duration (s) as HH:MM:SS text
-
+    
     Args:
         total_time (float): duration in seconds
-
+        
     Returns:
         str: formatted time string
     """
@@ -71,15 +86,15 @@ def readable_duration(total_time:float) -> str:
     strings[-1] = "{}h {}min {}sec".format(*strings[-1].split(':'))
     return ' '.join(strings)
 
-def resolve_repo_filepath(filepath:str|Path) -> Path:
+def resolve_repo_filepath(filepath:Path|str) -> Path:
     """
     Resolve relative path to absolute path
-
+    
     Args:
-        filepath (str): relative path to file
-
+        filepath (Path|str): relative path to file
+        
     Returns:
-        str: absolute path to file
+        Path: absolute path to file
     """
     filepath = str(filepath)
     if len(filepath) == 0 or filepath == '.':
@@ -92,7 +107,13 @@ def resolve_repo_filepath(filepath:str|Path) -> Path:
     return Path(full_path)
 
 def start_project_here(dst:Path|str|None = None):
-    """Create new tools configs folder"""
+    """
+    Create new project in destination directory. 
+    If destination is not provided, create in current directory
+    
+    Args:
+        dst (Path|str|None, optional): destination folder. Defaults to None.
+    """
     src = resources.files('controllably') / 'core/_templates'
     dst = Path.cwd() if dst is None else Path(dst)
     logger.debug(f"Creating new project in: {dst}")
