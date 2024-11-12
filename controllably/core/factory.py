@@ -1,4 +1,20 @@
 # -*- coding: utf-8 -*-
+""" 
+This module contains functions to create and manage objects.
+
+Functions:
+    `dict_to_named_tuple`: Creating named tuple from dictionary
+    `get_class`: Retrieve the relevant class from the sub-package
+    `get_imported_modules`: Get all imported modules
+    `get_method_names`: Get the names of the methods in Callable object (Class/Instance)
+    `get_plans`: Get available configurations
+    `load_parts`: Load all parts of compound tools from configuration
+    `load_setup_from_files`: Load and initialise setup
+    `parse_configs`: Decode dictionary of configuration details to get tuples and `numpy.ndarray`
+    `zip_kwargs_to_dict`: Checks and zips multiple keyword arguments of lists into dictionary
+
+<i>Documentation last updated: 2024-11-12</i>
+"""
 # Standard library imports
 from collections import namedtuple
 from dataclasses import dataclass, field
@@ -22,7 +38,7 @@ logger.debug(f"Import: OK <{__name__}>")
 
 def dict_to_named_tuple(d:dict, tuple_name:str = 'Setup') -> tuple:
     """
-    creating named tuple from dictionary
+    Creating named tuple from dictionary
 
     Args:
         d (dict): dictionary to be transformed
@@ -46,7 +62,8 @@ def get_class(module_name:str, class_name:str) -> Callable:
     Retrieve the relevant class from the sub-package
 
     Args:
-        dot_notation (str): dot notation of Class object
+        module_name (str): name of the module using dot notation
+        class_name (str): name of the class
 
     Returns:
         Callable: target Class
@@ -58,6 +75,9 @@ def get_class(module_name:str, class_name:str) -> Callable:
 def get_imported_modules(interested_modules:str|Sequence[str]|None = None) -> dict:
     """
     Get all imported modules
+
+    Args:
+        interested_modules (str | Sequence[str] | None, optional): interested module(s). Defaults to None.
 
     Returns:
         dict: dictionary of imported modules
@@ -95,7 +115,7 @@ def get_imported_modules(interested_modules:str|Sequence[str]|None = None) -> di
 
 def get_method_names(obj:Callable) -> list[str]:
     """
-    Get the names of the methods in Callable object (class/instance)
+    Get the names of the methods in Callable object (Class/Instance)
 
     Args:
         obj (Callable): object of interest
@@ -122,7 +142,7 @@ def get_plans(configs:dict, registry:dict|None = None) -> dict:
 
 def load_parts(configs:dict, **kwargs) -> dict:
     """
-    Load parts of compound tools
+    Load all parts of compound tools from configuration
 
     Args:
         config (dict): dictionary of configuration parameters
@@ -149,12 +169,12 @@ def load_setup_from_files(
     Load and initialise setup
 
     Args:
-        config_file (str): config filename
-        registry_file (str|None, optional): registry filename. Defaults to None.
+        config_file (Path|str): config filename
+        registry_file (Path|str|None, optional): registry filename. Defaults to None.
         create_tuple (bool, optional): whether to return a named tuple, if not returns dictionary. Defaults to True.
 
     Returns:
-        Union[dict,tuple]: dictionary or named tuple of setup objects
+        dict|tuple: dictionary or named tuple of setup objects
     """
     config_file = Path(config_file)
     registry_file = Path(registry_file) if registry_file is not None else None
@@ -180,7 +200,7 @@ def load_setup_from_files(
 
 def parse_configs(configs:dict, addresses:dict|None = None) -> dict:
     """
-    Decode dictionary of configuration details to get np.ndarrays and tuples
+    Decode dictionary of configuration details to get tuples and `numpy.ndarray`
 
     Args:
         configs (dict): dictionary of configuration details
@@ -209,20 +229,18 @@ def parse_configs(configs:dict, addresses:dict|None = None) -> dict:
     return configs
 
 def zip_kwargs_to_dict(primary_key:str, kwargs:dict) -> dict:
-    """
+    """ 
     Checks and zips multiple keyword arguments of lists into dictionary
     
     Args:
         primary_keyword (str): primary keyword to be used as key
-    
-    Kwargs:
-        key, list[...]: {keyword, list of values} pairs
-
-    Raises:
-        Exception: Ensure the lengths of inputs are the same
-
+        kwargs (dict): {keyword, list of values} pairs
+        
     Returns:
         dict: dictionary of (primary keyword, kwargs)
+        
+    Raises:
+        AssertionError: Ensure the lengths of inputs are the same
     """
     length = len(kwargs[primary_key])
     for key, value in kwargs.items():
