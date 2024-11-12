@@ -32,6 +32,7 @@ class Marlin(SerialDevice):
     ):
         """
         """
+        logger.warning('Marlin firmware is not fully supported. Proceed with care.')        # TODO: Remove warning when fully supported
         super().__init__(
             port=port, 
             baudrate=baudrate, 
@@ -71,28 +72,35 @@ class Marlin(SerialDevice):
         """
         responses = self.query('M115')  # FIRMWARE_NAME:Marlin 2.1.3 (Aug  1 2024 12:00:00) SOURCE_CODE_URL:github.com/MarlinFirmware/Marlin PROTOCOL_VERSION:1.0 MACHINE_TYPE:3D Printer KINEMATICS:Cartesian EXTRUDER_COUNT:1 UUID:cede2a2f-41a2-4748-9b12-c55c62f367ff
         info = {}
+        start = False
         for response in responses:
-            response = response.strip()
-            if 'FIRMWARE_NAME' not in response:
+            response = response.strip().replace('Cap:','')
+            if 'FIRMWARE_NAME' in response:
+                start = True
+            if not start:
                 continue
-            info_parts = response.split(" ")
-            key, value = '',''
-            for part in info_parts:
-                if ':' in part and part[0].isalpha():
-                    key, value = part.split(":")
-                    info[key] = value
-                    continue
-                info[key] = f"{info[key]} {part}"
+            if response == 'ok':
+                break
+            parts = response.split(":")
+            info[parts[0]] = ' '.join(parts[1:])
         return info
     
     def checkSettings(self) -> dict[str, int|float|str]:
         """
         """
+        self.clear()
         responses = self.query('M503')
+        while len(responses) == 0 or 'fail' in responses[-1]:
+            time.sleep(0.1)
+            responses = self.read(True)
         settings = {}
         for response in responses:
-            response = response.strip()
+            response = response.replace('echo:','').split(';')[0].strip()
+            if not len(response):
+                continue
             if response[0] not in ('G','M'):
+                continue
+            if not response[1].isdigit():
                 continue
             out = response.split(" ")
             setting = out[0]
@@ -107,8 +115,8 @@ class Marlin(SerialDevice):
                 if negative:
                     v = v[1:]
                 v: int|float|str = int(v) if v.isnumeric() else (float(v) if v.replace('.','',1).isdigit() else v)
-                value_dict[k] = v * (-1**int(negative)) if isinstance(v, (int,float)) else v
-            logger.info(f"[{setting}]: {[value_dict]}")
+                value_dict[k] = v * ((-1)**int(negative)) if isinstance(v, (int,float)) else v
+            logger.info(f"[{setting}]: {value_dict}")
             settings[setting] = value_dict
         settings['max_speed_x'] = settings['M203']['X'] * 60
         settings['max_speed_y'] = settings['M203']['Y'] * 60
@@ -127,7 +135,7 @@ class Marlin(SerialDevice):
         """
         responses = self.query('M114 R')      # Check the current position
         # responses = self.query('M105')      # Check the current temperature
-        status,current_position = '', np.array([0,0,0])
+        status,current_position = 'Idle', np.array([0,0,0])
         # relevant_responses = []
         if self.flags.simulation:
             return 'Idle', current_position, self._home_offset
@@ -155,15 +163,15 @@ class Marlin(SerialDevice):
         """
         super().connect()
         startup_lines = self.read(True)
-        info = self.checkInfo()
-        firmware = info.get('FIRMWARE_NAME','').split(" ")
-        version = firmware[1] if (len(firmware) > 1) else ''
+        for line in startup_lines:
+            if line.startswith('Marlin'):
+                self._version = line.split(" ")[-1]
+                break
         settings = self.checkSettings()
         self._home_offset = np.array([settings.get('home_offset_x',0),settings.get('home_offset_y',0),settings.get('home_offset_z',0)])
         
         print(startup_lines)
-        print(f'Marlin version: {version}')
-        self._version = version
+        print(f'Marlin version: {self._version}')
         return
     
     def query(self, data: Any, lines:bool = True) -> list[str]|None:
