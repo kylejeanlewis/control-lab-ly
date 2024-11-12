@@ -1,21 +1,44 @@
 # -*- coding: utf-8 -*-
+""" 
+This module contains classes to create compound tools.\n
+The distinction between Compound, Ensemble, Combined and Multichannel tools 
+is presented in the table below:
+
+<table>
+<tr><th>Class</th><th>Device(s)</th><th>Components</th></tr>
+<tr><td>Compound</td><td>Multiple connection</td><td>Different parts</td></tr>
+<tr><td>Ensemble</td><td>Multiple connection</td><td>Duplicate parts</td></tr>
+<tr><td>Combined</td><td>Single connection</td><td>Different parts</td></tr>
+<tr><td>Multichannel</td><td>Single connection</td><td>Duplicate parts</td></tr>
+</table>
+
+## Classes:
+    `Part`: Protocol for Part (i.e. component tools)
+    `Compound`: Compound class is an aggregation of multiple part tools
+    `Ensemble`: Ensemble class is an aggregation of duplicate part tools to form multiple channels
+    `Combined`: Combined class is an composition of multiple part tools
+    `Multichannel`: Multichannel class is an composition of duplicate part tools to form multiple channels
+    
+<i>Documentation last updated: 2024-11-12</i>
+"""
 # Standard library imports
 from __future__ import annotations
 from copy import deepcopy
 import inspect
 import logging
 from types import SimpleNamespace
-from typing import Protocol, Callable, Sequence
+from typing import Protocol, Callable, Sequence, Type
 
 # Local application imports
 from .connection import DeviceFactory, Device
-from .factory import load_parts
+from . import factory
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 class Part(Protocol):
+    """Protocol for Part (i.e. component tools)"""
     connection_details: dict
     is_busy: bool
     is_connected: bool
@@ -38,8 +61,42 @@ class Part(Protocol):
 
 
 class Compound:
+    """ 
+    Compound class is an aggregation of multiple part tools.
+    Do not instantiate this class directly.
+    Subclass this class to create a specific Compound tool.
+    
+    ## Constructor:
+        `parts` (dict[str,Part]): dictionary of parts
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+        
+    ## Attributes and properties:
+        `connection_details` (dict): connection details of each part
+        `parts` (SimpleNamespace[str,Part]): namespace of parts
+        `flags` (SimpleNamespace[str,bool]): flags of class
+        `is_busy` (bool): whether any part is busy
+        `is_connected` (bool): whether all parts are connected
+        `verbose` (bool): verbosity of class
+        
+    ## Class methods:
+        `fromConfig`: factory method to create Compound from configuration dictionary
+        
+    ## Methods:
+        `connect`: connect to each component Part
+        `disconnect`: disconnect from each component Part
+        `resetFlags`: reset all flags to class attribute `_default_flags`
+        `shutdown`: shutdown each component Part
+    """
+    
     _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(verbose=False)
     def __init__(self, *args, parts: dict[str,Part], verbose:bool = False, **kwargs):
+        """
+        Initialise Compound class
+
+        Args:
+            parts (dict[str,Part]): dictionary of parts
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         self._parts = parts
         self.flags = deepcopy(self._default_flags)
         self.verbose = verbose
@@ -59,30 +116,41 @@ class Compound:
         return
     
     @classmethod
-    def fromConfig(cls, config:dict):
+    def fromConfig(cls, config:dict) -> Type[Compound]:
+        """
+        Factory method to create Compound from configuration dictionary
+        
+        Args:
+            config (dict): configuration dictionary
+            
+        Returns:
+            Type[Compound]: instance of Compound (or its subclasses)
+        """
         details = config.pop('details')
-        parts = {name:load_parts(settings) for name,settings in details.items()}
+        parts = {name:factory.load_parts(settings) for name,settings in details.items()}
         return cls(parts=parts, **config)
     
     @property
     def connection_details(self):
+        """Connection details of each part"""
         return {name:part.connection_details for name,part in self._parts.items()}
     
     @property
     def is_busy(self):
+        """Whether any part is busy"""
         return any(part.is_busy for part in self._parts.values())
     
     @property
     def is_connected(self):
+        """Whether all parts are connected"""
         return all(part.is_connected for part in self._parts.values())
     
     @property
     def verbose(self) -> bool:
-        """Get verbosity of class"""
+        """Verbosity of class"""
         return self.flags.verbose
     @verbose.setter
     def verbose(self, value:bool):
-        """Set verbosity of class"""
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
         for part in self._parts.values():
@@ -96,14 +164,17 @@ class Compound:
     
     @property
     def parts(self) -> SimpleNamespace[str,Part]:
+        """Namespace of parts"""
         return SimpleNamespace(**self._parts)
     
     def connect(self):
+        """Connect to each component Part"""
         for part in self._parts.values():
             part.connect()
         return
     
     def disconnect(self):
+        """Disconnect from each component Part"""
         for part in self._parts.values():
             part.disconnect()
         return
@@ -116,21 +187,63 @@ class Compound:
         return
     
     def shutdown(self):
+        """Shutdown each component Part"""
         for part in self._parts.values():
             part.shutdown()
         return
     
 
 class Ensemble(Compound):
+    """ 
+    Ensemble class is an aggregation of duplicate part tools to form multiple channels.
+    Do not instantiate this class directly. Use the `factory` method to generate the desired class first.
+    
+    ## Constructor:
+        `parts` (dict[str,Part]): dictionary of parts
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+        
+    ## Attributes and properties:
+        `channels` (dict[int,Part]): dictionary of channels
+        `verbose` (bool): verbosity of class
+        
+    ## Class methods:
+        `create`: factory method to instantiate Ensemble from channels and part details
+        `factory`: factory method to generate Ensemble class from parent class
+        `fromConfig`: factory method to create Compound from configuration dictionary
+        
+    ## Methods:
+        `connect`: connect to each component Part
+        `disconnect`: disconnect from each component Part
+        `resetFlags`: reset all flags to class attribute `_default_flags`
+        `shutdown`: shutdown each component Part
+    """
+    
     _channel_class: Part = Part
     _channel_prefix: str = "chn_"
     def __init__(self, *args, parts: dict[str,Part], verbose:bool = False, **kwargs):
+        """
+        Initialise Ensemble class
+
+        Args:
+            parts (dict[str,Part]): dictionary of parts
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         parts = {f"{self._channel_prefix}{chn}":part for chn,part in parts.items()}
         super().__init__(*args, parts=parts, verbose=verbose, **kwargs)
         return
     
     @classmethod
-    def create(cls, channels: Sequence[int], details:dict|Sequence[dict], *args, **kwargs):
+    def create(cls, channels: Sequence[int], details:dict|Sequence[dict], *args, **kwargs) -> Type[Ensemble]:
+        """
+        Factory method to instantiate Ensemble from channels and part details
+
+        Args:
+            channels (Sequence[int]): sequence of channels
+            details (dict | Sequence[dict]): dictionary or sequence of dictionaries of part details
+
+        Returns:
+            Type[Ensemble]: subclass of Ensemble class
+        """
         if isinstance(details,dict):
             details = [details]*len(channels)
         elif isinstance(details,Sequence) and len(details) == 1:
@@ -146,7 +259,16 @@ class Ensemble(Compound):
         return cls(parts=parts, **kwargs)
     
     @classmethod
-    def factory(cls, parent: type) -> Ensemble:
+    def factory(cls, parent: type) -> Type[Ensemble]:
+        """
+        Factory method to generate Ensemble class from parent class
+
+        Args:
+            parent (type): parent class
+
+        Returns:
+            Type[Ensemble]: subclass of Ensemble class
+        """
         assert inspect.isclass(parent), "Ensure the argument for `parent` is a class"
         attrs = {attr:cls._make_multichannel(getattr(parent,attr)) for attr in dir(parent) if callable(getattr(parent,attr)) and (attr not in dir(cls))}
         attrs.update({"_channel_class":parent})
@@ -155,10 +277,20 @@ class Ensemble(Compound):
     
     @property
     def channels(self) -> dict[int,Part]:
+        """Dictionary of channels"""
         return {int(chn.replace(self._channel_prefix,"")):part for chn,part in self._parts.items()}
     
     @classmethod
     def _make_multichannel(cls, function: Callable) -> Callable:
+        """
+        Make a function multichannel
+
+        Args:
+            function (Callable): function or method to be made multichannel
+
+        Returns:
+            Callable: multichannel function
+        """
         func_name = function.__name__
         def func(self, *args, channel: int|Sequence[int]|None = None, **kwargs) -> list|None:
             outs = []
@@ -196,6 +328,15 @@ class Ensemble(Compound):
         return func
     
     def _get_channel(self, channel:int|Sequence[int]|None = None) -> dict[str,Part]:
+        """
+        Get channel(s)
+        
+        Args:
+            channel (int|Sequence[int]|None, optional): select channel(s). Defaults to None.
+            
+        Returns:
+            dict[str,Part]: dictionary of channel(s)
+        """
         if channel is None:
             return self.channels
         elif isinstance(channel, int):
@@ -210,8 +351,43 @@ class Ensemble(Compound):
 
 
 class Combined:
+    """
+    Combined class is an composition of multiple part tools.
+    Do not instantiate this class directly.
+    Subclass this class to create a specific Combined tool.
+    
+    ## Constructor:
+        `parts` (dict[str,Part]): dictionary of parts
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+        
+    ## Attributes and properties:
+        `device` (Device): device object
+        `connection_details` (dict): connection details for the device
+        `parts` (SimpleNamespace[str,Part]): namespace of parts
+        `flags` (SimpleNamespace[str,bool]): flags of class
+        `is_busy` (bool): whether any part is busy
+        `is_connected` (bool): whether all parts are connected
+        `verbose` (bool): verbosity of class
+        
+    ## Class methods:
+        `fromConfig`: factory method to create Combined from configuration dictionary
+        
+    ## Methods:
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `resetFlags`: reset all flags to class attribute `_default_flags`
+        `shutdown`: shutdown the device
+    """
+    
     _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, verbose=False)
     def __init__(self, *args, parts: dict[str,Part], verbose:bool = False, **kwargs):
+        """
+        Initialise Combined class
+
+        Args:
+            parts (dict[str,Part]): dictionary of parts
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         self.device: Device = kwargs.get('device', DeviceFactory.createDeviceFromDict(kwargs))
         self._parts = parts
         self.flags = deepcopy(self._default_flags)
@@ -232,32 +408,42 @@ class Combined:
         return
     
     @classmethod
-    def fromConfig(cls, config:dict):
+    def fromConfig(cls, config:dict) -> Type[Combined]:
+        """
+        Factory method to create Combined from configuration dictionary
+        
+        Args:
+            config (dict): configuration dictionary
+            
+        Returns:
+            Type[Combined]: instance of Combined (or its subclasses)
+        """
         details = config.pop('details')
         device = DeviceFactory.createDeviceFromDict(config)
-        parts = {name:load_parts(settings, device=device) for name,settings in details.items()}
+        parts = {name:factory.load_parts(settings, device=device) for name,settings in details.items()}
         return cls(device=device, parts=parts, **config)
     
     @property
     def connection_details(self):
-        return {name:part.connection_details for name,part in self._parts.items()}
+        """Connection details for the device"""
+        return self.device.connection_details
     
     @property
     def is_busy(self):
+        """Whether any part is busy"""
         return any(part.is_busy for part in self._parts.values())
     
     @property
     def is_connected(self) -> bool:
-        """Get connection status"""
+        """Whether all parts are connected"""
         return self.device.is_connected
     
     @property
     def verbose(self) -> bool:
-        """Get verbosity of class"""
+        """Verbosity of class"""
         return self.flags.verbose
     @verbose.setter
     def verbose(self, value:bool):
-        """Set verbosity of class"""
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
         for part in self._parts.values():
@@ -271,15 +457,16 @@ class Combined:
     
     @property
     def parts(self) -> SimpleNamespace[str,Part]:
+        """Namespace of parts"""
         return SimpleNamespace(**self._parts)
     
     def connect(self):
-        """Reconnect to device using existing connection details"""
+        """Connect to the device"""
         self.device.connect()
         return
     
     def disconnect(self):
-        """Disconnect from device"""
+        """Disconnect from the device"""
         self.device.disconnect()
         return
     
@@ -291,16 +478,51 @@ class Combined:
         return
     
     def shutdown(self):
+        """Shutdown the device"""
         for part in self._parts.values():
             part.shutdown()
         return
 
 
 class Multichannel(Combined):
+    """
+    Multichannel class is an composition of duplicate part tools to form multiple channels.
+    
+    ## Constructor:
+        `parts` (dict[str,Part]): dictionary of parts
+        `coupled` (bool, optional): whether channels are coupled. Defaults to False.
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+        
+    ## Attributes and properties:
+        `channels` (dict[int,Part]): dictionary of channels
+        `verbose` (bool): verbosity of class
+        
+    ## Class methods:
+        `create`: factory method to instantiate Multichannel from channels and part details
+        `factory`: factory method to generate Multichannel class from parent class
+        `fromConfig`: factory method to create Combined from configuration dictionary
+        
+    ## Methods:
+        `setActiveChannel`: set active channel
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `resetFlags`: reset all flags to class attribute `_default_flags`
+        `shutdown`: shutdown the device
+    """
+    
     _channel_class: Part = Part
     _channel_prefix: str = "chn_"
     _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, verbose=False, coupled=False)
     def __init__(self, *args, parts: dict[str,Part], coupled:bool = False, verbose:bool = False, **kwargs):
+        """
+        Initialise Multichannel class
+        
+        Args:
+            parts (dict[str,Part]): dictionary of parts
+            coupled (bool, optional): whether channels are coupled. Defaults to False.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
+        logger.warning("Multichannel class and factory method is still under development")      # TODO: Remove this line
         parts = {f"{self._channel_prefix}{chn}":part for chn,part in parts.items()}
         super().__init__(*args, parts=parts, verbose=verbose, **kwargs)
         
@@ -310,7 +532,18 @@ class Multichannel(Combined):
         return
     
     @classmethod
-    def create(cls, channels: Sequence[int], details:dict|Sequence[dict], *args, **kwargs):
+    def create(cls, channels: Sequence[int], details:dict|Sequence[dict], *args, **kwargs) -> Type[Multichannel]:
+        """
+        Factory method to instantiate Multichannel from channels and part details
+        
+        Args:
+            channels (Sequence[int]): sequence of channels
+            details (dict | Sequence[dict]): dictionary or sequence of dictionaries of part details
+            
+        Returns:
+            Type[Multichannel]: subclass of Multichannel class
+        """
+        logger.warning("Multichannel class and factory method is still under development")      # TODO: Remove this line
         if isinstance(details,dict):
             details = [details]*len(channels)
         elif isinstance(details,Sequence) and len(details) == 1:
@@ -326,7 +559,17 @@ class Multichannel(Combined):
         return cls(parts=parts, **kwargs)
     
     @classmethod
-    def factory(cls, parent: type) -> Multichannel:
+    def factory(cls, parent: type) -> Type[Multichannel]:
+        """
+        Factory method to generate Multichannel class from parent
+        
+        Args:
+            parent (type): parent class
+            
+        Returns:
+            Type[Multichannel]: subclass of Multichannel class
+        """
+        logger.warning("Multichannel class and factory method is still under development")      # TODO: Remove this line
         assert inspect.isclass(parent), "Ensure the argument for `parent` is a class"
         attrs = {attr:cls._make_multichannel(getattr(parent,attr)) for attr in dir(parent) if callable(getattr(parent,attr)) and (attr not in dir(cls))}
         attrs.update({"_channel_class":parent})
@@ -335,10 +578,20 @@ class Multichannel(Combined):
     
     @property
     def channels(self) -> dict[int,Part]:
+        """Dictionary of channels"""
         return {int(chn.replace(self._channel_prefix,"")):part for chn,part in self._parts.items()}
     
     @classmethod
     def _make_multichannel(cls, function: Callable) -> Callable:
+        """
+        Make a function multichannel
+        
+        Args:
+            function (Callable): function or method to be made multichannel
+            
+        Returns:
+            Callable: multichannel function
+        """
         func_name = function.__name__
         def func(self, *args, channel: int|Sequence[int]|None = None, **kwargs) -> list|None:
             # device = cls._get_device(self)
@@ -378,6 +631,15 @@ class Multichannel(Combined):
         return func
     
     def _get_channel(self, channel:int|Sequence[int]|None = None) -> dict[str,Part]:
+        """
+        Get channel(s)
+        
+        Args:
+            channel (int|Sequence[int]|None, optional): select channel(s). Defaults to None.
+            
+        Returns:
+            dict[str,Part]: dictionary of channel(s)
+        """
         if channel is None:
             return self.channels
         elif isinstance(channel, int):
@@ -392,7 +654,12 @@ class Multichannel(Combined):
         raise ValueError(f"Invalid channel input: {channel}")
     
     def setActiveChannel(self, channel:int|None = None):
-        """Set the active channel"""
+        """
+        Set active channel
+        
+        Args:
+            channel (int|None, optional): select channel. Defaults to None.
+        """
         if channel is None:
             self.active_channel = list(self.channels.keys())[0]
             return
