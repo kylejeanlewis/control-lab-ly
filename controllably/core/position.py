@@ -492,9 +492,11 @@ class Labware:
         `z` (float): z offset
         `offset` (numpy.ndarray): Labware offset from Slot reference point
         `center` (numpy.ndarray): center of Labware
+        `top` (numpy.ndarray): top of well
         `bottom_left_corner` (Position): bottom left corner of Labware
         `dimensions` (numpy.ndarray): size of Labware
         `exclusion_zone` (BoundingBox): exclusion zone to avoid
+        `wells` (dict[str, Well]): wells by columns (alias for `wells_columns`)
         `wells_columns` (dict[str, Well]): wells by columns
         `wells_rows` (dict[str, Well]): wells by rows
         `columns` (dict[int, list[str]]): columns and wells in columns
@@ -509,6 +511,7 @@ class Labware:
         `fromFile`: factory method to load Labware from file
     
     ### Methods:
+        `fromTop`: offset from top of well
         `getWell`: get `Well` using its name
         `listColumns`: list wells by columns
         `listRows`: list  wells by rows
@@ -619,6 +622,11 @@ class Labware:
         return self.bottom_left_corner.coordinates + self.bottom_left_corner.Rotation.apply(self.offset)
     
     @property
+    def top(self) -> np.ndarray:
+        """Top of well"""
+        return self.center + np.array((0,0,self.z))
+    
+    @property
     def bottom_left_corner(self) -> Position:
         """Bottom left corner of Labware"""
         return self.reference
@@ -639,7 +647,12 @@ class Labware:
         first_column = self._ordering[0]
         rows_list = self.listRows()
         return {name[0]: rows_list[r] for r,name in enumerate(first_column)}
-       
+    
+    @property
+    def wells(self) -> dict[str, list[Well]]:
+        """Wells by columns (alias for `wells_columns`)"""
+        return self._wells
+    
     @property
     def wells_columns(self) -> dict[str, list[Well]]:
         """Wells by columns"""
@@ -654,6 +667,18 @@ class Labware:
     def at(self) -> SimpleNamespace:
         """Namespace of all wells"""
         return SimpleNamespace(**self._wells)
+    
+    def fromTop(self, offset:Sequence[float]|np.ndarray) -> np.ndarray:
+        """
+        Offset from top of well
+
+        Args:
+            offset (Sequence[float]|numpy.ndarray): x,y,z offset
+
+        Returns:
+            tuple: top of well with offset
+        """
+        return self.top + np.array(offset)
 
     def getWell(self, name:str) -> Well:
         """
@@ -1029,21 +1054,21 @@ class Deck:
                 parent_lineage = self.parent._nesting_lineage if isinstance(self.parent,Deck) else self._nesting_lineage
                 if deck_file in parent_lineage:
                     parent_str = '\n+ '.join([p.as_uri() for p in parent_lineage if p is not None])
-                    logger.error("Nested deck lineage:\n" + f"{parent_str}")
+                    logger.error(f"Nested deck lineage:\n{parent_str}")
                     raise ValueError(f"Deck '{deck_file}' is already in the nested deck lineage")
                 else:
                     self.loadNestedDeck(name=f"zone_{name}", details=details)
         return
     
     def __repr__(self) -> str:
-        slots_ref = ["\\"+f"__ {slot!r}" for slot in self.slots.values() if isinstance(slot, Slot)]
-        zones_ref = ["\\"+f"__ {zone!r}" for zone in self.zones.values()]
-        return f"{self.name} ({self.__class__.__name__}:{id(self)})" + "\n" + '\n'.join(slots_ref) + "\n\n" + '\n'.join(zones_ref)
+        slots_ref = '\n'.join([f"\\__ {slot!r}" for slot in self.slots.values() if isinstance(slot, Slot)])
+        zones_ref = '\n'.join([f"\\__ {zone!r}" for zone in self.zones.values()])
+        return f"{self.name} ({self.__class__.__name__}:{id(self)})\n{slots_ref}\n\n{zones_ref}" 
     
     def __str__(self) -> str:
-        slots_name = [f"+ {slot!s}" for slot in self.slots.values()]
-        zones_name = [f"+ {zone!s}" for zone in self.zones.values()]
-        return f"{self.name} comprising:" + "\n" + '\n'.join(slots_name) + "\n" + '\n'.join(zones_name)
+        slots_name = '\n'.join([f"+ {slot!s}" for slot in self.slots.values()])
+        zones_name = '\n'.join([f"+ {zone!s}" for zone in self.zones.values()])
+        return f"{self.name} comprising:\n{slots_name}\n{zones_name}"
     
     @classmethod
     def fromConfigs(cls, details:dict[str, Any], parent:Deck|None = None, _nesting_lineage:Sequence[Path|None]=(None,)):
