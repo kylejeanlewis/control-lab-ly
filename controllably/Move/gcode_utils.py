@@ -20,7 +20,8 @@ logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 LOOP_INTERVAL = 0.1
-TIMEOUT = 30
+MOVEMENT_BUFFER = 1
+MOVEMENT_TIMEOUT = 30
 
 class GCodeDevice(Protocol):
     connection_details: dict
@@ -73,6 +74,8 @@ class GCode(Mover):
         *,
         device_type_name: str = 'GRBL',
         baudrate: int = 115200,
+        movement_buffer: int|None = None,
+        movement_timeout: int|None = None,
         verbose: bool = False,
         **kwargs
     ):
@@ -82,23 +85,34 @@ class GCode(Mover):
         super().__init__(device_type=device_type, port=port, baudrate=baudrate, verbose=verbose, **kwargs)
         assert isinstance(self.device, (GRBL,Marlin)), "Ensure device is of type `GRBL` or `Marlin`"
         self.device: GRBL|Marlin = self.device
+        self.movement_buffer = movement_buffer if movement_buffer is not None else MOVEMENT_BUFFER
+        self.movement_timeout = movement_timeout if movement_timeout is not None else MOVEMENT_TIMEOUT
         return
     
     def halt(self) -> Position:
         position = self.device.halt()
-        self.position = position
-        return  position
+        self._robot_position = position
+        logger.warning(f"Halted at {position}")
+        logger.warning('To cancel movement, reset robot and re-home')
+        logger.warning('To resume movement, use `resume` method')           # TODO: check Marlin resume command
+        return position
     
     def home(self, axis: str|None = None) -> Position:
         if isinstance(self.device, GRBL):
             if axis is not None:
                 assert axis.upper() in 'XYZ', "Ensure axis is X,Y,Z for GRBL"
             command = '$H' if axis is None else f'$H{axis.upper()}'
-            self.query(command, wait=True)
+            self.query(command)
+            success = self._wait_for_status(('Home',), timeout=self.movement_timeout)
+            if not success:
+                status,_,_ = self.device.checkStatus()
+                logger.error(f"Timeout: {status} | {command}")
+                return self.robot_position
         elif isinstance(self.device, Marlin):
             if axis is not None:
                 logger.warning("Ignoring homing axis parameter for Marlin firmware")
-            self.query('G90 G28', wait=True)
+            self.query('G90')
+            self.query('G28')
         else:
             raise NotImplementedError
         self.updateRobotPosition(to=self.home_position)
@@ -133,14 +147,16 @@ class GCode(Mover):
         
         # Implementation of relative movement
         mode = 'G0' if rapid else 'G1'
-        command_xy = f'G91 {mode} X{move_by.x} Y{move_by.y}'
-        command_z = f'G91 {mode} Z{move_by.z}'
+        command_xy = f'{mode} X{move_by.x} Y{move_by.y}'
+        command_z = f'{mode} Z{move_by.z}'
         commands = (command_z, command_xy) if (move_by.z > 0) else (command_xy, command_z)
         self.setSpeedFactor(speed_factor, persist=False)
+        self.query('G91')
         for command in commands:
             self.query(command, jog=jog, wait=True)
         self.query('G90')
         self.setSpeedFactor(self.speed_factor, persist=False)
+        time.sleep(0.5)
         
         # Update position
         self.updateRobotPosition(by=move_by)
@@ -168,13 +184,15 @@ class GCode(Mover):
         
         # Implementation of absolute movement
         mode = 'G0' if rapid else 'G1'
-        command_xy = f'G90 {mode} X{move_to.x} Y{move_to.y}'
-        command_z = f'G90 {mode} Z{move_to.z}'
+        command_xy = f'{mode} X{move_to.x} Y{move_to.y}'
+        command_z = f'{mode} Z{move_to.z}'
         commands = (command_z, command_xy) if (self.position.z < move_to.z) else (command_xy, command_z)
         self.setSpeedFactor(speed_factor, persist=False)
+        self.query('G90')
         for command in commands:
             self.query(command, jog=jog, wait=True)
         self.setSpeedFactor(self.speed_factor, persist=False)
+        time.sleep(0.5)
         
         # Update position
         self.updateRobotPosition(to=move_to)
@@ -182,36 +200,31 @@ class GCode(Mover):
     
     def query(self, data:str, *, jog:bool = False, wait:bool = False) -> Any:
         if jog:
-            assert isinstance(self.device, GRBL), "Ensure device is of type `GRBL`"
-            assert self.device.__version__().startswith("1.1"), "Ensure GRBL version is at least 1.1"
+            assert isinstance(self.device, GRBL), "Ensure device is of type `GRBL` to perform jog movements"
+            assert self.device.__version__().startswith("1.1"), "Ensure GRBL version is at least 1.1 to perform jog movements"
             data = data.replace('G0 ', '').replace('G1 ', '')
             data = f'$J={data} F{self.speed}'
             self.device.write(data)
             return self.device.read()
+        if not wait:
+            self.device.write(data)
+            return self.device.read()
         
-        status,_,_ = self.device.checkStatus()
-        start_time = time.perf_counter()
-        while status not in ('Idle',):
-            time.sleep(LOOP_INTERVAL)
+        success = self._wait_for_status(('Idle',), timeout=MOVEMENT_TIMEOUT)
+        if not success:
             status,_,_ = self.device.checkStatus()
+            logger.error(f"Timeout: {status} | {data}")
             if status == 'Jog':
                 raise RuntimeError("Jog mode still active")
-            if time.perf_counter() - start_time > TIMEOUT:
-                logger.error(f"Timeout: {status} | {data}")
-                break
+            return []
         
         self.device.write(data)
         response = self.device.read()
-        if not wait:
-            return response
         
-        start_time = time.perf_counter()
-        while status not in ('Idle',):
-            time.sleep(LOOP_INTERVAL)
+        success = self._wait_for_status(('Idle',), timeout=self.movement_timeout)
+        if not success:
             status,_,_ = self.device.checkStatus()
-            if time.perf_counter() - start_time > TIMEOUT:
-                logger.error(f"Timeout: {status} | {data}")
-                break
+            logger.error(f"Timeout: {status} | {data}")
         return response
     
     def reset(self):
@@ -238,10 +251,22 @@ class GCode(Mover):
         self.query(command)
         return state
     
+    def _wait_for_status(self, statuses:Sequence[str], timeout:int = MOVEMENT_TIMEOUT) -> bool:
+        status,_,_ = self.device.checkStatus()
+        start_time = time.perf_counter()
+        while status not in statuses:
+            time.sleep(LOOP_INTERVAL)
+            status,_,_ = self.device.checkStatus()
+            if status == 'Hold':
+                raise RuntimeError("Movement paused")
+            if time.perf_counter() - start_time > timeout:
+                return False
+        return True
+    
     # Overwritten methods
     def connect(self):
         self.device.connect()
         self.setSpeedFactor(1.0)
-        settings = self.device.checkSettings()
-        print(settings)
+        self._settings = self.device.checkSettings()
+        print(self._settings)
         return
