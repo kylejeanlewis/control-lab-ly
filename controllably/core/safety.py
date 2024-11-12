@@ -5,15 +5,15 @@ The decorator function is used to create guardrails for functions and functions,
 The module also contains functions to set and reset the safety level for the safety measures.
 
 Attributes:
-    DEBUG (int): safety mode that logs the function call
-    DELAY (int): safety mode that waits for a few seconds before executing. Defaults to 3.
-    SUPERVISED (int): safety mode that requires user input before executing
-    safety_mode (int): safety mode for the safety measures
+    DEBUG (int): Safety mode that logs the function call
+    DELAY (int): Safety mode that waits for a few seconds before executing. Defaults to 3.
+    SUPERVISED (int): Safety mode that requires user input before executing
+    safety_mode (int): Safety mode for the safety measures
 
 ## Functions:
-    guard (decorator)
-    set_level
-    reset_level
+    `guard` (decorator): Decorator for creating guardrails for functions and functions, especially involving movement
+    `set_level`: Set the safety level for the safety measures
+    `reset_level`: Reset the safety level to None
     
 <i>Documentation last updated: 2024-11-12</i>
 """
