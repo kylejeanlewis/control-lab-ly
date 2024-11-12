@@ -15,7 +15,7 @@ Attributes:
     `BoundingBox`: represents a 3D bounding box
     
 ## Functions:
-    `get_transform`: get transformation matrix from initial to final points, with the first point in each set being the center of rotation
+    `get_transform`: Get transformation matrix from initial to final points, with the first point in each set being the center of rotation
 
 <i>Documentation last updated: 2024-11-12</i>
 """
@@ -36,7 +36,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 
 # Local application imports
-from .file_handler import read_config_file, resolve_repo_filepath
+from . import file_handler
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -592,9 +592,9 @@ class Labware:
             from_repo (bool, optional): whether to load from repo. Defaults to True.
         """
         assert isinstance(labware_file,(str,Path)), "Please input a valid filepath"
-        filepath = Path(labware_file) if not from_repo else resolve_repo_filepath(labware_file)
+        filepath = Path(labware_file) if not from_repo else file_handler.resolve_repo_filepath(labware_file)
         assert filepath.is_file(), "Please input a valid Labware filepath"
-        details = read_config_file(filepath)
+        details = file_handler.read_config_file(filepath)
         return cls.fromConfigs(details=details, parent=parent)
     
     # Properties
@@ -806,7 +806,7 @@ class Slot:
         self._dimensions = tuple(dimensions)
         
         labware_file = Path(self._details.get('labware_file',''))
-        labware_file = resolve_repo_filepath(labware_file) if not labware_file.is_absolute() else labware_file
+        labware_file = file_handler.resolve_repo_filepath(labware_file) if not labware_file.is_absolute() else labware_file
         if labware_file.is_file():
             self.loadLabwareFromFile(labware_file=labware_file)
             assert isinstance(self.loaded_labware, Labware), "Labware not loaded"
@@ -1024,7 +1024,7 @@ class Deck:
         self._slots = {f"slot_{int(idx):02}":Slot(name=f"slot_{int(idx):02}", _details=details, parent=self) for idx,details in self._details.get('slots',{}).items()}
         for name,details in self._details.get('zones',{}).items():
             deck_file = Path(details.get('deck_file',''))
-            deck_file = resolve_repo_filepath(deck_file) if not deck_file.is_absolute() else deck_file
+            deck_file = file_handler.resolve_repo_filepath(deck_file) if not deck_file.is_absolute() else deck_file
             if deck_file.is_file():
                 parent_lineage = self.parent._nesting_lineage if isinstance(self.parent,Deck) else self._nesting_lineage
                 if deck_file in parent_lineage:
@@ -1076,9 +1076,9 @@ class Deck:
             Deck: `Deck` object
         """
         assert isinstance(deck_file,(str,Path)), "Please input a valid filepath"
-        filepath = Path(deck_file) if not from_repo else resolve_repo_filepath(deck_file)
+        filepath = Path(deck_file) if not from_repo else file_handler.resolve_repo_filepath(deck_file)
         assert filepath.is_file(), "Please input a valid Deck filepath"
-        details = read_config_file(filepath)
+        details = file_handler.read_config_file(filepath)
         return cls.fromConfigs(details=details, parent=parent, _nesting_lineage=(filepath,))
     
     # Properties
@@ -1180,7 +1180,7 @@ class Deck:
             details (dict): dictionary read from Deck file
         """
         deck_file = Path(details.pop('deck_file',''))
-        deck_file = resolve_repo_filepath(deck_file) if not deck_file.is_absolute() else deck_file
+        deck_file = file_handler.resolve_repo_filepath(deck_file) if not deck_file.is_absolute() else deck_file
         assert deck_file.is_file(), "Please input a valid Deck filepath"
         with open(deck_file, 'r') as file:
             nested_details = json.load(file)
