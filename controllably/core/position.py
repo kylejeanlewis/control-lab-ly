@@ -1036,14 +1036,14 @@ class Deck:
         return
     
     def __repr__(self) -> str:
-        slots_ref = [f"\\__ {slot!r}" for slot in self.slots.values() if isinstance(slot, Slot)]
-        zones_ref = [f"\\__ {zone!r}" for zone in self.zones.values()]
-        return f"{self.name} ({self.__class__.__name__}:{id(self)})\n{'\n'.join(slots_ref)}\n\n{'\n'.join(zones_ref)}" 
+        slots_ref = '\n'.join([f"\\__ {slot!r}" for slot in self.slots.values() if isinstance(slot, Slot)])
+        zones_ref = '\n'.join([f"\\__ {zone!r}" for zone in self.zones.values()])
+        return f"{self.name} ({self.__class__.__name__}:{id(self)})\n{slots_ref}\n\n{zones_ref}" 
     
     def __str__(self) -> str:
-        slots_name = [f"+ {slot!s}" for slot in self.slots.values()]
-        zones_name = [f"+ {zone!s}" for zone in self.zones.values()]
-        return f"{self.name} comprising:\n{'\n'.join(slots_name)}\n{'\n'.join(zones_name)}"
+        slots_name = '\n'.join([f"+ {slot!s}" for slot in self.slots.values()])
+        zones_name = '\n'.join([f"+ {zone!s}" for zone in self.zones.values()])
+        return f"{self.name} comprising:\n{slots_name}\n{zones_name}"
     
     @classmethod
     def fromConfigs(cls, details:dict[str, Any], parent:Deck|None = None, _nesting_lineage:Sequence[Path|None]=(None,)):
