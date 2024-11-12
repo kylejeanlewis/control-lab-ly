@@ -122,7 +122,7 @@ class Position:
         return
     
     def __repr__(self):
-        return f"Position {self._coordinates} with ({self.rotation_type}) rotation\n{self.rotation}"
+        return f"Position {self._coordinates} with ({self.rotation_type}) rotation {self.rotation}"
     
     @property
     def coordinates(self) -> np.ndarray[float]:
@@ -1029,21 +1029,21 @@ class Deck:
                 parent_lineage = self.parent._nesting_lineage if isinstance(self.parent,Deck) else self._nesting_lineage
                 if deck_file in parent_lineage:
                     parent_str = '\n+ '.join([p.as_uri() for p in parent_lineage if p is not None])
-                    logger.error(f"Nested deck lineage:\n{parent_str}")
+                    logger.error("Nested deck lineage:\n" + f"{parent_str}")
                     raise ValueError(f"Deck '{deck_file}' is already in the nested deck lineage")
                 else:
                     self.loadNestedDeck(name=f"zone_{name}", details=details)
         return
     
     def __repr__(self) -> str:
-        slots_ref = [f"\\__ {slot!r}" for slot in self.slots.values() if isinstance(slot, Slot)]
-        zones_ref = [f"\\__ {zone!r}" for zone in self.zones.values()]
-        return f"{self.name} ({self.__class__.__name__}:{id(self)})\n{'\n'.join(slots_ref)}\n\n{'\n'.join(zones_ref)}" 
+        slots_ref = ["\\"+f"__ {slot!r}" for slot in self.slots.values() if isinstance(slot, Slot)]
+        zones_ref = ["\\"+f"__ {zone!r}" for zone in self.zones.values()]
+        return f"{self.name} ({self.__class__.__name__}:{id(self)})" + "\n" + '\n'.join(slots_ref) + "\n\n" + '\n'.join(zones_ref)
     
     def __str__(self) -> str:
         slots_name = [f"+ {slot!s}" for slot in self.slots.values()]
         zones_name = [f"+ {zone!s}" for zone in self.zones.values()]
-        return f"{self.name} comprising:\n{'\n'.join(slots_name)}\n{'\n'.join(zones_name)}"
+        return f"{self.name} comprising:" + "\n" + '\n'.join(slots_name) + "\n" + '\n'.join(zones_name)
     
     @classmethod
     def fromConfigs(cls, details:dict[str, Any], parent:Deck|None = None, _nesting_lineage:Sequence[Path|None]=(None,)):
