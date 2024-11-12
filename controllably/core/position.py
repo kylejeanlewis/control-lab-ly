@@ -1,4 +1,24 @@
 # -*- coding: utf-8 -*-
+"""
+This module contains classes and functions for dealing with positioning in a robotic set up.
+
+Attributes:
+    MTP_DIMENSIONS (tuple[float]): Microtiter plate dimensions in mm
+    OBB_DIMENSIONS (tuple[float]): Optical Breadboard dimensions in mm
+
+## Classes:
+    `Position`: represents a 3D position with orientation
+    `Well`: represents a single well in a Labware object
+    `Labware`: represents a single Labware object
+    `Slot`: represents a single Slot object on a Deck object or another Labware object (for stackable Labware)
+    `Deck`: represents a Deck object
+    `BoundingBox`: represents a 3D bounding box
+    
+## Functions:
+    `get_transform`: get transformation matrix from initial to final points, with the first point in each set being the center of rotation
+
+<i>Documentation last updated: 2022-11-12</i>
+"""
 # Standard library imports
 from __future__ import annotations
 from dataclasses import dataclass, field
@@ -23,7 +43,9 @@ logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 MTP_DIMENSIONS = (127.76,85.48,0)
+"""Microtiter plate dimensions in mm"""
 OBB_DIMENSIONS = (300,300,0)
+"""Optical Breadboard dimensions in mm"""
 
 def get_transform(initial_points: np.ndarray, final_points:np.ndarray) -> tuple[Position,float]:
     """
