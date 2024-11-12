@@ -122,7 +122,7 @@ class Position:
         return
     
     def __repr__(self):
-        return f"Position {self._coordinates} with ({self.rotation_type}) rotation\n{self.rotation}"
+        return f"Position {self._coordinates} with ({self.rotation_type}) rotation {self.rotation}"
     
     @property
     def coordinates(self) -> np.ndarray[float]:
