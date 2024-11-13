@@ -11,15 +11,17 @@ from __future__ import annotations
 import logging
 from threading import Thread
 import time
+from typing import final
 
 # Local application imports
 from ...core.compound import Ensemble
-from ..make_utils import Maker
+from .. import Maker
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
+@final
 class Spinner(Maker):
     """
     Spinner provides methods to control a single spin coater controller unit
