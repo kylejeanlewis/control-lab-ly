@@ -391,6 +391,12 @@ class Mover:
         raise NotImplementedError
         return self.robot_position if robot else self.tool_position
     
+    def moveToSafeHeight(self,speed_factor: float|None = None) -> Position:
+        # Move up to safe height
+        current_position = self.robot_position
+        safe_position = Position(current_position.coordinates[:2]+[self.safe_height], current_position.Rotation)
+        return self.moveTo(safe_position, speed_factor)
+    
     def moveRobotTo(self,
         to: Sequence[float]|Position,
         speed_factor: float|None = None,
@@ -509,8 +515,7 @@ class Mover:
         speed_factor_down = self.speed_factor if speed_factor_down is None else speed_factor_down
         
         # Move up to safe height
-        current_position = self.robot_position
-        self.move('z', max(0,self.safe_height-current_position.z), speed_factor_up)
+        self.moveToSafeHeight(speed_factor=speed_factor_up)
         
         # Move laterally to safe height above target position
         if isinstance(to,Position) and rotation_before_lateral:
