@@ -12,10 +12,6 @@ Classes:
 """
 # Standard library imports
 from enum import Enum
-import logging
-
-logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
 
 class ELMStateCode(Enum):
     es0     = "ELM is moving"

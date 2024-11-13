@@ -10,11 +10,6 @@ Other types:
 # Standard library imports
 from collections import namedtuple
 from enum import Enum
-import logging
-
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
-logger.debug(f"Import: OK <{__name__}>")
 
 Message = namedtuple('Message', ['message','description'])
 """Message is a named tuple for a pair of message and its description"""
