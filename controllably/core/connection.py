@@ -156,9 +156,9 @@ class SerialDevice:
         port: str|None = None, 
         baudrate: int = 9600, 
         timeout: int = 1, 
+        *,
         init_timeout: int = 2,
         message_end: str = '\n',
-        *,
         simulation: bool = False,
         verbose: bool = False,
         **kwargs
@@ -384,7 +384,7 @@ class SocketDevice:
     """
     
     _default_flags: SimpleNamespace = SimpleNamespace(verbose=False, connected=False, simulation=False)
-    def __init__(self, host:str, port:int, timeout:int=1, *, simulation:bool=False, **kwargs):
+    def __init__(self, host:str, port:int, timeout:int=1, *, simulation:bool=False, verbose:bool = False, **kwargs):
         """
         Initialize SocketDevice class
         
@@ -399,9 +399,12 @@ class SocketDevice:
         self.port = port
         self.timeout = timeout
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.flags = SimpleNamespace(verbose=False, connected=False, simulation=simulation)
+        self.flags = deepcopy(self._default_flags)
         
         self.socket.settimeout(self.timeout)
+        
+        self.verbose = verbose
+        self.flags.simulation = simulation
         return
 
     @property

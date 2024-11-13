@@ -22,6 +22,9 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
+VALID_BAUDRATES = (110, 300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200)
+"""Valid baudrates for serial devices"""
+
 class QInstrumentsDevice:
     """
     QInstrumentsDevice surfaces available actions to control devices from QInstruments, including orbital shakers,
@@ -123,6 +126,7 @@ class QInstrumentsDevice:
     - `write`: write command to device
     """
     
+    _default_flags: SimpleNamespace = SimpleNamespace(verbose=False, connected=False, simulation=False)
     def __init__(self,
         port: str|None = None, 
         baudrate: int = 9600, 
@@ -130,6 +134,8 @@ class QInstrumentsDevice:
         *,
         init_timeout: int = 5,
         message_end: str = '\r',
+        simulation: bool = False,
+        verbose: bool = False,
         **kwargs
     ):
         """
@@ -150,9 +156,44 @@ class QInstrumentsDevice:
         self.flags = SimpleNamespace(verbose=False)
         
         self.serial = serial.Serial()
-        self.serial.port = self.port
-        self.serial.baudrate = self.baudrate
-        self.serial.timeout = self.timeout
+        self.port = port
+        self.baudrate = baudrate
+        self.timeout = timeout
+        
+        self.verbose = verbose
+        self.flags.simulation = simulation
+        return
+    
+    @property
+    def port(self) -> str:
+        """Device serial port"""
+        return self._port
+    @port.setter
+    def port(self, value:str):
+        self._port = value
+        self.serial.port = value
+        return
+    
+    @property
+    def baudrate(self) -> int:
+        """Device baudrate"""
+        return self._baudrate
+    @baudrate.setter
+    def baudrate(self, value:int):
+        assert isinstance(value, int), "Ensure baudrate is an integer"
+        assert value in VALID_BAUDRATES, f"Ensure baudrate is one of the standard values: {VALID_BAUDRATES}"
+        self._baudrate = value
+        self.serial.baudrate = value
+        return
+    
+    @property
+    def timeout(self) -> int:
+        """Device timeout"""
+        return self._timeout
+    @timeout.setter
+    def timeout(self, value:int):
+        self._timeout = value
+        self.serial.timeout = value
         return
     
     @property
@@ -177,7 +218,8 @@ class QInstrumentsDevice:
         Returns:
             bool: whether the device is connected
         """
-        return self.serial.is_open
+        connected = self.flags.connected if self.flags.simulation else self.serial.is_open
+        return connected
     
     @property
     def verbose(self) -> bool:
@@ -940,13 +982,17 @@ class QInstrumentsDevice:
         Connect to the device
         """
         try:
+            if self.is_connected:
+                return
             self.serial.open()
-            logger.info(f"Connected to {self.port} at {self.baudrate} baud")
-            time.sleep(self.init_timeout)
         except serial.SerialException as e:
             logger.error(f"Failed to connect to {self.port} at {self.baudrate} baud")
-            # logger.error(e)
+            logger.debug(e)
+        else:
+            logger.info(f"Connected to {self.port} at {self.baudrate} baud")
+            time.sleep(self.init_timeout)
         self.model = self.getDescription()
+        self.flags.connected = True
         return
     
     def disconnect(self):
@@ -954,17 +1000,22 @@ class QInstrumentsDevice:
         Disconnect from the device
         """
         try:
+            if not self.is_connected:
+                return
             self.serial.close()
-            logger.info(f"Disconnected from {self.port}")
         except serial.SerialException as e:
             logger.error(f"Failed to disconnect from {self.port}")
             logger.error(e)
+        else:
+            logger.info(f"Disconnected from {self.port}")
+        self.flags.connected = False
         return
     
     def query(self, 
             command:str, 
-            numeric:bool = False, 
             lines:bool = False, 
+            *,
+            numeric:bool = False, 
             timeout_s:float = 0.3
         ) -> Any:
         """
