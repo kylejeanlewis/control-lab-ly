@@ -143,6 +143,9 @@ class GRBL(SerialDevice):
         settings['max_speed_x'] = settings['$110']
         settings['max_speed_y'] = settings['$111']
         settings['max_speed_z'] = settings['$112']
+        settings['max_accel_x'] = settings['$120']
+        settings['max_accel_y'] = settings['$121']
+        settings['max_accel_z'] = settings['$122']
         settings['homing_pulloff'] = settings['$27']
         return settings
     
@@ -198,6 +201,8 @@ class GRBL(SerialDevice):
         """
         """
         self.query('!')
+        # self.clearAlarms()
+        # self.resume()
         _,coordinates,_home_offset = self.checkStatus()
         return Position(coordinates-_home_offset)
     
@@ -247,13 +252,12 @@ class GRBL(SerialDevice):
         startup_lines = self.read(True)
         self.clearAlarms()
         info = self.checkInfo()
-        version = info[0].split(':')[1]
+        self._version = info[0].split(':')[1]
         parameters = self.checkParameters()
         self._home_offset = np.array(parameters.get('G54', [0,0,0]))
         
         print(startup_lines)
-        print(f'GRBL version: {version}')
-        self._version = version
+        print(f'GRBL version: {self._version}')
         return
     
     def query(self, data: Any, lines:bool = True, *, timeout:int|None = None, jog:bool = False, wait:bool = False) -> list[str]|None:
