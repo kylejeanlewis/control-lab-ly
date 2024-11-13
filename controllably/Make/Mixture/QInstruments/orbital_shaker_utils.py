@@ -12,6 +12,7 @@ import logging
 from threading import Thread
 import time
 from types import SimpleNamespace
+from typing import final
 
 # Third party imports
 import pandas as pd
@@ -32,6 +33,7 @@ FLAGS = SimpleNamespace(
 )
 """Default flags for BioShake"""
 
+@final
 class BioShake(Maker):
     """
     BioShake provides methods to control
