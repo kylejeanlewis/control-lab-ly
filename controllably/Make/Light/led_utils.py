@@ -13,11 +13,13 @@ import logging
 from threading import Thread
 import time
 from types import SimpleNamespace
+from typing import final
 
 # Local application imports
-from ..make_utils import Maker
+from .. import Maker
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 @dataclass
@@ -68,10 +70,13 @@ class _LED:
             time_s (int, optional): duration in seconds. Defaults to 0.
         """
         self.power = value
+        if time_s:
+            print(f"{time_s} seconds for LED {self.channel}")
         self._duration = time_s
         return
     
 
+@final
 class LEDArray(Maker):
     """
     LEDArray provides methods to control an array of LEDs connected to a controller
@@ -180,7 +185,7 @@ class LEDArray(Maker):
     def startTiming(self):
         """Start counting down time left with LEDs on"""
         print("Timing...")
-        if not self.flags['timing_loop']:
+        if not self.flags.timing_loop:
             if 'timing_loop'in self._threads and self._threads['timing_loop'].is_alive():
                 return
             thread = Thread(target=self._loop_timer)
@@ -237,9 +242,9 @@ class LEDArray(Maker):
     # Protected method(s)
     def _loop_timer(self):
         """Loop for counting time and flagging channels"""
-        self.setFlag(timing_loop=True)
+        self.flags.timing_loop = True
         time.sleep(0.1)
-        busy = self.isBusy()
+        busy = self.is_busy
         timed_channels = self._timed_channels
         last_round = False
         while busy:
@@ -254,9 +259,9 @@ class LEDArray(Maker):
             time.sleep(0.01)
             if last_round:
                 break
-            if not self.isBusy():
+            if not self.is_busy:
                 last_round = True
-        self.setFlag(timing_loop=False)
+        self.flags.timing_loop = False
         self._threads.pop('timing_loop')
         self._timed_channels = []
         return
