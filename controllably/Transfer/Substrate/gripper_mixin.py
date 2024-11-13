@@ -17,15 +17,14 @@ class GripperMixin:
     def drop(self):
         """"""
         logger.warning("Dropping object")
-        raise NotImplementedError
+        return self.toggleGrip(False)
     
     def grab(self):
         """"""
         logger.warning("Grabbing object")
-        raise NotImplementedError
+        return self.toggleGrip(True)
     
     def toggleGrip(self, on:bool):
         """"""
-        _ = self.grab() if on else self.drop()
-        return
+        raise NotImplementedError
     
