@@ -54,10 +54,6 @@ class GCodeDevice(Protocol):
         """Check the settings of the device"""
         raise NotImplementedError
     
-    def checkStatus(self) -> tuple[str, np.ndarray[float], np.ndarray[float]]:
-        """Check the status of the device"""
-        raise NotImplementedError
-    
     def halt(self) -> Position:
         """Halt the device"""
         raise NotImplementedError
