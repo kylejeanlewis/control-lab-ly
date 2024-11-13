@@ -3,7 +3,6 @@
 from __future__ import annotations
 import logging
 import time
-from types import SimpleNamespace
 from typing import Sequence, Protocol, Any
 
 # Third-party imports
