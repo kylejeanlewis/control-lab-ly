@@ -142,28 +142,22 @@ class Marlin(SerialDevice):
         """
         self.clear()
         responses = self.query('M114 R')
-        settings = {}
+        # responses = self.query('M105')      # Check the current temperature
         if self.flags.simulation:
-            return settings
+            return 'Idle', current_position, self._home_offset
         while len(responses) == 0 or 'fail' in responses[-1]:
             time.sleep(0.1)
             responses = self.read(True)
-        responses = self.query('M114 R')      # Check the current position
-        # responses = self.query('M105')      # Check the current temperature
-        
         
         status,current_position = 'Idle', np.array([0,0,0])
-        # relevant_responses = []
-        if self.flags.simulation:
-            return 'Idle', current_position, self._home_offset
-        # for response in responses:
-        #     response = response.strip()
-        #     if 'Count' not in response:
-        #         continue
-        #     relevant_responses.append(response)
-        # xyz = relevant_responses[-1].split("E")[0].split(" ")[:-1]
-        # current_position = [float(c[2:]) for c in xyz]
-        
+        relevant_responses = []
+        for response in responses:
+            response = response.strip()
+            if 'Count' not in response:
+                continue
+            relevant_responses.append(response)
+        xyz = relevant_responses[-1].split("E")[0].split(" ")[:-1]
+        current_position = [float(c[2:]) for c in xyz]
         return (status, current_position, self._home_offset)
     
     def halt(self) -> Position:         # TODO: Check if this is the correct implementation
@@ -174,13 +168,13 @@ class Marlin(SerialDevice):
         _,coordinates,_home_offset = self.checkStatus()
         return Position(coordinates-_home_offset)
     
-    def home(self, axis: str|None = None, **kwargs) -> bool:
+    def home(self, axis: str|None = None, **kwargs) -> bool:        # TODO: Test if single axis homing works
         """
         """
-        if axis is not None:
-            logger.warning("Ignoring homing axis parameter for Marlin firmware")
+        # if axis is not None:
+        #     logger.warning("Ignoring homing axis parameter for Marlin firmware")
         self.query('G90')
-        self.query('G28', wait=True)
+        self.query(f'G28 {axis}', wait=True)
         return True
     
     def setSpeedFactor(self, speed_factor:float, **kwargs):
@@ -238,73 +232,3 @@ class Marlin(SerialDevice):
             if time.perf_counter() - start_time > timeout:
                 return False
         return True
-
-    # Methods not implemented
-    def checkAlarms(self, response: str) -> bool:           # NOTE: This method is not implemented
-        """
-        """
-        logger.debug(f"[{self.__class__.__name__}] Not implemented")
-        return False
-    
-    def checkErrors(self, response: str) -> bool:           # NOTE: This method is not implemented
-        """
-        """
-        logger.debug(f"[{self.__class__.__name__}] Not implemented")
-        return False
-    
-    def checkParameters(self) -> dict[str, list[float]]:    # NOTE: This method is not implemented
-        """
-        """
-        logger.debug(f"[{self.__class__.__name__}] Not implemented")
-        # responses = self.query('$#')
-        parameters = []
-        # for response in responses:
-        #     response = response.strip()
-        #     if not (response.startswith('[') and response.endswith(']')):
-        #         continue
-        #     response = response[1:-1]
-        #     if response.startswith('PRB'):
-        #         continue
-        #     parameter,values = response.split(":")
-        #     values = [float(c) for c in values.split(",")]
-        #     parameters.append((parameter, values))
-        return parameters
-    
-    def checkState(self) -> dict[str, str]:                 # NOTE: This method is not implemented
-        """
-        """
-        logger.debug(f"[{self.__class__.__name__}] Not implemented")
-        # responses = self.query('$G')
-        state = dict()
-        # for response in responses:
-        #     response = response.strip()
-        #     if not (response.startswith('[') and response.endswith(']')):
-        #         continue
-        #     response = response[1:-1]
-        #     if not response.startswith('GC:'):
-        #         continue
-        #     state_parts = response[3:].split(' ')
-        #     state.update(dict(
-        #         motion_mode =  state_parts[0],
-        #         coordinate_system = state_parts[1],
-        #         plane = state_parts[2],
-        #         units_mode = state_parts[3],
-        #         distance_mode = state_parts[4],
-        #         feed_rate = state_parts[5]
-        #     ))
-        return state
-    
-    def clearAlarms(self):                                  # NOTE: This method is not implemented
-        """
-        """
-        logger.debug(f"[{self.__class__.__name__}] Not implemented")
-        # self.query('$X')
-        return
-    
-    def resume(self):                                       # NOTE: This method is not implemented
-        """
-        """
-        logger.debug(f"[{self.__class__.__name__}] Not implemented")
-        # self.query('~')
-        return
-    
