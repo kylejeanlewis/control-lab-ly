@@ -76,6 +76,8 @@ class Marlin(SerialDevice):
         """
         responses = self.query('M115')
         info = {}
+        if self.flags.simulation:
+            return info
         start = False
         for response in responses:
             response = response.strip().replace('Cap:','')
@@ -94,10 +96,12 @@ class Marlin(SerialDevice):
         """
         self.clear()
         responses = self.query('M503')
+        settings = {}
+        if self.flags.simulation:
+            return settings
         while len(responses) == 0 or 'fail' in responses[-1]:
             time.sleep(0.1)
             responses = self.read(True)
-        settings = {}
         for response in responses:
             response = response.replace('echo:','').split(';')[0].strip()
             if not len(response):
@@ -138,10 +142,12 @@ class Marlin(SerialDevice):
         """
         self.clear()
         responses = self.query('M114 R')
+        settings = {}
+        if self.flags.simulation:
+            return settings
         while len(responses) == 0 or 'fail' in responses[-1]:
             time.sleep(0.1)
             responses = self.read(True)
-        settings = {}
         responses = self.query('M114 R')      # Check the current position
         # responses = self.query('M105')      # Check the current temperature
         
@@ -221,7 +227,7 @@ class Marlin(SerialDevice):
     def _wait_for_idle(self, timeout:int = MOVEMENT_TIMEOUT) -> bool:
         """
         """
-        if not self.is_connected:
+        if not self.is_connected or self.flags.simulation:
             return True
         start_time = time.perf_counter()
         while True:
