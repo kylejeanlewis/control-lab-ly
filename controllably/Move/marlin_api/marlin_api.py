@@ -74,7 +74,7 @@ class Marlin(SerialDevice):
     def checkInfo(self) -> dict[str, str]:
         """
         """
-        responses = self.query('M115')  # FIRMWARE_NAME:Marlin 2.1.3 (Aug  1 2024 12:00:00) SOURCE_CODE_URL:github.com/MarlinFirmware/Marlin PROTOCOL_VERSION:1.0 MACHINE_TYPE:3D Printer KINEMATICS:Cartesian EXTRUDER_COUNT:1 UUID:cede2a2f-41a2-4748-9b12-c55c62f367ff
+        responses = self.query('M115')
         info = {}
         start = False
         for response in responses:
@@ -122,23 +122,30 @@ class Marlin(SerialDevice):
                 value_dict[k] = v * ((-1)**int(negative)) if isinstance(v, (int,float)) else v
             logger.info(f"[{setting}]: {value_dict}")
             settings[setting] = value_dict
+        settings['max_accel_x'] = settings['M201']['X']
+        settings['max_accel_y'] = settings['M201']['Y']
+        settings['max_accel_z'] = settings['M201']['Z']
         settings['max_speed_x'] = settings['M203']['X'] * 60
         settings['max_speed_y'] = settings['M203']['Y'] * 60
         settings['max_speed_z'] = settings['M203']['Z'] * 60
         settings['home_offset_x'] = settings['M206']['X']
         settings['home_offset_y'] = settings['M206']['Y']
         settings['home_offset_z'] = settings['M206']['Z']
-        # settings['limit_x'] = settings['$130']
-        # settings['limit_y'] = settings['$131']
-        # settings['limit_z'] = settings['$132']
-        # settings['homing_pulloff'] = settings['$27']
         return settings
     
     def checkStatus(self) -> tuple[str, np.ndarray[float], np.ndarray[float]]:  # TODO: Implement status check
         """
         """
+        self.clear()
+        responses = self.query('M114 R')
+        while len(responses) == 0 or 'fail' in responses[-1]:
+            time.sleep(0.1)
+            responses = self.read(True)
+        settings = {}
         responses = self.query('M114 R')      # Check the current position
         # responses = self.query('M105')      # Check the current temperature
+        
+        
         status,current_position = 'Idle', np.array([0,0,0])
         # relevant_responses = []
         if self.flags.simulation:
@@ -153,7 +160,7 @@ class Marlin(SerialDevice):
         
         return (status, current_position, self._home_offset)
     
-    def halt(self) -> Position:
+    def halt(self) -> Position:         # TODO: Check if this is the correct implementation
         """
         """
         self.query('M410')
