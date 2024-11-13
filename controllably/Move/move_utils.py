@@ -9,6 +9,7 @@ Classes:
 from __future__ import annotations
 from abc import abstractmethod
 from copy import deepcopy
+import json
 import logging
 from types import SimpleNamespace
 from typing import Sequence, Any
@@ -130,6 +131,7 @@ class Mover:
         self.deck: Deck = deck
         self.workspace: BoundingBox = workspace
         self.safe_height: float = safe_height if safe_height is not None else home_position.z
+        self.saved_positions: dict = dict()
         
         self._robot_position = robot_position
         self._home_position = home_position
@@ -297,6 +299,9 @@ class Mover:
     def loadDeck(self, deck: Deck):
         assert isinstance(deck, Deck), f"Ensure input is a Deck object"
         self.deck = deck
+        deck_positions = deck.getAllPositions()
+        deck_positions_namespace = json.loads(json.dumps(deck_positions), object_hook=lambda item: SimpleNamespace(**item))
+        self.saved_positions['deck_positions_namespace'] = deck_positions_namespace
         try:
             self.setSafeHeight(height=self.safe_height)
         except AssertionError as e:
@@ -499,9 +504,9 @@ class Mover:
     
     def safeMoveTo(self,
         to: Sequence[float]|Position|np.ndarray,
-        speed_factor_lateral: float|Sequence[float]|None = None,
-        speed_factor_up: float|Sequence[float]|None = None,
-        speed_factor_down: float|Sequence[float]|None = None,
+        speed_factor_lateral: float|None = None,
+        speed_factor_up: float|None = None,
+        speed_factor_down: float|None = None,
         *,
         jog: bool = False,
         rotation_before_lateral: bool = False,
