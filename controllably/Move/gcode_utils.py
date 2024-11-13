@@ -1,4 +1,18 @@
 # -*- coding: utf-8 -*-
+"""
+This module provides utilities for G-code based devices.
+
+Attributes:
+    LOOP_INTERVAL (float): loop interval for device
+    MOVEMENT_BUFFER (int): buffer time after movement
+    MOVEMENT_TIMEOUT (int): timeout for movement
+    
+## Classes:
+    `GCodeDevice`: Protocol for G-code devices
+    `GCode`: Interface to control a G-code based device.
+
+<i>Documentation last updated: 2024-11-14</i>
+"""
 # Standard library imports
 from __future__ import annotations
 import logging
@@ -23,6 +37,7 @@ MOVEMENT_BUFFER = 1
 MOVEMENT_TIMEOUT = 30
 
 class GCodeDevice(Protocol):
+    """Protocol for G-code devices"""
     connection_details: dict
     is_connected: bool
     verbose: bool
@@ -69,7 +84,78 @@ class GCodeDevice(Protocol):
 
 class GCode(Mover):
     """
-    Refer to https://www.cnccookbook.com/g-code-m-code-command-list-cnc-mills/ for more information on G-code commands.
+    GCode provides an interface to control a G-code based device.
+    Refer to https://reprap.org/wiki/G-code for more information on G-code commands.
+    
+    ### Constructor
+        `port` (str): serial port address
+        `device_type_name` (str, optional): name of the device type. Defaults to 'GRBL'.
+        `baudrate` (int, optional): baudrate of the device. Defaults to 115200.
+        `movement_buffer` (int, optional): buffer time after movement. Defaults to None.
+        `movement_timeout` (int, optional): timeout for movement. Defaults to None.
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+        
+    ### Attributes and properties
+        `movement_buffer` (int): buffer time after movement
+        `movement_timeout` (int): timeout for movement
+        `connection_details` (dict): connection details for the device
+        `device` (Device): device object that communicates with physical tool
+        `flags` (SimpleNamespace[str, bool]): flags for the class
+        `is_busy` (bool): whether the device is busy
+        `is_connected` (bool): whether the device is connected
+        `verbose` (bool): verbosity of class
+        `deck` (Deck): Deck object for workspace
+        `workspace` (BoundingBox): workspace bounding box
+        `safe_height` (float): safe height in terms of robot coordinate system
+        `saved_positions` (dict): dictionary of saved positions
+        `speed` (float): travel speed of robot
+        `speed_factor` (float): fraction of maximum travel speed of robot
+        `speed_max` (float): maximum speed of robot in mm/min
+        `robot_position` (Position): current position of the robot
+        `home_position` (Position): home position of the robot in terms of robot coordinate system
+        `tool_offset` (Position): tool offset from robot to end effector
+        `calibrated_offset` (Position): calibrated offset from robot to work position
+        `scale` (float): factor to scale the basis vectors by
+        `tool_position` (Position): robot position of the tool end effector
+        `work_position` (Position): work position of the robot
+        `worktool_position` (Position): work position of the tool end effector
+        `position` (Position): work position of the tool end effector; alias for `worktool_position`
+        
+    ### Methods
+        `query`: query the device
+        `toggleCoolantValve`: toggle the coolant valve
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `resetFlags`: reset all flags to class attribute `_default_flags`
+        `shutdown`: shutdown procedure for tool
+        `halt`: halt robot movement
+        `home`: make the robot go home
+        `isFeasible`: checks and returns whether the target coordinates is feasible
+        `loadDeck`: load `Deck` layout object to mover
+        `loadDeckFromDict`: load `Deck` layout object from dictionary
+        `loadDeckFromFile`: load `Deck` layout object from file
+        `move`: move the robot in a specific axis by a specific value
+        `moveBy`: move the robot by target direction
+        `moveTo`: move the robot to target position
+        `moveToSafeHeight`: move the robot to safe height
+        `moveRobotTo`: move the robot to target position
+        `moveToolTo`: move the tool end effector to target position
+        `reset`: reset the robot
+        `rotate`: rotate the robot in a specific axis by a specific value
+        `rotateBy`: rotate the robot by target direction
+        `rotateTo`: rotate the robot to target orientation
+        `rotateRobotTo`: rotate the robot to target orientation
+        `rotateToolTo`: rotate the tool end effector to target orientation
+        `safeMoveTo`: safe version of moveTo by moving to safe height first
+        `setSafeHeight`: set safe height for robot
+        `setSpeedFactor`: set the speed factor of the robot
+        `setToolOffset`: set the tool offset of the robot
+        `updateRobotPosition`: update the robot position
+        `transformRobotToTool`: transform robot coordinates to tool coordinates
+        `transformRobotToWork`: transform robot coordinates to work coordinates
+        `transformToolToRobot`: transform tool coordinates to robot coordinates
+        `transformWorkToRobot`: transform work coordinates to robot coordinates
+        `calibrate`: calibrate the internal and external coordinate systems
     """
     
     def __init__(self,
@@ -83,6 +169,15 @@ class GCode(Mover):
         **kwargs
     ):
         """
+        Initialize GCode class
+        
+        Args:
+            port (str): serial port address
+            device_type_name (str, optional): name of the device type. Defaults to 'GRBL'.
+            baudrate (int, optional): baudrate of the device. Defaults to 115200.
+            movement_buffer (int, optional): buffer time after movement. Defaults to None.
+            movement_timeout (int, optional): timeout for movement. Defaults to None.
+            verbose (bool, optional): verbosity of class. Defaults to False.
         """
         device_type = globals().get(device_type_name, GRBL)
         super().__init__(device_type=device_type, port=port, baudrate=baudrate, verbose=verbose, **kwargs)
@@ -93,23 +188,34 @@ class GCode(Mover):
         return
     
     def halt(self) -> Position:
+        """Halt robot movement"""
         position = self.device.halt()
         self.updateRobotPosition(to=position)
         logger.warning(f"Halted at {position}")
         logger.warning('To cancel movement, reset robot and re-home')
         return position
     
-    def home(self, axis: str|None = None, *, timeout:int|None = None) -> Position:
+    def home(self, axis: str|None = None, *, timeout:int|None = None) -> bool:
+        """ 
+        Make the robot go home
+        
+        Args:
+            axis (str, optional): axis to home. Defaults to None.
+            timeout (int, optional): timeout for movement. Defaults to None.
+            
+        Returns:
+            bool: whether the robot successfully homed
+        """
         timeout = self.movement_timeout if timeout is None else timeout
         self.moveToSafeHeight(self.speed_factor)
         success = self.device.home(axis=axis, timeout=timeout)
         time.sleep(self.movement_buffer)
         if not success:
-            return self.robot_position
+            return success
         self.moveToSafeHeight(self.speed_factor)
         self.updateRobotPosition(to=self.home_position)
         logger.info(f"Homed | axis={axis}")
-        return self.robot_position
+        return success
         
     def moveBy(self,
         by: Sequence[float]|Position|np.ndarray,
@@ -119,6 +225,19 @@ class GCode(Mover):
         rapid: bool = False,
         robot: bool = False
     ) -> Position:
+        """
+        Move the robot by target direction
+        
+        Args:
+            by (Sequence[float]|Position|np.ndarray): target direction
+            speed_factor (float, optional): speed factor. Defaults to None.
+            jog (bool, optional): jog movement. Defaults to False.
+            rapid (bool, optional): rapid movement. Defaults to False.
+            robot (bool, optional): robot coordinates. Defaults to False.
+            
+        Returns:
+            Position: new tool/robot position
+        """
         assert isinstance(by, (Sequence, Position, np.ndarray)), f"Ensure `by` is a Sequence or Position or np.ndarray object"
         if isinstance(by, (Sequence, np.ndarray)):
             assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
@@ -163,6 +282,19 @@ class GCode(Mover):
         rapid: bool = False,
         robot: bool = False
     ) -> Position:
+        """
+        Move the robot to target position
+        
+        Args:
+            to (Sequence[float]|Position|np.ndarray): target position
+            speed_factor (float, optional): speed factor. Defaults to None.
+            jog (bool, optional): jog movement. Defaults to False.
+            rapid (bool, optional): rapid movement. Defaults to False.
+            robot (bool, optional): robot coordinates. Defaults to False.
+            
+        Returns:
+            Position: new tool/robot position
+        """
         assert isinstance(to, (Sequence, Position, np.ndarray)), f"Ensure `to` is a Sequence or Position or np.ndarray object"
         if isinstance(to, (Sequence, np.ndarray)):
             assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
@@ -191,7 +323,20 @@ class GCode(Mover):
         self.updateRobotPosition(to=move_to)
         return self.robot_position if robot else self.tool_position
     
-    def query(self, data:str, lines:bool = True, *, timeout:int|None = None, jog:bool = False, wait:bool = False) -> Any:
+    def query(self, data:Any, lines:bool = True, *, timeout:int|None = None, jog:bool = False, wait:bool = False) -> Any:
+        """
+        Query the device
+        
+        Args:
+            data (Any): data to query
+            lines (bool, optional): lines of data. Defaults to True.
+            timeout (int, optional): timeout for movement. Defaults to None.
+            jog (bool, optional): jog movement. Defaults to False.
+            wait (bool, optional): wait for movement. Defaults to False.
+            
+        Returns:
+            Any: response from device
+        """
         if jog:
             assert isinstance(self.device, GRBL), "Ensure device is of type `GRBL` to perform jog movements"
             data = f'{data} F{self.speed}'
@@ -199,26 +344,41 @@ class GCode(Mover):
         return self.device.query(data, lines=lines, timeout=timeout, jog=jog, wait=wait)
     
     def reset(self):
+        """Reset the robot"""
         self.disconnect()
         self.connect()
         return
     
     def setSpeedFactor(self, speed_factor:float|None = None, *, persist:bool = True):
+        """
+        Set the speed factor of the robot
+        
+        Args:
+            speed_factor (float, optional): speed factor. Defaults to None.
+            persist (bool, optional): persist speed factor. Defaults to True.
+        """
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
         assert isinstance(speed_factor, float), "Ensure speed factor is a float"
         assert (0.0 <= speed_factor <= 1.0), "Ensure speed factor is between 0.0 and 1.0"
         self.device.setSpeedFactor(speed_factor, speed_max=self.speed_max)
         if persist:
             self.speed_factor = speed_factor
-        return speed_factor
+        return
     
     def toggleCoolantValve(self, on:bool):
+        """
+        Toggle the coolant valve
+        
+        Args:
+            on (bool): whether to turn the coolant valve on
+        """
         command = 'M8' if on else 'M9'
         self.query(command)
         return
     
     # Overwritten methods
     def connect(self):
+        """Connect to the device"""
         self.device.connect()
         self.setSpeedFactor(1.0)
         self._settings = self.device.checkSettings()
