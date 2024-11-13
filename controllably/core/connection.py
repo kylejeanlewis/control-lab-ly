@@ -259,6 +259,8 @@ class SerialDevice:
     
     def clear(self):
         """Clear the input and output buffers"""
+        if self.flags.simulation:
+            return
         self.serial.reset_input_buffer()
         self.serial.reset_output_buffer()
         return
@@ -439,6 +441,8 @@ class SocketDevice:
     
     def clear(self):
         """Clear the input and output buffers"""
+        if self.flags.simulation:
+            return
         self.socket.settimeout(0)
         self.socket.recv(1024)
         self.socket.settimeout(self.timeout)
