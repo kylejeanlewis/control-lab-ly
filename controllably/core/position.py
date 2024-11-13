@@ -56,7 +56,7 @@ def get_transform(initial_points: np.ndarray, final_points:np.ndarray) -> tuple[
         final_points (numpy.ndarray): final points
 
     Returns:
-        Position, float: transformation Position (i.e. vector and rotation) and scale factor
+        tuple[Position,float]: transformation Position (i.e. vector and rotation) and scale factor
     """
     assert isinstance(initial_points, np.ndarray) and isinstance(final_points, np.ndarray), "Please input numpy arrays"
     assert initial_points.shape == final_points.shape, "Initial and final points must have the same shape"
