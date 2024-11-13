@@ -4,6 +4,7 @@ This module contains functions to create and manage objects.
 
 ## Functions:
     `dict_to_named_tuple`: Creating named tuple from dictionary
+    `dict_to_simple_namespace`: Convert dictionary to SimpleNamespace
     `get_class`: Retrieve the relevant class from the sub-package
     `get_imported_modules`: Get all imported modules
     `get_method_names`: Get the names of the methods in Callable object (Class/Instance)
@@ -13,16 +14,17 @@ This module contains functions to create and manage objects.
     `parse_configs`: Decode dictionary of configuration details to get tuples and `numpy.ndarray`
     `zip_kwargs_to_dict`: Checks and zips multiple keyword arguments of lists into dictionary
 
-<i>Documentation last updated: 2024-11-12</i>
+<i>Documentation last updated: 2024-11-13</i>
 """
 # Standard library imports
 from collections import namedtuple
-from dataclasses import dataclass, field
 import importlib
 import inspect
+import json
 import logging
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 from typing import Callable, Sequence
 
 # Third party imports
@@ -56,6 +58,18 @@ def dict_to_named_tuple(d:dict, tuple_name:str = 'Setup') -> tuple:
     named_tuple = namedtuple(tuple_name, field_list)
     print(f"Objects created: {', '.join(field_list)}")
     return named_tuple(*object_list)
+
+def dict_to_simple_namespace(d:dict) -> SimpleNamespace:
+    """
+    Convert dictionary to SimpleNamespace
+
+    Args:
+        d (dict): dictionary to be transformed
+
+    Returns:
+        SimpleNamespace: SimpleNamespace object
+    """
+    return json.loads(json.dumps(d), object_hook=lambda item: SimpleNamespace(**item))
 
 def get_class(module_name:str, class_name:str) -> Callable:
     """
