@@ -4,12 +4,13 @@ This module contains functions to handle files and folders.
 
 ## Functions:
     `create_folder`: Check and create folder if it does not exist
+    `init`: Add repository to `sys.path`, and get machine id and connected ports
     `read_config_file`: Read configuration file and return as dictionary
     `readable_duration`: Display time duration (s) as HH:MM:SS text
     `resolve_repo_filepath`: Resolve relative path to absolute path
     `start_project_here`: Create new project in destination directory
 
-<i>Documentation last updated: 2024-11-12</i>
+<i>Documentation last updated: 2024-11-13</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -20,6 +21,7 @@ import logging
 import os
 from pathlib import Path
 import shutil
+import sys
 
 # Third party imports
 import yaml
@@ -46,6 +48,21 @@ def create_folder(base:Path|str = '', sub:Path|str = '') -> Path:
     new_folder = Path(base) / main_folder / Path(sub)
     os.makedirs(new_folder)
     return main_folder
+
+def init(repository_name:str):
+    """
+    Add repository to `sys.path`, and getting machine id and connected ports
+
+    Args:
+        repository_name (str): name of current repository
+    """
+    cwd = str(Path().absolute())
+    assert repository_name in cwd, f"Repository name '{repository_name}' not found in current working directory: {cwd}"
+    root = cwd.split(repository_name)[0]
+    sys.path.append(f'{root}{repository_name}')
+    connection.get_node()
+    connection.get_ports()
+    return
 
 def read_config_file(filepath:Path|str) -> dict:
     """
