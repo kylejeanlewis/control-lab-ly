@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-This module holds the base class for mover tools.
+This module provides the base class for mover tools.
 
-Classes:
-    Mover (ABC)
+## Classes:
+    `Mover`: base class for mover tools
+
+<i>Documentation last updated: 2024-11-14</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -29,77 +31,78 @@ logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 class Mover:
-    """
-    Abstract Base Class (ABC) for Mover objects (i.e. tools that move objects in space).
-    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
+    """ 
+    Base class for mover tools.
     
     ### Constructor
-    Args:
-        `coordinates` (tuple[float], optional): current coordinates of the robot. Defaults to (0,0,0).
-        `deck` (Layout.Deck, optional): Deck object for workspace. Defaults to Layout.Deck().
-        `home_coordinates` (tuple[float], optional): home coordinates for the robot. Defaults to (0,0,0).
-        `home_orientation` (tuple[float], optional): home orientation for the robot. Defaults to (0,0,0).
-        `implement_offset` (tuple[float], optional): transformation (translation) vector to get from end effector to tool tip. Defaults to (0,0,0).
-        `orientate_matrix` (np.ndarray, optional): transformation (rotation) matrix to get from robot to workspace. Defaults to np.identity(3).
-        `orientation` (tuple[float], optional): current orientation of the robot. Defaults to (0,0,0).
-        `scale` (float, optional): factor to scale the basis vectors by. Defaults to 1.
-        `speed_max` (dict[str, float], optional): dictionary of robot maximum speeds. Defaults to dict(general=1).
-        `speed_factor` (float, optional): fraction of maximum speed to travel at. Defaults to 1.
-        `translate_vector` (tuple[float], optional): transformation (translation) vector to get from robot to end effector. Defaults to (0,0,0).
+        `robot_position` (Position, optional): current position of the robot. Defaults to Position().
+        `home_position` (Position, optional): home position of the robot in terms of robot coordinate system. Defaults to Position().
+        `tool_offset` (Position, optional): tool offset from robot to end effector. Defaults to Position().
+        `calibrated_offset` (Position, optional): calibrated offset from robot to work position. Defaults to Position().
+        `scale` (float, optional): factor to scale the basis vectors by. Defaults to 1.0.
+        `deck` (Deck, optional): Deck object for workspace. Defaults to None.
+        `workspace` (BoundingBox, optional): workspace bounding box. Defaults to None.
+        `safe_height` (float, optional): safe height in terms of robot coordinate system. Defaults to None.
+        `speed_max` (float, optional): maximum speed of robot in mm/min. Defaults to 600.
         `verbose` (bool, optional): verbosity of class. Defaults to False.
-    
-    ### Attributes
-    - `connection_details` (dict): dictionary of connection details (e.g. COM port / IP address)
-    - `deck` (Layout.Deck): Deck object for workspace
-    - `device` (Callable): device object that communicates with physical tool
-    - `flags` (dict[str, bool]): keywords paired with boolean flags
-    - `heights` (dict[str, float]): specified height names and values
-    - `verbose` (bool): verbosity of class
-    
-    ### Properties
-    - `coordinates` (np.ndarray): current coordinates of the robot
-    - `home_coordinates` (np.ndarray): home coordinates for the robot
-    - `home_orientation` (np.ndarray): home orientation for the robot
-    - `implement_offset` (np.ndarray): transformation (translation) vector to get from end effector to tool tip
-    - `max_speeds` (np.ndarray): maximum speed(s) of robot
-    - `orientate_matrix` (np.ndarray): transformation (rotation) matrix to get from robot to workspace
-    - `orientation` (np.ndarray): current orientation of the robot
-    - `position` (tuple[np.ndarray]): 2-uple of (coordinates, orientation)
-    - `scale` (float): factor to scale the basis vectors by
-    - `speed` (float): travel speed of robot
-    - `speed_factor` (float): fraction of maximum travel speed of robot
-    - `tool_position` (tuple[np.ndarray]): 2-uple of tool tip (coordinates, orientation)
-    - `translate_vector` (np.ndarray): transformation (translation) vector to get from robot to end effector
-    - `user_position` (tuple[np.ndarray]): 2-uple of user-defined workspace (coordinates, orientation)
-    - `workspace_position` (tuple[np.ndarray]): 2-uple of workspace (coordinates, orientation)
-    
+        
+    ### Attributes and properties
+        `connection_details` (dict): connection details for the device
+        `device` (Device): device object that communicates with physical tool
+        `flags` (SimpleNamespace[str, bool]): flags for the class
+        `is_busy` (bool): whether the device is busy
+        `is_connected` (bool): whether the device is connected
+        `verbose` (bool): verbosity of class
+        `deck` (Deck): Deck object for workspace
+        `workspace` (BoundingBox): workspace bounding box
+        `safe_height` (float): safe height in terms of robot coordinate system
+        `saved_positions` (dict): dictionary of saved positions
+        `speed` (float): travel speed of robot
+        `speed_factor` (float): fraction of maximum travel speed of robot
+        `speed_max` (float): maximum speed of robot in mm/min
+        `robot_position` (Position): current position of the robot
+        `home_position` (Position): home position of the robot in terms of robot coordinate system
+        `tool_offset` (Position): tool offset from robot to end effector
+        `calibrated_offset` (Position): calibrated offset from robot to work position
+        `scale` (float): factor to scale the basis vectors by
+        `tool_position` (Position): robot position of the tool end effector
+        `work_position` (Position): work position of the robot
+        `worktool_position` (Position): work position of the tool end effector
+        `position` (Position): work position of the tool end effector; alias for `worktool_position`
+        
     ### Methods
-    #### Abstract
-    - `disconnect`: disconnect from device
-    - `home`: make the robot go home
-    - `isFeasible`: checks and returns whether the target coordinates is feasible
-    - `moveBy`: move the robot by target direction
-    - `moveTo`: move the robot to target position
-    - `reset`: reset the robot
-    - `setSpeed`: set the speed of the robot
-    - `setSpeedFactor`: set the speed factor of the robot
-    - `shutdown`: shutdown procedure for tool
-    - `stop`: halt robot movement
-    - `_connect`: connection procedure for tool
-    #### Public
-    - `calibrate`: calibrate the internal and external coordinate systems
-    - `connect`: establish connection with device
-    - `getConfigSettings`: retrieve the robot's configuration
-    - `isBusy`: checks and returns whether the device is busy
-    - `isConnected`: checks and returns whether the device is connected
-    - `loadDeck`: load Labware objects onto the deck from file or dictionary
-    - `move`: move the robot in a specific axis by a specific value
-    - `resetFlags`: reset all flags to class attribute `_default_flags`
-    - `safeMoveTo`: safe version of moveTo by moving in Z-axis first
-    - `setFlag`: set flags by using keyword arguments
-    - `setHeight`: set predefined heights using keyword arguments
-    - `setImplementOffset`: set offset of attached implement, then home if desired
-    - `updatePosition`: update attributes to current position
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `resetFlags`: reset all flags to class attribute `_default_flags`
+        `shutdown`: shutdown procedure for tool
+        `halt`: halt robot movement
+        `home`: make the robot go home
+        `isFeasible`: checks and returns whether the target coordinates is feasible
+        `loadDeck`: load `Deck` layout object to mover
+        `loadDeckFromDict`: load `Deck` layout object from dictionary
+        `loadDeckFromFile`: load `Deck` layout object from file
+        `move`: move the robot in a specific axis by a specific value
+        `moveBy`: move the robot by target direction
+        `moveTo`: move the robot to target position
+        `moveToSafeHeight`: move the robot to safe height
+        `moveRobotTo`: move the robot to target position
+        `moveToolTo`: move the tool end effector to target position
+        `reset`: reset the robot
+        `rotate`: rotate the robot in a specific axis by a specific value
+        `rotateBy`: rotate the robot by target direction
+        `rotateTo`: rotate the robot to target orientation
+        `rotateRobotTo`: rotate the robot to target orientation
+        `rotateToolTo`: rotate the tool end effector to target orientation
+        `safeMoveTo`: safe version of moveTo by moving to safe height first
+        `setSafeHeight`: set safe height for robot
+        `setSpeedFactor`: set the speed factor of the robot
+        `setToolOffset`: set the tool offset of the robot
+        `updateRobotPosition`: update the robot position
+        `transformRobotToTool`: transform robot coordinates to tool coordinates
+        `transformRobotToWork`: transform robot coordinates to work coordinates
+        `transformToolToRobot`: transform tool coordinates to robot coordinates
+        `transformWorkToRobot`: transform work coordinates to robot coordinates
+        `calibrate`: calibrate the internal and external coordinate systems
     """
     
     _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, verbose=False)
@@ -118,9 +121,18 @@ class Mover:
         **kwargs
     ):
         """
-        Instantiate the class
+        Initialize Mover class
 
         Args:
+            robot_position (Position, optional): current position of the robot. Defaults to Position().
+            home_position (Position, optional): home position of the robot in terms of robot coordinate system. Defaults to Position().
+            tool_offset (Position, optional): tool offset from robot to end effector. Defaults to Position().
+            calibrated_offset (Position, optional): calibrated offset from robot to work position. Defaults to Position().
+            scale (float, optional): factor to scale the basis vectors by. Defaults to 1.0.
+            deck (Deck, optional): Deck object for workspace. Defaults to None.
+            workspace (BoundingBox, optional): workspace bounding box. Defaults to None.
+            safe_height (float, optional): safe height in terms of robot coordinate system. Defaults to None.
+            speed_max (float, optional): maximum speed of robot in mm/min. Defaults to 600.
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
         self.device: Device = kwargs.get('device', DeviceFactory.createDeviceFromDict(kwargs))
@@ -149,26 +161,25 @@ class Mover:
     
     @property
     def connection_details(self) -> dict:
-        """Get connection details"""
+        """Connection details for the device"""
         return self.device.connection_details
     
     @property
     def is_busy(self) -> bool:
-        """Check and return whether the device is busy"""
+        """Whether the device is busy"""
         return self.flags.busy
     
     @property
     def is_connected(self) -> bool:
-        """Get connection status"""
+        """Whether the device is connected"""
         return self.device.is_connected
     
     @property
     def verbose(self) -> bool:
-        """Get verbosity of class"""
+        """Verbosity of class"""
         return self.flags.verbose
     @verbose.setter
     def verbose(self, value:bool):
-        """Set verbosity of class"""
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
         self.device.verbose = value
@@ -180,12 +191,12 @@ class Mover:
         return
     
     def connect(self):
-        """Reconnect to device using existing connection details"""
+        """Connect to the device"""
         self.device.connect()
         return
     
     def disconnect(self):
-        """Disconnect from device"""
+        """Disconnect from the device"""
         self.device.disconnect()
         return
     
@@ -238,7 +249,7 @@ class Mover:
     
     @property
     def position(self) -> Position:
-        """Work position of the tool end effector"""
+        """Work position of the tool end effector. Alias for `worktool_position`"""
         return self.worktool_position
     
     @property
@@ -273,12 +284,34 @@ class Mover:
         return
     
     def halt(self) -> Position:
+        """Halt robot movement"""
         raise NotImplementedError
     
-    def home(self, axis: str|None = None) -> Position:
+    def home(self, axis: str|None = None) -> bool:
+        """
+        Make the robot go home
+        
+        Args:
+            axis (str, optional): axis to home. Defaults to None.
+            
+        Returns:
+            bool: whether the robot successfully homed
+        """
         raise NotImplementedError
     
-    def isFeasible(self, coordinates: Sequence[float], external: bool = True, tool_offset:bool = True) -> bool:
+    def isFeasible(self, coordinates: Sequence[float]|np.ndarray, external: bool = True, tool_offset:bool = True) -> bool:
+        """
+        Checks and returns whether the target coordinates is feasible
+        
+        Args:
+            coordinates (Sequence[float]|np.ndarray): target coordinates
+            external (bool, optional): whether the target coordinates are in external coordinates. Defaults to True.
+            tool_offset (bool, optional): whether to consider the tool offset. Defaults to True.
+            
+        Returns:
+            bool: whether the target coordinates are feasible
+        """
+        assert isinstance(coordinates, (Sequence, np.ndarray)), f"Ensure coordinates is a Sequence or np.ndarray object"
         position = Position(coordinates)
         if external:
             ex_pos = position
@@ -297,6 +330,12 @@ class Mover:
         return all([within_range, deck_safe])
     
     def loadDeck(self, deck: Deck):
+        """
+        Load `Deck` layout object to mover
+        
+        Args:
+            deck (Deck): Deck layout object
+        """
         assert isinstance(deck, Deck), f"Ensure input is a Deck object"
         self.deck = deck
         deck_positions = deck.getAllPositions()
@@ -309,10 +348,22 @@ class Mover:
         return
     
     def loadDeckFromDict(self, details:dict[str, Any]):
+        """
+        Load `Deck` layout object from dictionary
+        
+        Args:
+            details (dict[str, Any]): Deck layout dictionary
+        """
         deck = Deck.fromConfigs(details=details)
         return self.loadDeck(deck)
     
     def loadDeckFromFile(self, deck_file:str):
+        """
+        Load `Deck` layout object from file
+        
+        Args:
+            deck_file (str): Deck layout file
+        """
         deck = Deck.fromFile(deck_file=deck_file)
         return self.loadDeck(deck)
     
@@ -324,11 +375,24 @@ class Mover:
         jog: bool = False,
         rapid: bool = False
     ) -> Position:
+        """
+        Move the robot in a specific axis by a specific value
+        
+        Args:
+            axis (str): axis to move
+            by (float): distance to move
+            speed_factor (float, optional): fraction of maximum speed to travel at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            rapid (bool, optional): whether to move rapidly. Defaults to False.
+            
+        Returns:
+            Position: new tool position
+        """
         assert axis.lower() in 'xyzabc', f"Ensure axis is one of 'x,y,z,a,b,c'"
         default = dict(x=0, y=0, z=0, a=0, b=0, c=0)
         default.update({axis: by})
         vector = np.array([default[k] for k in 'xyz'])
-        rotation = np.array([default[k] for k in 'abc'])
+        rotation = np.array([default[k] for k in 'cba'])
         move_position = Position(vector, Rotation.from_euler('zyx', rotation, degrees=True))
         return self.moveBy(by=move_position, speed_factor=speed_factor, jog=jog, rapid=rapid)
         
@@ -340,6 +404,19 @@ class Mover:
         rapid: bool = False,
         robot: bool = False
     ) -> Position:
+        """
+        Move the robot by target direction
+
+        Args:
+            by (Sequence[float] | Position | np.ndarray): target direction
+            speed_factor (float, optional): fraction of maximum speed to travel at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            rapid (bool, optional): whether to move rapidly. Defaults to False.
+            robot (bool, optional): whether to move the robot. Defaults to False.
+            
+        Returns:
+            Position: new tool/robot position
+        """
         assert isinstance(by, (Sequence, Position, np.ndarray)), f"Ensure `by` is a Sequence or Position or np.ndarray object"
         if isinstance(by, (Sequence, np.ndarray)):
             assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
@@ -375,6 +452,19 @@ class Mover:
         rapid: bool = False,
         robot: bool = False
     ) -> Position:
+        """ 
+        Move the robot to target position
+        
+        Args:
+            to (Sequence[float] | Position | np.ndarray): target position
+            speed_factor (float, optional): fraction of maximum speed to travel at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            rapid (bool, optional): whether to move rapidly. Defaults to False.
+            robot (bool, optional): whether to move the robot. Defaults to False.
+            
+        Returns:
+            Position: new tool/robot position
+        """
         assert isinstance(to, (Sequence, Position, np.ndarray)), f"Ensure `to` is a Sequence or Position or np.ndarray object"
         if isinstance(to, (Sequence, np.ndarray)):
             assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
@@ -395,7 +485,16 @@ class Mover:
         raise NotImplementedError
         return self.robot_position if robot else self.tool_position
     
-    def moveToSafeHeight(self,speed_factor: float|None = None) -> Position:
+    def moveToSafeHeight(self, speed_factor: float|None = None) -> Position:
+        """
+        Move the robot to safe height
+        
+        Args:
+            speed_factor (float, optional): fraction of maximum speed to travel at. Defaults to None.
+            
+        Returns:
+            Position: new tool position
+        """
         # Move up to safe height
         current_position = self.robot_position
         safe_position = Position(list(current_position.coordinates[:2])+[self.safe_height], current_position.Rotation)
@@ -405,19 +504,46 @@ class Mover:
         to: Sequence[float]|Position,
         speed_factor: float|None = None,
         *,
-        jog: bool = False
+        jog: bool = False,
+        rapid: bool = False
     ) -> Position:
-        return self.moveTo(to=to, speed_factor=speed_factor, jog=jog, robot=True)
+        """
+        Move the robot to target position
+        
+        Args:
+            to (Sequence[float] | Position): target position
+            speed_factor (float, optional): fraction of maximum speed to travel at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            rapid (bool, optional): whether to move rapidly. Defaults to False.
+            
+        Returns:
+            Position: new robot position
+        """
+        return self.moveTo(to=to, speed_factor=speed_factor, jog=jog, rapid=rapid, robot=True)
         
     def moveToolTo(self,
         to: Sequence[float]|Position,
         speed_factor: float|None = None,
         *,
-        jog: bool = False
+        jog: bool = False,
+        rapid: bool = False
     ) -> Position:
-        return self.moveTo(to=to, speed_factor=speed_factor, jog=jog, robot=False)
+        """
+        Move the tool end effector to target position
+        
+        Args:
+            to (Sequence[float] | Position): target position
+            speed_factor (float, optional): fraction of maximum speed to travel at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            rapid (bool, optional): whether to move rapidly. Defaults to False.
+            
+        Returns:
+            Position: new tool position
+        """
+        return self.moveTo(to=to, speed_factor=speed_factor, jog=jog, rapid=rapid, robot=False)
     
     def reset(self):
+        """Reset the robot"""
         raise NotImplementedError
     
     def rotate(self,
@@ -427,10 +553,22 @@ class Mover:
         *,
         jog: bool = False
     ) -> Rotation:
+        """
+        Rotate the robot in a specific axis by a specific value
+        
+        Args:
+            axis (str): axis to rotate
+            by (float): angle to rotate
+            speed_factor (float, optional): fraction of maximum speed to rotate at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            
+        Returns:
+            Rotation: new tool orientation
+        """
         assert axis.lower() in 'abc', f"Ensure axis is one of 'a,b,c'"
         default = dict(a=0, b=0, c=0)
         default.update({axis: by})
-        rotate_angles = np.array([default[k] for k in 'abc'])
+        rotate_angles = np.array([default[k] for k in 'cba'])
         rotation = Rotation.from_euler('zyx', rotate_angles, degrees=True)
         return self.rotateBy(by=rotation, speed_factor=speed_factor, jog=jog)
         
@@ -441,6 +579,18 @@ class Mover:
         jog: bool = False,
         robot: bool = False
     ) -> Rotation:
+        """
+        Rotate the robot by target direction
+        
+        Args:
+            by (Sequence[float] | Rotation | np.ndarray): target direction
+            speed_factor (float, optional): fraction of maximum speed to rotate at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            robot (bool, optional): whether to rotate the robot. Defaults to False.
+            
+        Returns:
+            Rotation: new tool/robot orientation
+        """
         assert isinstance(by, (Sequence, Rotation, np.ndarray)), f"Ensure `by` is a Sequence or Rotation or np.ndarray object"
         if isinstance(by, (Sequence, np.ndarray)):
             assert len(by) == 3, f"Ensure `by` is a 3-element sequence for c,b,a"
@@ -465,6 +615,18 @@ class Mover:
         jog: bool = False,
         robot: bool = False
     ) -> Rotation:
+        """
+        Rotate the robot to target orientation
+        
+        Args:
+            to (Sequence[float] | Rotation | np.ndarray): target orientation
+            speed_factor (float, optional): fraction of maximum speed to rotate at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            robot (bool, optional): whether to rotate the robot. Defaults to False.
+            
+        Returns:
+            Rotation: new tool/robot orientation
+        """
         assert isinstance(to, (Sequence, Rotation, np.ndarray)), f"Ensure `to` is a Sequence or Rotation or np.ndarray object"
         if isinstance(to, (Sequence, np.ndarray)):
             assert len(to) == 3, f"Ensure `to` is a 3-element sequence for c,b,a"
@@ -491,6 +653,17 @@ class Mover:
         *,
         jog: bool = False
     ) -> Rotation:
+        """
+        Rotate the robot to target orientation
+        
+        Args:
+            to (Sequence[float] | Rotation): target orientation
+            speed_factor (float, optional): fraction of maximum speed to rotate at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            
+        Returns:
+            Rotation: new robot orientation
+        """
         return self.rotateTo(to=to, speed_factor=speed_factor, robot=True)
     
     def rotateToolTo(self,
@@ -499,6 +672,17 @@ class Mover:
         *,
         jog: bool = False
     ) -> Rotation:
+        """
+        Rotate the tool end effector to target orientation
+        
+        Args:
+            to (Sequence[float] | Rotation): target orientation
+            speed_factor (float, optional): fraction of maximum speed to rotate at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            
+        Returns:
+            Rotation: new tool orientation
+        """
         return self.rotateTo(to=to, speed_factor=speed_factor, robot=False)
     
     def safeMoveTo(self,
@@ -511,6 +695,21 @@ class Mover:
         rotation_before_lateral: bool = False,
         robot: bool = False
     ) -> Position:
+        """
+        Safe version of moveTo by moving in to safe height first
+        
+        Args:
+            to (Sequence[float] | Position | np.ndarray): target position
+            speed_factor_lateral (float, optional): fraction of maximum speed to travel laterally at. Defaults to None.
+            speed_factor_up (float, optional): fraction of maximum speed to travel up at. Defaults to None.
+            speed_factor_down (float, optional): fraction of maximum speed to travel down at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            rotation_before_lateral (bool, optional): whether to rotate before moving laterally. Defaults to False.
+            robot (bool, optional): whether to move the robot. Defaults to False.
+            
+        Returns:
+            Position: new tool/robot position
+        """
         assert isinstance(to, (Sequence, Position, np.ndarray)), f"Ensure `to` is a Sequence or Position or np.ndarray object"
         if isinstance(to, (Sequence, np.ndarray)):
             assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
@@ -538,6 +737,12 @@ class Mover:
         return self.robot_position if robot else self.tool_position
     
     def setSafeHeight(self, height: float):
+        """
+        Set safe height for robot
+        
+        Args:
+            height (float): safe height in terms of robot coordinate system
+        """
         if isinstance(self.workspace, BoundingBox):
             assert (*self.workspace.reference[:2],height) in self.workspace, f"Ensure safe height is within workspace"
         if isinstance(self.deck, Deck):
@@ -549,18 +754,46 @@ class Mover:
     
     def setSpeedFactor(self, 
         speed_factor: float, 
+        *,
         persist: bool = True
-    ) -> tuple[float]:
+    ):
+        """
+        Set the speed factor of the robot
+        
+        Args:
+            speed_factor (float): fraction of maximum speed to travel at
+            persist (bool, optional): whether to persist the speed factor. Defaults to True.
+        """
         raise NotImplementedError
         
     def setToolOffset(self,
-        offset: Sequence[float]|Position
+        offset: Sequence[float]|Position|np.ndarray
     ) -> Position:
+        """
+        Set the tool offset of the robot
+        
+        Args:
+            offset (Sequence[float] | Position | np.ndarray): tool offset
+            
+        Returns:
+            Position: old tool offset
+        """
+        assert isinstance(offset, (Sequence, Position, np.ndarray)), f"Ensure `offset` is a Sequence or Position or np.ndarray object"
         old_tool_offset = self.tool_offset
-        self._tool_offset = Position(offset)
+        self._tool_offset = Position(offset) if not isinstance(offset, Position) else offset
         return old_tool_offset
     
     def updateRobotPosition(self, by: Position|Rotation|None = None, to: Position|Rotation|None = None) -> Position:
+        """
+        Update the robot position
+        
+        Args:
+            by (Position | Rotation, optional): move/rotate by. Defaults to None.
+            to (Position | Rotation, optional): move/rotate to. Defaults to None.
+            
+        Returns:
+            Position: new robot position
+        """
         assert (by is None) != (to is None), f"Ensure input only for one of `by` or `to`"
         if isinstance(by, Position):
             self._robot_position.translate(by.coordinates).orientate(by.Rotation)
@@ -579,6 +812,16 @@ class Mover:
         internal_points: np.ndarray,
         external_points: np.ndarray
     ) -> tuple[Position,float]:
+        """
+        Calibrate the internal and external coordinate systems
+        
+        Args:
+            internal_points (np.ndarray): internal points
+            external_points (np.ndarray): external points
+            
+        Returns:
+            tuple[Position,float]: calibrated offset and scale
+        """
         return get_transform(internal_points, external_points)
     
     @staticmethod
@@ -587,6 +830,17 @@ class Mover:
         offset: Position,
         scale: float = 1.0
     ) -> Position:
+        """
+        Transform robot coordinates to work coordinates
+        
+        Args:
+            internal_position (Position): robot position
+            offset (Position): calibrated offset
+            scale (float, optional): scale factor. Defaults to 1.0.
+            
+        Returns:
+            Position: work position
+        """
         translate = offset.coordinates
         rotate = offset.Rotation
         scale = scale
@@ -601,6 +855,17 @@ class Mover:
         offset: Position,
         scale: float = 1.0
     ) -> Position:
+        """
+        Transform work coordinates to robot coordinates
+        
+        Args:
+            external_position (Position): work position
+            offset (Position): calibrated offset
+            scale (float, optional): scale factor. Defaults to 1.0.
+            
+        Returns:
+            Position: robot position
+        """
         inv_scale = 1 / scale
         inv_offset = offset.invert()
         inv_rotate = inv_offset.Rotation
@@ -615,6 +880,16 @@ class Mover:
         internal_position: Position,
         offset: Position
     ) -> Position:
+        """
+        Transform robot coordinates to tool coordinates
+        
+        Args:
+            internal_position (Position): robot position
+            offset (Position): tool offset
+            
+        Returns:
+            Position: tool position
+        """
         coordinates = internal_position.coordinates + offset.coordinates
         rotation = internal_position.rotation + offset.rotation
         return Position(coordinates, Rotation.from_euler('zyx', rotation, degrees=True))
@@ -624,6 +899,16 @@ class Mover:
         external_position: Position,
         offset: Position
     ) -> Position:
+        """
+        Transform tool coordinates to robot coordinates
+        
+        Args:
+            external_position (Position): tool position
+            offset (Position): tool offset
+            
+        Returns:
+            Position: robot position
+        """
         coordinates = external_position.coordinates - offset.coordinates
         rotation = external_position.rotation - offset.rotation
         return Position(coordinates, Rotation.from_euler('zyx', rotation, degrees=True))
