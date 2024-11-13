@@ -22,6 +22,7 @@ from scipy.spatial.transform import Rotation
 
 # Local application imports
 from ..core.connection import DeviceFactory, Device
+from ..core.factory import dict_to_simple_namespace
 from ..core.position import Deck, Position, get_transform, BoundingBox
 
 logger = logging.getLogger(__name__)
@@ -300,8 +301,7 @@ class Mover:
         assert isinstance(deck, Deck), f"Ensure input is a Deck object"
         self.deck = deck
         deck_positions = deck.getAllPositions()
-        deck_positions_namespace = json.loads(json.dumps(deck_positions), object_hook=lambda item: SimpleNamespace(**item))
-        self.saved_positions['deck_positions_namespace'] = deck_positions_namespace
+        self.saved_positions['deck_positions'] = dict_to_simple_namespace(deck_positions)
         try:
             self.setSafeHeight(height=self.safe_height)
         except AssertionError as e:
@@ -399,7 +399,7 @@ class Mover:
     def moveToSafeHeight(self,speed_factor: float|None = None) -> Position:
         # Move up to safe height
         current_position = self.robot_position
-        safe_position = Position(current_position.coordinates[:2]+[self.safe_height], current_position.Rotation)
+        safe_position = Position(list(current_position.coordinates[:2])+[self.safe_height], current_position.Rotation)
         return self.moveTo(safe_position, speed_factor)
     
     def moveRobotTo(self,
@@ -690,8 +690,7 @@ class Mover:
         logger.debug(f'times: {times}')
         return move_time
     
-
-    
+   
 class _Mover:
     
     _default_heights: dict[str, float] = {}
