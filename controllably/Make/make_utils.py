@@ -20,31 +20,26 @@ logger.debug(f"Import: OK <{__name__}>")
 
 class Maker:
     """
-    Abstract Base Class (ABC) for Maker objects (i.e. tools that process materials / samples).
-    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
+    Base class for maker tools.
     
     ### Constructor
-    Args:
         `verbose` (bool, optional): verbosity of class. Defaults to False.
     
-    ### Attributes
-    - `channel` (int): channel id
-    - `connection_details` (dict): dictionary of connection details (e.g. COM port / IP address)
-    - `device` (Callable): device object that communicates with physical tool
-    - `flags` (dict[str, bool]): keywords paired with boolean flags
-    - `verbose` (bool): verbosity of class
+    ### Attributes and properties
+        `connection_details` (dict): connection details for the device
+        `device` (Device): device object that communicates with physical tool
+        `flags` (SimpleNamespace[str, bool]): flags for the class
+        `is_busy` (bool): whether the device is busy
+        `is_connected` (bool): whether the device is connected
+        `verbose` (bool): verbosity of class
     
     ### Methods
-    #### Abstract
-    - `execute`: execute task
-    - `shutdown`: shutdown procedure for tool
-    #### Public
-    - `connect`: establish connection with device
-    - `disconnect`: disconnect from device
-    - `isBusy`: checks and returns whether the device is busy
-    - `isConnected`: checks and returns whether the device is connected
-    - `resetFlags`: reset all flags to class attribute `_default_flags`
-    - `setFlag`: set flags by using keyword arguments
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `execute`: execute task
+        `resetFlags`: reset all flags to class attribute `_default_flags`
+        `run`: alias for `execute()`
+        `shutdown`: shutdown procedure for tool
     """
     
     _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, verbose=False)
@@ -68,22 +63,22 @@ class Maker:
     
     @property
     def connection_details(self) -> dict:
-        """Get connection details"""
+        """Connection details for the device"""
         return self.device.connection_details
     
     @property
     def is_busy(self) -> bool:
-        """Check and return whether the device is busy"""
+        """Whether the device is busy"""
         return self.flags.busy
     
     @property
     def is_connected(self) -> bool:
-        """Get connection status"""
+        """Whether the device is connected"""
         return self.device.is_connected
     
     @property
     def verbose(self) -> bool:
-        """Get verbosity of class"""
+        """Verbosity of class"""
         return self.flags.verbose
     @verbose.setter
     def verbose(self, value:bool):
@@ -99,12 +94,12 @@ class Maker:
         return
     
     def connect(self):
-        """Reconnect to device using existing connection details"""
+        """Connect to the device"""
         self.device.connect()
         return
     
     def disconnect(self):
-        """Disconnect from device"""
+        """Disconnect from the device"""
         self.device.disconnect()
         return
     
