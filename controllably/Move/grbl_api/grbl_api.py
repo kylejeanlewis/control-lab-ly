@@ -1,4 +1,18 @@
 # -*- coding: utf-8 -*-
+"""
+GRBL API for controlling CNC machines using the GRBL firmware.
+Refer to https://github.com/gnea/grbl/tree/master/doc/markdown for more information on the GRBL firmware.
+
+Attributes:
+    LOOP_INTERVAL (float): loop interval for device
+    MOVEMENT_BUFFER (int): buffer time after movement
+    MOVEMENT_TIMEOUT (int): timeout for movement
+    
+### Classes:
+    `GRBL`: GRBL class for controlling CNC machines using the GRBL firmware.
+    
+<i>Documentation last updated: 2024-11-14</i>
+"""
 # Standard library imports
 from __future__ import annotations
 import logging
@@ -23,8 +37,50 @@ MOVEMENT_TIMEOUT = 30
 
 class GRBL(SerialDevice):
     """
+    GRBL class for controlling CNC machines using the GRBL firmware.
     Refer to https://github.com/gnea/grbl/tree/master/doc/markdown for more information on the GRBL firmware.
+    
+    ### Constructor
+        `port` (str|None): Serial port to connect to. Default is None.
+        `baudrate` (int): Baudrate of the serial connection. Default is 9600.
+        `timeout` (int): Timeout for serial connection. Default is 1.
+        `init_timeout` (int): Timeout for initialization of serial connection. Default is 2.
+        `message_end` (str): Message end character for serial communication. Default is '\n'.
+        `simulation` (bool): Simulation mode for testing. Default is False.
+        
+    ### Attributes and properties
+        `port` (str): device serial port
+        `baudrate` (int): device baudrate
+        `timeout` (int): device timeout
+        `connection_details` (dict): connection details for the device
+        `serial` (serial.Serial): serial object for the device
+        `init_timeout` (int): timeout for initialization
+        `message_end` (str): message end character
+        `flags` (SimpleNamespace[str, bool]): flags for the device
+        `is_connected` (bool): whether the device is connected
+        `verbose` (bool): verbosity of class
+        
+    ### Methods
+        `checkAlarms`: check for alarms in the response
+        `checkErrors`: check for errors in the response
+        `checkInfo`: query device information
+        `checkParameters`: query device parameters
+        `checkSettings`: query device settings
+        `checkState`: query device state
+        `checkStatus`: query device status
+        `clearAlarms`: clear alarms in the response
+        `halt`: halt the device
+        `home`: home the device
+        `resume`: resume activity on the device
+        `setSpeedFactor`: set the speed factor in the device
+        `clear`: clear the input and output buffers
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `query`: query the device (i.e. write and read data)
+        `read`: read data from the device
+        `write`: write data to the device
     """
+    
     def __init__(self,
         port: str|None = None, 
         baudrate: int = 9600, 
@@ -56,11 +112,10 @@ class GRBL(SerialDevice):
     
     @property
     def verbose(self) -> bool:
-        """Get verbosity of class"""
+        """Verbosity of class"""
         return self.flags.verbose
     @verbose.setter
     def verbose(self, value:bool):
-        """Set verbosity of class"""
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         # super().verbose = value
         self.flags.verbose = value
@@ -73,6 +128,13 @@ class GRBL(SerialDevice):
     
     def checkAlarms(self, response: str) -> bool:
         """
+        Checks for alarms in the response
+        
+        Args:
+            response (str): response
+            
+        Returns:
+            bool: whether an alarm was found
         """
         if 'ALARM' not in response:
             return False
@@ -85,6 +147,13 @@ class GRBL(SerialDevice):
     
     def checkErrors(self, response: str) -> bool:
         """
+        Checks for errors in the response
+        
+        Args:
+            response (str): response
+            
+        Returns:
+            bool: whether an error was found
         """
         if 'error' not in response:
             return False
@@ -97,6 +166,10 @@ class GRBL(SerialDevice):
     
     def checkInfo(self) -> list[str]:
         """
+        Query device information
+        
+        Returns:
+            list[str]: information in the response
         """
         responses = self.query('$I')
         if self.flags.simulation:
@@ -105,6 +178,10 @@ class GRBL(SerialDevice):
     
     def checkParameters(self) -> dict[str, list[float]]:
         """
+        Query device parameters
+        
+        Returns:
+            dict[str, list[float]]: parameters in the response
         """
         responses = self.query('$#')
         parameters = {}
@@ -124,6 +201,10 @@ class GRBL(SerialDevice):
     
     def checkSettings(self) -> dict[str, int|float|str]:
         """
+        Query device settings
+        
+        Returns:
+            dict[str, int|float|str]: settings in the response
         """
         responses = self.query('$$')
         settings = {}
@@ -157,6 +238,10 @@ class GRBL(SerialDevice):
     
     def checkState(self) -> dict[str, str]:
         """
+        Query device state
+        
+        Returns:
+            dict[str, str]: state in the response
         """
         responses = self.query('$G')
         state = {}
@@ -182,6 +267,10 @@ class GRBL(SerialDevice):
     
     def checkStatus(self) -> tuple[str, np.ndarray[float], np.ndarray[float]]:
         """
+        Query device status
+        
+        Returns:
+            tuple[str, np.ndarray[float], np.ndarray[float]]: status, current position, home offset
         """
         responses = self.query('?',lines=False)
         self.clear()
@@ -200,14 +289,12 @@ class GRBL(SerialDevice):
         return (status, current_position, self._home_offset)
     
     def clearAlarms(self):
-        """
-        """
+        """Clear alarms in the device"""
         self.query('$X')
         return
     
     def halt(self) -> Position:
-        """
-        """
+        """Halt the device"""
         self.query('!')
         # self.clearAlarms()
         # self.resume()
@@ -216,6 +303,14 @@ class GRBL(SerialDevice):
     
     def home(self, axis:str|None = None, *, timeout:int|None = None) -> bool:
         """
+        Home the device
+        
+        Args:
+            axis (str|None): axis to home
+            timeout (int|None): timeout for homing
+            
+        Returns:
+            bool: whether the device was homed
         """
         if axis is not None:
             assert axis.upper() in 'XYZ', "Ensure axis is X,Y,Z for GRBL"
@@ -228,12 +323,18 @@ class GRBL(SerialDevice):
         return success
     
     def resume(self):
-        """
-        """
+        """Resume activity on the device"""
         self.query('~')
         return
     
     def setSpeedFactor(self, speed_factor:float, *, speed_max:int, **kwargs):
+        """
+        Set the speed factor in the device
+        
+        Args:
+            speed_factor (float): speed factor
+            speed_max (int): maximum speed
+        """
         assert isinstance(speed_factor, float), "Ensure speed factor is a float"
         assert (0.0 <= speed_factor <= 1.0), "Ensure speed factor is between 0.0 and 1.0"
         feed_rate = int(speed_factor * speed_max)
@@ -241,6 +342,16 @@ class GRBL(SerialDevice):
         return
     
     def _wait_for_status(self, statuses:Sequence[str], timeout:int = MOVEMENT_TIMEOUT) -> bool:
+        """
+        Wait for the device to reach a certain status
+        
+        Args:
+            statuses (Sequence[str]): statuses to wait for
+            timeout (int): timeout for waiting
+            
+        Returns:
+            bool: whether the device reached the status
+        """
         status,_,_ = self.checkStatus()
         start_time = time.perf_counter()
         if self.flags.simulation:
@@ -256,8 +367,7 @@ class GRBL(SerialDevice):
     
     # Overwritten methods
     def connect(self):
-        """
-        """
+        """Connect to the device"""
         super().connect()
         startup_lines = self.read(True)
         self.clearAlarms()
@@ -272,6 +382,17 @@ class GRBL(SerialDevice):
     
     def query(self, data: Any, lines:bool = True, *, timeout:int|None = None, jog:bool = False, wait:bool = False) -> list[str]|None:
         """
+        Query the device (i.e. write and read data)
+        
+        Args:
+            data (Any): data to query
+            lines (bool): whether to read lines
+            timeout (int|None): timeout for query
+            jog (bool): whether to perform jog movements
+            wait (bool): whether to wait for the device to reach the status
+            
+        Returns:
+            list[str]|None: response from the device
         """
         if self.flags.simulation:
             wait = False
