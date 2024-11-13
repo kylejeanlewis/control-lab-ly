@@ -8,10 +8,10 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 import logging
-from typing import Sequence
+from typing import final, Sequence
 
 # Local application imports
-from ...core.position import BoundingBox, Position,Deck
+from ...core.position import BoundingBox, Position, Deck
 from ..gcode_utils import GCode
 
 from abc import abstractmethod
@@ -23,21 +23,22 @@ from .. import Mover
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
-    
+
+@final
 class Gantry(GCode):
     
     def __init__(self, 
         port: str,
-        limits: Sequence[Sequence[float]] = ((0, 0, 0), (0, 0, 0)),     # in terms of robot coordinate system   # TODO: implement checking device for limits
+        limits: Sequence[Sequence[float]] = ((0, 0, 0), (0, 0, 0)),     # in terms of robot coordinate system
         *, 
         robot_position: Position = Position(),
-        home_position: Position = Position(),                   # in terms of robot coordinate system
+        home_position: Position = Position(),                           # in terms of robot coordinate system
         tool_offset: Position = Position(),
         calibrated_offset: Position = Position(),
         scale: float = 1.0,
         deck: Deck|None = None,
-        safe_height: float|None = None,                         # in terms of robot coordinate system
-        speed_max: float|None = None,                           # in mm/min
+        safe_height: float|None = None,                                 # in terms of robot coordinate system
+        speed_max: float|None = None,                                   # in mm/min
         device_type_name: str = 'GRBL',
         baudrate: int = 115200, 
         movement_buffer: int|None = None,
