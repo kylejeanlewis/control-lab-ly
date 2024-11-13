@@ -76,7 +76,7 @@ class GCode(Mover):
     """
     Refer to https://www.cnccookbook.com/g-code-m-code-command-list-cnc-mills/ for more information on G-code commands.
     """
-    _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, verbose=False, jog=False)
+    
     def __init__(self,
         port: str,
         *,
@@ -113,7 +113,7 @@ class GCode(Mover):
             return self.robot_position
         self.moveToSafeHeight(self.speed_factor)
         self.updateRobotPosition(to=self.home_position)
-        logger.info(f"Homed at {self.home_position}")
+        logger.info(f"Homed | axis={axis}")
         return self.robot_position
         
     def moveBy(self,
@@ -217,10 +217,10 @@ class GCode(Mover):
             self.speed_factor = speed_factor
         return speed_factor
     
-    def toggleCoolantValve(self, state:bool) -> bool:
-        command = 'M8' if state else 'M9'
+    def toggleCoolantValve(self, on:bool):
+        command = 'M8' if on else 'M9'
         self.query(command)
-        return state
+        return
     
     # Overwritten methods
     def connect(self):
