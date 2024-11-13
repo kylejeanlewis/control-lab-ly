@@ -39,7 +39,7 @@ class GCodeDevice(Protocol):
         """Disconnect from the device"""
         raise NotImplementedError
 
-    def query(self, data:Any, lines:bool = True) -> list[str]|None:
+    def query(self, data:Any, lines:bool = True, **kwargs) -> list[str]|None:
         """Query the device"""
         raise NotImplementedError
 
@@ -61,6 +61,14 @@ class GCodeDevice(Protocol):
     
     def halt(self) -> Position:
         """Halt the device"""
+        raise NotImplementedError
+    
+    def home(self, axis:str|None = None, **kwargs) -> bool:
+        """Home the device"""
+        raise NotImplementedError
+    
+    def setSpeedFactor(self, speed_factor:float|int, **kwargs):
+        """Set the speed factor of the device"""
         raise NotImplementedError
     
 
@@ -91,31 +99,21 @@ class GCode(Mover):
     
     def halt(self) -> Position:
         position = self.device.halt()
-        self._robot_position = position
+        self.updateRobotPosition(to=position)
         logger.warning(f"Halted at {position}")
         logger.warning('To cancel movement, reset robot and re-home')
-        logger.warning('To resume movement, use `resume` method')           # TODO: check Marlin resume command
         return position
     
-    def home(self, axis: str|None = None) -> Position:
-        if isinstance(self.device, GRBL):
-            if axis is not None:
-                assert axis.upper() in 'XYZ', "Ensure axis is X,Y,Z for GRBL"
-            command = '$H' if axis is None else f'$H{axis.upper()}'
-            self.query(command)
-            success = self._wait_for_status(('Home',), timeout=self.movement_timeout)
-            if not success:
-                status,_,_ = self.device.checkStatus()
-                logger.error(f"Timeout: {status} | {command}")
-                return self.robot_position
-        elif isinstance(self.device, Marlin):
-            if axis is not None:
-                logger.warning("Ignoring homing axis parameter for Marlin firmware")
-            self.query('G90')
-            self.query('G28')
-        else:
-            raise NotImplementedError
+    def home(self, axis: str|None = None, *, timeout:int|None = None) -> Position:
+        timeout = self.movement_timeout if timeout is None else timeout
+        self.moveToSafeHeight(self.speed_factor)
+        success = self.device.home(axis=axis, timeout=timeout)
+        time.sleep(self.movement_buffer)
+        if not success:
+            return self.robot_position
+        self.moveToSafeHeight(self.speed_factor)
         self.updateRobotPosition(to=self.home_position)
+        logger.info(f"Homed at {self.home_position}")
         return self.robot_position
         
     def moveBy(self,
@@ -156,7 +154,7 @@ class GCode(Mover):
             self.query(command, jog=jog, wait=True)
         self.query('G90')
         self.setSpeedFactor(self.speed_factor, persist=False)
-        time.sleep(0.5)
+        time.sleep(self.movement_buffer)
         
         # Update position
         self.updateRobotPosition(by=move_by)
@@ -192,56 +190,29 @@ class GCode(Mover):
         for command in commands:
             self.query(command, jog=jog, wait=True)
         self.setSpeedFactor(self.speed_factor, persist=False)
-        time.sleep(0.5)
+        time.sleep(self.movement_buffer)
         
         # Update position
         self.updateRobotPosition(to=move_to)
         return self.robot_position if robot else self.tool_position
     
-    def query(self, data:str, *, jog:bool = False, wait:bool = False) -> Any:
+    def query(self, data:str, lines:bool = True, *, timeout:int|None = None, jog:bool = False, wait:bool = False) -> Any:
         if jog:
             assert isinstance(self.device, GRBL), "Ensure device is of type `GRBL` to perform jog movements"
-            assert self.device.__version__().startswith("1.1"), "Ensure GRBL version is at least 1.1 to perform jog movements"
-            data = data.replace('G0 ', '').replace('G1 ', '')
-            data = f'$J={data} F{self.speed}'
-            self.device.write(data)
-            return self.device.read()
-        if not wait:
-            self.device.write(data)
-            return self.device.read()
-        
-        success = self._wait_for_status(('Idle',), timeout=MOVEMENT_TIMEOUT)
-        if not success:
-            status,_,_ = self.device.checkStatus()
-            logger.error(f"Timeout: {status} | {data}")
-            if status == 'Jog':
-                raise RuntimeError("Jog mode still active")
-            return []
-        
-        self.device.write(data)
-        response = self.device.read()
-        
-        success = self._wait_for_status(('Idle',), timeout=self.movement_timeout)
-        if not success:
-            status,_,_ = self.device.checkStatus()
-            logger.error(f"Timeout: {status} | {data}")
-        return response
+            data = f'{data} F{self.speed}'
+            return self.device.query(data, lines=False, jog=jog, wait=wait)
+        return self.device.query(data, lines=lines, timeout=timeout, jog=jog, wait=wait)
     
     def reset(self):
         self.disconnect()
         self.connect()
         return
     
-    def setSpeedFactor(self, speed_factor:float|None = None, persist:bool = True) -> float:
+    def setSpeedFactor(self, speed_factor:float|None = None, *, persist:bool = True):
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
         assert isinstance(speed_factor, float), "Ensure speed factor is a float"
-        if isinstance(self.device, GRBL):
-            feed_rate = self.speed_max * speed_factor
-            self.query(f'G90 F{feed_rate}')
-        elif isinstance(self.device, Marlin):
-            self.query(f'M220 F{speed_factor}')
-        else:
-            raise NotImplementedError
+        assert (0.0 <= speed_factor <= 1.0), "Ensure speed factor is between 0.0 and 1.0"
+        self.device.setSpeedFactor(speed_factor, speed_max=self.speed_max)
         if persist:
             self.speed_factor = speed_factor
         return speed_factor
@@ -250,18 +221,6 @@ class GCode(Mover):
         command = 'M8' if state else 'M9'
         self.query(command)
         return state
-    
-    def _wait_for_status(self, statuses:Sequence[str], timeout:int = MOVEMENT_TIMEOUT) -> bool:
-        status,_,_ = self.device.checkStatus()
-        start_time = time.perf_counter()
-        while status not in statuses:
-            time.sleep(LOOP_INTERVAL)
-            status,_,_ = self.device.checkStatus()
-            if status == 'Hold':
-                raise RuntimeError("Movement paused")
-            if time.perf_counter() - start_time > timeout:
-                return False
-        return True
     
     # Overwritten methods
     def connect(self):

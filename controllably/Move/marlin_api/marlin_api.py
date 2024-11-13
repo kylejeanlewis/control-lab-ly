@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
+LOOP_INTERVAL = 0.1
+MOVEMENT_BUFFER = 1
+MOVEMENT_TIMEOUT = 30
+
 class Marlin(SerialDevice):
     """
     Refer to https://marlinfw.org/meta/gcode/ for more information on the Marlin firmware.
@@ -157,6 +161,22 @@ class Marlin(SerialDevice):
         _,coordinates,_home_offset = self.checkStatus()
         return Position(coordinates-_home_offset)
     
+    def home(self, axis: str|None = None, **kwargs) -> bool:
+        """
+        """
+        if axis is not None:
+            logger.warning("Ignoring homing axis parameter for Marlin firmware")
+        self.query('G90')
+        self.query('G28', wait=True)
+        return True
+    
+    def setSpeedFactor(self, speed_factor:float, **kwargs):
+        assert isinstance(speed_factor, float), "Ensure speed factor is a float"
+        assert (0.0 <= speed_factor <= 1.0), "Ensure speed factor is between 0.0 and 1.0"
+        speed_percent = speed_factor*100
+        self.query(f'M220 S{int(speed_percent)}')
+        return
+    
     # Overwritten methods
     def connect(self):
         """
@@ -174,18 +194,37 @@ class Marlin(SerialDevice):
         print(f'Marlin version: {self._version}')
         return
     
-    def query(self, data: Any, lines:bool = True) -> list[str]|None:
+    def query(self, data: Any, lines:bool = True, *, wait:bool = False, **kwargs) -> list[str]|None:
         """
         """
         # data = data.replace('G1', 'G0')   # TODO: check if this is necessary
         if data.startswith('F'):
             data = f'G0 {data}'
-        responses = super().query(data)
-        # for response in responses:
-        #     logger.debug(f"Response: {response}")
-        #     self.checkAlarms(response)
-        #     self.checkErrors(response)
+        if not wait:
+            self.write(data)
+            return self.read(lines=False)
+        
+        responses = super().query(data, lines=lines)
+        success = self._wait_for_idle()
+        if not success:
+            logger.error(f"Timeout: {data}")
+            return []
         return responses
+    
+    def _wait_for_idle(self, timeout:int = MOVEMENT_TIMEOUT) -> bool:
+        """
+        """
+        if not self.is_connected:
+            return True
+        start_time = time.perf_counter()
+        while True:
+            time.sleep(LOOP_INTERVAL)
+            responses = self.read()
+            if len(responses) and responses[-1] != b'echo:busy: processing\n':
+                break
+            if time.perf_counter() - start_time > timeout:
+                return False
+        return True
 
     # Methods not implemented
     def checkAlarms(self, response: str) -> bool:           # NOTE: This method is not implemented

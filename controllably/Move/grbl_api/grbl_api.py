@@ -2,7 +2,8 @@
 # Standard library imports
 from __future__ import annotations
 import logging
-from typing import Any
+import time
+from typing import Any, Sequence
 
 # Third-party imports
 import numpy as np
@@ -15,6 +16,10 @@ from .grbl_lib import Alarm, Error, Setting, Status
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
+
+LOOP_INTERVAL = 0.1
+MOVEMENT_BUFFER = 1
+MOVEMENT_TIMEOUT = 30
 
 class GRBL(SerialDevice):
     """
@@ -196,11 +201,43 @@ class GRBL(SerialDevice):
         _,coordinates,_home_offset = self.checkStatus()
         return Position(coordinates-_home_offset)
     
+    def home(self, axis:str|None = None, *, timeout:int|None = None) -> bool:
+        """
+        """
+        if axis is not None:
+            assert axis.upper() in 'XYZ', "Ensure axis is X,Y,Z for GRBL"
+        command = '$H' if axis is None else f'$H{axis.upper()}'
+        self.query(command)
+        success = self._wait_for_status(('Home',), timeout=timeout)
+        if not success:
+            status,_,_ = self.checkStatus()
+            logger.error(f"Timeout: {status} | {command}")
+        return success
+    
     def resume(self):
         """
         """
         self.query('~')
         return
+    
+    def setSpeedFactor(self, speed_factor:float, *, speed_max:int, **kwargs):
+        assert isinstance(speed_factor, float), "Ensure speed factor is a float"
+        assert (0.0 <= speed_factor <= 1.0), "Ensure speed factor is between 0.0 and 1.0"
+        feed_rate = int(speed_factor * speed_max)
+        self.query(f'G90 F{feed_rate}')
+        return
+    
+    def _wait_for_status(self, statuses:Sequence[str], timeout:int = MOVEMENT_TIMEOUT) -> bool:
+        status,_,_ = self.checkStatus()
+        start_time = time.perf_counter()
+        while status not in statuses:
+            time.sleep(LOOP_INTERVAL)
+            status,_,_ = self.checkStatus()
+            if status == 'Hold':
+                raise RuntimeError("Movement paused")
+            if time.perf_counter() - start_time > timeout:
+                return False
+        return True
     
     # Overwritten methods
     def connect(self):
@@ -219,9 +256,28 @@ class GRBL(SerialDevice):
         self._version = version
         return
     
-    def query(self, data: Any, lines:bool = True) -> list[str]|None:
+    def query(self, data: Any, lines:bool = True, *, timeout:int|None = None, jog:bool = False, wait:bool = False) -> list[str]|None:
         """
         """
+        # For quick queries
+        if jog:
+            assert self.__version__().startswith("1.1"), "Ensure GRBL version is at least 1.1 to perform jog movements"
+            data = data.replace('G0 ', '').replace('G1 ', '')
+            data = f'$J={data}'
+            self.write(data)
+            return self.read(lines=False)
+        if not wait:
+            self.write(data)
+            return self.read(lines=False)
+        
+        success = self._wait_for_status(('Idle',), timeout=timeout)
+        if not success:
+            status,_,_ = self.checkStatus()
+            logger.error(f"Timeout: {data} | {status}")
+            if status == 'Jog':
+                raise RuntimeError("Jog mode still active")
+            return []
+        
         responses = super().query(data, lines=lines)
         for response in responses:
             logger.debug(f"Response: {response}")
@@ -229,4 +285,9 @@ class GRBL(SerialDevice):
                 continue
             if any([self.checkAlarms(response), self.checkErrors(response)]):
                 raise RuntimeError(f"Response: {response}")
+        
+        success = self._wait_for_status(('Idle',), timeout=timeout)
+        if not success:
+            status,_,_ = self.checkStatus()
+            logger.error(f"Timeout: {data} | {status}")
         return responses
