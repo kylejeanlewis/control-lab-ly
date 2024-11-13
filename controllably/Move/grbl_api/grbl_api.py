@@ -99,6 +99,8 @@ class GRBL(SerialDevice):
         """
         """
         responses = self.query('$I')
+        if self.flags.simulation:
+            return ['GRBL:1.1']
         return responses
     
     def checkParameters(self) -> dict[str, list[float]]:
@@ -106,6 +108,8 @@ class GRBL(SerialDevice):
         """
         responses = self.query('$#')
         parameters = {}
+        if self.flags.simulation:
+            return parameters
         for response in responses:
             response = response.strip()
             if not (response.startswith('[') and response.endswith(']')):
@@ -123,6 +127,8 @@ class GRBL(SerialDevice):
         """
         responses = self.query('$$')
         settings = {}
+        if self.flags.simulation:
+            return settings
         for response in responses:
             response = response.strip()
             if '=' not in response:
@@ -153,7 +159,9 @@ class GRBL(SerialDevice):
         """
         """
         responses = self.query('$G')
-        state = dict()
+        state = {}
+        if self.flags.simulation:
+            return state
         for response in responses:
             response = response.strip()
             if not (response.startswith('[') and response.endswith(']')):
@@ -235,6 +243,8 @@ class GRBL(SerialDevice):
     def _wait_for_status(self, statuses:Sequence[str], timeout:int = MOVEMENT_TIMEOUT) -> bool:
         status,_,_ = self.checkStatus()
         start_time = time.perf_counter()
+        if self.flags.simulation:
+            return True
         while status not in statuses:
             time.sleep(LOOP_INTERVAL)
             status,_,_ = self.checkStatus()
@@ -263,6 +273,8 @@ class GRBL(SerialDevice):
     def query(self, data: Any, lines:bool = True, *, timeout:int|None = None, jog:bool = False, wait:bool = False) -> list[str]|None:
         """
         """
+        if self.flags.simulation:
+            wait = False
         # For quick queries
         if jog:
             assert self.__version__().startswith("1.1"), "Ensure GRBL version is at least 1.1 to perform jog movements"
