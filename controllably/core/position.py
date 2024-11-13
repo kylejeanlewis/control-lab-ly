@@ -17,7 +17,7 @@ Attributes:
 ## Functions:
     `get_transform`: Get transformation matrix from initial to final points, with the first point in each set being the center of rotation
 
-<i>Documentation last updated: 2024-11-12</i>
+<i>Documentation last updated: 2024-11-13</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -512,6 +512,7 @@ class Labware:
     
     ### Methods:
         `fromTop`: offset from top of well
+        `getAllPositions`: get all positions in Labware
         `getWell`: get `Well` using its name
         `listColumns`: list wells by columns
         `listRows`: list  wells by rows
@@ -680,6 +681,24 @@ class Labware:
         """
         return self.top + np.array(offset)
 
+    def getAllPositions(self) -> dict[str, tuple[float]]:
+        """
+        Get all positions in Labware
+        
+        Returns:
+            dict[str, tuple[float]: dictionary of all positions
+        """
+        positions = dict()
+        positions['self'] = tuple(self.top)
+        for well in self._wells.values():
+            positions[well.name.replace(' ','_')] = dict(
+                top = tuple(well.top), 
+                bottom = tuple(well.bottom), 
+                dimensions = well.dimensions,
+                depth = well.depth
+            )
+        return positions
+
     def getWell(self, name:str) -> Well:
         """
         Get `Well` using its name
@@ -800,6 +819,7 @@ class Slot:
         `slot_below` (Slot|None): Slot below
         
     ### Methods:
+        `getAllPositions`: get all positions in Slot
         `loadLabware`: load Labware in Slot
         `loadLabwareFromConfigs`: load Labware from dictionary
         `loadLabwareFromFile`: load Labware from file
@@ -884,6 +904,19 @@ class Slot:
         """Exclusion zone of loaded Labware to avoid"""
         return self.loaded_labware.exclusion_zone if isinstance(self.loaded_labware, Labware) else None
 
+    def getAllPositions(self) -> dict[str, tuple[float]]:
+        """
+        Get all positions in Slot
+        
+        Returns:
+            dict[str, tuple[float]]: dictionary of all positions
+        """
+        positions = dict()
+        positions['self'] = tuple(self.center)
+        if isinstance(self.loaded_labware, Labware):
+            positions['labware'] = self.loaded_labware.getAllPositions()
+        return positions
+
     def loadLabware(self, labware:Labware):
         """
         Load Labware in Slot
@@ -954,30 +987,6 @@ class Slot:
             )
         return
 
-"""
-    Deck object
-
-    ### Constructor
-    Args:
-        `layout_file` (str|None, optional): filepath of deck layout JSON file. Defaults to None.
-        `package` (str|None, optional): name of package to look in. Defaults to None.
-    
-    ### Attributes
-    - `details` (dict): details read from layout file
-    - `exclusion_zones` (dict): dictionary of cuboidal zones to avoid
-    - `names` (dict): labels for deck slots
-    
-    ### Properties
-    - `slots` (dict[str, Labware]): loaded Labware in slots
-    
-    ### Methods
-    - `at`: alias for `getSlot()`, with mixed input
-    - `getSlot`: get Labware in slot using slot id or name
-    - `isExcluded`: checks and returns whether the coordinates are in an excluded region
-    - `loadLabware`: load Labware into slot
-    - `loadLayout`: load deck layout from layout file
-    - `removeLabware`: remove Labware in slot using slot id or name
-    """
 
 @dataclass
 class Deck:
@@ -1013,6 +1022,7 @@ class Deck:
         `fromFile`: factory method to load Deck from file
         
     ### Methods:
+        `getAllPositions`: get all positions in Deck
         `getSlot`: get `Slot` using its name or index
         `isExcluded`: checks and returns whether the coordinates are in an excluded region
         `loadNestedDeck`: load nested `Deck` object from dictionary
@@ -1161,6 +1171,22 @@ class Deck:
     def on(self) -> SimpleNamespace:
         """Namespace of all nested Decks"""
         return SimpleNamespace(**self._zones)
+    
+    def getAllPositions(self) -> dict[str, tuple[float]]:
+        """
+        Get all positions in Deck
+        
+        Returns:
+            dict[str, tuple[float]]: dictionary of all positions
+        """
+        positions = dict()
+        positions['self'] = tuple(self.center)
+        for slot in self._slots.values():
+            if isinstance(slot, Slot):
+                positions[slot.name.replace(' ','_')] = slot.getAllPositions()
+        for zone in self._zones.values():
+            positions[zone.name.replace(' ','_')] = zone.getAllPositions()
+        return positions
     
     def getSlot(self, value:int|str) -> Slot|None:
         """
