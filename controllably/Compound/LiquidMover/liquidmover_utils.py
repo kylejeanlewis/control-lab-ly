@@ -8,37 +8,41 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 import logging
-from typing import Optional, Protocol
+from types import SimpleNamespace
+from typing import Sequence, Optional, Protocol
 
 # Third party imports
 import numpy as np
 
 # Local application imports
-from ...core.position import Well
+from ...core.compound import Compound, Part
+from ...core.position import Well, Position, Labware, Deck
+# from ...Move import Mover
+# from ...Transfer.Liquid import LiquidHandler as Liquid
+
 from ..compound_utils import CompoundSetup
 
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
 
 class Liquid(Protocol):
+    offset: Sequence[float]
+    tip_inset_mm: float                     # For liquid handlers with replaceable tips
+    tip_length: float                       # For liquid handlers with replaceable tips
     def aspirate(self, *args, **kwargs):
         ...
     def dispense(self, *args, **kwargs):
         ...
-    def empty(self, *args, **kwargs):
-        ...
-    def fill(self, *args, **kwargs):
-        ... 
     def setFlag(self, *args, **kwargs):
+        ...
+    def eject(self, *args, **kwargs):       # For liquid handlers with replaceable tips
+        ...
+    def isTipOn(self, *args, **kwargs):     # For liquid handlers with replaceable tips
         ...
 
 class Mover(Protocol):
-    implement_offset: np.ndarray
-    speed_factor: float
-    def home(self, *args, **kwargs):
-        ...
-    def isFeasible(self, *args, **kwargs):
-        ...
+    deck: Deck
+    tool_offset: Position                   # For liquid handlers with replaceable tips
     def loadDeck(self, *args, **kwargs):
         ...
     def move(self, *args, **kwargs):
@@ -442,4 +446,234 @@ class LiquidMoverSetup(CompoundSetup):
                 break
             self.positions[slot].pop(0)
         return
+
+
+class LiquidMover(Compound):
+    """
     
+    """
+    
+    _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(verbose=False)
+    def __init__(self, 
+        *args, 
+        tip_approach_distance: float = 20,
+        speed_factor_pick_tip: float = 0.01,
+        speed_factor_lateral: float|None = None,
+        speed_factor_up: float = 0.2,
+        speed_factor_down: float = 0.2,
+        parts: dict[str,Part], 
+        verbose = False, 
+        **kwargs
+    ):
+        super().__init__(*args, parts=parts, verbose=verbose, **kwargs)
+        self.tip_approach_distance = tip_approach_distance
+        self.speed_factor_pick_tip = speed_factor_pick_tip
+        self.speed_factor_lateral = speed_factor_lateral
+        self.speed_factor_up = speed_factor_up
+        self.speed_factor_down = speed_factor_down
+        
+        # For liquid handlers with replaceable tips
+        if hasattr(self.liquid, 'eject'):
+            self.bin_slots: dict[int, Labware] = {}
+            self.tip_racks: dict[int, Labware] = {}
+            self.tip_lists: dict[int, list[str]] = {}
+            self._current_tip_detail: dict[str, str|np.ndarray] = {}
+            
+        self.connect()
+        return
+    
+    # Properties
+    @property
+    def liquid(self) -> Liquid:
+        return self.parts.get('liquid')
+    
+    @property
+    def mover(self) -> Mover:
+        return self.parts.get('mover')
+    
+    def align(self, 
+        coordinates: Sequence[float]|np.ndarray, 
+        offset: Sequence[float] = (0,0,0)
+    ) -> Position:
+        target_coordinates = np.array(coordinates) - np.array(offset)
+        return self.mover.safeMoveTo(
+            target_coordinates,
+            speed_factor_lateral = self.speed_factor_lateral,
+            speed_factor_up = self.speed_factor_up,
+            speed_factor_down = self.speed_factor_down
+        )
+    
+    def aspirateAt(self,
+        coordinates: Sequence[float]|np.ndarray,
+        volume: float,
+        speed: float|None = None,
+        *,
+        channel: int|None = None
+    ):
+        assert not (hasattr(self.liquid, 'eject') and not self.liquid.isTipOn()), "A tip is required and no tip is attached."
+        assert not (hasattr(self.liquid, 'channels') and channel is None), "Please specify a channel."
+        offset = self.liquid.channels[channel].offset if hasattr(self.liquid, 'channels') else self.liquid.offset
+        self.align(coordinates=coordinates, offset=offset)
+        self.liquid.aspirate(volume=volume, speed=speed, channel=channel)
+        return
+    
+    def dispenseAt(self,
+        coordinates: Sequence[float]|np.ndarray,
+        volume: float,
+        speed: float|None = None,
+        *,
+        channel: int|None = None
+    ):
+        assert not (hasattr(self.liquid, 'eject') and not self.liquid.isTipOn()), "A tip is required and no tip is attached."
+        assert not (hasattr(self.liquid, 'channels') and channel is None), "Please specify a channel."
+        offset = self.liquid.channels[channel].offset if hasattr(self.liquid, 'channels') else self.liquid.offset
+        self.align(coordinates=coordinates, offset=offset)
+        self.liquid.dispense(volume=volume, speed=speed, channel=channel)
+        return
+    
+    def touchTip(self,
+        well: Well,
+        fraction_depth_from_top: float = 0.05,
+        safe_move: bool = True,
+        speed_factor: float = 0.2
+    ) -> np.ndarray:
+        dimensions = list(well.dimensions)
+        dimensions = dimensions*2 if len(dimensions) == 1 else dimensions
+        depth = well.depth * fraction_depth_from_top
+        target = well.fromTop((0,0,-depth))
+        _  = self.align(target) if safe_move else self.mover.moveTo(target)
+        for axis,distance in zip('xy',dimensions):
+            self.mover.move(axis, distance/2, speed_factor)
+            self.mover.move(axis, -distance, speed_factor)
+            self.mover.move(axis, distance/2, speed_factor)
+        self.mover.moveTo(well.top)
+        return well.top
+    
+    # For liquid handlers with replaceable tips
+    def assignTipRack(self, slot:str, zone:str|None = None, *, use_by_columns:bool, start_tip:str|None = None):
+        deck = self.mover.deck
+        assert deck is not None, "Please first load a Deck using `Mover.loadDeck()`."
+        if zone is not None:
+            assert zone in deck.zones, "Please enter a valid zone."
+            deck = deck.zones[zone]
+        assert slot in deck.slots, "Please enter a valid slot."
+        
+        labware = deck.slots[slot].loaded_labware
+        assert labware is not None, "No Labware on the specified slot."
+        assert labware.is_tiprack, "Labware is not a tip rack."
+        
+        index = max(self.tip_racks.keys()) + 1 if len(self.tip_racks) > 0 else 0
+        self.tip_racks[index] = labware
+        
+        well_names = labware.listColumns() if use_by_columns else labware.listWells()
+        well_name_list = []
+        for l in well_names:
+            well_name_list.extend(l)
+        if start_tip is not None:
+            assert start_tip in well_name_list, "Please enter a valid start tip."
+            well_name_list = well_name_list[well_name_list.index(start_tip):]
+        self.tip_lists[index] = well_name_list
+        return
+    
+    def assignBin(self, slot:str, zone:str|None = None):
+        deck = self.mover.deck
+        assert deck is not None, "Please first load a Deck using `Mover.loadDeck()`."
+        if zone is not None:
+            assert zone in deck.zones, "Please enter a valid zone."
+            deck = deck.zones[zone]
+        assert slot in deck.slots, "Please enter a valid slot."
+        
+        labware = deck.slots[slot].loaded_labware
+        assert labware is not None, "No Labware on the specified slot."
+        assert len(labware.wells) == 1, "Ensure the bin has only one well."
+        
+        index = max(self.bin_slots.keys()) + 1 if len(self.bin_slots) > 0 else 0
+        self.bin_slots[index] = labware
+        return
+    
+    def attachTip(self):
+        assert hasattr(self.liquid, 'eject'), "Tip not required."
+        assert not self.liquid.isTipOn(), "A tip is already attached."
+        
+        index = min(self.tip_racks.keys())
+        labware = self.tip_racks[index]
+        name = self.tip_lists[index].pop(0)
+        if len(self.tip_lists[index]) == 0:
+            self.tip_lists.pop(index)
+            self.tip_racks.pop(index)
+        well = labware.wells[name]
+        coordinates, tip_length = well.top, well.depth
+        self._current_tip_detail['name'] = name
+        return self.attachTipAt(coordinates, tip_length)
+        
+    def attachTipAt(self,
+        coordinates: Sequence[float]|np.ndarray,
+        tip_length: float
+    ) -> np.ndarray:
+        assert hasattr(self.liquid, 'eject'), "Tip not required."
+        assert not self.liquid.isTipOn(), "A tip is already attached."
+        coordinates = np.array(coordinates)
+        self.align(coordinates)
+        
+        self.mover.move('z', -self.tip_approach_distance, self.speed_factor_pick_tip)
+        tip_inset = self.liquid.tip_inset_mm
+        self.mover.tool_offset.translate((0,0,tip_inset))
+        self.mover.tool_offset.translate((0,0,-tip_length))
+        self.liquid.tip_length = tip_length
+        
+        self.mover.move('z', self.tip_approach_distance+tip_length-tip_inset, self.speed_factor_up)
+        self.liquid.setFlag(tip_on=True)
+        
+        if not self.liquid.isTipOn():
+            self.mover.tool_offset.translate((0,0,tip_length))
+            self.mover.tool_offset.translate((0,0,-tip_inset))
+            self.liquid.tip_length = 0
+            self.liquid.setFlag(tip_on=False)
+            return coordinates
+        self._current_tip_detail['coordinates'] = coordinates
+        return coordinates
+    
+    def ejectTip(self):
+        assert hasattr(self.liquid, 'eject'), "Ejection not required."
+        assert self.liquid.isTipOn(), "No tip to eject."
+        index = min(self.bin_slots.keys())
+        labware = self.bin_slots[index]
+        well = labware.listWells('c')[0]
+        return self.ejectTipAt(well.top)
+        
+    def ejectTipAt(self, coordinates: Sequence[float]|np.ndarray) -> np.ndarray:
+        assert hasattr(self.liquid, 'eject'), "Ejection not required."
+        assert self.liquid.isTipOn(), "No tip to eject."
+        coordinates = np.array(coordinates)
+        self.align(coordinates)
+        
+        self.liquid.eject()
+        self.mover.tool_offset.translate((0,0,self.liquid.tip_length))
+        self.mover.tool_offset.translate((0,0,-self.liquid.tip_inset_mm))
+        self.liquid.tip_length = 0
+        self.liquid.setFlag(tip_on=False)
+        self._current_tip_origin = None
+        return coordinates
+    
+    def returnTip(self, offset_from_top: Sequence[float]|np.ndarray = (0,0,-20)) -> np.ndarray:
+        assert {'name','coordinates'} == set(self._current_tip_detail.keys()), "Current tip details not properly defined."
+        name = self._current_tip_detail.pop('name')
+        coordinates = self._current_tip_detail.pop('coordinates')
+        target_coordinates = coordinates + np.array(offset_from_top)
+        self.ejectTipAt(target_coordinates)
+        
+        index = min(self.tip_racks.keys())
+        self.tip_lists[index].append(name)
+        return coordinates
+    
+    def updateStartTip(self, start_tip:str):
+        index = min(self.tip_racks.keys())
+        well_name_list = self.tip_lists[index]
+        assert start_tip in well_name_list, "Please enter a valid start tip."
+        well_name_list = well_name_list[well_name_list.index(start_tip):]
+        self.tip_lists[index] = well_name_list
+        if len(self.tip_lists[index]) == 0:
+            self.tip_lists.pop(index)
+            self.tip_racks.pop(index)
+        return
+        
