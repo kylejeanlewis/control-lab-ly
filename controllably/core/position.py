@@ -650,17 +650,17 @@ class Labware:
         return {name[0]: rows_list[r] for r,name in enumerate(first_column)}
     
     @property
-    def wells(self) -> dict[str, list[Well]]:
+    def wells(self) -> dict[str, Well]:
         """Wells by columns (alias for `wells_columns`)"""
         return self._wells
     
     @property
-    def wells_columns(self) -> dict[str, list[Well]]:
+    def wells_columns(self) -> dict[str, Well]:
         """Wells by columns"""
         return self._wells
     
     @property
-    def wells_rows(self) -> dict[str, list[Well]]:
+    def wells_rows(self) -> dict[str, Well]:
         """Wells by rows"""
         return {name:self._wells[name] for row in self.listRows() for name in row}
 
@@ -681,7 +681,7 @@ class Labware:
         """
         return self.top + np.array(offset)
 
-    def getAllPositions(self) -> dict[str, tuple[float]]:
+    def getAllPositions(self) -> dict[str, tuple[float]|dict[str, tuple[float]|float]]:
         """
         Get all positions in Labware
         
@@ -731,9 +731,9 @@ class Labware:
             list[Well]: list of `Well` objects
         """
         if by in ('c','col','cols','column','columns'):
-            return self.wells_columns
+            return list(self.wells_columns.values())
         elif by in ('r','row','rows'):
-            return self.wells_rows
+            return list(self.wells_rows.values())
         raise ValueError(f"Invalid argument: {by}")
     
     def show(self, zoom_out:bool = False) -> plt.Figure:
@@ -904,7 +904,7 @@ class Slot:
         """Exclusion zone of loaded Labware to avoid"""
         return self.loaded_labware.exclusion_zone if isinstance(self.loaded_labware, Labware) else None
 
-    def getAllPositions(self) -> dict[str, tuple[float]]:
+    def getAllPositions(self) -> dict[str, tuple[float]|dict]:
         """
         Get all positions in Slot
         
@@ -1172,7 +1172,7 @@ class Deck:
         """Namespace of all nested Decks"""
         return SimpleNamespace(**self._zones)
     
-    def getAllPositions(self) -> dict[str, tuple[float]]:
+    def getAllPositions(self) -> dict[str, tuple[float]|dict]:
         """
         Get all positions in Deck
         
