@@ -149,7 +149,7 @@ class Gantry(GCode):
         self.connect()
         self.home()
         
-        settings = self._settings
+        settings = self.settings
         # Set limits if none provided
         if not any([any(l) for l in limits]):
             coordinates = self.device._home_offset
