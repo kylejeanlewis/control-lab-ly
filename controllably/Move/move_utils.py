@@ -24,7 +24,7 @@ from scipy.spatial.transform import Rotation
 # Local application imports
 from ..core.connection import DeviceFactory, Device
 from ..core.factory import dict_to_simple_namespace
-from ..core.position import Deck, Position, get_transform, BoundingBox
+from ..core.position import Deck, Position, get_transform, BoundingBox, convert_to_position
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -145,10 +145,10 @@ class Mover:
         self.safe_height: float = safe_height if safe_height is not None else home_position.z
         self.saved_positions: dict = dict()
         
-        self._robot_position = robot_position
-        self._home_position = home_position
-        self._tool_offset = tool_offset
-        self._calibrated_offset = calibrated_offset
+        self._robot_position = robot_position if isinstance(robot_position, Position) else convert_to_position(robot_position)
+        self._home_position = home_position if isinstance(home_position, Position) else convert_to_position(home_position)
+        self._tool_offset = tool_offset if isinstance(tool_offset, Position) else convert_to_position(tool_offset)
+        self._calibrated_offset = calibrated_offset if isinstance(calibrated_offset, Position) else convert_to_position(calibrated_offset)
         self._scale = scale
         
         self._speed_factor = 1.0
@@ -182,15 +182,11 @@ class Mover:
     def verbose(self, value:bool):
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
-        self.device.verbose = value
-        level = logging.DEBUG if value else logging.WARNING
-        parents = list(self.__class__.__mro__) + list(self.device.__class__.__mro__)
+        level = logging.DEBUG if value else logging.INFO
+        parents = list(self.__class__.__mro__)
         for parent in parents:
-            l = logging.getLogger(parent.__module__)
-            l.setLevel(level)
-        for handler in logger.handlers:
-            if isinstance(handler, type(logging.StreamHandler())):
-                handler.setLevel(level)
+            log = logging.getLogger(parent.__module__)
+            log.setLevel(level)
         return
     
     def connect(self):
@@ -424,7 +420,8 @@ class Mover:
         if isinstance(by, (Sequence, np.ndarray)):
             assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
         move_by = by if isinstance(by, Position) else Position(by)
-        logger.debug(f"Moving by {move_by} at speed factor {speed_factor}")
+        speed_factor = self.speed_factor if speed_factor is None else speed_factor
+        logger.info(f"Move By | {move_by} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
         if robot:
@@ -472,7 +469,8 @@ class Mover:
         if isinstance(to, (Sequence, np.ndarray)):
             assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
         move_to = to if isinstance(to, Position) else Position(to)
-        logger.debug(f"Moving to {move_to} at speed factor {speed_factor}")
+        speed_factor = self.speed_factor if speed_factor is None else speed_factor
+        logger.info(f"Move To | {move_to} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
         move_to = move_to if robot else self.transformToolToRobot(self.transformWorkToRobot(move_to))
@@ -599,7 +597,8 @@ class Mover:
         if isinstance(by, (Sequence, np.ndarray)):
             assert len(by) == 3, f"Ensure `by` is a 3-element sequence for c,b,a"
         rotate_by = by if isinstance(by, Rotation) else Rotation.from_euler('zyx', by, degrees=True)
-        logger.debug(f"Rotating by {rotate_by} at speed factor {speed_factor}")
+        speed_factor = self.speed_factor if speed_factor is None else speed_factor
+        logger.info(f"Rotate By | {rotate_by} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
         rotate_by = rotate_by               # not affected by robot or tool coordinates for rotation
@@ -635,7 +634,8 @@ class Mover:
         if isinstance(to, (Sequence, np.ndarray)):
             assert len(to) == 3, f"Ensure `to` is a 3-element sequence for c,b,a"
         rotate_to = to if isinstance(to, Rotation) else Rotation.from_euler('zyx', to, degrees=True)
-        logger.debug(f"Rotating to {rotate_to} at speed factor {speed_factor}")
+        speed_factor = self.speed_factor if speed_factor is None else speed_factor
+        logger.info(f"Rotate To | {rotate_to} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
         if robot:
@@ -940,16 +940,16 @@ class Mover:
         """
         travel_time = 0
         speed2 = speed*speed
-        accel_distance = 0 if not acceleration else speed2 / (2*acceleration)
-        decel_distance = 0 if not deceleration else speed2 / (2*deceleration)
+        accel_distance = (speed2 / (2*acceleration)) if acceleration else 0
+        decel_distance = (speed2 / (2*deceleration)) if deceleration else 0
         ramp_distance = accel_distance + decel_distance
         if ramp_distance <= distance:
-            travel_time = (distance - ramp_distance) / speed
-            accel_time = 0 if not acceleration else speed / acceleration
-            decel_time = 0 if not deceleration else speed / deceleration
+            travel_time = ((distance-ramp_distance) / speed) if speed  else 0
+            accel_time = (speed / acceleration) if acceleration else 0
+            decel_time = (speed / deceleration) if deceleration else 0
             travel_time += (accel_time + decel_time)
         else:
-            time2 = (2*distance)* (acceleration + deceleration)/(acceleration*deceleration)
+            time2 = (2*distance) * (acceleration+deceleration)/(acceleration*deceleration) if all([acceleration,deceleration]) else 0
             travel_time = time2**0.5
         travel_time = 0.0 if np.isnan(travel_time) else travel_time
         return travel_time
@@ -971,14 +971,11 @@ class Mover:
         Returns:
             float: wait time to complete travel
         """
-        accels = np.zeros(len(speeds)) if accels is None else accels
+        accels = np.zeros([None]*len(speeds)) if accels is None else accels
         times = [cls._calculate_travel_time(d,s,a,a) for d,s,a in zip(distances, speeds, accels)]
         move_time = max(times[:2]) + times[2]
-        logger.debug(f'distances: {distances}')
-        logger.debug(f'speeds: {speeds}')
-        logger.debug(f'accels: {accels}')
-        logger.debug(f'times: {times}')
-        return move_time
+        logger.debug(f'{move_time=} | {times=} | {distances=} | {speeds=} | {accels=}')
+        return move_time if (0<move_time<np.inf) else 0
     
    
 class _Mover:
