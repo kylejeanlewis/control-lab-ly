@@ -175,7 +175,13 @@ def load_parts(configs:dict, **kwargs) -> dict:
         class_name = details.get('class')
         _class = get_class(module_name, class_name)
         settings = details.get('settings', {})
-        parts[name] = _class(**settings)
+        parent = _class.__mro__[1].__name__
+        if parent in ('Compound','Combined'):
+            parts[name] = _class.fromConfig(settings)
+        elif parent in ('Tool','Device'):
+            parts[name] = _class.create(**settings)
+        else:
+            parts[name] = _class(**settings)
     return parts
 
 def load_setup_from_files(
@@ -199,8 +205,8 @@ def load_setup_from_files(
     configs = file_handler.read_config_file(config_file)
     registry = file_handler.read_config_file(registry_file) if registry_file is not None else None
     plans = get_plans(configs, registry)
-    shortcuts = plans.get('SHORTCUTS',{})
-    setup = load_parts(config=plans)
+    shortcuts = plans.pop('SHORTCUTS',{})
+    setup = load_parts(configs=plans)
     
     for name,value in shortcuts.items():
         parent, child = value.split('.')

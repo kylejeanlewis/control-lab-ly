@@ -127,7 +127,7 @@ class Compound:
             Type[Compound]: instance of Compound (or its subclasses)
         """
         details = config.pop('details')
-        parts = {name:factory.load_parts(settings) for name,settings in details.items()}
+        parts = factory.load_parts(details)
         return cls(parts=parts, **config)
     
     @property
@@ -420,7 +420,10 @@ class Combined:
         """
         details = config.pop('details')
         device = DeviceFactory.createDeviceFromDict(config)
-        parts = {name:factory.load_parts(settings, device=device) for name,settings in details.items()}
+        # parts = {name:factory.load_parts(settings, device=device) for name,settings in details.items()}
+        for settings in details.values():
+            settings['device'] = device
+        parts = factory.load_parts(details)
         return cls(device=device, parts=parts, **config)
     
     @property
