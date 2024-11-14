@@ -28,7 +28,6 @@ from ...core.position import Position
 from .grbl_lib import Alarm, Error, Setting, Status
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 LOOP_INTERVAL = 0.1
@@ -199,13 +198,13 @@ class GRBL(SerialDevice):
             return settings
         for response in responses:
             response = response.strip()
-            if '=' not in response:
+            if '=' not in response or len(response) < 3:
                 continue
             setting,value = response.split("=")
             setting_int = int(setting[1:]) if setting[1:].isnumeric() else setting[1:]
             setting_ = f'sc{setting_int}'
             assert setting_ in Setting.__members__, f"Setting not found: {setting_}"
-            logger.info(f"[{setting}]: {Setting[setting_].value.message} = {value}")
+            logger.debug(f"[{setting}]: {Setting[setting_].value.message} = {value}")
             negative = value.startswith('-')
             if negative:
                     value = value[1:]
@@ -273,7 +272,7 @@ class GRBL(SerialDevice):
             response = response[1:-1]
             status_parts = response.split('|')
             status = status_parts[0].split(':')[0]
-            logger.info(f"{status}: {Status[status].value}")
+            logger.debug(f"{status}: {Status[status].value}")
             current_position = np.array([float(c) for c in status_parts[1].split(':')[1].split(',')])
         return (status, current_position, self._home_offset)
     
@@ -377,8 +376,8 @@ class GRBL(SerialDevice):
         parameters = self.checkParameters()
         self._home_offset = np.array(parameters.get('G54', [0,0,0]))
         
-        print(startup_lines)
-        print(f'GRBL version: {self._version}')
+        logger.info(startup_lines)
+        logger.info(f'GRBL version: {self._version}')
         return
     
     def query(self, data: Any, lines:bool = True, *, timeout:int|None = None, jog:bool = False, wait:bool = False) -> list[str]|None:
