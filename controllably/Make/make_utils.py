@@ -88,8 +88,11 @@ class Maker:
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
         self.device.verbose = value
-        level = logging.INFO if value else logging.WARNING
-        logger.setLevel(level)
+        level = logging.DEBUG if value else logging.WARNING
+        parents = list(self.__class__.__mro__) + list(self.device.__class__.__mro__)
+        for parent in parents:
+            l = logging.getLogger(parent.__module__)
+            l.setLevel(level)
         for handler in logger.handlers:
             if isinstance(handler, type(logging.StreamHandler())):
                 handler.setLevel(level)

@@ -156,7 +156,13 @@ class Compound:
         for part in self._parts.values():
             part.verbose = value
         level = logging.INFO if value else logging.WARNING
-        logger.setLevel(level)
+        parents = list(self.__class__.__mro__)
+        part_parents = [part.__class__.__mro__ for part in self._parts.values()]
+        for pp in part_parents:
+            parents.extend(pp)
+        for parent in parents:
+            l = logging.getLogger(parent.__module__)
+            l.setLevel(level)
         for handler in logger.handlers:
             if isinstance(handler, type(logging.StreamHandler())):
                 handler.setLevel(level)
@@ -449,7 +455,13 @@ class Combined:
         for part in self._parts.values():
             part.verbose = value
         level = logging.INFO if value else logging.WARNING
-        logger.setLevel(level)
+        parents = list(self.__class__.__mro__)
+        part_parents = [part.__class__.__mro__ for part in self._parts.values()]
+        for pp in part_parents:
+            parents.extend(pp)
+        for parent in parents:
+            l = logging.getLogger(parent.__module__)
+            l.setLevel(level)
         for handler in logger.handlers:
             if isinstance(handler, type(logging.StreamHandler())):
                 handler.setLevel(level)
