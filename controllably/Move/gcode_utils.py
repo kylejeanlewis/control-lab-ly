@@ -32,8 +32,7 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
-LOOP_INTERVAL = 0.1
-MOVEMENT_BUFFER = 1
+MOVEMENT_BUFFER = 0
 MOVEMENT_TIMEOUT = 30
 
 class GCodeDevice(Protocol):
@@ -185,7 +184,25 @@ class GCode(Mover):
         self.device: GRBL|Marlin = self.device
         self.movement_buffer = movement_buffer if movement_buffer is not None else MOVEMENT_BUFFER
         self.movement_timeout = movement_timeout if movement_timeout is not None else MOVEMENT_TIMEOUT
+        self.settings = dict()
         return
+    
+    # Properties
+    @property
+    def max_accels(self) -> np.ndarray:
+        """Maximum accelerations of the robot"""
+        accel_x = self.settings.get('max_accel_x', 0)
+        accel_y = self.settings.get('max_accel_y', 0)
+        accel_z = self.settings.get('max_accel_z', 0)
+        return np.array([accel_x, accel_y, accel_z])
+    
+    @property
+    def max_speeds(self) -> np.ndarray:
+        """Maximum speeds of the robot"""
+        speed_x = self.settings.get('max_speed_x', 0)
+        speed_y = self.settings.get('max_speed_y', 0)
+        speed_z = self.settings.get('max_speed_z', 0)
+        return np.array([speed_x, speed_y, speed_z])
     
     def halt(self) -> Position:
         """Halt robot movement"""
@@ -207,12 +224,14 @@ class GCode(Mover):
             bool: whether the robot successfully homed
         """
         timeout = self.movement_timeout if timeout is None else timeout
-        self.moveToSafeHeight(self.speed_factor)
+        self.moveToSafeHeight()
         success = self.device.home(axis=axis, timeout=timeout)
+        # self.updateRobotPosition(to=self.home_position)
         time.sleep(self.movement_buffer)
         if not success:
             return success
-        self.moveToSafeHeight(self.speed_factor)
+        if any(self.home_position.coordinates):
+            self.moveTo(self.home_position, self.speed_factor)
         self.updateRobotPosition(to=self.home_position)
         logger.info(f"Homed | axis={axis}")
         return success
@@ -253,9 +272,12 @@ class GCode(Mover):
             by_coordinates = inv_tool_offset.Rotation.apply(inv_calibrated_offset.Rotation.apply(move_by.coordinates))
             by_rotation = inv_tool_offset.Rotation * inv_calibrated_offset.Rotation * move_by.Rotation
             move_by = Position(by_coordinates, by_rotation)
-        if not self.isFeasible(self.position.coordinates + move_by.coordinates, external=False, tool_offset=False):
+        if not self.isFeasible(self.robot_position.coordinates + move_by.coordinates, external=False, tool_offset=False):
             logger.warning(f"Target movement {move_by} is not feasible")
             return self.robot_position if robot else self.tool_position
+        
+        # current_position = self.robot_position if robot else self.tool_position
+        # return self.moveTo(move_by.apply(current_position), speed_factor, jog=jog, rapid=rapid, robot=robot)
         
         # Implementation of relative movement
         mode = 'G0' if rapid else 'G1'
@@ -263,12 +285,21 @@ class GCode(Mover):
         command_z = f'{mode} Z{move_by.z}'
         commands = (command_z, command_xy) if (move_by.z > 0) else (command_xy, command_z)
         self.setSpeedFactor(speed_factor, persist=False)
-        self.query('G91')
+        self.device.write('G91')
         for command in commands:
             self.query(command, jog=jog, wait=True)
-        self.query('G90')
+        self.device.write('G90')
         self.setSpeedFactor(self.speed_factor, persist=False)
-        time.sleep(self.movement_buffer)
+        self.device.clear()
+        
+        # Adding time delays to coincide with movement
+        if not jog:
+            speed_factor = self.speed_factor if speed_factor is None else speed_factor
+            distances = abs(move_by.coordinates)
+            speeds = speed_factor*self.max_speeds
+            accels = self.max_accels
+            move_time = self._get_move_wait_time(distances, speeds, accels)
+            time.sleep(move_time+self.movement_buffer)
         
         # Update position
         self.updateRobotPosition(by=move_by)
@@ -313,11 +344,20 @@ class GCode(Mover):
         command_z = f'{mode} Z{move_to.z}'
         commands = (command_z, command_xy) if (self.position.z < move_to.z) else (command_xy, command_z)
         self.setSpeedFactor(speed_factor, persist=False)
-        self.query('G90')
+        self.device.write('G90')
         for command in commands:
             self.query(command, jog=jog, wait=True)
         self.setSpeedFactor(self.speed_factor, persist=False)
-        time.sleep(self.movement_buffer)
+        self.device.clear()
+        
+        # Adding time delays to coincide with movement
+        if not jog:
+            speed_factor = self.speed_factor if speed_factor is None else speed_factor
+            distances = abs(move_to.coordinates - self.position.coordinates)
+            speeds = speed_factor*self.max_speeds
+            accels = self.max_accels
+            move_time = self._get_move_wait_time(distances, speeds, accels)
+            time.sleep(move_time+self.movement_buffer)
         
         # Update position
         self.updateRobotPosition(to=move_to)
@@ -338,8 +378,8 @@ class GCode(Mover):
             Any: response from device
         """
         if jog:
-            assert isinstance(self.device, GRBL), "Ensure device is of type `GRBL` to perform jog movements"
-            data = f'{data} F{self.speed}'
+            # assert isinstance(self.device, GRBL), "Ensure device is of type `GRBL` to perform jog movements"
+            data = f'{data} F{int(self.speed*60)}'         # Convert speed from mm/s to mm/min
             return self.device.query(data, lines=False, jog=jog, wait=wait)
         return self.device.query(data, lines=lines, timeout=timeout, jog=jog, wait=wait)
     
@@ -373,7 +413,7 @@ class GCode(Mover):
             on (bool): whether to turn the coolant valve on
         """
         command = 'M8' if on else 'M9'
-        self.query(command)
+        self.query(command, lines=False)
         return
     
     # Overwritten methods
@@ -381,6 +421,6 @@ class GCode(Mover):
         """Connect to the device"""
         self.device.connect()
         self.setSpeedFactor(1.0)
-        self._settings = self.device.checkSettings()
-        print(self._settings)
+        self.settings = self.device.checkSettings()
+        print(self.settings)
         return
