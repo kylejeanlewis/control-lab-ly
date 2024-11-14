@@ -17,12 +17,11 @@ import numpy as np
 # Local application imports
 from ...core.compound import Compound, Part
 from ...core.position import Well, Position, Labware, Deck
-# from ...Move import Mover
-# from ...Transfer.Liquid import LiquidHandler as Liquid
 
 from ..compound_utils import CompoundSetup
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 class Liquid(Protocol):
@@ -543,11 +542,11 @@ class LiquidMover(Compound):
     # Properties
     @property
     def liquid(self) -> Liquid:
-        return self.parts.get('liquid')
+        return getattr(self.parts, 'liquid')
     
     @property
     def mover(self) -> Mover:
-        return self.parts.get('mover')
+        return getattr(self.parts, 'mover')
     
     def align(self, 
         coordinates: Sequence[float]|np.ndarray, 
