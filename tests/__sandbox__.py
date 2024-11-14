@@ -1,20 +1,47 @@
 # %%
+import logging
+
+import test_init
+from controllably.core.factory import load_setup_from_files
+
+logger = logging.getLogger(load_setup_from_files.__module__)
+logger.setLevel(logging.INFO)
+
+setup = load_setup_from_files(r'C:\Users\chang\GitHub\control-lab-le\library\configs\open_pipette.yaml')
+overkill = setup.overkill
+mover = overkill.mover
+liquid = overkill.liquid
+
+# setup = load_setup_from_files(r'C:\Users\chang\GitHub\control-lab-le\library\configs\ender.yaml')
+ender = setup.ender
+primitiv = setup.primitiv
+
+# %%
+import test_init
+from controllably.Make.Light import LEDArray
+
+leds = LEDArray(port='COM1', baudrate=9600, timeout=1, verbose=True, simulation=True)
+
+# %%
 import test_init
 from controllably.Move.Cartesian import Gantry
 
-mover = Gantry('COM22', limits=((-100,-100,-100),(0,0,0)), verbose=True)
+# mover = Gantry('COM3', limits=((-100,-100,-100),(0,0,0)),safe_height=0, verbose=True)
+mover = Gantry('COM4', device_type_name='Marlin', safe_height=30, limits=((0,0,0),(220,220,250)), verbose=True, simulation=True)
 
 # %%
-mover.moveTo((-10,-10,-50), jog=True)
+# mover.moveTo((-10,-20,-50))
+mover.moveTo((10,20,50))
 
 # %%
 mover.safeMoveTo((-100,-10,-30))
+mover.safeMoveTo((100,10,30))
 
 # %%
-mover.moveBy((50,-10,-10), jog=False, rapid=True)
+mover.moveBy((50,-10,-10))
 
 # %%
-mover.move('x', -10, jog=True)
+mover.move('x', -10,jog=True)
 # %%
 mover.home()
 
@@ -206,7 +233,9 @@ point = (-10,2,3)
 point in bb
 
 # %%
+import json
 from pathlib import Path
+from types import SimpleNamespace
 import test_init
 from controllably.core.position import Labware, Deck
 
@@ -214,10 +243,13 @@ labware_file = Path('control-lab-le/tests/files/labware/corning_24_wellplate_340
 labware = Labware.fromFile(labware_file)
 labware.show()
 
-deck_file = Path('control-lab-le/tests/files/deck/deck_phbotv2.json')
+deck_file = Path('control-lab-le/tests/files/deck/deck_pescador.json')
 deck = Deck.fromFile(deck_file)
 deck.show()
 deck
+
+positions = deck.getAllPositions()
+my_positions = json.loads(json.dumps(positions), object_hook=lambda item: SimpleNamespace(**item))
 
 # %%
 for n,bb in deck.exclusion_zone.items():
