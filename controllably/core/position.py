@@ -15,9 +15,10 @@ Attributes:
     `BoundingBox`: represents a 3D bounding box
     
 ## Functions:
+    `convert_to_position`: Convert a value to a `Position` object
     `get_transform`: Get transformation matrix from initial to final points, with the first point in each set being the center of rotation
 
-<i>Documentation last updated: 2024-11-13</i>
+<i>Documentation last updated: 2024-11-15</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -47,6 +48,26 @@ MTP_DIMENSIONS = (127.76,85.48,0)
 """Microtiter plate dimensions in mm"""
 OBB_DIMENSIONS = (300,300,0)
 """Optical Breadboard dimensions in mm"""
+
+def convert_to_position(value:Sequence|np.ndarray) -> Position:
+    """
+    Convert a value to a `Position` object
+
+    Args:
+        value (Sequence[float]|numpy.ndarray|Position): value to convert
+
+    Returns:
+        Position: converted `Position` object
+    """
+    if isinstance(value, Position):
+        return value
+    assert isinstance(value, (Sequence,np.ndarray)), "Please input a valid value to be converted to Position"
+    value = np.array(value)
+    if len(value.shape) == 1:
+        return Position(value)
+    elif len(value.shape) == 2:
+        return Position(value[0], Rotation.from_euler('zyx',value[1],degrees=True))
+    raise ValueError(f"Invalid value: {value}")
 
 def get_transform(initial_points: np.ndarray, final_points:np.ndarray) -> tuple[Position,float]:
     """
