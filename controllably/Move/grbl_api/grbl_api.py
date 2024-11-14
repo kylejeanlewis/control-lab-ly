@@ -195,9 +195,10 @@ class GRBL(SerialDevice):
             if not (response.startswith('[') and response.endswith(']')):
                 continue
             response = response[1:-1]
-            if response.startswith('PRB'):
-                continue
-            parameter,values = response.split(":")
+            splits = response.split(":")
+            parameter,values = splits[0],splits[1]
+            if parameter in ('HOME','PRB') and len(splits)>2:
+                values = ','.join([values, splits[2]])
             values = [float(c) for c in values.split(",")]
             parameters[parameter] = values
         return parameters
@@ -330,7 +331,7 @@ class GRBL(SerialDevice):
                 break
             if not self.is_connected:
                 break
-            if len(responses):
+            if len(responses) and 'Home' not in responses:
                 break
         # self.query(command)
         # success = self._wait_for_status(('Home',), timeout=timeout)
