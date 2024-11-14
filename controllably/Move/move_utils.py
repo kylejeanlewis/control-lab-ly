@@ -499,8 +499,9 @@ class Mover:
             Position: new tool position
         """
         # Move up to safe height
-        current_position = self.robot_position
-        safe_position = Position(list(current_position.coordinates[:2])+[self.safe_height], current_position.Rotation)
+        if self.robot_position.z >= self.safe_height:
+            return self.robot_position
+        safe_position = self.robot_position.translate([0,0,self.safe_height - self.robot_position.z], inplace=False)
         return self.moveTo(safe_position, speed_factor)
     
     def moveRobotTo(self,
@@ -716,15 +717,17 @@ class Mover:
         assert isinstance(to, (Sequence, Position, np.ndarray)), f"Ensure `to` is a Sequence or Position or np.ndarray object"
         if isinstance(to, (Sequence, np.ndarray)):
             assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
+        rotation = any(to.rotation) if isinstance(to,Position) else False
         speed_factor_lateral = self.speed_factor if speed_factor_lateral is None else speed_factor_lateral
         speed_factor_up = self.speed_factor if speed_factor_up is None else speed_factor_up
         speed_factor_down = self.speed_factor if speed_factor_down is None else speed_factor_down
         
         # Move up to safe height
-        self.moveToSafeHeight(speed_factor=speed_factor_up)
+        if self.robot_position.z < self.safe_height:
+            self.moveToSafeHeight(speed_factor=speed_factor_up)
         
         # Move laterally to safe height above target position
-        if isinstance(to,Position) and rotation_before_lateral:
+        if rotation and rotation_before_lateral:
             self.rotateTo(to=to.Rotation, speed_factor=speed_factor_lateral, robot=robot)
         
         current_coordinates = self.robot_position.coordinates if robot else self.tool_position.coordinates
@@ -732,7 +735,7 @@ class Mover:
         safe_target_coordinates = np.array([*target_coordinates[:2], current_coordinates[2]])
         self.moveTo(to=safe_target_coordinates, speed_factor=speed_factor_lateral, robot=robot)
         
-        if isinstance(to,Position) and not rotation_before_lateral:
+        if rotation and not rotation_before_lateral:
             self.rotateTo(to=to.Rotation, speed_factor=speed_factor_lateral, robot=robot)
         
         # Move down to target position
@@ -801,11 +804,11 @@ class Mover:
         if isinstance(by, Position):
             self._robot_position.translate(by.coordinates).orientate(by.Rotation)
         elif isinstance(to, Position):
-            self._robot_position = to
+            self._robot_position = deepcopy(to)
         elif isinstance(by, Rotation):
             self._robot_position.orientate(by)
         elif isinstance(to, Rotation):
-            self._robot_position.Rotation = to
+            self._robot_position.Rotation = deepcopy(to)
         else:
             raise ValueError(f"Ensure input is of type Position or Rotation")
         return self.robot_position
