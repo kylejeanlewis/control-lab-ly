@@ -450,21 +450,79 @@ class LiquidMoverSetup(CompoundSetup):
 
 class LiquidMover(Compound):
     """
+    LiquidMover provides a high-level interface for liquid handling operations
     
+    ### Constructor
+        `parts` (dict[str,Part]): dictionary of parts
+        `tip_approach_distance` (float, optional): distance in mm from top to travel down to pick tip. Defaults to 20.
+        `speed_factor_pick_tip` (float, optional): speed factor to pick up tip. Defaults to 0.01.
+        `speed_factor_lateral` (float, optional): speed factor for lateral movement. Defaults to None.
+        `speed_factor_up` (float, optional): speed factor for upward movement. Defaults to 0.2.
+        `speed_factor_down` (float, optional): speed factor for downward movement. Defaults to 0.2.
+        `verbose` (bool, optional): verbosity of output. Defaults to False.
+        
+    ### Attributes and properties
+        `tip_approach_distance` (float): distance in mm from top to travel down to pick tip
+        `speed_factor_pick_tip` (float): speed factor to pick up tip
+        `speed_factor_lateral` (float): speed factor for lateral movement
+        `speed_factor_up` (float): speed factor for upward movement
+        `speed_factor_down` (float): speed factor for downward movement
+        `liquid` (Liquid): liquid transfer tool
+        `mover` (Mover): movement / translation robot
+        `connection_details` (dict): connection details of each part
+        `parts` (SimpleNamespace[str,Part]): namespace of parts
+        `flags` (SimpleNamespace[str,bool]): flags of class
+        `is_busy` (bool): whether any part is busy
+        `is_connected` (bool): whether all parts are connected
+        `verbose` (bool): verbosity of class
+        
+        #### (For liquid handlers with replaceable tips)
+        `bin_slots` (dict[int,Labware]): dictionary of bin slots
+        `tip_racks` (dict[int,Labware]): dictionary of tip racks
+        `tip_lists` (dict[int,list[str]]): dictionary of tip lists
+        `current_tip_detail` (dict[str, str|np.ndarray]): dictionary of current tip details
+        
+    ### Methods
+        `align`: align the tool tip to the target coordinates, while also considering any additional offset
+        `aspirateAt`: aspirate specified volume at target location, at desired speed
+        `dispenseAt`: dispense specified volume at target location, at desired speed
+        `touchTip`: touch the tip against the inner walls of the well
+        
+        #### (For liquid handlers with replaceable tips)
+        `assignTipRack`: assign a tip rack by its slot
+        `assignBin`: assign a bin by its slot
+        `attachTip`: attach new pipette tip from next available rack position
+        `attachTipAt`: attach new pipette tip from specified location
+        `ejectTip`: eject the pipette tip at the bin
+        `ejectTipAt`: eject the pipette tip at the specified location
+        `returnTip`: return current tip to its original rack position
+        `updateStartTip`: set the name of the first available pipette tip
     """
     
     _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(verbose=False)
     def __init__(self, 
         *args, 
+        parts: dict[str,Part], 
         tip_approach_distance: float = 20,
         speed_factor_pick_tip: float = 0.01,
         speed_factor_lateral: float|None = None,
         speed_factor_up: float = 0.2,
         speed_factor_down: float = 0.2,
-        parts: dict[str,Part], 
         verbose = False, 
         **kwargs
     ):
+        """ 
+        Initialize LiquidMover class
+        
+        Args:
+            parts (dict[str,Part]): dictionary of parts
+            tip_approach_distance (float, optional): distance in mm from top to travel down to pick tip. Defaults to 20.
+            speed_factor_pick_tip (float, optional): speed factor to pick up tip. Defaults to 0.01.
+            speed_factor_lateral (float, optional): speed factor for lateral movement. Defaults to None.
+            speed_factor_up (float, optional): speed factor for upward movement. Defaults to 0.2.
+            speed_factor_down (float, optional): speed factor for downward movement. Defaults to 0.2.
+            verbose (bool, optional): verbosity of output. Defaults to False.
+        """
         super().__init__(*args, parts=parts, verbose=verbose, **kwargs)
         self.tip_approach_distance = tip_approach_distance
         self.speed_factor_pick_tip = speed_factor_pick_tip
@@ -477,7 +535,7 @@ class LiquidMover(Compound):
             self.bin_slots: dict[int, Labware] = {}
             self.tip_racks: dict[int, Labware] = {}
             self.tip_lists: dict[int, list[str]] = {}
-            self._current_tip_detail: dict[str, str|np.ndarray] = {}
+            self.current_tip_detail: dict[str, str|np.ndarray] = {}
             
         self.connect()
         return
@@ -495,6 +553,16 @@ class LiquidMover(Compound):
         coordinates: Sequence[float]|np.ndarray, 
         offset: Sequence[float] = (0,0,0)
     ) -> Position:
+        """
+        Align the tool tip to the target coordinates, while also considering any additional offset
+        
+        Args:
+            coordinates (Sequence[float]|np.ndarray): target coordinates
+            offset (Sequence[float], optional): additional x,y,z offset from tool tip. Defaults to (0,0,0).
+            
+        Returns:
+            Position: final coordinates of tool tip
+        """
         target_coordinates = np.array(coordinates) - np.array(offset)
         return self.mover.safeMoveTo(
             target_coordinates,
@@ -510,6 +578,15 @@ class LiquidMover(Compound):
         *,
         channel: int|None = None
     ):
+        """
+        Aspirate specified volume at target location, at desired speed
+        
+        Args:
+            coordinates (Sequence[float]|np.ndarray): target coordinates
+            volume (float): volume in uL
+            speed (float|None, optional): speed to aspirate at (uL/s). Defaults to None.
+            channel (int|None, optional): channel to use. Defaults to None.
+        """
         assert not (hasattr(self.liquid, 'eject') and not self.liquid.isTipOn()), "A tip is required and no tip is attached."
         assert not (hasattr(self.liquid, 'channels') and channel is None), "Please specify a channel."
         offset = self.liquid.channels[channel].offset if hasattr(self.liquid, 'channels') else self.liquid.offset
@@ -524,6 +601,15 @@ class LiquidMover(Compound):
         *,
         channel: int|None = None
     ):
+        """
+        Dispense specified volume at target location, at desired speed
+        
+        Args:
+            coordinates (Sequence[float]|np.ndarray): target coordinates
+            volume (float): volume in uL
+            speed (float|None, optional): speed to dispense at (uL/s). Defaults to None.
+            channel (int|None, optional): channel to use. Defaults to None.
+        """
         assert not (hasattr(self.liquid, 'eject') and not self.liquid.isTipOn()), "A tip is required and no tip is attached."
         assert not (hasattr(self.liquid, 'channels') and channel is None), "Please specify a channel."
         offset = self.liquid.channels[channel].offset if hasattr(self.liquid, 'channels') else self.liquid.offset
@@ -534,9 +620,21 @@ class LiquidMover(Compound):
     def touchTip(self,
         well: Well,
         fraction_depth_from_top: float = 0.05,
-        safe_move: bool = True,
+        safe_move: bool = False,
         speed_factor: float = 0.2
     ) -> np.ndarray:
+        """
+        Touch the tip against the inner walls of the well
+        
+        Args:
+            well (Well): `Well` object
+            fraction_depth_from_top (float, optional): fraction of well depth from top to travel down. Defaults to 0.05.
+            safe_move (bool, optional): whether to move safely (i.e. go back to safe height first). Defaults to False.
+            speed_factor (float, optional): fraction of maximum speed to perform touch tip. Defaults to 0.2.
+            
+        Returns:
+            np.ndarray: coordinates of top of well
+        """
         dimensions = list(well.dimensions)
         dimensions = dimensions*2 if len(dimensions) == 1 else dimensions
         depth = well.depth * fraction_depth_from_top
@@ -550,7 +648,22 @@ class LiquidMover(Compound):
         return well.top
     
     # For liquid handlers with replaceable tips
-    def assignTipRack(self, slot:str, zone:str|None = None, *, use_by_columns:bool, start_tip:str|None = None):
+    def assignTipRack(self, 
+        slot:str, 
+        zone:str|None = None, 
+        *, 
+        use_by_columns:bool, 
+        start_tip:str|None = None
+    ):
+        """
+        Assign a tip rack by its slot
+        
+        Args:
+            slot (str): name of slot with tip rack
+            zone (str|None, optional): name of zone. Defaults to None.
+            use_by_columns (bool): whether to use tips by columns
+            start_tip (str|None, optional): name of start tip. Defaults to None.
+        """
         deck = self.mover.deck
         assert deck is not None, "Please first load a Deck using `Mover.loadDeck()`."
         if zone is not None:
@@ -576,6 +689,13 @@ class LiquidMover(Compound):
         return
     
     def assignBin(self, slot:str, zone:str|None = None):
+        """
+        Assign a bin by its slot
+        
+        Args:
+            slot (str): name of slot with bin
+            zone (str|None, optional): name of zone. Defaults to None.
+        """
         deck = self.mover.deck
         assert deck is not None, "Please first load a Deck using `Mover.loadDeck()`."
         if zone is not None:
@@ -592,6 +712,7 @@ class LiquidMover(Compound):
         return
     
     def attachTip(self):
+        """Attach new pipette tip from next available rack position"""
         assert hasattr(self.liquid, 'eject'), "Tip not required."
         assert not self.liquid.isTipOn(), "A tip is already attached."
         
@@ -603,13 +724,23 @@ class LiquidMover(Compound):
             self.tip_racks.pop(index)
         well = labware.wells[name]
         coordinates, tip_length = well.top, well.depth
-        self._current_tip_detail['name'] = name
+        self.current_tip_detail['name'] = name
         return self.attachTipAt(coordinates, tip_length)
         
     def attachTipAt(self,
         coordinates: Sequence[float]|np.ndarray,
         tip_length: float
     ) -> np.ndarray:
+        """ 
+        Attach new pipette tip from specified location
+        
+        Args:
+            coordinates (Sequence[float]|np.ndarray): coordinates of pipette tip
+            tip_length (float): length of pipette tip
+            
+        Returns:
+            np.ndarray: coordinates of attach tip location
+        """
         assert hasattr(self.liquid, 'eject'), "Tip not required."
         assert not self.liquid.isTipOn(), "A tip is already attached."
         coordinates = np.array(coordinates)
@@ -630,10 +761,11 @@ class LiquidMover(Compound):
             self.liquid.tip_length = 0
             self.liquid.setFlag(tip_on=False)
             return coordinates
-        self._current_tip_detail['coordinates'] = coordinates
+        self.current_tip_detail['coordinates'] = coordinates
         return coordinates
     
     def ejectTip(self):
+        """Eject the pipette tip at the bin"""
         assert hasattr(self.liquid, 'eject'), "Ejection not required."
         assert self.liquid.isTipOn(), "No tip to eject."
         index = min(self.bin_slots.keys())
@@ -642,6 +774,15 @@ class LiquidMover(Compound):
         return self.ejectTipAt(well.top)
         
     def ejectTipAt(self, coordinates: Sequence[float]|np.ndarray) -> np.ndarray:
+        """
+        Eject the pipette tip at the specified location
+        
+        Args:
+            coordinates (Sequence[float]|np.ndarray): coordinate of where to eject tip
+            
+        Returns:
+            np.ndarray: coordinates of eject tip location
+        """
         assert hasattr(self.liquid, 'eject'), "Ejection not required."
         assert self.liquid.isTipOn(), "No tip to eject."
         coordinates = np.array(coordinates)
@@ -656,9 +797,18 @@ class LiquidMover(Compound):
         return coordinates
     
     def returnTip(self, offset_from_top: Sequence[float]|np.ndarray = (0,0,-20)) -> np.ndarray:
-        assert {'name','coordinates'} == set(self._current_tip_detail.keys()), "Current tip details not properly defined."
-        name = self._current_tip_detail.pop('name')
-        coordinates = self._current_tip_detail.pop('coordinates')
+        """
+        Return current tip to its original rack position
+        
+        Args:
+            offset_from_top (Sequence[float]|np.ndarray, optional): offset from top to eject tip. Defaults to (0,0,-20).
+            
+        Returns:
+            np.ndarray: coordinates of eject tip location
+        """
+        assert {'name','coordinates'} == set(self.current_tip_detail.keys()), "Current tip details not properly defined."
+        name = self.current_tip_detail.pop('name')
+        coordinates = self.current_tip_detail.pop('coordinates')
         target_coordinates = coordinates + np.array(offset_from_top)
         self.ejectTipAt(target_coordinates)
         
@@ -667,6 +817,12 @@ class LiquidMover(Compound):
         return coordinates
     
     def updateStartTip(self, start_tip:str):
+        """
+        Set the name of the first available pipette tip
+        
+        Args:
+            start_tip (str): well name of the first available pipette tip
+        """
         index = min(self.tip_racks.keys())
         well_name_list = self.tip_lists[index]
         assert start_tip in well_name_list, "Please enter a valid start tip."
