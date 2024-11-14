@@ -32,7 +32,6 @@ logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 LOOP_INTERVAL = 0.1
-MOVEMENT_BUFFER = 1
 MOVEMENT_TIMEOUT = 30
 
 class GRBL(SerialDevice):
@@ -173,6 +172,7 @@ class GRBL(SerialDevice):
         Returns:
             list[str]: information in the response
         """
+        self.clear()
         responses = self.query('$I')
         if self.flags.simulation:
             return ['GRBL:1.1']
@@ -185,6 +185,7 @@ class GRBL(SerialDevice):
         Returns:
             dict[str, list[float]]: parameters in the response
         """
+        self.clear()
         responses = self.query('$#')
         parameters = {}
         if self.flags.simulation:
@@ -208,6 +209,7 @@ class GRBL(SerialDevice):
         Returns:
             dict[str, int|float|str]: settings in the response
         """
+        self.clear()
         responses = self.query('$$')
         settings = {}
         if self.flags.simulation:
@@ -219,23 +221,23 @@ class GRBL(SerialDevice):
             setting,value = response.split("=")
             setting_int = int(setting[1:]) if setting[1:].isnumeric() else setting[1:]
             setting_ = f'sc{setting_int}'
-            assert setting_ in Setting.__members__, f"Setting  not found: {setting_}"
+            assert setting_ in Setting.__members__, f"Setting not found: {setting_}"
             logger.info(f"[{setting}]: {Setting[setting_].value.message} = {value}")
             negative = value.startswith('-')
             if negative:
                     value = value[1:]
             value: int|float|str = int(value) if value.isnumeric() else (float(value) if value.replace('.','',1).isdigit() else value)
             settings[setting] = value * ((-1)**int(negative)) if isinstance(value, (int,float)) else value
-        settings['limit_x'] = settings['$130']
-        settings['limit_y'] = settings['$131']
-        settings['limit_z'] = settings['$132']
-        settings['max_speed_x'] = settings['$110']
-        settings['max_speed_y'] = settings['$111']
-        settings['max_speed_z'] = settings['$112']
-        settings['max_accel_x'] = settings['$120']
-        settings['max_accel_y'] = settings['$121']
-        settings['max_accel_z'] = settings['$122']
-        settings['homing_pulloff'] = settings['$27']
+        settings['max_accel_x'] = settings.get('$120', 0)
+        settings['max_accel_y'] = settings.get('$121', 0)
+        settings['max_accel_z'] = settings.get('$122', 0)
+        settings['max_speed_x'] = settings.get('$110', 0)/60
+        settings['max_speed_y'] = settings.get('$111', 0)/60
+        settings['max_speed_z'] = settings.get('$112', 0)/60
+        settings['limit_x'] = settings.get('$130', 0)
+        settings['limit_y'] = settings.get('$131', 0)
+        settings['limit_z'] = settings.get('$132', 0)
+        settings['homing_pulloff'] = settings.get('$27', 0)
         return settings
     
     def checkState(self) -> dict[str, str]:
@@ -245,6 +247,7 @@ class GRBL(SerialDevice):
         Returns:
             dict[str, str]: state in the response
         """
+        self.clear()
         responses = self.query('$G')
         state = {}
         if self.flags.simulation:
@@ -274,6 +277,7 @@ class GRBL(SerialDevice):
         Returns:
             tuple[str, np.ndarray[float], np.ndarray[float]]: status, current position, home offset
         """
+        self.clear()
         responses = self.query('?',lines=False)
         self.clear()
         status,current_position = '', np.array([0,0,0])
@@ -317,12 +321,23 @@ class GRBL(SerialDevice):
         if axis is not None:
             assert axis.upper() in 'XYZ', "Ensure axis is X,Y,Z for GRBL"
         command = '$H' if axis is None else f'$H{axis.upper()}'
-        self.query(command)
-        success = self._wait_for_status(('Home',), timeout=timeout)
-        if not success:
-            status,_,_ = self.checkStatus()
-            logger.error(f"Timeout: {status} | {command}")
-        return success
+        self.clear()
+        self.write(command)
+        while True:
+            time.sleep(LOOP_INTERVAL)
+            responses = self.read()
+            if self.flags.simulation:
+                break
+            if not self.is_connected:
+                break
+            if len(responses):
+                break
+        # self.query(command)
+        # success = self._wait_for_status(('Home',), timeout=timeout)
+        # if not success:
+        #     status,_,_ = self.checkStatus()
+        #     logger.error(f"Timeout: {status} | {command}")
+        return True
     
     def resume(self):
         """Resume activity on the device"""
@@ -339,8 +354,9 @@ class GRBL(SerialDevice):
         """
         assert isinstance(speed_factor, float), "Ensure speed factor is a float"
         assert (0.0 <= speed_factor <= 1.0), "Ensure speed factor is between 0.0 and 1.0"
-        feed_rate = int(speed_factor * speed_max)
-        self.query(f'G90 F{feed_rate}')
+        feed_rate = int(speed_factor * speed_max) * 60      # Convert to mm/min
+        self.write(f'G90 F{feed_rate}')
+        self.clear()
         return
     
     def _wait_for_status(self, statuses:Sequence[str], timeout:int = MOVEMENT_TIMEOUT) -> bool:
@@ -407,15 +423,15 @@ class GRBL(SerialDevice):
             return self.read(lines=False)
         if not wait:
             self.write(data)
-            return self.read(lines=False)
+            return self.read(lines=lines)
         
-        success = self._wait_for_status(('Idle',), timeout=timeout)
-        if not success:
-            status,_,_ = self.checkStatus()
-            logger.error(f"Timeout: {data} | {status}")
-            if status == 'Jog':
-                raise RuntimeError("Jog mode still active")
-            return []
+        # success = self._wait_for_status(('Idle',), timeout=timeout)
+        # if not success:
+        #     status,_,_ = self.checkStatus()
+        #     logger.error(f"Timeout: {data} | {status}")
+        #     if status == 'Jog':
+        #         raise RuntimeError("Jog mode still active")
+        #     return []
         
         responses = super().query(data, lines=lines)
         for response in responses:
@@ -425,8 +441,8 @@ class GRBL(SerialDevice):
             if any([self.checkAlarms(response), self.checkErrors(response)]):
                 raise RuntimeError(f"Response: {response}")
         
-        success = self._wait_for_status(('Idle',), timeout=timeout)
-        if not success:
-            status,_,_ = self.checkStatus()
-            logger.error(f"Timeout: {data} | {status}")
+        # success = self._wait_for_status(('Idle',), timeout=timeout)
+        # if not success:
+        #     status,_,_ = self.checkStatus()
+        #     logger.error(f"Timeout: {data} | {status}")
         return responses
