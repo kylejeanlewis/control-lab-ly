@@ -17,7 +17,6 @@ logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 LOOP_INTERVAL = 0.1
-MOVEMENT_BUFFER = 1
 MOVEMENT_TIMEOUT = 30
 
 class Marlin(SerialDevice):
@@ -102,7 +101,7 @@ class Marlin(SerialDevice):
         if self.flags.simulation:
             return settings
         while len(responses) == 0 or 'fail' in responses[-1]:
-            time.sleep(0.1)
+            time.sleep(LOOP_INTERVAL)
             responses = self.read(True)
         for response in responses:
             response = response.replace('echo:','').split(';')[0].strip()
@@ -131,9 +130,9 @@ class Marlin(SerialDevice):
         settings['max_accel_x'] = settings['M201']['X']
         settings['max_accel_y'] = settings['M201']['Y']
         settings['max_accel_z'] = settings['M201']['Z']
-        settings['max_speed_x'] = settings['M203']['X'] * 60
-        settings['max_speed_y'] = settings['M203']['Y'] * 60
-        settings['max_speed_z'] = settings['M203']['Z'] * 60
+        settings['max_speed_x'] = settings['M203']['X']
+        settings['max_speed_y'] = settings['M203']['Y']
+        settings['max_speed_z'] = settings['M203']['Z']
         settings['home_offset_x'] = settings['M206']['X']
         settings['home_offset_y'] = settings['M206']['Y']
         settings['home_offset_z'] = settings['M206']['Z']
@@ -143,13 +142,13 @@ class Marlin(SerialDevice):
         """
         """
         self.clear()
-        responses = self.query('M114 R')
+        responses = self.query('M114 R', lines=False)
         # responses = self.query('M105')      # Check the current temperature
         if self.flags.simulation:
             return 'Idle', current_position, self._home_offset
         while len(responses) == 0 or 'fail' in responses[-1]:
-            time.sleep(0.1)
-            responses = self.read(True)
+            time.sleep(LOOP_INTERVAL)
+            responses = self.read()
         
         status,current_position = 'Idle', np.array([0,0,0])
         relevant_responses = []
@@ -166,7 +165,6 @@ class Marlin(SerialDevice):
         """
         """
         self.query('M410')
-        time.sleep(1)
         _,coordinates,_home_offset = self.checkStatus()
         return Position(coordinates-_home_offset)
     
@@ -175,15 +173,32 @@ class Marlin(SerialDevice):
         """
         # if axis is not None:
         #     logger.warning("Ignoring homing axis parameter for Marlin firmware")
-        self.query('G90')
-        self.query(f'G28 {axis}', wait=True)
+        axis = '' if axis is None else f'{axis.upper()}'
+        self.query('G90', lines=False)
+        self.write(f'G28 {axis}')
+        self.clear()
+        while True:
+            time.sleep(LOOP_INTERVAL)
+            responses = self.read()
+            if self.flags.simulation:
+                break
+            if not self.is_connected:
+                break
+            if len(responses) == 0:
+                continue
+            if 'Count' in responses:
+                break
+        time.sleep(2)
         return True
     
-    def setSpeedFactor(self, speed_factor:float, **kwargs):
+    def setSpeedFactor(self, speed_factor:float, *, speed_max:int, **kwargs):
         assert isinstance(speed_factor, float), "Ensure speed factor is a float"
         assert (0.0 <= speed_factor <= 1.0), "Ensure speed factor is between 0.0 and 1.0"
+        # feed_rate = int(speed_factor * speed_max) * 60      # Convert to mm/min
+        # self.write(f'G90 F{feed_rate}')
         speed_percent = speed_factor*100
-        self.query(f'M220 S{int(speed_percent)}')
+        self.write(f'M220 S{int(speed_percent)}')
+        self.clear()
         return
     
     # Overwritten methods
@@ -206,18 +221,17 @@ class Marlin(SerialDevice):
     def query(self, data: Any, lines:bool = True, *, wait:bool = False, **kwargs) -> list[str]|None:
         """
         """
-        # data = data.replace('G1', 'G0')   # TODO: check if this is necessary
         if data.startswith('F'):
-            data = f'G0 {data}'
+            data = f'G1 {data}'
         if not wait:
             self.write(data)
-            return self.read(lines=False)
+            return self.read(lines=lines)
         
         responses = super().query(data, lines=lines)
-        success = self._wait_for_idle()
-        if not success:
-            logger.error(f"Timeout: {data}")
-            return []
+        # success = self._wait_for_idle()
+        # if not success:
+        #     logger.error(f"Timeout: {data}")
+        #     return []
         return responses
     
     def _wait_for_idle(self, timeout:int = MOVEMENT_TIMEOUT) -> bool:
@@ -229,7 +243,7 @@ class Marlin(SerialDevice):
         while True:
             time.sleep(LOOP_INTERVAL)
             responses = self.read()
-            if len(responses) and responses[-1] != b'echo:busy: processing\n':
+            if len(responses) and 'echo:busy: processing' not in responses[-1]:
                 break
             if time.perf_counter() - start_time > timeout:
                 return False
