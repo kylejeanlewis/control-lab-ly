@@ -32,7 +32,7 @@ class Gantry(GCode):
     Gantry provides controls for a general cartesian robot.
     
     ### Constructor
-        `port` (str): COM port address
+        `port` (str): serial port address
         `limits` (Sequence[Sequence[float]], optional): lower and upper limits of gantry, in terms of robot coordinate system. Defaults to ((0, 0, 0), (0, 0, 0)).
         `robot_position` (Position, optional): current position of the robot. Defaults to Position().
         `home_position` (Position, optional): home position of the robot in terms of robot coordinate system. Defaults to Position().
@@ -76,7 +76,6 @@ class Gantry(GCode):
         `work_position` (Position): work position of the robot
         `worktool_position` (Position): work position of the tool end effector
         `position` (Position): work position of the tool end effector; alias for `worktool_position`
-        
         
     ### Methods
         `query`: query the device
