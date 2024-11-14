@@ -23,7 +23,6 @@ import numpy as np
 from .. import Mover
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 @final

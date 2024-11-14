@@ -17,15 +17,15 @@ This module contains functions to create and manage objects.
 <i>Documentation last updated: 2024-11-13</i>
 """
 # Standard library imports
-from collections import namedtuple
 import importlib
 import inspect
 import json
 import logging
 from pathlib import Path
+import pprint
 import sys
 from types import SimpleNamespace
-from typing import Callable, Sequence, NamedTuple
+from typing import Callable, Sequence, NamedTuple, Type
 
 # Third party imports
 import numpy as np
@@ -37,6 +37,7 @@ from . import file_handler
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
+logger.setLevel(logging.INFO)
 
 def dict_to_named_tuple(d:dict, tuple_name:str = 'Setup') -> tuple:
     """
@@ -57,7 +58,7 @@ def dict_to_named_tuple(d:dict, tuple_name:str = 'Setup') -> tuple:
     
     # named_tuple = namedtuple(tuple_name, field_list)
     named_tuple = NamedTuple(tuple_name, field_list)
-    print(f"Objects created: {', '.join([f[0] for f in field_list])}")
+    logger.info(f"\nObjects created: {', '.join([f[0] for f in field_list])}")
     return named_tuple(*object_list)
 
 def dict_to_simple_namespace(d:dict) -> SimpleNamespace:
@@ -72,7 +73,7 @@ def dict_to_simple_namespace(d:dict) -> SimpleNamespace:
     """
     return json.loads(json.dumps(d), object_hook=lambda item: SimpleNamespace(**item))
 
-def get_class(module_name:str, class_name:str) -> Callable:
+def get_class(module_name:str, class_name:str) -> Type[object]:
     """
     Retrieve the relevant class from the sub-package
 
@@ -81,7 +82,7 @@ def get_class(module_name:str, class_name:str) -> Callable:
         class_name (str): name of the class
 
     Returns:
-        Callable: target Class
+        Type: target Class
     """
     _module = importlib.import_module(module_name)
     _class = getattr(_module, class_name)
@@ -168,6 +169,8 @@ def load_parts(configs:dict, **kwargs) -> dict:
     parts = {}
     configs.update(kwargs)
     for name, details in configs.items():
+        logger.info(f'\n{name.upper()}')
+        logger.debug(f'{pprint.pformat(details, indent=1, depth=4, sort_dicts=False)}\n')
         module_name = details.get('module')
         class_name = details.get('class')
         _class = get_class(module_name, class_name)
@@ -203,12 +206,12 @@ def load_setup_from_files(
         parent, child = value.split('.')
         tool = setup.get(parent, None)
         if tool is None:
-            print(f"Tool does not exist ({parent})")
+            logger.warning(f"Tool does not exist ({parent})")
             continue
         if not hasattr(tool, '_parts'):
-            print(f"Tool ({parent}) does not have parts")
+            logger.warning(f"Tool ({parent}) does not have parts")
             continue
-        setup[name] = tool._parts.get(child)
+        setup[name] = getattr(tool.parts, child)
     if create_tuple:
         return dict_to_named_tuple(setup, tuple_name=config_file.stem)
     return setup

@@ -32,6 +32,7 @@ from . import connection
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
+logger.setLevel(logging.INFO)
 
 def create_folder(base:Path|str = '', sub:Path|str = '') -> Path:
     """
@@ -143,7 +144,7 @@ def start_project_here(dst:Path|str|None = None):
             shutil.copy2(src=directory, dst=dst / directory.name)
         if directory.is_dir():
             shutil.copytree(src=directory, dst=dst / directory.name)
-    print(f"New project created in: {dst}")
-    print(f"Please update the configuration files in: {dst/'tools/registry.yaml'}")
-    print(f"Current machine id: {connection.get_node()}")
+    logger.info(f"New project created in: {dst}")
+    logger.info(f"Please update the configuration files in: {dst/'tools/registry.yaml'}")
+    logger.info(f"Current machine id: {connection.get_node()}")
     return
