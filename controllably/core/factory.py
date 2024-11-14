@@ -25,7 +25,7 @@ import logging
 from pathlib import Path
 import sys
 from types import SimpleNamespace
-from typing import Callable, Sequence
+from typing import Callable, Sequence, NamedTuple
 
 # Third party imports
 import numpy as np
@@ -52,11 +52,12 @@ def dict_to_named_tuple(d:dict, tuple_name:str = 'Setup') -> tuple:
     field_list = []
     object_list = []
     for k,v in d.items():
-        field_list.append(k)
+        field_list.append((k, type(v)))
         object_list.append(v)
     
-    named_tuple = namedtuple(tuple_name, field_list)
-    print(f"Objects created: {', '.join(field_list)}")
+    # named_tuple = namedtuple(tuple_name, field_list)
+    named_tuple = NamedTuple(tuple_name, field_list)
+    print(f"Objects created: {', '.join([f[0] for f in field_list])}")
     return named_tuple(*object_list)
 
 def dict_to_simple_namespace(d:dict) -> SimpleNamespace:
