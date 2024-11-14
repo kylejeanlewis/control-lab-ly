@@ -2,7 +2,7 @@
 """
 This module holds the class for shakers from QInstruments.
 
-Classes:
+## Classes:
     BioShake (Maker)
 """
 # Standard library imports
@@ -36,7 +36,7 @@ FLAGS = SimpleNamespace(
 @final
 class BioShake(Maker):
     """
-    BioShake provides methods to control
+    BioShake provides methods to control the QInstruments BioShake device.
     
     ### Constructor
     Args:

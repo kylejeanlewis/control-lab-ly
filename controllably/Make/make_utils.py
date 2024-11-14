@@ -2,8 +2,10 @@
 """
 This module holds the base class for maker tools.
 
-Classes:
-    Maker (ABC)
+## Classes:
+    `Maker`: Base class for maker tools
+    
+<i>Documentation last updated: 2024-11-14</i>
 """
 # Standard library imports
 from __future__ import annotations

@@ -8,7 +8,7 @@ Attributes:
     MOVEMENT_BUFFER (int): buffer time after movement
     MOVEMENT_TIMEOUT (int): timeout for movement
     
-### Classes:
+## Classes:
     `GRBL`: GRBL class for controlling CNC machines using the GRBL firmware.
     
 <i>Documentation last updated: 2024-11-14</i>
