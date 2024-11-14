@@ -13,7 +13,6 @@ from ...core.connection import SerialDevice
 from ...core.position import Position
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
 
 LOOP_INTERVAL = 0.1
@@ -35,7 +34,7 @@ class Marlin(SerialDevice):
     ):
         """
         """
-        logger.warning('Marlin firmware is not fully supported. Proceed with care.')        # TODO: Remove warning when fully supported
+        logger.warning('Marlin firmware support still under development. Proceed with care.')        # TODO: Remove warning when fully supported
         super().__init__(
             port=port, 
             baudrate=baudrate, 
@@ -106,7 +105,7 @@ class Marlin(SerialDevice):
                     v = v[1:]
                 v: int|float|str = int(v) if v.isnumeric() else (float(v) if v.replace('.','',1).isdigit() else v)
                 value_dict[k] = v * ((-1)**int(negative)) if isinstance(v, (int,float)) else v
-            logger.info(f"[{setting}]: {value_dict}")
+            logger.debug(f"[{setting}]: {value_dict}")
             settings[setting] = value_dict
         settings['max_accel_x'] = settings['M201']['X']
         settings['max_accel_y'] = settings['M201']['Y']
@@ -195,8 +194,8 @@ class Marlin(SerialDevice):
         settings = self.checkSettings()
         self._home_offset = np.array([settings.get('home_offset_x',0),settings.get('home_offset_y',0),settings.get('home_offset_z',0)])
         
-        print(startup_lines)
-        print(f'Marlin version: {self._version}')
+        logger.info(startup_lines)
+        logger.info(f'Marlin version: {self._version}')
         return
     
     def query(self, data: Any, lines:bool = True, *, wait:bool = False, **kwargs) -> list[str]|None:
