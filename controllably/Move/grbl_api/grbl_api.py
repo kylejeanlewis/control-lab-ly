@@ -109,24 +109,6 @@ class GRBL(SerialDevice):
     def __version__(self) -> str:
         return self._version
     
-    @property
-    def verbose(self) -> bool:
-        """Verbosity of class"""
-        return self.flags.verbose
-    @verbose.setter
-    def verbose(self, value:bool):
-        assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
-        self.flags.verbose = value
-        level = logging.DEBUG if value else logging.WARNING
-        parents = list(self.__class__.__mro__)
-        for parent in parents:
-            l = logging.getLogger(parent.__module__)
-            l.setLevel(level)
-        for handler in logger.handlers:
-            if isinstance(handler, type(logging.StreamHandler())):
-                handler.setLevel(level)
-        return
-    
     def checkAlarms(self, response: str) -> bool:
         """
         Checks for alarms in the response

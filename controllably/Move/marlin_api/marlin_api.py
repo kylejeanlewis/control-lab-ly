@@ -53,25 +53,6 @@ class Marlin(SerialDevice):
     def __version__(self) -> str:
         return self._version
     
-    @property
-    def verbose(self) -> bool:
-        """Get verbosity of class"""
-        return self.flags.verbose
-    @verbose.setter
-    def verbose(self, value:bool):
-        assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
-        self.flags.verbose = value
-        self.device.verbose = value
-        level = logging.DEBUG if value else logging.WARNING
-        parents = list(self.__class__.__mro__) + list(self.device.__class__.__mro__)
-        for parent in parents:
-            l = logging.getLogger(parent.__module__)
-            l.setLevel(level)
-        for handler in logger.handlers:
-            if isinstance(handler, type(logging.StreamHandler())):
-                handler.setLevel(level)
-        return
-    
     def checkInfo(self) -> dict[str, str]:
         """
         """
