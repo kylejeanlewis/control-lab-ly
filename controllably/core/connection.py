@@ -35,6 +35,7 @@ import serial.tools.list_ports
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
+logger.setLevel(logging.INFO)
 
 VALID_BAUDRATES = (110, 300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200)
 """Valid baudrates for serial devices"""
@@ -67,7 +68,6 @@ def get_node() -> str:
     node_id = str(uuid.getnode())
     node_out = f"Current machine id: {node_id}"
     logger.info(node_out)
-    print(node_out)
     return node_id
 
 def get_ports() -> list[str]:
@@ -82,7 +82,6 @@ def get_ports() -> list[str]:
         ports.append(str(port))
         port_desc = f"{port}: [{hwid}] {desc}"
         logger.info(port_desc)
-        print(port_desc)
     if len(ports) == 0:
         logger.warning("No ports detected!")
     return ports
@@ -250,11 +249,11 @@ class SerialDevice:
     def verbose(self, value:bool):
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
-        level = logging.INFO if value else logging.WARNING
-        logger.setLevel(level)
-        for handler in logger.handlers:
-            if isinstance(handler, type(logging.StreamHandler())):
-                handler.setLevel(level)
+        level = logging.DEBUG if value else logging.INFO
+        parents = list(self.__class__.__mro__)
+        for parent in parents:
+            log = logging.getLogger(parent.__module__)
+            log.setLevel(level)
         return
     
     def clear(self):
@@ -328,10 +327,10 @@ class SerialDevice:
                 data = [d.decode("utf-8", "replace").strip() for d in data]
             else:
                 data = self.serial.readline().decode("utf-8", "replace").strip()
-            logger.info(f"Received: {data}")
+            logger.debug(f"Received: {data!r}")
             self.serial.reset_output_buffer()
         except serial.SerialException as e:
-            logger.info(f"Failed to receive data")
+            logger.debug(f"Failed to receive data")
         return data
 
     def write(self, data:str) -> bool:
@@ -348,9 +347,9 @@ class SerialDevice:
         data = f"{data}{self.message_end}" if not data.endswith(self.message_end) else data
         try:
             self.serial.write(data.encode())
-            logger.info(f"Sent: {data}")
+            logger.debug(f"Sent: {data!r}")
         except serial.SerialException as e:
-            logger.info(f"Failed to send: {data}")
+            logger.debug(f"Failed to send: {data!r}")
             return False
         return True
 
@@ -432,11 +431,11 @@ class SocketDevice:
     def verbose(self, value:bool):
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
-        level = logging.INFO if value else logging.WARNING
-        logger.setLevel(level)
-        for handler in logger.handlers:
-            if isinstance(handler, type(logging.StreamHandler())):
-                handler.setLevel(level)
+        level = logging.DEBUG if value else logging.INFO
+        parents = list(self.__class__.__mro__)
+        for parent in parents:
+            log = logging.getLogger(parent.__module__)
+            log.setLevel(level)
         return
     
     def clear(self):
@@ -505,9 +504,9 @@ class SocketDevice:
         data = []
         try:
             data = self.socket.recv(1024).decode("utf-8", "replace").strip().split('\n')
-            logger.info(f"Received: {data}")
+            logger.debug(f"Received: {data!r}")
         except socket.error as e:
-            logger.info(f"Failed to receive data")
+            logger.debug(f"Failed to receive data")
         return data
 
     def write(self, data:str) -> bool:
@@ -523,9 +522,9 @@ class SocketDevice:
         data = f"{data}\n" if not data.endswith('\n') else data
         try:
             self.socket.sendall(data.encode())
-            logger.info(f"Sent: {data}")
+            logger.debug(f"Sent: {data!r}")
         except socket.error as e:
-            logger.info(f"Failed to send: {data}")
+            logger.debug(f"Failed to send: {data!r}")
         return False
 
 

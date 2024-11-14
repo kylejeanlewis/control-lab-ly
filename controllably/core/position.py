@@ -41,6 +41,7 @@ from . import file_handler
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.debug(f"Import: OK <{__name__}>")
+logger.setLevel(logging.INFO)
 
 MTP_DIMENSIONS = (127.76,85.48,0)
 """Microtiter plate dimensions in mm"""
@@ -425,7 +426,6 @@ class Well:
         elif self.shape == 'rectangular':
             dimensions = self.reference.Rotation.apply(np.array([*self.dimensions,0]))
             corner = self.bottom - dimensions/2
-            print(corner, dimensions)
             ax.add_patch(plt.Rectangle(corner[:2], *dimensions[:2], fill=False, **kwargs))
         else:
             logger.error(f"Invalid shape: {self.shape}")
@@ -1286,7 +1286,7 @@ class Deck:
         bg_color = next(color_iterator) if isinstance(color_iterator,Iterator) else None
         ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], alpha=0.5, color=bg_color, **kwargs))
         ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, **kwargs))
-        print(f"{bg_color.replace('tab:','')} -> {self.name.replace('_sub','.')}")
+        logger.info(f"{bg_color.replace('tab:','')} -> {self.name.replace('_sub','.')}")
         for zone in self._zones.values():
             if isinstance(zone, Deck):
                 zone._draw(ax, zoom_out=zoom_out, color_iterator=color_iterator, **kwargs)

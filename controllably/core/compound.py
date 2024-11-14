@@ -153,19 +153,13 @@ class Compound:
     def verbose(self, value:bool):
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
+        level = logging.DEBUG if value else logging.INFO
+        parents = list(self.__class__.__mro__)
+        for parent in parents:
+            log = logging.getLogger(parent.__module__)
+            log.setLevel(level)
         for part in self._parts.values():
             part.verbose = value
-        level = logging.INFO if value else logging.WARNING
-        parents = list(self.__class__.__mro__)
-        part_parents = [part.__class__.__mro__ for part in self._parts.values()]
-        for pp in part_parents:
-            parents.extend(pp)
-        for parent in parents:
-            l = logging.getLogger(parent.__module__)
-            l.setLevel(level)
-        for handler in logger.handlers:
-            if isinstance(handler, type(logging.StreamHandler())):
-                handler.setLevel(level)
         return
     
     @property
@@ -452,19 +446,13 @@ class Combined:
     def verbose(self, value:bool):
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
+        level = logging.DEBUG if value else logging.INFO
+        parents = list(self.__class__.__mro__)
+        for parent in parents:
+            log = logging.getLogger(parent.__module__)
+            log.setLevel(level)
         for part in self._parts.values():
             part.verbose = value
-        level = logging.INFO if value else logging.WARNING
-        parents = list(self.__class__.__mro__)
-        part_parents = [part.__class__.__mro__ for part in self._parts.values()]
-        for pp in part_parents:
-            parents.extend(pp)
-        for parent in parents:
-            l = logging.getLogger(parent.__module__)
-            l.setLevel(level)
-        for handler in logger.handlers:
-            if isinstance(handler, type(logging.StreamHandler())):
-                handler.setLevel(level)
         return
     
     @property
@@ -555,7 +543,6 @@ class Multichannel(Combined):
         Returns:
             Type[Multichannel]: subclass of Multichannel class
         """
-        logger.warning("Multichannel class and factory method is still under development")      # TODO: Remove this line
         if isinstance(details,dict):
             details = [details]*len(channels)
         elif isinstance(details,Sequence) and len(details) == 1:
