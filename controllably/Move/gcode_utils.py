@@ -208,8 +208,7 @@ class GCode(Mover):
         """Halt robot movement"""
         position = self.device.halt()
         self.updateRobotPosition(to=position)
-        logger.warning(f"Halted at {position}")
-        logger.warning('To cancel movement, reset robot and re-home')
+        logger.warning(f"Halted at {position} | To cancel movement, reset robot and re-home")
         return position
     
     def home(self, axis: str|None = None, *, timeout:int|None = None) -> bool:
@@ -226,14 +225,13 @@ class GCode(Mover):
         timeout = self.movement_timeout if timeout is None else timeout
         self.moveToSafeHeight()
         success = self.device.home(axis=axis, timeout=timeout)
-        # self.updateRobotPosition(to=self.home_position)
         time.sleep(self.movement_buffer)
         if not success:
             return success
         if any(self.home_position.coordinates):
             self.moveTo(self.home_position, self.speed_factor)
         self.updateRobotPosition(to=self.home_position)
-        logger.info(f"Homed | axis={axis}")
+        logger.info(f"Home | {axis=}")
         return success
         
     def moveBy(self,
@@ -261,7 +259,8 @@ class GCode(Mover):
         if isinstance(by, (Sequence, np.ndarray)):
             assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
         move_by = by if isinstance(by, Position) else Position(by)
-        logger.debug(f"Moving by {move_by} at speed factor {speed_factor}")
+        speed_factor = self.speed_factor if speed_factor is None else speed_factor
+        logger.info(f"Move By | {move_by} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
         if robot:
@@ -330,7 +329,8 @@ class GCode(Mover):
         if isinstance(to, (Sequence, np.ndarray)):
             assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
         move_to = to if isinstance(to, Position) else Position(to)
-        logger.debug(f"Moving by {move_to} at speed factor {speed_factor}")
+        speed_factor = self.speed_factor if speed_factor is None else speed_factor
+        logger.info(f"Move To | {move_to} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
         move_to = move_to if robot else self.transformToolToRobot(self.transformWorkToRobot(move_to, self.calibrated_offset), self.tool_offset)
@@ -422,5 +422,4 @@ class GCode(Mover):
         self.device.connect()
         self.setSpeedFactor(1.0)
         self.settings = self.device.checkSettings()
-        print(self.settings)
         return
