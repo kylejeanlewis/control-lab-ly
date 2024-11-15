@@ -60,7 +60,9 @@ def init(repository_name:str):
     cwd = str(Path().absolute())
     assert repository_name in cwd, f"Repository name '{repository_name}' not found in current working directory: {cwd}"
     root = cwd.split(repository_name)[0]
-    sys.path.append(f'{root}{repository_name}')
+    target_dir = f'{root}{repository_name}'
+    if target_dir not in sys.path:
+        sys.path.append(target_dir)
     connection.get_node()
     connection.get_ports()
     return
