@@ -178,7 +178,7 @@ class Marlin(SerialDevice):
         # self.write(f'G90 F{feed_rate}')
         speed_percent = speed_factor*100
         self.write(f'M220 S{int(speed_percent)}')
-        self.clear()
+        self.read()
         return
     
     # Overwritten methods
