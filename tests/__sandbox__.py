@@ -1,11 +1,14 @@
 # %%
-import logging
-
 import test_init
-from controllably.core.factory import load_setup_from_files
+from tools.claw_machine import setup
 
-logger = logging.getLogger(load_setup_from_files.__module__)
-logger.setLevel(logging.INFO)
+setup.claw_machine.move
+
+# %%
+import test_init
+from controllably import start_logging
+start_logging(r'logs\session_20241115_1451.log')
+from controllably.core.factory import load_setup_from_files
 
 setup = load_setup_from_files(r'C:\Users\chang\GitHub\control-lab-le\library\configs\open_pipette.yaml')
 overkill = setup.overkill
