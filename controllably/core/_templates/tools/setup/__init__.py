@@ -1,23 +1,34 @@
 """
-This __init__.py file initialises and imports the setups defined in this sub-folder.
+This __init__.py file initializes and imports the setups defined in this sub-folder.
 
-Other constants and variables:
+Attributes:
+    setup (Platform|namedtuple|dict)
     CONFIG_FILE (str)
-    CONFIGS (str)
-    HERE (str)
     LAYOUT_FILE (str)
     REGISTRY_FILE (str)
-    setup (namedtuple)
 """
+from dataclasses import dataclass
 from pathlib import Path
-from controllably import load_setup         # pip install control-lab-ly
+from controllably.core.factory import load_setup_from_files         # pip install control-lab-ly
+__all__ = ['CONFIG_FILE', 'LAYOUT_FILE', 'REGISTRY_FILE', 'setup']
 
-HERE = str(Path(__file__).parent.absolute()).replace('\\', '/')
-CONFIGS = str(Path(__file__).parent.parent.absolute()).replace('\\', '/')
+HERE = Path(__file__).parent.absolute()
+CONFIGS = Path(__file__).parent.parent.absolute()
+CONFIG_FILE = HERE/"config.yaml"
+LAYOUT_FILE = HERE/"layout.json"
+REGISTRY_FILE = CONFIGS/"registry.yaml"
 
-CONFIG_FILE = f"{HERE}/config.yaml"
-LAYOUT_FILE = f"{HERE}/layout.json"
-REGISTRY_FILE = f"{CONFIGS}/registry.yaml"
-
-setup = load_setup(config_file=CONFIG_FILE, registry_file=REGISTRY_FILE)
+setup = load_setup_from_files(CONFIG_FILE, REGISTRY_FILE, create_tuple=True)
 """NOTE: importing SETUP gives the same instance wherever you import it"""
+
+# ========== Optional (for typing) ========== #
+# from ... import _tool_class
+
+@dataclass
+class Platform:
+    ...
+    # Add fields and types here
+    # _tool_name: _tool_class
+
+if len(Platform.__annotations__) > 0:
+    setup = Platform(**setup._asdict())
