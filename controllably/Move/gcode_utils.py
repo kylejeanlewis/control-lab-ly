@@ -227,6 +227,8 @@ class GCode(Mover):
         time.sleep(self.movement_buffer)
         if not success:
             return success
+        xyz = [(coord if axis.upper()!=ax else 0) for coord,ax in zip(self.robot_position.coordinates,'XYZ')]
+        self.updateRobotPosition(to=Position(xyz))
         if any(self.home_position.coordinates):
             self.moveTo(self.home_position, self.speed_factor)
         self.updateRobotPosition(to=self.home_position)
