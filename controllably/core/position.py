@@ -62,12 +62,23 @@ def convert_to_position(value:Sequence|np.ndarray) -> Position:
     if isinstance(value, Position):
         return value
     assert isinstance(value, (Sequence,np.ndarray)), "Please input a valid value to be converted to Position"
-    value = np.array(value)
-    if len(value.shape) == 1:
+    
+    if isinstance(value, np.ndarray):
+        if len(value.shape) == 1:
+            return Position(value)
+        elif len(value.shape) == 2:
+            return Position(value[0], Rotation.from_euler('zyx',value[1],degrees=True))
+    
+    if not isinstance(value[0], (Sequence,np.ndarray)):
         return Position(value)
-    elif len(value.shape) == 2:
-        return Position(value[0], Rotation.from_euler('zyx',value[1],degrees=True))
-    raise ValueError(f"Invalid value: {value}")
+    
+    assert len(value) in (1,2), "Please input a valid value to be converted to Position, comprising at most 2 Sequences"
+    if len(value) == 1:
+        return Position(value[0])
+    
+    assert len(value[1]) in (3,4), "Please input a valid rotation using either euler angles or quaternion"
+    rotation = Rotation.from_euler('zyx',value[1],degrees=True) if len(value[1]) == 3 else Rotation.from_quat(value[1])
+    return Position(value[0], rotation)
 
 def get_transform(initial_points: np.ndarray, final_points:np.ndarray) -> tuple[Position,float]:
     """
