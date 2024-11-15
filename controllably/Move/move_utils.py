@@ -308,7 +308,7 @@ class Mover:
         for waypoint in waypoints:
             self.moveTo(waypoint, speed_factor=speed_factor)
         try:
-            self.rotateTo(new_zone.reference.Rotation, speed_factor=speed_factor)
+            self.rotateTo(new_zone.bottom_left_corner.Rotation, speed_factor=speed_factor)
         except NotImplementedError:
             pass
         self.current_zone_waypoints = (zone, waypoints)
