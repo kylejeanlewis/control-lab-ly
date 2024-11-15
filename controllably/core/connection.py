@@ -32,10 +32,14 @@ import uuid
 import serial                       # pip install pyserial
 import serial.tools.list_ports
 
+_logger = logging.getLogger("controllably.core")
+_logger.debug(f"Import: OK <{__name__}>")
+
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
-logger.debug(f"Import: OK <{__name__}>")
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
 
 VALID_BAUDRATES = (110, 300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200)
 """Valid baudrates for serial devices"""
@@ -186,8 +190,11 @@ class SerialDevice:
         self.baudrate = baudrate
         self.timeout = timeout
         
-        self.verbose = verbose
         self.flags.simulation = simulation
+        
+        self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
+        self._logger.addHandler(logging.StreamHandler())
+        self.verbose = verbose
         return
     
     def __del__(self):
@@ -250,10 +257,10 @@ class SerialDevice:
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
         level = logging.DEBUG if value else logging.INFO
-        parents = list(self.__class__.__mro__)
-        for parent in parents:
-            log = logging.getLogger(parent.__module__)
-            log.setLevel(level)
+        for handler in self._logger.handlers:
+            if not isinstance(handler, logging.StreamHandler):
+                continue
+            handler.setLevel(level)
         return
     
     def clear(self):
@@ -271,10 +278,10 @@ class SerialDevice:
                 return
             self.serial.open()
         except serial.SerialException as e:
-            logger.error(f"Failed to connect to {self.port} at {self.baudrate} baud")
-            logger.debug(e)
+            self._logger.error(f"Failed to connect to {self.port} at {self.baudrate} baud")
+            self._logger.debug(e)
         else:
-            logger.info(f"Connected to {self.port} at {self.baudrate} baud")
+            self._logger.info(f"Connected to {self.port} at {self.baudrate} baud")
             time.sleep(self.init_timeout)
         self.flags.connected = True
         return
@@ -286,10 +293,10 @@ class SerialDevice:
                 return
             self.serial.close()
         except serial.SerialException as e:
-            logger.error(f"Failed to disconnect from {self.port}")
-            logger.debug(e)
+            self._logger.error(f"Failed to disconnect from {self.port}")
+            self._logger.debug(e)
         else:
-            logger.info(f"Disconnected from {self.port}")
+            self._logger.info(f"Disconnected from {self.port}")
         self.flags.connected = False
         return
     
@@ -327,10 +334,10 @@ class SerialDevice:
                 data = [d.decode("utf-8", "replace").strip() for d in data]
             else:
                 data = self.serial.readline().decode("utf-8", "replace").strip()
-            logger.debug(f"Received: {data!r}")
+            self._logger.debug(f"Received: {data!r}")
             self.serial.reset_output_buffer()
         except serial.SerialException as e:
-            logger.debug(f"Failed to receive data")
+            self._logger.debug(f"Failed to receive data")
         return data
 
     def write(self, data:str) -> bool:
@@ -347,9 +354,9 @@ class SerialDevice:
         data = f"{data}{self.message_end}" if not data.endswith(self.message_end) else data
         try:
             self.serial.write(data.encode())
-            logger.debug(f"Sent: {data!r}")
+            self._logger.debug(f"Sent: {data!r}")
         except serial.SerialException as e:
-            logger.debug(f"Failed to send: {data!r}")
+            self._logger.debug(f"Failed to send: {data!r}")
             return False
         return True
 
@@ -403,9 +410,11 @@ class SocketDevice:
         self.flags = deepcopy(self._default_flags)
         
         self.socket.settimeout(self.timeout)
-        
-        self.verbose = verbose
         self.flags.simulation = simulation
+        
+        self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
+        self._logger.addHandler(logging.StreamHandler())
+        self.verbose = verbose
         return
 
     @property
@@ -432,10 +441,10 @@ class SocketDevice:
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
         level = logging.DEBUG if value else logging.INFO
-        parents = list(self.__class__.__mro__)
-        for parent in parents:
-            log = logging.getLogger(parent.__module__)
-            log.setLevel(level)
+        for handler in self._logger.handlers:
+            if not isinstance(handler, logging.StreamHandler):
+                continue
+            handler.setLevel(level)
         return
     
     def clear(self):
@@ -454,10 +463,10 @@ class SocketDevice:
                 return
             self.socket.connect((self.host, self.port))
         except socket.error as e:
-            logger.error(f"Failed to connect to {self.host} at {self.port}")
-            logger.debug(e)
+            self._logger.error(f"Failed to connect to {self.host} at {self.port}")
+            self._logger.debug(e)
         else:
-            logger.info(f"Connected to {self.host} at {self.port}")
+            self._logger.info(f"Connected to {self.host} at {self.port}")
         self.flags.connected = True
         return
 
@@ -468,10 +477,10 @@ class SocketDevice:
                 return
             self.socket.close()
         except socket.error as e:
-            logger.error(f"Failed to disconnect from {self.host}")
-            logger.debug(e)
+            self._logger.error(f"Failed to disconnect from {self.host}")
+            self._logger.debug(e)
         else:
-            logger.info(f"Disconnected from {self.host}")
+            self._logger.info(f"Disconnected from {self.host}")
         self.flags.connected = False
         return
     
@@ -504,9 +513,9 @@ class SocketDevice:
         data = []
         try:
             data = self.socket.recv(1024).decode("utf-8", "replace").strip().split('\n')
-            logger.debug(f"Received: {data!r}")
+            self._logger.debug(f"Received: {data!r}")
         except socket.error as e:
-            logger.debug(f"Failed to receive data")
+            self._logger.debug(f"Failed to receive data")
         return data
 
     def write(self, data:str) -> bool:
@@ -522,9 +531,9 @@ class SocketDevice:
         data = f"{data}\n" if not data.endswith('\n') else data
         try:
             self.socket.sendall(data.encode())
-            logger.debug(f"Sent: {data!r}")
+            self._logger.debug(f"Sent: {data!r}")
         except socket.error as e:
-            logger.debug(f"Failed to send: {data!r}")
+            self._logger.debug(f"Failed to send: {data!r}")
         return False
 
 

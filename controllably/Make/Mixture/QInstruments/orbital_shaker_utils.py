@@ -21,7 +21,7 @@ import pandas as pd
 from ... import Maker
 from .qinstruments_api import QInstrumentsDevice
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("controllably.Make")
 logger.debug(f"Import: OK <{__name__}>")
 
 ACCELERATION_LIMIT = (1,30)
@@ -319,11 +319,11 @@ class BioShake(Maker):
         """
         self.setTemperature(temperature)
         out = f"Holding at {self.set_temperature}°C for {time_s} seconds"
-        logger.info(out)
+        self._logger.info(out)
         print(out)
         time.sleep(time_s)
         out = f"End of temperature hold ({time_s}s)"
-        logger.info(out)
+        self._logger.info(out)
         print(out)
         return
     
@@ -396,7 +396,7 @@ class BioShake(Maker):
         limits = self.ranges.get('speed', (200,201))
         lower_limit, upper_limit = limits
         if speed < 200:
-            logger.warning("Speed values below 200 RPM are not recommended.")
+            self._logger.warning("Speed values below 200 RPM are not recommended.")
             return
         if lower_limit <= speed <= upper_limit:
             self.set_speed = speed
@@ -426,13 +426,13 @@ class BioShake(Maker):
         while self.set_temperature != float(temperature):
             self.getTemperature()
         out = f"New set temperature at {self.set_temperature}°C"
-        logger.info(out)
+        self._logger.info(out)
         print(out)
         self.flags.temperature_reached = False
         
         if blocking:
             out = f"Waiting for temperature to reach {self.set_temperature}°C"
-            logger.info(out)
+            self._logger.info(out)
             print(out)
         while not self.at_temperature:
             self.getTemperature()
@@ -474,7 +474,7 @@ class BioShake(Maker):
             if duration:
                 time.sleep(abs(duration - shake_time))
                 out = f"End of shake ({duration}s)"
-                logger.info(out)
+                self._logger.info(out)
                 print(out)
             return self.at_speed
         thread = Thread(target=checkSpeed)
@@ -565,9 +565,9 @@ class BioShake(Maker):
                 self.device.shakeOn()
             elif duration > 0:
                 self.device.shakeOnWithRuntime(duration=duration)
-            logger.info(f"Speed: {self.set_speed}")
-            logger.info(f"Accel: {self.acceleration}")
-            logger.info(f"Time : {duration}")
+            self._logger.info(f"Speed: {self.set_speed}")
+            self._logger.info(f"Accel: {self.acceleration}")
+            self._logger.info(f"Time : {duration}")
         else:
             if home:
                 self.device.shakeOff()
@@ -626,11 +626,11 @@ class BioShake(Maker):
         # holdTemperature
         if temperature is not None and duration:
             out = f"Holding at {self.set_temperature}°C for {duration} seconds"
-            logger.info(out)
+            self._logger.info(out)
             print(out)
             time.sleep(duration)
             out = f"End of temperature hold"
-            logger.info(out)
+            self._logger.info(out)
             print(out)
             # self.setTemperature(25, False)
         return
@@ -691,7 +691,7 @@ class BioShake(Maker):
         Returns:
             bool: whether target speed has been reached
         """
-        logger.warning("This method is deprecated. Use `at_speed` instead.")
+        self._logger.warning("This method is deprecated. Use `at_speed` instead.")
         return self.at_speed
     
     def isAtTemperature(self) -> bool:
@@ -701,7 +701,7 @@ class BioShake(Maker):
         Returns:
             bool: whether target temperature has been reached
         """
-        logger.warning("This method is deprecated. Use `at_temperature` instead.")
+        self._logger.warning("This method is deprecated. Use `at_temperature` instead.")
         return self.at_temperature
     
     def isCounterClockwise(self) -> bool:
@@ -711,7 +711,7 @@ class BioShake(Maker):
         Returns:
             bool: whether mixing direction is counterclockwise
         """
-        logger.warning("This method is deprecated. Use `is_counterclockwise` instead.")
+        self._logger.warning("This method is deprecated. Use `is_counterclockwise` instead.")
         return self.is_counterclockwise
     
     def isLocked(self) -> bool:
@@ -721,6 +721,6 @@ class BioShake(Maker):
         Returns:
             bool: whether ELM is locked
         """
-        logger.warning("This method is deprecated. Use `is_locked` instead.")
+        self._logger.warning("This method is deprecated. Use `is_locked` instead.")
         return self.is_locked
     

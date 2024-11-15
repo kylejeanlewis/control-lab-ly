@@ -20,8 +20,7 @@ from typing import final
 # Local application imports
 from .. import Maker
 
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
+logger = logging.getLogger("controllably.Make")
 logger.debug(f"Import: OK <{__name__}>")
 
 @dataclass
@@ -90,7 +89,7 @@ class LED:
         """
         self.power = value
         if duration:
-            print(f"{duration} seconds for LED {self.channel}")
+            logger.info(f"{duration} seconds for LED {self.channel}")
         self._duration = duration
         return
     
@@ -193,7 +192,7 @@ class LEDArray(Maker):
     
     def startTiming(self):
         """Start counting down time left with LEDs on"""
-        print("Timing...")
+        self._logger.info("Timing...")
         if not self.flags.timing_loop:
             if 'timing_loop'in self._threads and self._threads['timing_loop'].is_alive():
                 return
@@ -209,7 +208,7 @@ class LEDArray(Maker):
         Args:
             channel (int|None, optional): channel id. Defaults to None.
         """
-        print(f"Turning off LED {channel}")
+        self._logger.info(f"Turning off LED {channel}")
         self.setPower(0, channel=channel)
         return
     

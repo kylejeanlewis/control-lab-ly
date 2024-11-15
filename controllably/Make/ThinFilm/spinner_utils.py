@@ -17,8 +17,7 @@ from typing import final
 from ...core.compound import Ensemble
 from .. import Maker
 
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
+logger = logging.getLogger("controllably.Make")
 logger.debug(f"Import: OK <{__name__}>")
 
 @final
@@ -100,7 +99,7 @@ class Spinner(Maker):
         assert time_s >= 0, "Ensure the soak time is a non-negative integer"
         def inner():
             self.flags.busy = True
-            logger.info(f"Soaking   : {time_s}s")
+            self._logger.info(f"Soaking   : {time_s}s")
             self.setSpeed(0)
             time.sleep(time_s)
             self.flags.busy = False
@@ -125,8 +124,7 @@ class Spinner(Maker):
         assert time_s >= 0, "Ensure the spin time is a non-negative integer"
         def inner():
             self.flags.busy = True
-            logger.info(f"Spin speed: {speed}")
-            logger.info(f"Duration  : {time_s}s")
+            self._logger.info(f"Spin speed: {speed} | {time_s=}")
             self.setSpeed(speed)
             start_time = time.perf_counter()
             while (time_s >= (time.perf_counter() - start_time)):

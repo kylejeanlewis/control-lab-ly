@@ -1,10 +1,6 @@
-"""
-This sub-package imports the base class for mover tools.
+# -*- coding: utf-8 -*-
+import logging
+logger = logging.getLogger("controllably.Move")
+logger.setLevel(logging.DEBUG)
 
-Classes:
-    Maker (ABC)
-"""
 from .move_utils import Mover
-
-from controllably import include_this_module
-include_this_module(get_local_only=False)

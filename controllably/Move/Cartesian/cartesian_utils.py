@@ -22,7 +22,7 @@ from typing import Optional
 import numpy as np
 from .. import Mover
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("controllably.Move")
 logger.debug(f"Import: OK <{__name__}>")
 
 @final

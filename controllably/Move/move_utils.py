@@ -26,8 +26,8 @@ from ..core.connection import DeviceFactory, Device
 from ..core.factory import dict_to_simple_namespace
 from ..core.position import Deck, Position, get_transform, BoundingBox, convert_to_position
 
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
+logger = logging.getLogger("controllably.Move")
+logger.setLevel(logging.DEBUG)
 logger.debug(f"Import: OK <{__name__}>")
 
 class Mover:
@@ -140,6 +140,9 @@ class Mover:
         """
         self.device: Device = kwargs.get('device', DeviceFactory.createDeviceFromDict(kwargs))
         self.flags: SimpleNamespace = deepcopy(self._default_flags)
+        
+        self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
+        self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         
         # Category specific attributes
@@ -187,10 +190,10 @@ class Mover:
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
         level = logging.DEBUG if value else logging.INFO
-        parents = list(self.__class__.__mro__)
-        for parent in parents:
-            log = logging.getLogger(parent.__module__)
-            log.setLevel(level)
+        for handler in self._logger.handlers:
+            if not isinstance(handler, logging.StreamHandler):
+                continue
+            handler.setLevel(level)
         return
     
     def connect(self):
@@ -389,8 +392,8 @@ class Mover:
         try:
             self.setSafeHeight(height=self.safe_height)
         except AssertionError as e:
-            logger.warning(f"Error setting safe height: {self.safe_height}")
-            logger.warning(e)
+            self._logger.warning(f"Error setting safe height: {self.safe_height}")
+            self._logger.warning(e)
         return
     
     def loadDeckFromDict(self, details:dict[str, Any]):
@@ -468,7 +471,7 @@ class Mover:
             assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
         move_by = by if isinstance(by, Position) else Position(by)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
-        logger.info(f"Move By | {move_by} at speed factor {speed_factor}")
+        self._logger.info(f"Move By | {move_by} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
         if robot:
@@ -480,7 +483,7 @@ class Mover:
             by_rotation = inv_tool_offset.Rotation * inv_calibrated_offset.Rotation * move_by.Rotation
             move_by = Position(by_coordinates, by_rotation)
         if not self.isFeasible(self.position.coordinates + move_by.coordinates, external=False, tool_offset=False):
-            logger.warning(f"Target movement {move_by} is not feasible")
+            self._logger.warning(f"Target movement {move_by} is not feasible")
             return self.robot_position if robot else self.tool_position
         
         # Implementation of relative movement
@@ -517,12 +520,12 @@ class Mover:
             assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
         move_to = to if isinstance(to, Position) else Position(to)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
-        logger.info(f"Move To | {move_to} at speed factor {speed_factor}")
+        self._logger.info(f"Move To | {move_to} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
         move_to = move_to if robot else self.transformToolToRobot(self.transformWorkToRobot(move_to))
         if not self.isFeasible(move_to.coordinates, external=False, tool_offset=False):
-            logger.warning(f"Target position {move_to} is not feasible")
+            self._logger.warning(f"Target position {move_to} is not feasible")
             return self.robot_position if robot else self.tool_position
         
         # Implementation of absolute movement
@@ -645,7 +648,7 @@ class Mover:
             assert len(by) == 3, f"Ensure `by` is a 3-element sequence for c,b,a"
         rotate_by = by if isinstance(by, Rotation) else Rotation.from_euler('zyx', by, degrees=True)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
-        logger.info(f"Rotate By | {rotate_by} at speed factor {speed_factor}")
+        self._logger.info(f"Rotate By | {rotate_by} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
         rotate_by = rotate_by               # not affected by robot or tool coordinates for rotation
@@ -682,7 +685,7 @@ class Mover:
             assert len(to) == 3, f"Ensure `to` is a 3-element sequence for c,b,a"
         rotate_to = to if isinstance(to, Rotation) else Rotation.from_euler('zyx', to, degrees=True)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
-        logger.info(f"Rotate To | {rotate_to} at speed factor {speed_factor}")
+        self._logger.info(f"Rotate To | {rotate_to} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
         if robot:

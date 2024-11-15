@@ -27,7 +27,7 @@ from ...core.connection import SerialDevice
 from ...core.position import Position
 from .grbl_lib import Alarm, Error, Setting, Status
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("controllably.Move")
 logger.debug(f"Import: OK <{__name__}>")
 
 LOOP_INTERVAL = 0.1
@@ -124,7 +124,7 @@ class GRBL(SerialDevice):
         alarm_int = int(alarm_id) if alarm_id.isnumeric() else alarm_id
         alarm_ = f'ac{alarm_int:02}'
         assert alarm_ in Alarm.__members__, f"Alarm not found: {alarm_}"
-        logger.warning(f"ALARM {alarm_int:02}: {Alarm[alarm_].value.message}")
+        self._logger.warning(f"ALARM {alarm_int:02}: {Alarm[alarm_].value.message}")
         return True
     
     def checkErrors(self, response: str) -> bool:
@@ -143,7 +143,7 @@ class GRBL(SerialDevice):
         error_int = int(error_id) if error_id.isnumeric() else error_id
         error_ = f'er{error_int:02}'
         assert error_ in Error.__members__, f"Error not found: {error_}"
-        logger.warning(f"ERROR {error_int:02}: {Error[error_].value.message}")
+        self._logger.warning(f"ERROR {error_int:02}: {Error[error_].value.message}")
         return True
     
     def checkInfo(self) -> list[str]:
@@ -204,7 +204,7 @@ class GRBL(SerialDevice):
             setting_int = int(setting[1:]) if setting[1:].isnumeric() else setting[1:]
             setting_ = f'sc{setting_int}'
             assert setting_ in Setting.__members__, f"Setting not found: {setting_}"
-            logger.debug(f"[{setting}]: {Setting[setting_].value.message} = {value}")
+            self._logger.debug(f"[{setting}]: {Setting[setting_].value.message} = {value}")
             negative = value.startswith('-')
             if negative:
                     value = value[1:]
@@ -272,7 +272,7 @@ class GRBL(SerialDevice):
             response = response[1:-1]
             status_parts = response.split('|')
             status = status_parts[0].split(':')[0]
-            logger.debug(f"{status}: {Status[status].value}")
+            self._logger.debug(f"{status}: {Status[status].value}")
             current_position = np.array([float(c) for c in status_parts[1].split(':')[1].split(',')])
         return (status, current_position, self._home_offset)
     
@@ -318,7 +318,7 @@ class GRBL(SerialDevice):
         # success = self._wait_for_status(('Home',), timeout=timeout)
         # if not success:
         #     status,_,_ = self.checkStatus()
-        #     logger.error(f"Timeout: {status} | {command}")
+        #     self._logger.error(f"Timeout: {status} | {command}")
         return True
     
     def resume(self):
@@ -376,8 +376,8 @@ class GRBL(SerialDevice):
         parameters = self.checkParameters()
         self._home_offset = np.array(parameters.get('G54', [0,0,0]))
         
-        logger.info(startup_lines)
-        logger.info(f'GRBL version: {self._version}')
+        self._logger.info(startup_lines)
+        self._logger.info(f'GRBL version: {self._version}')
         return
     
     def query(self, data: Any, lines:bool = True, *, timeout:int|None = None, jog:bool = False, wait:bool = False) -> list[str]|None:
@@ -410,14 +410,14 @@ class GRBL(SerialDevice):
         # success = self._wait_for_status(('Idle',), timeout=timeout)
         # if not success:
         #     status,_,_ = self.checkStatus()
-        #     logger.error(f"Timeout: {data} | {status}")
+        #     self._logger.error(f"Timeout: {data} | {status}")
         #     if status == 'Jog':
         #         raise RuntimeError("Jog mode still active")
         #     return []
         
         responses = super().query(data, lines=lines)
         for response in responses:
-            logger.debug(f"Response: {response}")
+            self._logger.debug(f"Response: {response}")
             if response == 'ok':
                 continue
             if any([self.checkAlarms(response), self.checkErrors(response)]):
@@ -426,5 +426,5 @@ class GRBL(SerialDevice):
         # success = self._wait_for_status(('Idle',), timeout=timeout)
         # if not success:
         #     status,_,_ = self.checkStatus()
-        #     logger.error(f"Timeout: {data} | {status}")
+        #     self._logger.error(f"Timeout: {data} | {status}")
         return responses

@@ -28,8 +28,7 @@ from . import Mover
 from .grbl_api import GRBL
 from .marlin_api import Marlin
 
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
+logger = logging.getLogger("controllably.Move")
 logger.debug(f"Import: OK <{__name__}>")
 
 MOVEMENT_BUFFER = 0
@@ -208,7 +207,7 @@ class GCode(Mover):
         """Halt robot movement"""
         position = self.device.halt()
         self.updateRobotPosition(to=position)
-        logger.warning(f"Halted at {position} | To cancel movement, reset robot and re-home")
+        self._logger.warning(f"Halted at {position} | To cancel movement, reset robot and re-home")
         return position
     
     def home(self, axis: str|None = None, *, timeout:int|None = None) -> bool:
@@ -231,7 +230,7 @@ class GCode(Mover):
         if any(self.home_position.coordinates):
             self.moveTo(self.home_position, self.speed_factor)
         self.updateRobotPosition(to=self.home_position)
-        logger.info(f"Home | {axis=}")
+        self._logger.info(f"Home | {axis=}")
         return success
         
     def moveBy(self,
@@ -260,7 +259,7 @@ class GCode(Mover):
             assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
         move_by = by if isinstance(by, Position) else Position(by)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
-        logger.info(f"Move By | {move_by} at speed factor {speed_factor}")
+        self._logger.info(f"Move By | {move_by} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
         if robot:
@@ -272,7 +271,7 @@ class GCode(Mover):
             by_rotation = inv_tool_offset.Rotation * inv_calibrated_offset.Rotation * move_by.Rotation
             move_by = Position(by_coordinates, by_rotation)
         if not self.isFeasible(self.robot_position.coordinates + move_by.coordinates, external=False, tool_offset=False):
-            logger.warning(f"Target movement {move_by} is not feasible")
+            self._logger.warning(f"Target movement {move_by} is not feasible")
             return self.robot_position if robot else self.tool_position
         
         # current_position = self.robot_position if robot else self.tool_position
@@ -330,12 +329,12 @@ class GCode(Mover):
             assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
         move_to = to if isinstance(to, Position) else Position(to)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
-        logger.info(f"Move To | {move_to} at speed factor {speed_factor}")
+        self._logger.info(f"Move To | {move_to} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
         move_to = move_to if robot else self.transformToolToRobot(self.transformWorkToRobot(move_to, self.calibrated_offset), self.tool_offset)
         if not self.isFeasible(move_to.coordinates, external=False, tool_offset=False):
-            logger.warning(f"Target position {move_to} is not feasible")
+            self._logger.warning(f"Target position {move_to} is not feasible")
             return self.robot_position if robot else self.tool_position
         
         # Implementation of absolute movement

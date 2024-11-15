@@ -105,7 +105,7 @@ class Marlin(SerialDevice):
                     v = v[1:]
                 v: int|float|str = int(v) if v.isnumeric() else (float(v) if v.replace('.','',1).isdigit() else v)
                 value_dict[k] = v * ((-1)**int(negative)) if isinstance(v, (int,float)) else v
-            logger.debug(f"[{setting}]: {value_dict}")
+            self._logger.debug(f"[{setting}]: {value_dict}")
             settings[setting] = value_dict
         settings['max_accel_x'] = settings['M201']['X']
         settings['max_accel_y'] = settings['M201']['Y']
@@ -152,7 +152,7 @@ class Marlin(SerialDevice):
         """
         """
         # if axis is not None:
-        #     logger.warning("Ignoring homing axis parameter for Marlin firmware")
+        #     self._logger.warning("Ignoring homing axis parameter for Marlin firmware")
         axis = '' if axis is None else f'{axis.upper()}'
         self.query('G90', lines=False)
         self.write(f'G28 {axis}')
@@ -194,8 +194,8 @@ class Marlin(SerialDevice):
         settings = self.checkSettings()
         self._home_offset = np.array([settings.get('home_offset_x',0),settings.get('home_offset_y',0),settings.get('home_offset_z',0)])
         
-        logger.info(startup_lines)
-        logger.info(f'Marlin version: {self._version}')
+        self._logger.info(startup_lines)
+        self._logger.info(f'Marlin version: {self._version}')
         return
     
     def query(self, data: Any, lines:bool = True, *, wait:bool = False, **kwargs) -> list[str]|None:
@@ -210,7 +210,7 @@ class Marlin(SerialDevice):
         responses = super().query(data, lines=lines)
         # success = self._wait_for_idle()
         # if not success:
-        #     logger.error(f"Timeout: {data}")
+        #     self._logger.error(f"Timeout: {data}")
         #     return []
         return responses
     

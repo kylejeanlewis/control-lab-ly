@@ -8,9 +8,10 @@ This module contains functions to handle files and folders.
     `read_config_file`: Read configuration file and return as dictionary
     `readable_duration`: Display time duration (s) as HH:MM:SS text
     `resolve_repo_filepath`: Resolve relative path to absolute path
+    `start_logging`: Start logging to file
     `start_project_here`: Create new project in destination directory
 
-<i>Documentation last updated: 2024-11-13</i>
+<i>Documentation last updated: 2024-11-15</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -29,10 +30,14 @@ import yaml
 # Local application imports
 from . import connection
 
+_logger = logging.getLogger("controllably.core")
+_logger.debug(f"Import: OK <{__name__}>")
+
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
-logger.debug(f"Import: OK <{__name__}>")
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
 
 def create_folder(base:Path|str = '', sub:Path|str = '') -> Path:
     """

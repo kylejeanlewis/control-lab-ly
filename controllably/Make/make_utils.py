@@ -16,8 +16,7 @@ from types import SimpleNamespace
 # Local application imports
 from ..core.connection import DeviceFactory, Device
 
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
+logger = logging.getLogger("controllably.Make")
 logger.debug(f"Import: OK <{__name__}>")
 
 class Maker:
@@ -54,6 +53,9 @@ class Maker:
         """
         self.device: Device = kwargs.get('device', DeviceFactory.createDeviceFromDict(kwargs))
         self.flags: SimpleNamespace = deepcopy(self._default_flags)
+        
+        self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
+        self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         
         # Category specific attributes
@@ -87,10 +89,10 @@ class Maker:
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
         level = logging.DEBUG if value else logging.INFO
-        parents = list(self.__class__.__mro__)
-        for parent in parents:
-            log = logging.getLogger(parent.__module__)
-            log.setLevel(level)
+        for handler in self._logger.handlers:
+            if not isinstance(handler, logging.StreamHandler):
+                continue
+            handler.setLevel(level)
         return
     
     def connect(self):
@@ -117,7 +119,7 @@ class Maker:
     # Category specific properties and methods
     def execute(self, *args, **kwargs):
         """Execute task"""
-        logger.info("Executing task")
+        self._logger.info("Executing task")
         raise NotImplementedError
     
     def run(self, *args, **kwargs):

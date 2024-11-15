@@ -33,9 +33,12 @@ from typing import Protocol, Callable, Sequence, Type
 from .connection import DeviceFactory, Device
 from . import factory
 
+_logger = logging.getLogger("controllably.core")
+_logger.debug(f"Import: OK <{__name__}>")
+
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler())
-logger.debug(f"Import: OK <{__name__}>")
 
 class Part(Protocol):
     """Protocol for Part (i.e. component tools)"""
@@ -99,6 +102,9 @@ class Compound:
         """
         self._parts = parts
         self.flags = deepcopy(self._default_flags)
+        
+        self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
+        self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         return
     
@@ -154,10 +160,10 @@ class Compound:
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
         level = logging.DEBUG if value else logging.INFO
-        parents = list(self.__class__.__mro__)
-        for parent in parents:
-            log = logging.getLogger(parent.__module__)
-            log.setLevel(level)
+        for handler in self._logger.handlers:
+            if not isinstance(handler, logging.StreamHandler):
+                continue
+            handler.setLevel(level)
         for part in self._parts.values():
             part.verbose = value
         return
@@ -391,6 +397,9 @@ class Combined:
         self.device: Device = kwargs.get('device', DeviceFactory.createDeviceFromDict(kwargs))
         self._parts = parts
         self.flags = deepcopy(self._default_flags)
+        
+        self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
+        self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         return
     
@@ -450,10 +459,10 @@ class Combined:
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
         level = logging.DEBUG if value else logging.INFO
-        parents = list(self.__class__.__mro__)
-        for parent in parents:
-            log = logging.getLogger(parent.__module__)
-            log.setLevel(level)
+        for handler in self._logger.handlers:
+            if not isinstance(handler, logging.StreamHandler):
+                continue
+            handler.setLevel(level)
         for part in self._parts.values():
             part.verbose = value
         return

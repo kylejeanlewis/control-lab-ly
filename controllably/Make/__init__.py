@@ -1,10 +1,6 @@
-"""
-This sub-package imports the base class for maker tools.
+# -*- coding: utf-8 -*-
+import logging
+logger = logging.getLogger("controllably.Make")
+logger.setLevel(logging.DEBUG)
 
-Classes:
-    Maker (ABC)
-"""
 from .make_utils import Maker
-
-from controllably import include_this_module
-include_this_module(get_local_only=False)

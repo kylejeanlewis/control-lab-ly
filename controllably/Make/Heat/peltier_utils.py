@@ -24,8 +24,7 @@ import pandas as pd
 # Local application imports
 from .. import Maker
 
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
+logger = logging.getLogger("controllably.Make")
 logger.debug(f"Import: OK <{__name__}>")
 
 # COLUMNS = ('Time', 'Set', 'Hot', 'Cold', 'Power')
@@ -139,9 +138,9 @@ class Peltier(Maker):
         try:
             values = [float(v) for v in response.split(';')]
             self.data = Data(now, *values)
-            logger.info(values)
+            self._logger.info(values)
         except ValueError:
-            logger.error(f"Could not parse response: {response}")
+            self._logger.error(f"Could not parse response: {response}")
         
         if self.flags.record:
             new_row_df = pd.DataFrame(self.data, index=[0])
@@ -159,11 +158,11 @@ class Peltier(Maker):
         """
         self.setTemperature(temperature)
         out = f"Holding at {self.set_temperature}°C for {time_s} seconds"
-        logger.info(out)
+        self._logger.info(out)
         print(out)
         time.sleep(time_s)
         out = f"End of temperature hold"
-        logger.info(out)
+        self._logger.info(out)
         print(out)
         return
     
@@ -183,7 +182,7 @@ class Peltier(Maker):
         while self.data.target != float(temperature):
             self.getTemperature()
         out = f"New set temperature at {self.data.target}°C"
-        logger.info(out)
+        self._logger.info(out)
         print(out)
         
         self._stabilize_start_time = None
@@ -192,14 +191,14 @@ class Peltier(Maker):
             self.getTemperature()
         if blocking:
             out = f"Waiting for temperature to reach {self.data.target}°C"
-            logger.info(out)
+            self._logger.info(out)
             print(out)
             while not self.at_temperature:
                 if not self.flags.get_feedback:
                     self.getTemperature()
                 time.sleep(0.1)
             out = f"Temperature of {self.data.target}°C reached!"
-            logger.info(out)
+            self._logger.info(out)
             print(out)
         return
     
@@ -253,7 +252,7 @@ class Peltier(Maker):
     def connect(self):
         self.device.connect()
         self.getTemperature()
-        logger.info(self.data.hot)
+        self._logger.info(self.data.hot)
         print(self.data.hot)
         return
     
@@ -297,6 +296,6 @@ class Peltier(Maker):
         Returns:
             bool: whether target temperature has been reached
         """
-        logger.warning("This method is deprecated. Use `at_temperature` instead.")
+        self._logger.warning("This method is deprecated. Use `at_temperature` instead.")
         return self.at_temperature
     

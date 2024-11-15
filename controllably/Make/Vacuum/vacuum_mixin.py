@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import time
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("controllably.Make")
 logger.debug(f"Import: OK <{__name__}>")
 
 class VacuumMixin:

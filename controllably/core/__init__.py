@@ -1,2 +1,6 @@
 # -*- coding: utf-8 -*-
-from .file_handler import init
+import logging
+logger = logging.getLogger("controllably.core")
+logger.setLevel(logging.DEBUG)
+
+from .file_handler import init, start_logging

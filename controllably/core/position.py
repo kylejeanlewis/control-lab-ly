@@ -39,10 +39,14 @@ from scipy.spatial.transform import Rotation
 # Local application imports
 from . import file_handler
 
+_logger = logging.getLogger("controllably.core")
+_logger.debug(f"Import: OK <{__name__}>")
+
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
-logger.debug(f"Import: OK <{__name__}>")
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
 
 MTP_DIMENSIONS = (127.76,85.48,0)
 """Microtiter plate dimensions in mm"""

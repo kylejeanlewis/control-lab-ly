@@ -18,8 +18,7 @@ import serial       # pip install pyserial
 # Local application imports
 from .qinstruments_lib import ELMStateCode, ELMStateString, ShakeStateCode, ShakeStateString
 
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
+logger = logging.getLogger("controllably.Make")
 logger.debug(f"Import: OK <{__name__}>")
 
 VALID_BAUDRATES = (110, 300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200)
@@ -160,8 +159,11 @@ class QInstrumentsDevice:
         self.baudrate = baudrate
         self.timeout = timeout
         
-        self.verbose = verbose
         self.flags.simulation = simulation
+        
+        self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
+        self._logger.addHandler(logging.StreamHandler())
+        self.verbose = verbose
         return
     
     @property
@@ -231,10 +233,10 @@ class QInstrumentsDevice:
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
         level = logging.INFO if value else logging.WARNING
-        logger.setLevel(level)
-        for handler in logger.handlers:
-            if isinstance(handler, type(logging.StreamHandler())):
-                handler.setLevel(level)
+        for handler in self._logger.handlers:
+            if not isinstance(handler, logging.StreamHandler):
+                continue
+            handler.setLevel(level)
         return
         
     # Initialization methods
@@ -346,7 +348,7 @@ class QInstrumentsDevice:
         if 50 <= duration <= 999:
             self.query(f"setBuzzer{int(duration)}")
         else:
-            logger.warning("Please input duration of between 50 and 999 milliseconds.")
+            self._logger.warning("Please input duration of between 50 and 999 milliseconds.")
         return
         
     def version(self) -> str:
@@ -539,7 +541,7 @@ class QInstrumentsDevice:
             return None
         code = f"ss{int(response)}"
         if code in ShakeStateCode._member_names_:
-            logger.info(ShakeStateCode[code].value)
+            self._logger.info(ShakeStateCode[code].value)
         return int(response)
         
     def getShakeStateAsString(self) -> str|None:
@@ -552,7 +554,7 @@ class QInstrumentsDevice:
         response = self.query("getShakeStateAsString")
         code = response.replace("+","t").replace("-","_")
         if code in ShakeStateString._member_names_:
-            logger.info(ShakeStateString[code].value)
+            self._logger.info(ShakeStateString[code].value)
         return response
         
     def getShakeTargetSpeed(self) -> float|None:
@@ -901,7 +903,7 @@ class QInstrumentsDevice:
             return None
         code = f"es{int(response)}"
         if code in ELMStateCode._member_names_:
-            logger.info(ELMStateCode[code].value)
+            self._logger.info(ELMStateCode[code].value)
         return int(response)
     
     def getElmStateAsString(self) -> str|None:
@@ -913,7 +915,7 @@ class QInstrumentsDevice:
         """
         response = self.query("getElmStateAsString")
         if response in ELMStateString._member_names_:
-            logger.info(ELMStateString[response].value)
+            self._logger.info(ELMStateString[response].value)
         return response
     
     def setElmLockPos(self, timeout:int = 5):
@@ -986,10 +988,10 @@ class QInstrumentsDevice:
                 return
             self.serial.open()
         except serial.SerialException as e:
-            logger.error(f"Failed to connect to {self.port} at {self.baudrate} baud")
-            logger.debug(e)
+            self._logger.error(f"Failed to connect to {self.port} at {self.baudrate} baud")
+            self._logger.debug(e)
         else:
-            logger.info(f"Connected to {self.port} at {self.baudrate} baud")
+            self._logger.info(f"Connected to {self.port} at {self.baudrate} baud")
             time.sleep(self.init_timeout)
         self.model = self.getDescription()
         self.flags.connected = True
@@ -1004,10 +1006,10 @@ class QInstrumentsDevice:
                 return
             self.serial.close()
         except serial.SerialException as e:
-            logger.error(f"Failed to disconnect from {self.port}")
-            logger.error(e)
+            self._logger.error(f"Failed to disconnect from {self.port}")
+            self._logger.error(e)
         else:
-            logger.info(f"Disconnected from {self.port}")
+            self._logger.info(f"Disconnected from {self.port}")
         self.flags.connected = False
         return
     
@@ -1046,7 +1048,7 @@ class QInstrumentsDevice:
             value = float(response)
             return value
         except ValueError:
-            logger.warning(f"Unable to parse response: {response!r}")
+            self._logger.warning(f"Unable to parse response: {response!r}")
         return
 
     def read(self, lines:bool = False) -> str|list[str]:
@@ -1066,10 +1068,10 @@ class QInstrumentsDevice:
                 data = data.decode("utf-8", "replace").strip() 
             else:
                 data = self.serial.readline().decode("utf-8", "replace").strip()
-            logger.info(f"Received: {data}")
+            self._logger.info(f"Received: {data}")
             self.serial.reset_output_buffer()
         except serial.SerialException as e:
-            logger.info(f"Failed to receive data")
+            self._logger.info(f"Failed to receive data")
         return data
     
     def write(self, data:str) -> bool:
@@ -1085,10 +1087,10 @@ class QInstrumentsDevice:
         data = f"{data}{self.message_end}" if not data.endswith(self.message_end) else data
         try:
             self.serial.write(data.encode())
-            logger.info(f"Sent: {data}")
+            self._logger.info(f"Sent: {data}")
         except serial.SerialException as e:
-            logger.info(f"Failed to send: {data}")
-            # logger.error(e)
+            self._logger.info(f"Failed to send: {data}")
+            # self._logger.error(e)
             return False
         return True
     
