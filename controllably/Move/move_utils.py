@@ -859,7 +859,29 @@ class Mover:
         else:
             raise ValueError(f"Ensure input is of type Position or Rotation")
         return self.robot_position
-        
+    
+    def _get_move_wait_time(self, 
+        distances: np.ndarray, 
+        speeds: np.ndarray, 
+        accels: np.ndarray|None = None
+    ) -> float:
+        """
+        Get the amount of time to wait to complete movement
+
+        Args:
+            distances (np.ndarray): array of distances to travel
+            speeds (np.ndarray): array of axis speeds
+            accels (np.ndarray|None, optional): array of axis accelerations. Defaults to None.
+
+        Returns:
+            float: wait time to complete travel
+        """
+        accels = np.zeros([None]*len(speeds)) if accels is None else accels
+        times = [self._calculate_travel_time(d,s,a,a) for d,s,a in zip(distances, speeds, accels)]
+        move_time = max(times[:2]) + times[2]
+        self._logger.debug(f'{move_time=} | {times=} | {distances=} | {speeds=} | {accels=}')
+        return move_time if (0<move_time<np.inf) else 0
+    
     @staticmethod
     def calibrate(
         internal_points: np.ndarray,
@@ -1000,30 +1022,7 @@ class Mover:
             travel_time = time2**0.5
         travel_time = 0.0 if np.isnan(travel_time) else travel_time
         return travel_time
-    
-    @classmethod
-    def _get_move_wait_time(cls, 
-        distances: np.ndarray, 
-        speeds: np.ndarray, 
-        accels: np.ndarray|None = None
-    ) -> float:
-        """
-        Get the amount of time to wait to complete movement
-
-        Args:
-            distances (np.ndarray): array of distances to travel
-            speeds (np.ndarray): array of axis speeds
-            accels (np.ndarray|None, optional): array of axis accelerations. Defaults to None.
-
-        Returns:
-            float: wait time to complete travel
-        """
-        accels = np.zeros([None]*len(speeds)) if accels is None else accels
-        times = [cls._calculate_travel_time(d,s,a,a) for d,s,a in zip(distances, speeds, accels)]
-        move_time = max(times[:2]) + times[2]
-        logger.debug(f'{move_time=} | {times=} | {distances=} | {speeds=} | {accels=}')
-        return move_time if (0<move_time<np.inf) else 0
-    
+ 
    
 class _Mover:
     
