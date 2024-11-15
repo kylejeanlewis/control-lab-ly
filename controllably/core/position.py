@@ -1046,6 +1046,7 @@ class Deck:
         `exclusion_zone` (dict[str, BoundingBox]): exclusion zones to avoid
         `slots` (dict[str, Slot]): contained `Slot` objects
         `zones` (dict[str, Deck]): nested `Deck` objects
+        `entry_waypoints` (list[Position]): entry waypoints for Deck
         `at` (SimpleNamespace): namespace of all Slots
         `on` (SimpleNamespace): namespace of all nested Decks
         
@@ -1076,6 +1077,7 @@ class Deck:
     bottom_left_corner: Position = field(init=False, default_factory=Position)
     _slots: dict[str, Slot] = field(init=False, default_factory=dict)
     _zones: dict[str, Deck] = field(init=False, default_factory=dict)
+    entry_waypoints: list[Position] = field(init=False, default_factory=list)
     
     def __post_init__(self):
         dimensions = np.array(self._details.get('dimensions',(0,0,0)))
@@ -1100,6 +1102,7 @@ class Deck:
                     raise ValueError(f"Deck '{deck_file}' is already in the nested deck lineage")
                 else:
                     self.loadNestedDeck(name=f"zone_{name}", details=details)
+        self.entry_waypoints = [convert_to_position(wp) for wp in self._details.get('entry_waypoints',[])]
         return
     
     def __repr__(self) -> str:
