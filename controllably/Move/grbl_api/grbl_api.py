@@ -203,7 +203,8 @@ class GRBL(SerialDevice):
             setting,value = response.split("=")
             setting_int = int(setting[1:]) if setting[1:].isnumeric() else setting[1:]
             setting_ = f'sc{setting_int}'
-            assert setting_ in Setting.__members__, f"Setting not found: {setting_}"
+            if setting_ not in Setting.__members__:
+                continue
             self._logger.debug(f"[{setting}]: {Setting[setting_].value.message} = {value}")
             negative = value.startswith('-')
             if negative:
@@ -338,7 +339,7 @@ class GRBL(SerialDevice):
         assert (0.0 <= speed_factor <= 1.0), "Ensure speed factor is between 0.0 and 1.0"
         feed_rate = int(speed_factor * speed_max) * 60      # Convert to mm/min
         self.write(f'G90 F{feed_rate}')
-        self.clear()
+        self.read()
         return
     
     def _wait_for_status(self, statuses:Sequence[str], timeout:int = MOVEMENT_TIMEOUT) -> bool:
@@ -369,6 +370,7 @@ class GRBL(SerialDevice):
     def connect(self):
         """Connect to the device"""
         super().connect()
+        self.clear()
         startup_lines = self.read(True)
         self.clearAlarms()
         info = self.checkInfo()
