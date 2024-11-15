@@ -172,6 +172,8 @@ class GRBL(SerialDevice):
         if self.flags.simulation:
             return parameters
         for response in responses:
+            if 'WIFI' in response:
+                continue
             response = response.strip()
             if not (response.startswith('[') and response.endswith(']')):
                 continue
