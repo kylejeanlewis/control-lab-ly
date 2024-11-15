@@ -57,6 +57,7 @@ class Mover:
         `workspace` (BoundingBox): workspace bounding box
         `safe_height` (float): safe height in terms of robot coordinate system
         `saved_positions` (dict): dictionary of saved positions
+        `current_zone_waypoints` (tuple[str, list[Position]]): current zone entry waypoints
         `speed` (float): travel speed of robot
         `speed_factor` (float): fraction of maximum travel speed of robot
         `speed_max` (float): maximum speed of robot in mm/min
@@ -75,6 +76,8 @@ class Mover:
         `disconnect`: disconnect from the device
         `resetFlags`: reset all flags to class attribute `_default_flags`
         `shutdown`: shutdown procedure for tool
+        `enterZone`: enter a zone on the deck
+        `exitZone`: exit the current zone on the deck
         `halt`: halt robot movement
         `home`: make the robot go home
         `isFeasible`: checks and returns whether the target coordinates is feasible
@@ -140,10 +143,11 @@ class Mover:
         self.verbose = verbose
         
         # Category specific attributes
-        self.deck: Deck = deck
+        self.deck = deck
         self.workspace: BoundingBox = workspace
         self.safe_height: float = safe_height if safe_height is not None else home_position.z
         self.saved_positions: dict = dict()
+        self.current_zone_waypoints: tuple[str, list[Position]]|None = None
         
         self._robot_position = robot_position if isinstance(robot_position, Position) else convert_to_position(robot_position)
         self._home_position = home_position if isinstance(home_position, Position) else convert_to_position(home_position)
@@ -280,6 +284,49 @@ class Mover:
         """Set the speed of the robot"""
         assert isinstance(value, float) and value>0, "Ensure assigned speed is a positive float"
         self._speed_max = value
+        return
+    
+    def enterZone(self, zone:str, speed_factor:float|None = None):
+        """ 
+        Enter a zone on the deck
+        
+        Args:
+            zone (str): zone to enter
+            speed_factor (float, optional): fraction of maximum speed to travel at. Defaults to None.
+        """
+        assert self.deck is not None, "Ensure deck is loaded"
+        assert self.current_zone_waypoints is None, f"Ensure robot has exited current zone: {self.current_zone_waypoints[0]}"
+        assert zone in self.deck.zones, f"Ensure zone is one of {self.deck.zones}"
+        
+        new_zone = self.deck.zones[zone]
+        waypoints = new_zone.entry_waypoints
+        logging.info(f"Entering zone: {zone}")
+        self.moveToSafeHeight(speed_factor=speed_factor)
+        for waypoint in waypoints:
+            self.moveTo(waypoint, speed_factor=speed_factor)
+        try:
+            self.rotateTo(new_zone.reference.Rotation, speed_factor=speed_factor)
+        except NotImplementedError:
+            pass
+        self.current_zone_waypoints = (zone, waypoints)
+        return
+        
+    def exitZone(self, speed_factor:float|None = None):
+        """ 
+        Exit the current zone on the deck
+        
+        Args:
+            speed_factor (float, optional): fraction of maximum speed to travel at. Defaults to None.
+        """
+        assert self.deck is not None, "Ensure deck is loaded"
+        assert self.current_zone_waypoints is not None, f"Robot is not currently in a zone"
+        
+        zone, waypoints = self.current_zone_waypoints
+        logging.info(f"Exiting zone: {zone}")
+        self.moveToSafeHeight(speed_factor=speed_factor)
+        for waypoint in reversed(waypoints):
+            self.moveTo(waypoint, speed_factor=speed_factor)
+        self.current_zone_waypoints = None
         return
     
     def halt(self) -> Position:
