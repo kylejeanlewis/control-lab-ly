@@ -484,7 +484,7 @@ class Mover:
             move_by = Position(by_coordinates, by_rotation)
         if not self.isFeasible(self.position.coordinates + move_by.coordinates, external=False, tool_offset=False):
             self._logger.warning(f"Target movement {move_by} is not feasible")
-            return self.robot_position if robot else self.tool_position
+            return self.robot_position if robot else self.worktool_position
         
         # Implementation of relative movement
         ...
@@ -492,7 +492,7 @@ class Mover:
         # Update position
         self.updateRobotPosition(by=move_by)
         raise NotImplementedError
-        return self.robot_position if robot else self.tool_position
+        return self.robot_position if robot else self.worktool_position
 
     def moveTo(self,
         to: Sequence[float]|Position|np.ndarray,
@@ -526,7 +526,7 @@ class Mover:
         move_to = move_to if robot else self.transformToolToRobot(self.transformWorkToRobot(move_to))
         if not self.isFeasible(move_to.coordinates, external=False, tool_offset=False):
             self._logger.warning(f"Target position {move_to} is not feasible")
-            return self.robot_position if robot else self.tool_position
+            return self.robot_position if robot else self.worktool_position
         
         # Implementation of absolute movement
         ...
@@ -534,7 +534,7 @@ class Mover:
         # Update position
         self.updateRobotPosition(to=move_to)
         raise NotImplementedError
-        return self.robot_position if robot else self.tool_position
+        return self.robot_position if robot else self.worktool_position
     
     def moveToSafeHeight(self, speed_factor: float|None = None) -> Position:
         """
@@ -550,7 +550,7 @@ class Mover:
         if self.robot_position.z >= self.safe_height:
             return self.robot_position
         safe_position = self.robot_position.translate([0,0,self.safe_height - self.robot_position.z], inplace=False)
-        return self.moveTo(safe_position, speed_factor)
+        return self.moveTo(safe_position, speed_factor,robot=True)
     
     def moveRobotTo(self,
         to: Sequence[float]|Position,
@@ -659,7 +659,7 @@ class Mover:
         # Update position
         self.updateRobotPosition(by=rotate_by)
         raise NotImplementedError
-        return self.robot_position.Rotation if robot else self.tool_position.Rotation
+        return self.robot_position.Rotation if robot else self.worktool_position.Rotation
         
     def rotateTo(self,
         to: Sequence[float]|Rotation|np.ndarray,
@@ -691,7 +691,7 @@ class Mover:
         if robot:
             rotate_to = rotate_to
         else:
-            rotate_to = self.tool_position.Rotation * self.calibrated_offset.Rotation * rotate_to
+            rotate_to = self.worktool_position.Rotation * self.calibrated_offset.Rotation * rotate_to
         
         # Implementation of absolute rotation
         ...
@@ -699,7 +699,7 @@ class Mover:
         # Update position
         self.updateRobotPosition(to=rotate_to)
         raise NotImplementedError
-        return self.robot_position.Rotation if robot else self.tool_position.Rotation
+        return self.robot_position.Rotation if robot else self.worktool_position.Rotation
         
     def rotateRobotTo(self,
         to: Sequence[float]|Rotation,
@@ -780,7 +780,7 @@ class Mover:
         if rotation and rotation_before_lateral:
             self.rotateTo(to=to.Rotation, speed_factor=speed_factor_lateral, robot=robot)
         
-        current_coordinates = self.robot_position.coordinates if robot else self.tool_position.coordinates
+        current_coordinates = self.robot_position.coordinates if robot else self.worktool_position.coordinates
         target_coordinates = to.coordinates if isinstance(to,Position) else to
         safe_target_coordinates = np.array([*target_coordinates[:2], current_coordinates[2]])
         self.moveTo(to=safe_target_coordinates, speed_factor=speed_factor_lateral, robot=robot)
@@ -790,7 +790,7 @@ class Mover:
         
         # Move down to target position
         self.moveTo(to=to, speed_factor=speed_factor_down, robot=robot)
-        return self.robot_position if robot else self.tool_position
+        return self.robot_position if robot else self.worktool_position
     
     def setSafeHeight(self, height: float):
         """

@@ -272,9 +272,9 @@ class GCode(Mover):
             move_by = Position(by_coordinates, by_rotation)
         if not self.isFeasible(self.robot_position.coordinates + move_by.coordinates, external=False, tool_offset=False):
             self._logger.warning(f"Target movement {move_by} is not feasible")
-            return self.robot_position if robot else self.tool_position
+            return self.robot_position if robot else self.worktool_position
         
-        # current_position = self.robot_position if robot else self.tool_position
+        # current_position = self.robot_position if robot else self.worktool_position
         # return self.moveTo(move_by.apply(current_position), speed_factor, jog=jog, rapid=rapid, robot=robot)
         
         # Implementation of relative movement
@@ -301,7 +301,7 @@ class GCode(Mover):
         
         # Update position
         self.updateRobotPosition(by=move_by)
-        return self.robot_position if robot else self.tool_position
+        return self.robot_position if robot else self.worktool_position
     
     def moveTo(self,
         to: Sequence[float]|Position|np.ndarray,
@@ -335,7 +335,7 @@ class GCode(Mover):
         move_to = move_to if robot else self.transformToolToRobot(self.transformWorkToRobot(move_to, self.calibrated_offset), self.tool_offset)
         if not self.isFeasible(move_to.coordinates, external=False, tool_offset=False):
             self._logger.warning(f"Target position {move_to} is not feasible")
-            return self.robot_position if robot else self.tool_position
+            return self.robot_position if robot else self.worktool_position
         
         # Implementation of absolute movement
         mode = 'G0' if rapid else 'G1'
@@ -352,7 +352,7 @@ class GCode(Mover):
         # Adding time delays to coincide with movement
         if not jog:
             speed_factor = self.speed_factor if speed_factor is None else speed_factor
-            distances = abs(move_to.coordinates - self.position.coordinates)
+            distances = abs(move_to.coordinates - self.robot_position.coordinates)
             speeds = speed_factor*self.max_speeds
             accels = self.max_accels
             move_time = self._get_move_wait_time(distances, speeds, accels)
@@ -360,7 +360,7 @@ class GCode(Mover):
         
         # Update position
         self.updateRobotPosition(to=move_to)
-        return self.robot_position if robot else self.tool_position
+        return self.robot_position if robot else self.worktool_position
     
     def query(self, data:Any, lines:bool = True, *, timeout:int|None = None, jog:bool = False, wait:bool = False) -> Any:
         """
