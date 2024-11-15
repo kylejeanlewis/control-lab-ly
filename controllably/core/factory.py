@@ -242,7 +242,7 @@ def parse_configs(configs:dict, addresses:dict|None = None) -> dict:
         settings = details.get('settings', {})
         
         for key,value in settings.items():
-            if key == 'component_config':
+            if key == 'details':
                 value = parse_configs(value, addresses=addresses)
             if type(value) == str:
                 if key in ('cam_index', 'port') and value.startswith('__'):
