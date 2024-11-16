@@ -9,12 +9,13 @@ This module contains functions to create and manage objects.
     `get_imported_modules`: Get all imported modules
     `get_method_names`: Get the names of the methods in Callable object (Class/Instance)
     `get_plans`: Get available configurations
+    `get_setup`: Load setup from files and return as NamedTuple or Platform
     `load_parts`: Load all parts of compound tools from configuration
     `load_setup_from_files`: Load and initialise setup
     `parse_configs`: Decode dictionary of configuration details to get tuples and `numpy.ndarray`
     `zip_kwargs_to_dict`: Checks and zips multiple keyword arguments of lists into dictionary
 
-<i>Documentation last updated: 2024-11-13</i>
+<i>Documentation last updated: 2024-11-16</i>
 """
 # Standard library imports
 import importlib
@@ -25,7 +26,7 @@ from pathlib import Path
 import pprint
 import sys
 from types import SimpleNamespace
-from typing import Callable, Sequence, NamedTuple, Type
+from typing import Callable, Sequence, NamedTuple, Type, Any
 
 # Third party imports
 import numpy as np
@@ -159,6 +160,27 @@ def get_plans(configs:dict, registry:dict|None = None) -> dict:
     addresses = connection.get_addresses(registry)
     configs = parse_configs(configs, addresses)
     return configs
+
+def get_setup(
+    config_file:Path|str, 
+    registry_file:Path|str|None = None, 
+    platform_type:Type|None = None
+) -> tuple|Any:
+    """
+    Load setup from files and return as NamedTuple or Platform
+    
+    Args:
+        config_file (Path|str): config filename
+        registry_file (Path|str|None, optional): registry filename. Defaults to None.
+        platform_type (Type|None, optional): target platform type. Defaults to None.
+        
+    Returns:
+        tuple|Any: named tuple or Platform object
+    """
+    platform: NamedTuple = load_setup_from_files(config_file=config_file, registry_file=registry_file, create_tuple=True)
+    if platform_type is None or len(platform_type.__annotations__) == 0:
+        return platform
+    return platform_type(**platform._asdict())
 
 def load_parts(configs:dict, **kwargs) -> dict:
     """
