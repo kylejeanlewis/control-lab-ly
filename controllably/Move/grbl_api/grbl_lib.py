@@ -1,12 +1,5 @@
 # %% -*- coding: utf-8 -*-
-"""
-This module holds the references for pipette tools from Sartorius.
-
-Classes:
-
-Other types:
-
-"""
+"""This module holds the references for GRBL firmware."""
 # Standard library imports
 from collections import namedtuple
 from enum import Enum
