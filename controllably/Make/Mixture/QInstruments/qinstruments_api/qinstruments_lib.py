@@ -1,15 +1,5 @@
 # %% -*- coding: utf-8 -*-
-"""
-This module holds the references for devices from QInstruments.
-
-Classes:
-    ELMStateCode (Enum)
-    ELMStateString (Enum)
-    ErrorCodes_BS (Enum)
-    ErrorCodes_Q1_CP (Enum)
-    ShakeStateCode (Enum)
-    ShakeStateString (Enum)
-"""
+"""This module holds the references for QInstruments firmware."""
 # Standard library imports
 from enum import Enum
 

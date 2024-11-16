@@ -1,12 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-This module surfaces the actions available for the devices from QInstruments.
+QInstruments API for controlling hardware from QInstruments.
+Refer to manual for more information on the GRBL firmware.
 
-Classes:
-    QInstrumentsDevice
+Attributes:
+    VALID_BAUDRATES (tuple[int]): valid baudrates for serial devices
+    
+## Classes:
+    `QInstrumentsDevice`: provides an interface for available actions to control devices from QInstruments
+    
+<i>Documentation last updated: 2024-11-16</i>
 """
 # Standard library imports
 from __future__ import annotations
+from copy import deepcopy
 import logging
 import time
 from types import SimpleNamespace
@@ -26,103 +33,117 @@ VALID_BAUDRATES = (110, 300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200
 
 class QInstrumentsDevice:
     """
-    QInstrumentsDevice surfaces available actions to control devices from QInstruments, including orbital shakers,
+    QInstrumentsDevice provides an interface for available actions to control devices from QInstruments, including orbital shakers,
     heat plates, and cold plates.
     
     ### Constructor
-    Args:
-        `port` (str): COM port address
-        `baudrate` (int, optional): baudrate. Defaults to 9600.
-        `timeout` (int, optional): timeout in seconds. Defaults to 1.
+        `port` (str|None, optional): serial port for the device. Defaults to None.
+        `baudrate` (int, optional): baudrate for the device. Defaults to 9600.
+        `timeout` (int, optional): timeout for the device. Defaults to 1.
+        `init_timeout` (int, optional): timeout for initialization. Defaults to 5.
+        `message_end` (str, optional): message end character. Defaults to '\\r'.
+        `simulation` (bool, optional): whether to simulate the device. Defaults to False.
         `verbose` (bool, optional): verbosity of class. Defaults to False.
     
-    ### Attributes
-    - `connection_details` (dict): dictionary of connection details (e.g. COM port / IP address)
-    - `device` (Callable): device object that communicates with physical tool
-    - `flags` (dict[str, bool]): keywords paired with boolean flags
-    - `model` (str): device model
-    - `verbose` (bool): verbosity of class
+    ### Attributes and properties
+        `port` (str): device serial port
+        `baudrate` (int): device baudrate
+        `timeout` (int): device timeout
+        `connection_details` (dict): connection details for the device
+        `serial` (serial.Serial): serial object for the device
+        `init_timeout` (int): timeout for initialization
+        `message_end` (str): message end character
+        `model` (str): device model
+        `flags` (SimpleNamespace[str, bool]): flags for the device
+        `is_connected` (bool): whether the device is connected
+        `verbose` (bool): verbosity of class
     
     ### Methods
-    #### Initialization
-    - `disableBootScreen`: permanent deactivation of the boot screen startup text
-    - `disableCLED`: permanent deactivation of the LED indication lights
-    - `enableBootScreen`: permanent activation of the boot screen startup text
-    - `enableCLED`: permanent activation of the LED indication lights
-    - `flashLed`: user device LED flashes five times
-    - `getCLED`: returns the status LED state
-    - `getDescription`: returns model type
-    - `getErrorList`: returns a list with errors and warnings which can occur during processing
-    - `getSerial`: returns the device serial number
-    - `getVersion`: returns the firmware version number
-    - `info`: retrieve the boot screen text
-    - `resetDevice`: restarts the controller
-    - `setBuzzer`: ring the buzzer for duration in milliseconds
-    - `version`: returns the model type and firmware version number
-    #### ECO
-    - `leaveEcoMode`: leaves the economical mode and switches into the normal operating state
-    - `setEcoMode`: witches the shaker into economical mode and reduces electricity consumption
-    #### Shaking
-    - `getShakeAcceleration`: returns the acceleration/deceleration value
-    - `getShakeAccelerationMax`: get the maximum acceleration/deceleration time in seconds
-    - `getShakeAccelerationMin`: get the minimum acceleration/deceleration time in seconds
-    - `getShakeActualSpeed`: returns the current mixing speed
-    - `getShakeDefaultDirection`: returns the mixing direction when the device starts up
-    - `getShakeDirection`: returns the current mixing direction
-    - `getShakeMaxRpm`: returns the device specific maximum target speed (i.e. hardware limits)
-    - `getShakeMinRpm`: returns the device specific minimum target speed (i.e. hardware limits)
-    - `getShakeRemainingTime`: returns the remaining time in seconds if device was started with the command `shakeOnWithRuntime`
-    - `getShakeSpeedLimitMax`: returns the upper limit for the target speed
-    - `getShakeSpeedLimitMin`: returns the lower limit for the target speed
-    - `getShakeState`: returns shaker state as an integer
-    - `getShakeStateAsString`: returns shaker state as a string
-    - `getShakeTargetSpeed`: returns the target mixing speed
-    - `setShakeAcceleration`: sets the acceleration/deceleration value in seconds
-    - `setShakeDefaultDirection`: permanently sets the default mixing direction after device start up
-    - `setShakeDirection`: sets the mixing direction
-    - `setShakeSpeedLimitMax`: permanently set upper limit for the target speed (between 0 to 3000)
-    - `setShakeSpeedLimitMin`: permanently set lower limit for the target speed (between 0 to 3000)
-    - `setShakeTargetSpeed`: set the target mixing speed
-    - `shakeEmergencyOff`: stop the shaker immediately at an undefined position ignoring the defined deceleration time
-    - `shakeGoHome`: move shaker to the home position and locks in place
-    - `shakeOff`: stops shaking within the defined deceleration time, go to the home position and locks in place
-    - `shakeOffNonZeroPos`: tops shaking within the defined deceleration time, do not go to home position and do not lock in home position
-    - `shakeOffWithDeEnergizeSolenoid`: tops shaking within the defined deceleration time, go to the home position and locks in place for 1 second, then unlock home position
-    - `shakeOn`: tarts shaking with defined speed with defined acceleration time
-    - `shakeOnWithRuntime`: starts shaking with defined speed within defined acceleration time for given time value in seconds
-    #### Temperature
-    - `getTemp40Calibr`: returns the offset value at the 40°C calibration point
-    - `getTemp90Calibr`: returns the offset value at the 90°C calibration point
-    - `getTempActual`: returns the current temperature in celsius
-    - `getTempLimiterMax`: returns the upper limit for the target temperature in celsius
-    - `getTempLimiterMin`: returns the lower limit for the target temperature in celsius
-    - `getTempMax`: returns the device specific maximum target temperature in celsius (i.e. hardware limits)
-    - `getTempMin`: returns the device specific minimum target temperature in celsius (i.e. hardware limits)
-    - `getTempState`: returns the state of the temperature control feature
-    - `getTempTarget`: returns the target temperature
-    - `setTemp40Calibr`: permanently sets the offset value at the 40°C calibration point in 1/10°C increments
-    - `setTemp90Calibr`: permanently sets the offset value at the 90°C calibration point in 1/10°C increments
-    - `setTempLimiterMax`: permanently sets the upper limit for the target temperature in 1/10°C increments
-    - `setTempLimiterMin`: permanently sets the lower limit for the target temperature in 1/10°C increments
-    - `setTempTarget`: sets target temperature between TempMin and TempMax in 1/10°C increments
-    - `tempOff`: switches off the temperature control feature and stops heating/cooling
-    - `tempOn`: switches on the temperature control feature and starts heating/cooling
-    #### ELM
-    - `getElmSelftest`: returns whether the ELM self-test is enabled or disabled at device startup
-    - `getElmStartupPosition`: returns whether ELM is unlocked after device startup
-    - `getElmState`: returns the ELM status
-    - `getElmStateAsString`: returns the ELM status as a string
-    - `setElmLockPos`: close the ELM
-    - `setElmSelftest`: permanently set whether the ELM self-test is enabled at device startup
-    - `setElmStartupPosition`: permanently set whether the ELM is unlocked after device startup
-    - `setElmUnlockPos`: open the ELM
+
     #### General
-    - `connect`: reconnect to device using existing connection details
-    - `disconnect`: disconnect from device
-    - `query`: write command to and read response from device
-    - `read`: read response from device
-    - `setFlag`: set flags by using keyword arguments
-    - `write`: write command to device
+        `clear`: clear the input and output buffers
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `query`: query the device (i.e. write and read data)
+        `read`: read data from the device
+        `write`: write data to the device
+    
+    #### Initialization
+        `disableBootScreen`: permanent deactivation of the boot screen startup text
+        `disableCLED`: permanent deactivation of the LED indication lights
+        `enableBootScreen`: permanent activation of the boot screen startup text
+        `enableCLED`: permanent activation of the LED indication lights
+        `flashLed`: user device LED flashes five times
+        `getCLED`: returns the status LED state
+        `getDescription`: returns model type
+        `getErrorList`: returns a list with errors and warnings which can occur during processing
+        `getSerial`: returns the device serial number
+        `getVersion`: returns the firmware version number
+        `info`: retrieve the boot screen text
+        `resetDevice`: restarts the controller
+        `setBuzzer`: ring the buzzer for duration in milliseconds
+        `version`: returns the model type and firmware version number
+    
+    #### ECO
+        `leaveEcoMode`: leaves the economical mode and switches into the normal operating state
+        `setEcoMode`: witches the shaker into economical mode and reduces electricity consumption
+    
+    #### Shaking
+        `getShakeAcceleration`: returns the acceleration/deceleration value
+        `getShakeAccelerationMax`: get the maximum acceleration/deceleration time in seconds
+        `getShakeAccelerationMin`: get the minimum acceleration/deceleration time in seconds
+        `getShakeActualSpeed`: returns the current mixing speed
+        `getShakeDefaultDirection`: returns the mixing direction when the device starts up
+        `getShakeDirection`: returns the current mixing direction
+        `getShakeMaxRpm`: returns the device specific maximum target speed (i.e. hardware limits)
+        `getShakeMinRpm`: returns the device specific minimum target speed (i.e. hardware limits)
+        `getShakeRemainingTime`: returns the remaining time in seconds if device was started with the command `shakeOnWithRuntime`
+        `getShakeSpeedLimitMax`: returns the upper limit for the target speed
+        `getShakeSpeedLimitMin`: returns the lower limit for the target speed
+        `getShakeState`: returns shaker state as an integer
+        `getShakeStateAsString`: returns shaker state as a string
+        `getShakeTargetSpeed`: returns the target mixing speed
+        `setShakeAcceleration`: sets the acceleration/deceleration value in seconds
+        `setShakeDefaultDirection`: permanently sets the default mixing direction after device start up
+        `setShakeDirection`: sets the mixing direction
+        `setShakeSpeedLimitMax`: permanently set upper limit for the target speed (between 0 to 3000)
+        `setShakeSpeedLimitMin`: permanently set lower limit for the target speed (between 0 to 3000)
+        `setShakeTargetSpeed`: set the target mixing speed
+        `shakeEmergencyOff`: stop the shaker immediately at an undefined position ignoring the defined deceleration time
+        `shakeGoHome`: move shaker to the home position and locks in place
+        `shakeOff`: stops shaking within the defined deceleration time, go to the home position and locks in place
+        `shakeOffNonZeroPos`: tops shaking within the defined deceleration time, do not go to home position and do not lock in home position
+        `shakeOffWithDeEnergizeSolenoid`: tops shaking within the defined deceleration time, go to the home position and locks in place for 1 second, then unlock home position
+        `shakeOn`: tarts shaking with defined speed with defined acceleration time
+        `shakeOnWithRuntime`: starts shaking with defined speed within defined acceleration time for given time value in seconds
+    
+    #### Temperature
+        `getTemp40Calibr`: returns the offset value at the 40°C calibration point
+        `getTemp90Calibr`: returns the offset value at the 90°C calibration point
+        `getTempActual`: returns the current temperature in celsius
+        `getTempLimiterMax`: returns the upper limit for the target temperature in celsius
+        `getTempLimiterMin`: returns the lower limit for the target temperature in celsius
+        `getTempMax`: returns the device specific maximum target temperature in celsius (i.e. hardware limits)
+        `getTempMin`: returns the device specific minimum target temperature in celsius (i.e. hardware limits)
+        `getTempState`: returns the state of the temperature control feature
+        `getTempTarget`: returns the target temperature
+        `setTemp40Calibr`: permanently sets the offset value at the 40°C calibration point in 1/10°C increments
+        `setTemp90Calibr`: permanently sets the offset value at the 90°C calibration point in 1/10°C increments
+        `setTempLimiterMax`: permanently sets the upper limit for the target temperature in 1/10°C increments
+        `setTempLimiterMin`: permanently sets the lower limit for the target temperature in 1/10°C increments
+        `setTempTarget`: sets target temperature between TempMin and TempMax in 1/10°C increments
+        `tempOff`: switches off the temperature control feature and stops heating/cooling
+        `tempOn`: switches on the temperature control feature and starts heating/cooling
+    
+    #### ELM
+        `getElmSelftest`: returns whether the ELM self-test is enabled or disabled at device startup
+        `getElmStartupPosition`: returns whether ELM is unlocked after device startup
+        `getElmState`: returns the ELM status
+        `getElmStateAsString`: returns the ELM status as a string
+        `setElmLockPos`: close the ELM
+        `setElmSelftest`: permanently set whether the ELM self-test is enabled at device startup
+        `setElmStartupPosition`: permanently set whether the ELM is unlocked after device startup
+        `setElmUnlockPos`: open the ELM
     """
     
     _default_flags: SimpleNamespace = SimpleNamespace(verbose=False, connected=False, simulation=False)
@@ -138,21 +159,23 @@ class QInstrumentsDevice:
         **kwargs
     ):
         """
-        Instantiate the class
+        Initialize QInstrumentsDevice class
 
         Args:
-            port (str): COM port address
-            baudrate (int, optional): baudrate. Defaults to 9600.
-            timeout (int, optional): timeout in seconds. Defaults to 1.
+            port (str|None, optional): serial port for the device. Defaults to None.
+            baudrate (int, optional): baudrate for the device. Defaults to 9600.
+            timeout (int, optional): timeout for the device. Defaults to 1.
+            init_timeout (int, optional): timeout for initialization. Defaults to 5.
+            message_end (str, optional): message end character. Defaults to '\\r'.
+            simulation (bool, optional): whether to simulate the device. Defaults to False.
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
-        self.port = port
-        self.baudrate = baudrate
-        self.timeout = timeout
+        self._port = ''
+        self._baudrate = 0
+        self._timeout = 0
         self.init_timeout = init_timeout
         self.message_end = message_end
-        self.model = ''
-        self.flags = SimpleNamespace(verbose=False)
+        self.flags = deepcopy(self._default_flags)
         
         self.serial = serial.Serial()
         self.port = port
@@ -164,6 +187,8 @@ class QInstrumentsDevice:
         self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
         self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
+        
+        self.model = ''
         return
     
     @property
@@ -200,12 +225,7 @@ class QInstrumentsDevice:
     
     @property
     def connection_details(self) -> dict:
-        """
-        Get connection details
-
-        Returns:
-            dict: connection details
-        """
+        """Connection details for the device"""
         return {
             'port': self.port,
             'baudrate': self.baudrate,
@@ -214,31 +234,146 @@ class QInstrumentsDevice:
     
     @property
     def is_connected(self) -> bool:
-        """
-        Check if the device is connected
-
-        Returns:
-            bool: whether the device is connected
-        """
+        """Whether the device is connected"""
         connected = self.flags.connected if self.flags.simulation else self.serial.is_open
         return connected
     
     @property
     def verbose(self) -> bool:
-        """Get verbosity of class"""
+        """Verbosity of class"""
         return self.flags.verbose
     @verbose.setter
     def verbose(self, value:bool):
-        """Set verbosity of class"""
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
-        level = logging.INFO if value else logging.WARNING
+        level = logging.DEBUG if value else logging.INFO
         for handler in self._logger.handlers:
             if not isinstance(handler, logging.StreamHandler):
                 continue
             handler.setLevel(level)
         return
+    
+    # General methods
+    def clear(self):
+        """Clear the input and output buffers"""
+        if self.flags.simulation:
+            return
+        self.serial.reset_input_buffer()
+        self.serial.reset_output_buffer()
+        return
+
+    def connect(self):
+        """Connect to the device"""
+        try:
+            if self.is_connected:
+                return
+            self.serial.open()
+        except serial.SerialException as e:
+            self._logger.error(f"Failed to connect to {self.port} at {self.baudrate} baud")
+            self._logger.debug(e)
+        else:
+            self._logger.info(f"Connected to {self.port} at {self.baudrate} baud")
+            time.sleep(self.init_timeout)
+        self.model = self.getDescription()
+        self.flags.connected = True
+        return
+
+    def disconnect(self):
+        """Disconnect from the device"""
+        try:
+            if not self.is_connected:
+                return
+            self.serial.close()
+        except serial.SerialException as e:
+            self._logger.error(f"Failed to disconnect from {self.port}")
+            self._logger.debug(e)
+        else:
+            self._logger.info(f"Disconnected from {self.port}")
+        self.flags.connected = False
+        return
+    
+    def query(self, 
+            data: Any, 
+            lines: bool = False, 
+            *,
+            numeric: bool = False, 
+            timeout_s: float = 0.3
+        ) -> Any:
+        """
+        Query the device (i.e. write and read data)
+
+        Args:
+            data (Any): data to query
+            lines (bool, optional): whether to read multiple lines. Defaults to False.
+            numeric(bool, optional): whether to expect a numeric response. Defaults to False.
+            timeout_s (float, optional): duration to wait before timeout. Defaults to 0.3.
         
+        Returns:
+            str|float|None: response (string / float)
+        """
+        start_time = time.perf_counter()
+        self.write(str(data))
+        response = ''
+        while not response:
+            if time.perf_counter() - start_time > timeout_s:
+                break
+            time.sleep(timeout_s + int(lines))
+            response = self.read(lines=lines)
+        if response.startswith('u ->'):
+            error_message = f"{self.model} received an invalid command: {data!r}"
+            self._logger.error(error_message)
+            raise AttributeError(error_message)
+        if self.flags.simulation:
+            response = '0' if numeric else ''
+        try:
+            return response if not numeric else float(response)
+        except ValueError:
+            self._logger.warning(f"Unable to parse response to numeric: {response!r}")
+        return response
+    
+    def read(self, lines:bool = False) -> str:
+        """
+        Read data from the device
+        
+        Args:
+            lines (bool, optional): whether to read multiple lines. Defaults to False.
+
+        Returns:
+            str|list[str]: line(s) of data read from the device
+        """
+        data = ''
+        try:
+            if lines:
+                data = self.serial.read_all()       # response template: <response><\r><\n>
+                data = data.decode("utf-8", "replace").strip() 
+            else:
+                data = self.serial.readline().decode("utf-8", "replace").strip()
+            self._logger.debug(f"Received: {data!r}")
+            self.serial.reset_output_buffer()
+        except serial.SerialException as e:
+            self._logger.debug(f"Failed to receive data")
+        return data
+
+    def write(self, data:str) -> bool:
+        """
+        Write data to the device
+
+        Args:
+            data (str): data to write
+        
+        Returns:
+            bool: whether the write was successful
+        """
+        assert isinstance(data, str), "Ensure data is a string"
+        data = f"{data}{self.message_end}" if not data.endswith(self.message_end) else data
+        try:
+            self.serial.write(data.encode())
+            self._logger.debug(f"Sent: {data!r}")
+        except serial.SerialException as e:
+            self._logger.debug(f"Failed to send: {data!r}")
+            return False
+        return True
+
     # Initialization methods
     def disableBootScreen(self):
         """Permanent deactivation of the boot screen startup text"""
@@ -969,128 +1104,4 @@ class QInstrumentsDevice:
                 break
             response = self.read()[0]
         return
-    
-    # General methods
-    def clear(self):
-        """
-        Clear the input and output buffers
-        """
-        self.serial.reset_input_buffer()
-        self.serial.reset_output_buffer()
-        return
-    
-    def connect(self):
-        """
-        Connect to the device
-        """
-        try:
-            if self.is_connected:
-                return
-            self.serial.open()
-        except serial.SerialException as e:
-            self._logger.error(f"Failed to connect to {self.port} at {self.baudrate} baud")
-            self._logger.debug(e)
-        else:
-            self._logger.info(f"Connected to {self.port} at {self.baudrate} baud")
-            time.sleep(self.init_timeout)
-        self.model = self.getDescription()
-        self.flags.connected = True
-        return
-    
-    def disconnect(self):
-        """
-        Disconnect from the device
-        """
-        try:
-            if not self.is_connected:
-                return
-            self.serial.close()
-        except serial.SerialException as e:
-            self._logger.error(f"Failed to disconnect from {self.port}")
-            self._logger.error(e)
-        else:
-            self._logger.info(f"Disconnected from {self.port}")
-        self.flags.connected = False
-        return
-    
-    def query(self, 
-            command:str, 
-            lines:bool = False, 
-            *,
-            numeric:bool = False, 
-            timeout_s:float = 0.3
-        ) -> Any:
-        """
-        Write command to and read response from device
-
-        Args:
-            command (str): command string
-            numeric(bool, optional): whether to expect a numeric response. Defaults to False.
-            lines (bool, optional): whether to expect a slow response. Defaults to False.
-            timeout_s (float, optional): duration to wait before timeout. Defaults to 0.3.
-        
-        Returns:
-            str|float|None: response (string / float)
-        """
-        start_time = time.perf_counter()
-        self.write(command)
-        response = ''
-        while not response:
-            if time.perf_counter() - start_time > timeout_s:
-                break
-            time.sleep(timeout_s + int(lines))
-            response = self.read(lines=lines)
-        if response.startswith('u ->'):
-            raise AttributeError(f'{self.model} does not have the method: {command}')
-        if not numeric:
-            return response
-        try:
-            value = float(response)
-            return value
-        except ValueError:
-            self._logger.warning(f"Unable to parse response: {response!r}")
-        return
-
-    def read(self, lines:bool = False) -> str|list[str]:
-        """
-        Read response from device
-        
-        Args:
-            lines (bool, optional): whether to expect a slow response. Defaults to False. 
-
-        Returns:
-            str: response string
-        """
-        data = ''
-        try:
-            if lines:
-                data = self.serial.read_all()       # response template: <response><\r><\n>
-                data = data.decode("utf-8", "replace").strip() 
-            else:
-                data = self.serial.readline().decode("utf-8", "replace").strip()
-            self._logger.info(f"Received: {data}")
-            self.serial.reset_output_buffer()
-        except serial.SerialException as e:
-            self._logger.info(f"Failed to receive data")
-        return data
-    
-    def write(self, data:str) -> bool:
-        """
-        Write data to the device
-
-        Args:
-            data (str): data to write
-        
-        Returns:
-            bool: whether the write was successful
-        """
-        data = f"{data}{self.message_end}" if not data.endswith(self.message_end) else data
-        try:
-            self.serial.write(data.encode())
-            self._logger.info(f"Sent: {data}")
-        except serial.SerialException as e:
-            self._logger.info(f"Failed to send: {data}")
-            # self._logger.error(e)
-            return False
-        return True
     

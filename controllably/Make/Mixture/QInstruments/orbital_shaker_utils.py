@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-This module holds the class for shakers from QInstruments.
+This module holds the base class for cartesian mover tools.
+
+Attributes:
+    ACCELERATION_LIMIT (tuple): lower and upper limits for acceleration
+    COLUMNS (tuple): headers for output data from BioShake device
+    FLAGS (SimpleNamespace): default flags for BioShake
 
 ## Classes:
-    BioShake (Maker)
+    `BioShake`: BioShake provides methods to control the QInstruments BioShake device.
+
+<i>Documentation last updated: 2024-11-146/i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -39,71 +46,79 @@ class BioShake(Maker):
     BioShake provides methods to control the QInstruments BioShake device.
     
     ### Constructor
-    Args:
-        `port` (str): COM port address
+        `port` (str): serial port address
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+        `simulation` (bool, optional): whether to simulate. Defaults to False.
     
-    ### Attributes
-    - `buffer_df` (pd.DataFrame): buffer dataframe to store collected data
-    - `device` (Callable): device object that communicates with physical tool
-    - `limits` (dict[str, tuple]): hardware limits for device
-    - `model` (str): device model description
-    - `ranges` (dict[str, tuple]): user-defined ranges for controls
-    - `set_speed` (float): target speed
-    - `set_temperature` (float): target temperature
-    - `shake_time_left` (float): remaining time left on shaker
-    - `speed` (float): actual speed of shake in rpm
-    - `temperature` (float): actual temperature of the plate in °C 
-    - `tolerance` (float): fractional tolerance to be considered on target for speed and temperature
-    
-    ### Properties
-    - `acceleration` (float): acceleration / deceleration of the shaker in seconds
-    - `port` (str): COM port address
-    - `verbose` (bool): verbosity of class
+    ### Attributes and properties
+        `buffer_df` (pd.DataFrame): buffer dataframe to store collected data
+        `limits` (dict[str, tuple]): hardware limits for device
+        `model` (str): device model description
+        `ranges` (dict[str, tuple]): user-defined ranges for controls
+        `acceleration` (float): acceleration / deceleration of the shaker in seconds
+        `speed` (float): actual speed of shake in rpm
+        `set_speed` (float): target speed
+        `at_speed` (bool): checks and returns whether target speed has been reached
+        `temperature` (float): actual temperature of the plate in °C 
+        `set_temperature` (float): target temperature
+        `tolerance` (float): fractional tolerance to be considered on target for speed and temperature
+        `at_temperature` (bool): checks and returns whether target temperature has been reached
+        `shake_time_left` (float): remaining time left on shaker
+        `is_counterclockwise` (bool): returns the current mixing direction
+        `is_locked` (bool): returns the current ELM state
+        `connection_details` (dict): connection details for the device
+        `device` (Device): device object that communicates with physical tool
+        `flags` (SimpleNamespace[str, bool]): flags for the class
+        `is_busy` (bool): whether the device is busy
+        `is_connected` (bool): whether the device is connected
+        `verbose` (bool): verbosity of class
     
     ### Methods
-    - `clearCache`: clears and remove data in buffer
-    - `execute`: alias for `holdTemperature()` and `shake()`
-    - `getAcceleration`: returns the acceleration/deceleration value
-    - `getErrors`: returns a list with errors and warnings which can occur during processing
-    - `getShakeTimeLeft`: returns the remaining shake time in seconds if device was started with the a defined duration
-    - `getSpeed`: returns the set speed and current mixing speed in rpm
-    - `getStatus`: retrieve the status of the device's ELM, shaker, and temperature control
-    - `getTemperature`: returns the set temperature and current temperature in °C
-    - `getUserLimits`: retrieve the user defined limits for speed and temperature
-    - `holdTemperature`: hold target temperature for desired duration
-    - `home`: move shaker to the home position and locks in place
-    - `isAtSpeed`: checks and returns whether target speed has been reached
-    - `isAtTemperature`: checks and returns whether target temperature has been reached
-    - `isCounterClockwise`: returns the current mixing direction
-    - `isLocked`: returns the current ELM state
-    - `reset`: restarts the controller
-    - `setAcceleration`: sets the acceleration/deceleration value in seconds
-    - `setCounterClockwise`: sets the mixing direction to counter clockwise
-    - `setSpeed`: set the target mixing speed
-    - `setTemperature`: sets target temperature between TempMin and TempMax in 1/10°C increments
-    - `shake`: shake the plate at target speed, for specified duration
-    - `shutdown`: shutdown procedure for tool
-    - `stop`: stop the shaker immediately at an undefined position, ignoring the defined deceleration time if in an emergency
-    - `toggleECO`: toggle the economical mode to save energy and decrease abrasion 
-    - `toggleFeedbackLoop`: start or stop feedback loop
-    - `toggleGrip`: grip or release the object
-    - `toggleRecord`: start or stop data recording
-    - `toggleShake`: starts/stops shaking with defined speed with defined acceleration/deceleration time
-    - `toggleTemperature`: switches on/off the temperature control feature and starts/stops heating/cooling
+        `clearCache`: clears and remove data in buffer
+        `getAcceleration`: returns the acceleration/deceleration value
+        `getErrors`: returns a list with errors and warnings which can occur during processing
+        `getShakeTimeLeft`: returns the remaining shake time in seconds if device was started with the a defined duration
+        `getSpeed`: returns the set speed and current mixing speed in rpm
+        `getStatus`: retrieve the status of the device's ELM, shaker, and temperature control
+        `getTemperature`: returns the set temperature and current temperature in °C
+        `getUserLimits`: retrieve the user defined limits for speed and temperature
+        `holdTemperature`: hold target temperature for desired duration
+        `home`: move shaker to the home position and locks in place
+        `reset`: restarts the controller
+        `setAcceleration`: sets the acceleration/deceleration value in seconds
+        `setCounterClockwise`: sets the mixing direction to counter clockwise
+        `setSpeed`: set the target mixing speed
+        `setTemperature`: sets target temperature between TempMin and TempMax in 1/10°C increments
+        `shake`: shake the plate at target speed, for specified duration
+        `stop`: stop the shaker immediately at an undefined position, ignoring the defined deceleration time if in an emergency
+        `toggleECO`: toggle the economical mode to save energy and decrease abrasion 
+        `toggleFeedbackLoop`: start or stop feedback loop
+        `toggleGrip`: grip or release the object
+        `toggleRecord`: start or stop data recording
+        `toggleShake`: starts/stops shaking with defined speed with defined acceleration/deceleration time
+        `toggleTemperature`: switches on/off the temperature control feature and starts/stops heating/cooling
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `execute`: Set target temperature, then shake the plate at target speed and hold target temperature for desired duration
+        `resetFlags`: reset all flags to class attribute `_default_flags`
+        `run`: alias for `execute()`
+        `shutdown`: shutdown procedure for tool
     """
     
     _default_acceleration: int = 5
     _default_speed: int = 500
     _default_temperature: float = 25
     _default_flags = FLAGS
-    def __init__(self, port: str, *, verbose: bool = False, **kwargs):
+    def __init__(self, port: str, *, verbose: bool = False, simulation:bool = False, **kwargs):
         """
         Instantiate the class
 
         Args:
-            port (str): COM port address
+            port (str): serial port address
+            verbose (bool, optional): verbosity of class. Defaults to False.
+            simulation (bool, optional): whether to simulate. Defaults to False.
         """
-        super().__init__(device_type=QInstrumentsDevice, port=port, verbose=verbose, **kwargs)
+        super().__init__(device_type=QInstrumentsDevice, port=port, verbose=verbose, simulation=simulation, **kwargs)
         assert isinstance(self.device, QInstrumentsDevice), f"Device ({self.device}) not supported for {self.__class__.__name__}"
         self.device: QInstrumentsDevice = self.device
         self.buffer_df = pd.DataFrame(columns=list(COLUMNS))
@@ -187,10 +202,6 @@ class BioShake(Maker):
     @property
     def model(self) -> str:
         return self.device.model
-    
-    @property
-    def port(self) -> str:
-        return self.device.connection_details.get('port', '')
     
     def clearCache(self):
         """Clears and remove data in buffer"""
@@ -318,13 +329,9 @@ class BioShake(Maker):
             time_s (float): duration in seconds
         """
         self.setTemperature(temperature)
-        out = f"Holding at {self.set_temperature}°C for {time_s} seconds"
-        self._logger.info(out)
-        print(out)
+        self._logger.info(f"Holding at {self.set_temperature}°C for {time_s} seconds")
         time.sleep(time_s)
-        out = f"End of temperature hold ({time_s}s)"
-        self._logger.info(out)
-        print(out)
+        self._logger.info(f"End of temperature hold ({time_s}s)")
         return
     
     def home(self, timeout:int = 5):
@@ -425,15 +432,11 @@ class BioShake(Maker):
         
         while self.set_temperature != float(temperature):
             self.getTemperature()
-        out = f"New set temperature at {self.set_temperature}°C"
-        self._logger.info(out)
-        print(out)
+        self._logger.info(f"New set temperature at {self.set_temperature}°C")
         self.flags.temperature_reached = False
         
         if blocking:
-            out = f"Waiting for temperature to reach {self.set_temperature}°C"
-            self._logger.info(out)
-            print(out)
+            self._logger.info(f"Waiting for temperature to reach {self.set_temperature}°C")
         while not self.at_temperature:
             self.getTemperature()
             time.sleep(0.1)
@@ -473,9 +476,7 @@ class BioShake(Maker):
                 time.sleep(1)
             if duration:
                 time.sleep(abs(duration - shake_time))
-                out = f"End of shake ({duration}s)"
-                self._logger.info(out)
-                print(out)
+                self._logger.info(f"End of shake ({duration}s)")
             return self.at_speed
         thread = Thread(target=checkSpeed)
         thread.start()
@@ -489,9 +490,7 @@ class BioShake(Maker):
         Args:
             emergency (bool, optional): whether to perform an emergency stop. Defaults to True.
         """
-        if emergency:
-            return self.device.shakeEmergencyOff()
-        return self.device.shakeOffNonZeroPos()
+        return self.device.shakeEmergencyOff() if emergency else self.device.shakeOffNonZeroPos() 
 
     def toggleECO(self, on:bool, timeout:int = 5):
         """
@@ -500,11 +499,7 @@ class BioShake(Maker):
         Args:
             timeout (int, optional): number of seconds to wait before aborting. Defaults to 5.
         """
-        if on:
-            self.device.setEcoMode(timeout=timeout)
-        else:
-            self.device.leaveEcoMode(timeout=timeout)
-        return
+        return self.device.setEcoMode(timeout=timeout) if on else self.device.leaveEcoMode(timeout=timeout)
     
     def toggleFeedbackLoop(self, on:bool):
         """
@@ -531,11 +526,7 @@ class BioShake(Maker):
         Args:
             on (bool): whether to grip the object
         """
-        if on:
-            self.device.setElmLockPos()
-        else:
-            self.device.setElmUnlockPos()
-        return
+        return self.device.setElmLockPos() if on else self.device.setElmUnlockPos()
     
     def toggleRecord(self, on:bool):
         """
@@ -565,14 +556,9 @@ class BioShake(Maker):
                 self.device.shakeOn()
             elif duration > 0:
                 self.device.shakeOnWithRuntime(duration=duration)
-            self._logger.info(f"Speed: {self.set_speed}")
-            self._logger.info(f"Accel: {self.acceleration}")
-            self._logger.info(f"Time : {duration}")
+            self._logger.debug(f"Speed: {self.set_speed} | Accel: {self.acceleration} | Time : {duration}")
         else:
-            if home:
-                self.device.shakeOff()
-            else:
-                self.device.shakeOffNonZeroPos()
+            _ = self.device.shakeOff() if home else self.device.shakeOffNonZeroPos()
         return
     
     def toggleTemperature(self, on:bool):
@@ -582,14 +568,11 @@ class BioShake(Maker):
         Args:
             on (bool): whether to start temperature control
         """
-        if on:
-            self.device.tempOn()
-        else:
-            self.device.tempOff()
-        return
+        return self.device.tempOn() if on else self.device.tempOff()
     
     # Overwritten method(s)
     def connect(self):
+        """Connect to the device"""
         self.device.connect()
         self.getDefaults()
         self.getUserLimits()
@@ -604,10 +587,9 @@ class BioShake(Maker):
             *args, **kwargs
         ):
         """
+        Set target temperature, then shake the plate at target speed and hold target temperature for desired duration
         Alias for `holdTemperature()` and `shake()`
         
-        Set target temperature, then shake the plate at target speed and hold target temperature for desired duration
-
         Args:
             shake (bool): whether to shake
             temperature (float|None, optional): temperature in degree °C. Defaults to None.
@@ -625,13 +607,9 @@ class BioShake(Maker):
         
         # holdTemperature
         if temperature is not None and duration:
-            out = f"Holding at {self.set_temperature}°C for {duration} seconds"
-            self._logger.info(out)
-            print(out)
+            self._logger.info(f"Holding at {self.set_temperature}°C for {duration} seconds")
             time.sleep(duration)
-            out = f"End of temperature hold"
-            self._logger.info(out)
-            print(out)
+            self._logger.info(f"End of temperature hold")
             # self.setTemperature(25, False)
         return
     
@@ -662,7 +640,7 @@ class BioShake(Maker):
     def __info__(self):
         """Prints the boot screen text"""
         response = self.device.info()
-        print(response)
+        self._logger.info(response)
         return 
     
     def __serial__(self) -> str:
