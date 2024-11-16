@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
+handler.addFilter(logging.Filter(__name__+'.'))
 logger.addHandler(handler)
 
 VALID_BAUDRATES = (110, 300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200)
