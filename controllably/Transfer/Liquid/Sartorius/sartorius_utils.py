@@ -23,8 +23,14 @@ import serial # pip install pyserial
 from ..liquid_utils import LiquidHandler, Speed
 from . import sartorius_lib as lib
 
+_logger = logging.getLogger("controllably.Transfer")
+_logger.debug(f"Import: OK <{__name__}>")
+
 logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
 
 QUERIES = lib.StatusQueryCode._member_names_ + lib.StaticQueryCode._member_names_
 """List of all query codes"""
@@ -138,7 +144,7 @@ class Sartorius(LiquidHandler):
         self._status_code = ''
         self._threads = {}
         
-        print("Any attached pipette tip may drop during initialisation.")
+        logger.warning("Any attached pipette tip may drop during initialisation.")
         self._connect(port)
         return
     
@@ -175,7 +181,7 @@ class Sartorius(LiquidHandler):
             cycles = int(response)
         except ValueError:
             return response
-        print(f'Total cycles: {cycles}')
+        logger.info(f'Total cycles: {cycles}')
         return cycles
     
     def __model__(self) -> str:
@@ -186,7 +192,7 @@ class Sartorius(LiquidHandler):
             str: model name
         """
         response = self._query('DM')
-        print(f'Model: {response}')
+        logger.info(f'Model: {response}')
         return response
     
     def __resolution__(self) -> Union[int, str]:
@@ -201,7 +207,7 @@ class Sartorius(LiquidHandler):
             resolution = int(response)
         except ValueError:
             return response
-        print(f'{resolution/1000} uL / step')
+        logger.info(f'{resolution/1000} uL / step')
         return resolution
     
     def __version__(self) -> str:
@@ -255,7 +261,7 @@ class Sartorius(LiquidHandler):
         volume = steps * self.resolution
         if volume == 0:
             return ''
-        print(f'Aspirating {volume} uL...')
+        logger.info(f'Aspirating {volume} uL...')
         start_aspirate = time.perf_counter()
         speed = self.speed.up if speed is None else speed
         
@@ -272,13 +278,13 @@ class Sartorius(LiquidHandler):
             #     return response
             
         elif speed not in self.speed_presets:
-            print(f"Target: {volume} uL at {speed} uL/s...")
+            logger.info(f"Target: {volume} uL at {speed} uL/s...")
             speed_parameters = self._calculate_speed_parameters(volume=volume, speed=speed)
-            print(speed_parameters)
+            logger.debug(speed_parameters)
             preset = speed_parameters.preset
             if preset is None:
                 # raise RuntimeError('Target speed not possible.')
-                print('Target speed not possible.')
+                logger.error('Target speed not possible.')
                 return
             self.setSpeed(speed=preset, up=True, default=False)
             
@@ -293,7 +299,7 @@ class Sartorius(LiquidHandler):
                 move_time = step*self.resolution / preset
                 response = self._query(f'RI{step}', resume_feedback=False, get_position=False)
                 # if response != 'ok':
-                #     print("Aspiration failed")
+                #     logger.error("Aspiration failed")
                 #     return response
                 steps_left -= step
                 duration = time.perf_counter() - start_time
@@ -301,7 +307,7 @@ class Sartorius(LiquidHandler):
                     time.sleep(delay+move_time-duration)
         
         # Update values
-        print(f'Aspiration time: {time.perf_counter()-start_aspirate}s')
+        logger.debug(f'Aspiration time: {time.perf_counter()-start_aspirate}s')
         time.sleep(wait)
         self.setFlag(occupied=False, pause_feedback=False)
         self.getPosition()
@@ -366,7 +372,7 @@ class Sartorius(LiquidHandler):
         volume = steps * self.resolution
         if volume == 0:
             return ''
-        print(f'Dispensing {volume} uL...')
+        logger.info(f'Dispensing {volume} uL...')
         start_dispense = time.perf_counter()
         speed = self.speed.down if speed is None else speed
 
@@ -383,13 +389,13 @@ class Sartorius(LiquidHandler):
             #     return response
             
         elif speed not in self.speed_presets:
-            print(f"Target: {volume} uL at {speed} uL/s...")
+            logger.info(f"Target: {volume} uL at {speed} uL/s...")
             speed_parameters = self._calculate_speed_parameters(volume=volume, speed=speed)
-            print(speed_parameters)
+            logger.debug(speed_parameters)
             preset = speed_parameters.preset
             if preset is None:
                 # raise RuntimeError('Target speed not possible.')
-                print('Target speed not possible.')
+                logger.error('Target speed not possible.')
                 return
             self.setSpeed(speed=preset, up=False, default=False)
         
@@ -404,7 +410,7 @@ class Sartorius(LiquidHandler):
                 move_time = step*self.resolution / preset
                 response = self._query(f'RO{step}', resume_feedback=False, get_position=False)
                 # if response != 'ok':
-                #     print("Dispense failed")
+                #     logger.error("Dispense failed")
                 #     return response
                 steps_left -= step
                 duration = time.perf_counter() - start_time
@@ -412,7 +418,7 @@ class Sartorius(LiquidHandler):
                     time.sleep(delay+move_time-duration)
 
         # Update values
-        print(f'Dispense time: {time.perf_counter()-start_dispense}s')
+        logger.debug(f'Dispense time: {time.perf_counter()-start_dispense}s')
         time.sleep(wait)
         self.setFlag(occupied=False, pause_feedback=False)
         self.getPosition()
@@ -471,12 +477,12 @@ class Sartorius(LiquidHandler):
         """Get details of the Sartorius pipette model"""
         model = str(self.__model__()).split('-')[0] if model is None else model
         if model not in lib.ModelInfo._member_names_:
-            print(f'Received: {model}')
+            logger.warning(f'Received: {model}')
             model = 'BRL0'
-            print(f"Defaulting to: {'BRL0'}")
-            print(f"Valid models are: {', '.join(lib.ModelInfo._member_names_)}")
+            logger.warning(f"Defaulting to: {'BRL0'}")
+            logger.warning(f"Valid models are: {', '.join(lib.ModelInfo._member_names_)}")
         info: lib.Model = lib.ModelInfo[model].value
-        print(info)
+        logger.info(info)
         self.model_info = info
         self.capacity = info.capacity
         self.limits = (info.tip_eject_position, info.max_position)
@@ -514,7 +520,7 @@ class Sartorius(LiquidHandler):
         if status in [4,6,8]:
             self.setFlag(busy=True)
             if self.verbose:
-                print(lib.StatusCode(status).name)
+                logger.info(lib.StatusCode(status).name)
         elif status == 0:
             self.setFlag(busy=False)
         return lib.StatusCode(self._status_code).name
@@ -544,7 +550,7 @@ class Sartorius(LiquidHandler):
         """
         if (self.limits[0] <= position <= self.limits[1]):
             return True
-        print(f"Range limits reached! {self.limits}")
+        logger.error(f"Range limits reached! {self.limits}")
         return False
     
     def isTipOn(self) -> bool:
@@ -555,7 +561,7 @@ class Sartorius(LiquidHandler):
             bool: whether a pipette tip in attached
         """
         self.getCapacitance()
-        print(f'Tip capacitance: {self.capacitance}')
+        logger.info(f'Tip capacitance: {self.capacitance}')
         if self.flags['conductive_tips']:
             tip_on = (self.capacitance > self.tip_threshold)
             self.setFlag(tip_on=tip_on)
@@ -641,7 +647,7 @@ class Sartorius(LiquidHandler):
             str: device response
         """
         speed_code = 1 + [x for x,val in enumerate(np.array(self.speed_presets)-speed) if val >= 0][0]
-        print(f'Speed {speed_code}: {self.speed_presets[speed_code-1]} uL/s')
+        logger.info(f'Speed {speed_code}: {self.speed_presets[speed_code-1]} uL/s')
         direction = 'I' if up else 'O'
         self._query(f'S{direction}{speed_code}')
         if not default:
@@ -720,9 +726,9 @@ class Sartorius(LiquidHandler):
             area = 0.5 * (volume**2) * (1/self.resolution) * (1/intervals) * (1/speed - 1/preset)
             outcomes[area] = lib.SpeedParameters(preset, intervals, int(each_steps), each_delay)
         if len(outcomes) == 0:
-            print("No feasible speed parameters.")
+            logger.error("No feasible speed parameters.")
             return lib.SpeedParameters(None, STEP_RESOLUTION, STEP_RESOLUTION, self.response_time)
-        print(f'Best parameters: {outcomes[min(outcomes)]}')
+        logger.info(f'Best parameters: {outcomes[min(outcomes)]}')
         return outcomes[min(outcomes)]
     
     def _connect(self, port:str, baudrate:int = 9600, timeout:int = 1):
@@ -743,13 +749,13 @@ class Sartorius(LiquidHandler):
         try:
             device = serial.Serial(port, baudrate, timeout=timeout)
         except Exception as e:
-            print(f"Could not connect to {port}")
+            logger.error(f"Could not connect to {port}")
             if self.verbose:
-                print(e)
+                logger.exception(e)
         else:
             time.sleep(2)   # Wait for grbl to initialize
             device.reset_input_buffer()
-            print(f"Connection opened to {port}")
+            logger.info(f"Connection opened to {port}")
             self.setFlag(connected=True)
         self.device = device
         self.getInfo()
@@ -774,7 +780,7 @@ class Sartorius(LiquidHandler):
         if command_code in QUERIES and response[:2] == command_code.lower():
             reply_code, data = response[:2], response[2:]
             if self.verbose:
-                print(f'[{reply_code}] {data}')
+                logger.debug(f'[{reply_code}] {data}')
             return True
         return False
 
@@ -824,7 +830,7 @@ class Sartorius(LiquidHandler):
             if time.perf_counter() - start_time > timeout_s:
                 break
             response = self._read()
-        # print(time.perf_counter() - start_time)
+        # logger.debug(time.perf_counter() - start_time)
         if command_code in QUERIES:
             response = response[2:]
         if command_code not in lib.StatusQueryCode._member_names_:
@@ -851,9 +857,9 @@ class Sartorius(LiquidHandler):
             pass
         except Exception as e:
             if self.verbose:
-                print(e)
+                logger.exception(e)
         if response in lib.ErrorCode._member_names_:
-            print(lib.ErrorCode[response].value)
+            logger.error(lib.ErrorCode[response].value)
         return response
     
     def _set_channel_id(self, new_channel_id:int):
@@ -886,7 +892,7 @@ class Sartorius(LiquidHandler):
         fstring = f'{self.channel}{command}º\r' # command template: <PRE><ADR><CODE><DATA><LRC><POST>
         # bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
         if self.verbose:
-            print(fstring)
+            logger.debug(fstring)
         try:
             # Typical timeout wait is 400ms
             self.device.write(fstring.encode('utf-8'))
@@ -894,7 +900,7 @@ class Sartorius(LiquidHandler):
             pass
         except Exception as e:
             if self.verbose:
-                print(e)
+                logger.exception(e)
             return False
         return True
     

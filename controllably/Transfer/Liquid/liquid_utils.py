@@ -14,8 +14,14 @@ import logging
 import numpy as np
 from typing import Optional, Union
 
+_logger = logging.getLogger("controllably.Transfer")
+_logger.debug(f"Import: OK <{__name__}>")
+
 logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
 
 @dataclass
 class Speed:
@@ -245,7 +251,7 @@ class LiquidHandler(ABC):
             self.device.close()
         except Exception as e:
             if self.verbose:
-                print(e)
+                logger.exception(e)
         self.setFlag(connected=False)
         return
     
@@ -320,7 +326,7 @@ class LiquidHandler(ABC):
         """
         if not self.flags.get('connected', False):
             if self.verbose:
-                print(f"{self.__class__} is not connected. Details: {self.connection_details}")
+                logger.info(f"{self.__class__} is not connected. Details: {self.connection_details}")
         return self.flags.get('connected', False)
 
     def resetFlags(self):
