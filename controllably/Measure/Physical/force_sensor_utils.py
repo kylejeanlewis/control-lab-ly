@@ -16,14 +16,18 @@ import pandas as pd
 from threading import Thread
 import time
 
-# Third party imports
-import serial # pip install pyserial
-
 # Local application imports
+from ...core.connection import SerialDevice
 from ..measure_utils import Measurer
 
+_logger = logging.getLogger("controllably.Measure")
+_logger.debug(f"Import: OK <{__name__}>")
+
 logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
 
 CALIBRATION_FACTOR = 6.862879436681862  # FIXME: needs to be calibrated
 """Empirical factor by which to divide output reading by to get force in newtons"""
@@ -82,7 +86,7 @@ class ForceSensor(Measurer):
         self.precision = 3
         self._force = 0
         self._threads = {}
-        self._connect(port)
+        self._connect(port, simulation=kwargs.get('simulation', False))
         return
     
     # Properties
@@ -104,7 +108,7 @@ class ForceSensor(Measurer):
             self.device.close()
         except Exception as e:
             if self.verbose:
-                print(e)
+                logger.exception(e)
         self.setFlag(connected=False)
         return
     
@@ -189,25 +193,25 @@ class ForceSensor(Measurer):
             wait (int, optional): duration to wait while zeroing, in seconds. Defaults to 5.
         """
         if self.flags['record']:
-            print("Unable to zero while recording.")
-            print("Use `toggleRecord(False)` to stop recording.")
+            logger.warning("Unable to zero while recording.")
+            logger.warning("Use `toggleRecord(False)` to stop recording.")
             return
         temp_record_state = self.flags['record']
         temp_buffer_df = self.buffer_df.copy()
         self.reset()
         self.toggleRecord(True)
-        print(f"Zeroing... ({wait}s)")
+        logger.info(f"Zeroing... ({wait}s)")
         time.sleep(wait)
         self.toggleRecord(False)
         self.baseline = self.buffer_df['Value'].mean()
         self.clearCache()
         self.buffer_df = temp_buffer_df.copy()
-        print("Zeroing complete.")
+        logger.info("Zeroing complete.")
         self.toggleRecord(temp_record_state)
         return
 
     # Protected method(s)
-    def _connect(self, port:str, baudrate:int = 115200, timeout:int = 1):
+    def _connect(self, port:str, baudrate:int = 115200, timeout:int = 1, verbose:bool = False, simulation:bool = False):
         """
         Connection procedure for tool
 
@@ -223,14 +227,14 @@ class ForceSensor(Measurer):
         }
         device = None
         try:
-            device = serial.Serial(port, baudrate, timeout=timeout)
+            device = SerialDevice(port, baudrate, timeout=timeout, simulation=simulation, verbose=verbose)
         except Exception as e:
-            print(f"Could not connect to {port}")
+            logger.warning(f"Could not connect to {port}")
             if self.verbose:
-                print(e)
+                logger.exception(e)
         else:
             self.device = device
-            print(f"Connection opened to {port}")
+            logger.info(f"Connection opened to {port}")
             self.setFlag(connected=True)
             time.sleep(1)
             self.zero()
@@ -258,10 +262,10 @@ class ForceSensor(Measurer):
             response = self.device.readline()
         except Exception as e:
             if self.verbose:
-                print(e)
+                logger.exception(e)
         else:
             response = response.decode('utf-8','replace').strip()
             if self.verbose:
-                print(response)
+                logger.debug(response)
         return response
  
