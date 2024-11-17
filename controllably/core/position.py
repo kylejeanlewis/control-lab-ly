@@ -547,6 +547,8 @@ class Labware:
         `fromFile`: factory method to load Labware from file
     
     ### Methods:
+        `addSlotAbove`: add Slot above for stackable Labware
+        `deleteSlotAbove`: delete Slot above for stackable Labware
         `fromTop`: offset from top of well
         `getAllPositions`: get all positions in Labware
         `getWell`: get `Well` using its name
@@ -585,19 +587,8 @@ class Labware:
         buffer = self._details.get('parameters',{}).get('boundary_buffer', ((0,0,0),(0,0,0)))
         self.exclusion_zone = BoundingBox(self.bottom_left_corner, self._dimensions, buffer)
         
-        details_above = self._details.get('slotAbove','')
-        if self.is_stackable and details_above:
-            below_name = self.parent.name if isinstance(self.parent, Slot) else 'None'
-            above_name = below_name[:-1] + chr(ord(below_name[-1]) + 1)
-            if below_name[-1].isdigit() or below_name[-2] != '_':
-                above_name = below_name + '_a'
-            self.slot_above = Slot(
-                name=above_name, 
-                _details=details_above, 
-                parent=self,
-                bottom_left_corner=self.bottom_left_corner.translate(by=(0,0,self.z))
-            )
-            self.slot_above.slot_below = self.parent
+        if self.is_stackable:
+            self.addSlotAbove()
         return
     
     def __repr__(self) -> str:
@@ -704,6 +695,50 @@ class Labware:
     def at(self) -> SimpleNamespace:
         """Namespace of all wells"""
         return SimpleNamespace(**self._wells)
+    
+    def addSlotAbove(self) -> Slot|None:
+        """ 
+        Add Slot above for stackable Labware
+        
+        Returns:
+            Slot|None: Slot above
+        """
+        details_above = self._details.get('slotAbove',{})
+        if not self.is_stackable:
+            logger.warning("Labware is not stackable")
+            return
+        if len(details_above) == 0:
+            logger.warning("No details for Slot above")
+            return
+        below_name = self.parent.name if isinstance(self.parent, Slot) else 'slot'
+        above_name = below_name[:-1] + chr(ord(below_name[-1]) + 1)
+        if below_name[-1].isdigit() or below_name[-2] != '_':
+            above_name = below_name + '_a'
+        new_slot = Slot(
+            name=above_name, 
+            _details=details_above, 
+            parent=self
+        )
+        new_slot.slot_below = self.parent
+        self.slot_above = new_slot
+        if isinstance(self.parent, Slot):
+            self.parent.slot_above = new_slot
+        return new_slot
+    
+    def deleteSlotAbove(self) -> Slot|None:
+        """
+        Delete Slot above for stackable Labware
+        
+        Returns:
+            Slot|None: Slot above
+        """
+        if self.slot_above is None:
+            logger.warning("There is no Slot above to delete")
+            return
+        slot_above = self.slot_above
+        self.slot_above = None
+        self.parent.slot_above = None
+        return slot_above
     
     def fromTop(self, offset:Sequence[float]|np.ndarray) -> np.ndarray:
         """
