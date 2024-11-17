@@ -569,7 +569,7 @@ class Labware:
     exclusion_zone: BoundingBox|None = field(init=False, default=None)
     _wells: dict[str, Well] = field(init=False, default_factory=dict)
     _ordering: list[list[str]] = field(init=False, default_factory=list)
-    is_stackable: bool = field(init=False, default=False)
+    _is_stackable: bool = field(init=False, default=False)
     is_tiprack: bool = field(init=False, default=False)
     slot_above: Slot|None = field(init=False, default=None)
     
@@ -579,7 +579,7 @@ class Labware:
         self.y = dimensions.get('yDimension', 0)/2
         self.z = dimensions.get('zDimension', 0)/2
         self._dimensions = (self.x*2,self.y*2,self.z*2)
-        self.is_stackable = self._details.get('parameters',{}).get('isStackable', False)
+        self._is_stackable = self._details.get('parameters',{}).get('isStackable', False)
         self.is_tiprack = self._details.get('parameters',{}).get('isTiprack', False)
         self._ordering = self._details.get('ordering', [[]])
         self._wells = {name:Well(name=name, _details=details, parent=self) for name,details in self._details.get('wells',{}).items()}
@@ -696,6 +696,20 @@ class Labware:
         """Namespace of all wells"""
         return SimpleNamespace(**self._wells)
     
+    @property
+    def is_stackable(self) -> bool:
+        """Whether Labware is stackable"""
+        return self._is_stackable
+    @is_stackable.setter
+    def is_stackable(self, value:bool):
+        if value == True and 'slotAbove' not in self._details:
+            logger.warning("No details for Slot above")
+            return
+        self._is_stackable = value
+        if value:
+            self.addSlotAbove()
+        return
+    
     def addSlotAbove(self) -> Slot|None:
         """ 
         Add Slot above for stackable Labware
@@ -714,16 +728,16 @@ class Labware:
         above_name = below_name[:-1] + chr(ord(below_name[-1]) + 1)
         if below_name[-1].isdigit() or below_name[-2] != '_':
             above_name = below_name + '_a'
-        new_slot = Slot(
+        slot_above = Slot(
             name=above_name, 
             _details=details_above, 
             parent=self
         )
-        new_slot.slot_below = self.parent
-        self.slot_above = new_slot
+        slot_above.slot_below = self.parent
+        self.slot_above = slot_above
         if isinstance(self.parent, Slot):
-            self.parent.slot_above = new_slot
-        return new_slot
+            self.parent.addSlotAbove(slot_above)
+        return slot_above
     
     def deleteSlotAbove(self) -> Slot|None:
         """
@@ -737,7 +751,8 @@ class Labware:
             return
         slot_above = self.slot_above
         self.slot_above = None
-        self.parent.slot_above = None
+        if isinstance(self.parent, Slot):
+            self.parent.deleteSlotAbove()
         return slot_above
     
     def fromTop(self, offset:Sequence[float]|np.ndarray) -> np.ndarray:
@@ -890,6 +905,8 @@ class Slot:
         `slot_below` (Slot|None): Slot below
         
     ### Methods:
+        `addSlotAbove`: add Slot above of stack
+        `deleteSlotAbove`: delete Slot above of stack
         `getAllPositions`: get all positions in Slot
         `loadLabware`: load Labware in Slot
         `loadLabwareFromConfigs`: load Labware from dictionary
@@ -975,6 +992,45 @@ class Slot:
         """Exclusion zone of loaded Labware to avoid"""
         return self.loaded_labware.exclusion_zone if isinstance(self.loaded_labware, Labware) else None
 
+    def addSlotAbove(self, slot_above: Slot, directly:bool = True) -> Slot|None:
+        """ 
+        Add Slot above of stack
+        
+        Args:
+            slot_above (Slot): Slot above
+            directly (bool, optional): whether to add slot directly above itself. Defaults to True.
+        
+        Returns:
+            Slot|None: Slot above
+        """
+        if directly:
+            self.slot_above = slot_above
+        if isinstance(self.parent, Deck):
+            self.parent._slots[slot_above.name] = slot_above
+        elif isinstance(self.parent, Labware):
+            self.slot_below.addSlotAbove(slot_above, directly=False)
+        return slot_above
+    
+    def deleteSlotAbove(self, slot_above: Slot|None = None, directly:bool = True) -> Slot|None:
+        """
+        Delete Slot above of stack
+        
+        Args:
+            slot_above (Slot|None, optional): Slot above. Defaults to None.
+            directly (bool, optional): whether to delete slot directly above itself. Defaults to True.
+        
+        Returns:
+            Slot|None: Slot above
+        """
+        slot_above = self.parent.slot_above if slot_above is None else slot_above
+        if isinstance(self.parent, Deck):
+            self.parent._slots.pop(slot_above.name, None)
+        elif isinstance(self.parent, Labware):
+            self.slot_below.deleteSlotAbove(slot_above, directly=False)
+        if directly:
+            self.slot_above = None
+        return slot_above
+    
     def getAllPositions(self) -> dict[str, tuple[float]|dict]:
         """
         Get all positions in Slot
