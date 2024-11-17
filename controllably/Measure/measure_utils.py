@@ -11,13 +11,19 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import logging
 import pandas as pd
-from typing import Callable, Optional, Protocol, Union
+from typing import Callable, Protocol
 
 # Local application imports
 from .program_utils import ProgramDetails, get_program_details
 
+_logger = logging.getLogger("controllably.Measure")
+_logger.debug(f"Import: OK <{__name__}>")
+
 logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
 
 class Data(Protocol):
     def plot(self, *args, **kwargs):
@@ -147,7 +153,7 @@ class Measurer(ABC):
             bool: whether the device is connected
         """
         if not self.flags.get('connected', False):
-            print(f"{self.__class__} is not connected. Details: {self.connection_details}")
+            logger.warning(f"{self.__class__} is not connected. Details: {self.connection_details}")
         return self.flags.get('connected', False)
     
     def reset(self):
@@ -175,7 +181,7 @@ class Measurer(ABC):
         if len(self.buffer_df):
             self.buffer_df.to_csv(filepath)
         else:
-            print('No data available to be saved.')
+            logger.warning('No data available to be saved.')
         return
 
     def setFlag(self, **kwargs):
@@ -238,8 +244,8 @@ class Programmable(Measurer):
     - `reset`: reset the device
     """
     
-    _default_datatype: Optional[Data] = None
-    _default_program: Optional[Program] = None
+    _default_datatype: Data|None = None
+    _default_program: Program|None = None
     _default_program_parser: dict[str, function] = {"parser": get_program_details}
     _default_flags = {
         'busy': False,
@@ -253,11 +259,11 @@ class Programmable(Measurer):
     def __init__(self, **kwargs):
         """Instantiate the class"""
         super().__init__(**kwargs)
-        self.data: Optional[Data] = None
-        self.datatype: Optional[Data] = self._default_datatype
-        self.program: Optional[Program] = None
+        self.data: Data|None = None
+        self.datatype: Data|None = self._default_datatype
+        self.program: Program|None = None
         self._program_parser = self._default_program_parser
-        self.program_type: Optional[Program] = self._default_program
+        self.program_type: Program|None = self._default_program
         
         self.program_details = ProgramDetails()
         self.recent_parameters = []
@@ -291,63 +297,63 @@ class Programmable(Measurer):
         if not self.flags['read']:
             self._extract_data()
         if not self.flags['read']:
-            print("Unable to read data.")
+            logger.warning("Unable to read data.")
             return self.buffer_df
         
         if self.datatype is not None:
             self.data = self.datatype(data=self.buffer_df, instrument=self.model)
         return self.buffer_df
 
-    def loadDataType(self, datatype:Optional[Data] = None):
+    def loadDataType(self, datatype:Data|None = None):
         """
         Load desired Data class
 
         Args:
-            datatype (Optional[Data], optional): custom datatype to load. Defaults to None.
+            datatype (Data|None, optional): custom datatype to load. Defaults to None.
         """
         self.datatype = self._default_datatype if datatype is None else datatype
-        print(f"Loaded datatype: {self.datatype.__name__}")
+        logger.info(f"Loaded datatype: {self.datatype.__name__}")
         return
     
-    def loadProgram(self, program_type:Optional[Program] = None):
+    def loadProgram(self, program_type:Program|None = None):
         """
         Load desired Program class
 
         Args:
-            program_type (Optional[Program], optional): program type to load. Defaults to None.
+            program_type (Program|None, optional): program type to load. Defaults to None.
         """
         self.program_type = self._default_program if program_type is None else program_type
-        print(f"Loaded program: {self.program_type.__name__}")
+        logger.info(f"Loaded program: {self.program_type.__name__}")
         self._get_program_details()
-        print(self.program_details.short_doc)
+        logger.info(self.program_details.short_doc)
         self.measure.__func__.__doc__ = self._measure_method_docstring + self.program_details.short_doc
         return
     
-    def loadProgramInterpreter(self, program_parser: Optional[function] = None):
+    def loadProgramInterpreter(self, program_parser: function|None = None):
         """
         Load a program interpreter to get the program details from the program class docstring
 
         Args:
-            program_parser (Optional[function], optional): function that interprets the program class docstring. Defaults to None.
+            program_parser (function|None, optional): function that interprets the program class docstring. Defaults to None.
         """
         self._program_parser = self._default_program_parser if program_parser is None else {"parser": program_parser}
         return
     
-    def measure(self, parameters: Optional[dict] = None, channel:Union[int, tuple[int]] = 0, **kwargs):
+    def measure(self, parameters: dict|None = None, channel:int|tuple[int] = 0, **kwargs):
         """
         Perform measurement using loaded Program and parameters provided.
         Use `help()` to find out about program parameters.
 
         Args:
-            parameters (Optional[dict], optional): dictionary of kwargs. Defaults to None.
-            channels (Union[int, tuple[int]], optional): channel id(s). Defaults to 0.
+            parameters (dict|None, optional): dictionary of kwargs. Defaults to None.
+            channels (int|tuple[int], optional): channel id(s). Defaults to 0.
         """
         parameters = {} if parameters is None else parameters
         parameters.update(kwargs)
         if self.program_type is None:
             self.loadProgram()
         if self.program_type is None:
-            print('Load a program first.')
+            logger.warning('Load a program first.')
             return
         
         self.setFlag(busy=True)
@@ -364,18 +370,18 @@ class Programmable(Measurer):
         self.setFlag(busy=False)
         return
     
-    def plot(self, plot_type:Optional[str] = None) -> bool:
+    def plot(self, plot_type:str|None = None) -> bool:
         """
         Present data visualisation using loaded DataType, using its `plot()` method
         
         Args:
-            plot_type (Optional[str] , optional): perform the requested plot of the data. Defaults to None.
+            plot_type (str|None , optional): perform the requested plot of the data. Defaults to None.
         """
         if not self.flags['measured'] or not self.flags['read']:
             return False
         if self.data is None:
             print(self.buffer_df.head())
-            print(f'{len(self.buffer_df)} row(s) of data')
+            logger.info(f'{len(self.buffer_df)} row(s) of data')
             return False
         self.data.plot(plot_type=plot_type)
         return True
@@ -399,11 +405,11 @@ class Programmable(Measurer):
             bool: whether the data extraction is successful
         """
         if self.program is None:
-            print("Please load a program first.")
+            logger.warning("Please load a program first.")
             return False
         self.buffer_df = self.program.data_df
         if len(self.buffer_df) == 0:
-            print("No data found.")
+            logger.warning("No data found.")
             return False
         self.setFlag(read=True)
         return True
