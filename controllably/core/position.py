@@ -26,13 +26,16 @@ from dataclasses import dataclass, field
 import itertools
 import json
 import logging
-import matplotlib.colors as mcolors
-import matplotlib.pyplot as plt
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Sequence, Any, Iterator
 
 # Third party imports
+import matplotlib
+from matplotlib.collections import PatchCollection
+import matplotlib.colors as mcolors
+import matplotlib.patches
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.transform import Rotation
 
@@ -449,20 +452,27 @@ class Well:
         """
         return self.top + np.array(offset)
     
-    def _draw(self, ax: plt.Axes, zoom_out:bool = False, **kwargs):
+    def _draw(self, ax: plt.Axes, zoom_out:bool = False, **kwargs) -> matplotlib.patches.Patch|None:
         """
         Draw self on matplotlib axis
 
         Args:
             ax (matplotlib.pyplot.Axes): plot axes
             zoom_out (bool, optional): whether to use zoomed out view. Defaults to False.
+            
+        Returns:
+            matplotlib.patches.Patch|None: matplotlib patch
         """
         if self.shape == 'circular':
-            ax.add_patch(plt.Circle(self.center, self.dimensions[0]/2, fill=False, **kwargs))
+            patch = plt.Circle(self.center, self.dimensions[0]/2, fill=False, **kwargs)
+            # ax.add_patch(patch)
+            return patch
         elif self.shape == 'rectangular':
             dimensions = self.reference.Rotation.apply(np.array([*self.dimensions,0]))
             corner = self.bottom - dimensions/2
-            ax.add_patch(plt.Rectangle(corner[:2], *dimensions[:2], fill=False, **kwargs))
+            patch = plt.Rectangle(corner[:2], *dimensions[:2], fill=False, **kwargs)
+            # ax.add_patch(plt.Rectangle(corner[:2], *dimensions[:2], fill=False, **kwargs))
+            return patch
         else:
             logger.error(f"Invalid shape: {self.shape}")
         return
@@ -507,8 +517,8 @@ class Labware:
         `fromFile`: factory method to load Labware from file
     
     ### Methods:
-        `addSlotAbove`: add Slot above for stackable Labware
-        `deleteSlotAbove`: delete Slot above for stackable Labware
+        `_addSlotAbove`: add Slot above for stackable Labware
+        `_deleteSlotAbove`: delete Slot above for stackable Labware
         `fromTop`: offset from top of well
         `getAllPositions`: get all positions in Labware
         `getWell`: get `Well` using its name
@@ -548,7 +558,7 @@ class Labware:
         self.exclusion_zone = BoundingBox(self.bottom_left_corner, self._dimensions, buffer)
         
         if self.is_stackable:
-            self.addSlotAbove()
+            self._addSlotAbove()
         return
     
     def __repr__(self) -> str:
@@ -666,10 +676,10 @@ class Labware:
             logger.warning("No details for Slot above")
             return
         self._is_stackable = value
-        _ = self.addSlotAbove() if value else self.deleteSlotAbove()
+        _ = self._addSlotAbove() if value else self._deleteSlotAbove()
         return
     
-    def addSlotAbove(self) -> Slot|None:
+    def _addSlotAbove(self) -> Slot|None:
         """ 
         Add Slot above for stackable Labware
         
@@ -677,12 +687,8 @@ class Labware:
             Slot|None: Slot above
         """
         details_above = self._details.get('slotAbove',{})
-        if not self.is_stackable:
-            logger.warning("Labware is not stackable")
-            return
-        if len(details_above) == 0:
-            logger.warning("No details for Slot above")
-            return
+        assert self.is_stackable, "Labware is not stackable"
+        assert len(details_above) > 0, "No details for Slot above"
         below_name = self.parent.name if isinstance(self.parent, Slot) else 'slot'
         above_name = below_name[:-1] + chr(ord(below_name[-1]) + 1)
         if below_name[-1].isdigit() or below_name[-2] != '_':
@@ -695,23 +701,22 @@ class Labware:
         slot_above.slot_below = self.parent
         self.slot_above = slot_above
         if isinstance(self.parent, Slot):
-            self.parent.addSlotAbove(slot_above)
+            self.parent._addSlotAbove(slot_above)
         return slot_above
     
-    def deleteSlotAbove(self) -> Slot|None:
+    def _deleteSlotAbove(self) -> Slot|None:
         """
         Delete Slot above for stackable Labware
         
         Returns:
             Slot|None: Slot above
         """
-        if self.slot_above is None:
-            logger.warning("There is no Slot above to delete")
-            return
+        assert isinstance(self.slot_above, Slot), "There is no Slot above to delete"
+        assert not isinstance(self.slot_above.loaded_labware, Labware), "Labware is still loaded on the Slot above"
         slot_above = self.slot_above
         self.slot_above = None
         if isinstance(self.parent, Slot):
-            self.parent.deleteSlotAbove()
+            self.parent._deleteSlotAbove()
         return slot_above
     
     def fromTop(self, offset:Sequence[float]|np.ndarray) -> np.ndarray:
@@ -808,18 +813,30 @@ class Labware:
         fig.set_size_inches(new_size)
         return fig
         
-    def _draw(self, ax:plt.Axes, zoom_out:bool = False, **kwargs):
+    def _draw(self, ax:plt.Axes, zoom_out:bool = False, **kwargs) -> list[matplotlib.patches.Patch]:
         """
         Draw Labware on matplotlib axis
         
         Args:
             ax (matplotlib.pyplot.Axes): plot axes
             zoom_out (bool, optional): whether to use zoomed out view. Defaults to False.
+        
+        Returns:
+            list[matplotlib.patches.Patch]: list of matplotlib patches
         """
-        ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, **kwargs))
+        patches = []
+        patch = plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, **kwargs)
+        # ax.add_patch(patch)
+        patches.append(patch)
+        if isinstance(self.slot_above, Slot) and isinstance(self.slot_above.loaded_labware, Labware):
+            return patches
+        
         for well in self._wells.values():
-            well._draw(ax, zoom_out=zoom_out, **kwargs)
-        return
+            logger.debug(f"Drawing: {well.name}")
+            patch = well._draw(ax, zoom_out=zoom_out, **kwargs)
+            patches.append(patch)
+        # ax.add_collection(PatchCollection(patches, match_original=True))
+        return patches
 
 
 @dataclass
@@ -850,8 +867,8 @@ class Slot:
         `slot_below` (Slot|None): Slot below
         
     ### Methods:
-        `addSlotAbove`: add Slot above of stack
-        `deleteSlotAbove`: delete Slot above of stack
+        `_addSlotAbove`: add Slot above of stack
+        `_deleteSlotAbove`: delete Slot above of stack
         `getAllPositions`: get all positions in Slot
         `loadLabware`: load Labware in Slot
         `loadLabwareFromConfigs`: load Labware from dictionary
@@ -932,7 +949,7 @@ class Slot:
         """Exclusion zone of loaded Labware to avoid"""
         return self.loaded_labware.exclusion_zone if isinstance(self.loaded_labware, Labware) else None
 
-    def addSlotAbove(self, slot_above: Slot, directly:bool = True) -> Slot|None:
+    def _addSlotAbove(self, slot_above: Slot, directly:bool = True) -> Slot|None:
         """ 
         Add Slot above of stack
         
@@ -948,10 +965,10 @@ class Slot:
         if isinstance(self.parent, Deck):
             self.parent._slots[slot_above.name] = slot_above
         elif isinstance(self.parent, Labware):
-            self.slot_below.addSlotAbove(slot_above, directly=False)
+            self.slot_below._addSlotAbove(slot_above, directly=False)
         return slot_above
     
-    def deleteSlotAbove(self, slot_above: Slot|None = None, directly:bool = True) -> Slot|None:
+    def _deleteSlotAbove(self, slot_above: Slot|None = None, directly:bool = True) -> Slot|None:
         """
         Delete Slot above of stack
         
@@ -966,7 +983,7 @@ class Slot:
         if isinstance(self.parent, Deck):
             self.parent._slots.pop(slot_above.name, None)
         elif isinstance(self.parent, Labware):
-            self.slot_below.deleteSlotAbove(slot_above, directly=False)
+            self.slot_below._deleteSlotAbove(slot_above, directly=False)
         if directly:
             self.slot_above = None
         return slot_above
@@ -1034,25 +1051,35 @@ class Slot:
         self.slot_above = None
         return labware
 
-    def _draw(self, ax:plt.Axes, zoom_out:bool = False, **kwargs):
+    def _draw(self, ax:plt.Axes, zoom_out:bool = False, **kwargs) -> list[matplotlib.patches.Patch]:
         """
         Draw Slot on matplotlib axis
         
         Args:
             ax (matplotlib.pyplot.Axes): plot axes
             zoom_out (bool, optional): whether to use zoomed out view. Defaults to False.
+            
+        Returns:
+            list[matplotlib.patches.Patch]: list of matplotlib patches
         """
-        ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, linestyle=":", **kwargs))
-        if  isinstance(self.loaded_labware, Labware):
-            self.loaded_labware._draw(ax, zoom_out=zoom_out,**kwargs)
-        elif not zoom_out:
+        patches = []
+        patch = plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, linestyle=":", **kwargs)
+        # ax.add_patch(patch)
+        patches.append(patch)
+        
+        if isinstance(self.loaded_labware, Labware):
+            logger.debug(f"Drawing: {self.loaded_labware.name}")
+            _patches = self.loaded_labware._draw(ax, zoom_out=zoom_out,**kwargs)
+            patches.extend(_patches)
+        # ax.add_collection(PatchCollection(patches, match_original=True))
+        if not isinstance(self.loaded_labware, Labware) and not zoom_out:
             ax.text(
                 *self.center[:2], self.name, 
                 ha='center', va='center', 
                 rotation=self.bottom_left_corner.rotation[0], 
                 fontsize=8, color='black', alpha=0.25
             )
-        return
+        return patches
 
 
 @dataclass
@@ -1314,36 +1341,6 @@ class Deck:
         self._slots[name] = SimpleNamespace(**deck._slots)
         return
     
-    def show(self, zoom_out:bool = False) -> plt.Figure:
-        """
-        Show Deck on matplotlib axis
-        
-        Args:
-            zoom_out (bool, optional): whether to use zoomed out view. Defaults to False.
-            
-        Returns:
-            matplotlib.pyplot.Figure: matplotlib figure
-        """
-        fig, ax = plt.subplots()
-        color_map = {v:k for k,v in mcolors.get_named_colors_mapping().items()}
-        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-        color_iterator = iter([color_map[c] for c in colors])
-        color_iterator = itertools.chain(['none'], color_iterator, itertools.cycle(['black']))
-        self._draw(ax=ax, zoom_out=zoom_out, color_iterator=color_iterator)
-        
-        reference = self.bottom_left_corner.coordinates
-        lower_buffer = self.dimensions if zoom_out else np.array((0,0,0))
-        upper_buffer = 2*self.dimensions if zoom_out else self.dimensions
-        lower_bounds = reference - lower_buffer
-        upper_bounds = reference + upper_buffer
-        ax.set_xlim(min(lower_bounds[0],upper_bounds[0]), max(lower_bounds[0],upper_bounds[0]))
-        ax.set_ylim(min(lower_bounds[1],upper_bounds[1]), max(lower_bounds[1],upper_bounds[1]))
-        x_inch,y_inch = fig.get_size_inches()
-        inches_per_line = max(x_inch/self.dimensions[0], y_inch/self.dimensions[1])
-        new_size = tuple(abs(np.array(self.dimensions[:2]) * inches_per_line))
-        fig.set_size_inches(new_size)
-        return fig
-    
     def loadLabware(self, dst_slot: Slot, labware:Labware):
         """
         Load `Labware` into `Slot`
@@ -1383,7 +1380,38 @@ class Deck:
         dst_slot.loadLabware(labware=labware)
         return
     
-    def _draw(self, ax: plt.Axes, zoom_out:bool = False, *, color_iterator:Iterator|None = None, **kwargs):
+    def show(self, zoom_out:bool = False) -> plt.Figure:
+        """
+        Show Deck on matplotlib axis
+        
+        Args:
+            zoom_out (bool, optional): whether to use zoomed out view. Defaults to False.
+            
+        Returns:
+            matplotlib.pyplot.Figure: matplotlib figure
+        """
+        fig, ax = plt.subplots()
+        color_map = {v:k for k,v in mcolors.get_named_colors_mapping().items()}
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        color_iterator = iter([color_map[c] for c in colors])
+        color_iterator = itertools.chain(['none'], color_iterator, itertools.cycle(['black']))
+        patches = self._draw(ax=ax, zoom_out=zoom_out, color_iterator=color_iterator)
+        ax.add_collection(PatchCollection(patches, match_original=True))
+        
+        reference = self.bottom_left_corner.coordinates
+        lower_buffer = self.dimensions if zoom_out else np.array((0,0,0))
+        upper_buffer = 2*self.dimensions if zoom_out else self.dimensions
+        lower_bounds = reference - lower_buffer
+        upper_bounds = reference + upper_buffer
+        ax.set_xlim(min(lower_bounds[0],upper_bounds[0]), max(lower_bounds[0],upper_bounds[0]))
+        ax.set_ylim(min(lower_bounds[1],upper_bounds[1]), max(lower_bounds[1],upper_bounds[1]))
+        x_inch,y_inch = fig.get_size_inches()
+        inches_per_line = max(x_inch/self.dimensions[0], y_inch/self.dimensions[1])
+        new_size = tuple(abs(np.array(self.dimensions[:2]) * inches_per_line))
+        fig.set_size_inches(new_size)
+        return fig
+    
+    def _draw(self, ax: plt.Axes, zoom_out:bool = False, *, color_iterator:Iterator|None = None, **kwargs) -> list[matplotlib.patches.Patch]:
         """
         Draw Deck on matplotlib axis
         
@@ -1391,23 +1419,35 @@ class Deck:
             ax (matplotlib.pyplot.Axes): plot axes
             zoom_out (bool, optional): whether to use zoomed out view. Defaults to False.
             color_iterator (Iterator|None, optional): iterator for colors. Defaults to None.
+            
+        Returns:
+            list[matplotlib.patches.Patch]: list of matplotlib patches
         """
+        patches = []
         bg_color = next(color_iterator) if isinstance(color_iterator,Iterator) else None
-        ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], alpha=0.5, color=bg_color, **kwargs))
-        ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, **kwargs))
+        patch_color = plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], alpha=0.5, color=bg_color, **kwargs)
+        patch_outline = plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, **kwargs)
+        # ax.add_patch(patch_color)
+        # ax.add_patch(patch_outline)
+        patches.extend([patch_color, patch_outline])
+        
         logger.info(f"{bg_color.replace('tab:','')} -> {self.name.replace('_sub','.')}")
         for zone in self._zones.values():
             if isinstance(zone, Deck):
-                zone._draw(ax, zoom_out=zoom_out, color_iterator=color_iterator, **kwargs)
+                _patches = zone._draw(ax, zoom_out=zoom_out, color_iterator=color_iterator, **kwargs)
+                patches.extend(_patches)
         
         def draw_slots(ax, slots:dict[str, Slot|SimpleNamespace], **kwargs):
+            _inner_patches = []
             for slot in slots.values():
                 if isinstance(slot, Slot):
                     logger.debug(f"Drawing: {slot.name}")
-                    slot._draw(ax, zoom_out=zoom_out, **kwargs)
-            return
-        draw_slots(ax, self._slots, **kwargs)
-        return
+                    _inner_slot_patches = slot._draw(ax, zoom_out=zoom_out, **kwargs)
+                    _inner_patches.extend(_inner_slot_patches)
+            return _inner_patches
+        _patches = draw_slots(ax, self._slots, **kwargs)
+        patches.extend(_patches)
+        return patches
 
 
 @dataclass
