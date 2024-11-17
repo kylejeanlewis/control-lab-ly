@@ -584,7 +584,7 @@ class Labware:
         self._ordering = self._details.get('ordering', [[]])
         self._wells = {name:Well(name=name, _details=details, parent=self) for name,details in self._details.get('wells',{}).items()}
         
-        buffer = self._details.get('parameters',{}).get('boundary_buffer', ((0,0,0),(0,0,0)))
+        buffer = self._details.get('exclusionBuffer', ((0,0,0),(0,0,0)))
         self.exclusion_zone = BoundingBox(self.bottom_left_corner, self._dimensions, buffer)
         
         if self.is_stackable:
@@ -706,8 +706,7 @@ class Labware:
             logger.warning("No details for Slot above")
             return
         self._is_stackable = value
-        if value:
-            self.addSlotAbove()
+        _ = self.addSlotAbove() if value else self.deleteSlotAbove()
         return
     
     def addSlotAbove(self) -> Slot|None:
@@ -943,11 +942,6 @@ class Slot:
         if labware_file.is_file():
             self.loadLabwareFromFile(labware_file=labware_file)
             assert isinstance(self.loaded_labware, Labware), "Labware not loaded"
-            self.loaded_labware.exclusion_zone = BoundingBox(
-                self.loaded_labware.bottom_left_corner, 
-                self.loaded_labware._dimensions, 
-                self._details.get('labware_boundary_buffer', ((0,0,0),(0,0,0)))
-            )
         return
     
     def __repr__(self) -> str:
@@ -1022,7 +1016,7 @@ class Slot:
         Returns:
             Slot|None: Slot above
         """
-        slot_above = self.parent.slot_above if slot_above is None else slot_above
+        slot_above = self.slot_above if slot_above is None else slot_above
         if isinstance(self.parent, Deck):
             self.parent._slots.pop(slot_above.name, None)
         elif isinstance(self.parent, Labware):
@@ -1467,186 +1461,6 @@ class Deck:
         labware = src_slot.removeLabware()
         dst_slot.loadLabware(labware=labware)
         return
-    
-    
-    
-    # Deprecated methods
-    def loadLabware(self, 
-        slot: int, 
-        labware_file: str, 
-        package: str|None = None, 
-        name: str|None = None, 
-        exclusion_height: float|None = None
-    ):
-        """
-        Load Labware into slot
-
-        Args:
-            slot (int): slot id
-            labware_file (str): filepath Labware JSON file
-            package (str|None, optional): name of package to look in. Defaults to None.
-            name (str|None, optional): nickname of Labware. Defaults to None.
-            exclusion_height (float|None, optional): height clearance from top of Labware. Defaults to None.
-        """
-        raise DeprecationWarning("Method to be deprecated.")
-        if name:
-            self.names[name] = slot
-        reference_position = tuple( self.details.get('reference_positions',{}).get(str(slot),((0,0,0),(0,0,0))) )
-        # bottom_left_coordinates = tuple( self.details.get('reference_points',{}).get(str(slot),(0,0,0)) )
-        if len(reference_position) != 2 or isinstance(reference_position[0], (int,float)):
-            reference_position = (reference_position, (0,0,0))
-            
-        bottom_left_coordinates, orientation = reference_position
-        labware = Labware(slot=str(slot), bottom_left_coordinates=bottom_left_coordinates, orientation=orientation, labware_file=labware_file, package=package)
-        self._slots[str(slot)] = labware
-        if exclusion_height is not None:
-            top_right_coordinates= tuple(map(sum, zip(bottom_left_coordinates, labware.dimensions, (0,0,exclusion_height))))
-            self.exclusion_zones[str(slot)] = np.array(bottom_left_coordinates, top_right_coordinates)
-        return
-    
-    def loadLayout(
-        self, 
-        layout_file: str|None = None, 
-        layout_dict: dict|None = None, 
-        package: str|None = None, 
-        labware_package: str|None = None,
-        repository: str = 'control-lab-le'
-    ):
-        """
-        Load deck layout from layout file
-
-        Args:
-            layout_file (str|None, optional): filepath of deck layout JSON file. Defaults to None.
-            layout_dict (dict|None, optional): layout details. Defaults to None.
-            package (str|None, optional): name of package to look in for layout file. Defaults to None.
-            labware_package (str|None, optional): name of package to look in for Labware file. Defaults to None.
-            repository (str, optional): name of repository to look in. Defaults to 'control-lab-le'.
-
-        Raises:
-            Exception: lease input either `layout_file` or `layout_dict`
-        """
-        raise DeprecationWarning("Method to be deprecated.")
-        slots = self.details.get('slots', {})
-        root = str(Path().absolute()).split(repository)[0].replace('\\','/')
-        for slot in sorted(list(slots)):
-            info = slots[slot]
-            name = info.get('name')
-            labware_file = info.get('filepath','')
-            labware_file = labware_file if Path(labware_file).is_absolute() else f"{root}{repository}/{labware_file.split(repository)[1]}"
-            exclusion_height = info.get('exclusion_height', -1)
-            exclusion_height = exclusion_height if exclusion_height >= 0 else None
-            self.loadLabware(slot=slot, name=name, exclusion_height=exclusion_height, labware_file=labware_file, package=labware_package)
-        return
-
-    def removeLabware(self, index:int|None = None, name:str|None = None):
-        """
-        Remove Labware in slot using slot id or name
-
-        Args:
-            index (int|None, optional): slot id. Defaults to None.
-            name (str|None, optional): nickname of Labware. Defaults to None.
-
-        Raises:
-            Exception: Please input either slot id or name
-        """
-        raise DeprecationWarning("Method to be deprecated.")
-        if not any((index, name)) or all((index, name)):
-            raise Exception('Please input either slot id or name.')
-        if index is None and name is not None:
-            index = self.names.get(name)
-        elif index is not None and name is None:
-            name = [k for k,v in self.names.items() if v==index][0]
-        self.names.pop(name)
-        self._slots.pop(str(index))
-        self.exclusion_zones.pop(str(index))
-        return
-    
-    def get_slot(self, index:int|None = None, name:str|None = None) -> Labware|None:
-        """
-        Get Labware in slot using slot id or name
-
-        Args:
-            index (int|None, optional): slot id number. Defaults to None.
-            name (str|None, optional): nickname of Labware. Defaults to None.
-
-        Raises:
-            ValueError: Please input either slot id or name
-
-        Returns:
-            Labware|None: Labware in slot
-        """
-        raise DeprecationWarning("Method to be deprecated.")
-        logger.warning("'get_slot()' method to be deprecated. Use 'getSlot()' instead.")
-        return self.getSlot(index=index, name=name)
-    
-    def is_excluded(self, coordinates:tuple[float]) -> bool:
-        """
-        Checks and returns whether the coordinates are in an excluded region.
-
-        Args:
-            coordinates (tuple[float]): target coordinates
-
-        Returns:
-            bool: whether the coordinates are in an excluded region
-        """
-        logger.warning("'is_excluded()' method to be deprecated. Use 'isExcluded()' instead.")
-        return self.isExcluded(coordinates=coordinates)
-    
-    def load_labware(self, 
-        slot: int, 
-        labware_file: str, 
-        package: str|None = None, 
-        name: str|None = None, 
-        exclusion_height: float|None = None
-    ):
-        """
-        Load Labware into slot
-
-        Args:
-            slot (int): slot id
-            labware_file (str): filepath Labware JSON file
-            package (str|None, optional): name of package to look in. Defaults to None.
-            name (str|None, optional): nickname of Labware. Defaults to None.
-            exclusion_height (float|None, optional): height clearance from top of Labware. Defaults to None.
-        """
-        logger.warning("'load_labware()' method to be deprecated. Use 'loadLabware()' instead.")
-        return self.loadLabware(slot=slot, labware_file=labware_file, package=package, name=name, exclusion_height=exclusion_height)
-    
-    def load_layout(
-        self, 
-        layout_file: str|None = None, 
-        layout_dict: dict|None = None, 
-        package: str|None = None, 
-        labware_package: str|None = None
-    ):
-        """
-        Load deck layout from layout file
-
-        Args:
-            layout_file (str|None, optional): filepath of deck layout JSON file. Defaults to None.
-            layout_dict (dict|None, optional): layout details. Defaults to None.
-            package (str|None, optional): name of package to look in for layout file. Defaults to None.
-            labware_package (str|None, optional): name of package to look in for Labware file. Defaults to None.
-
-        Raises:
-            Exception: lease input either `layout_file` or `layout_dict`
-        """
-        logger.warning("'load_layout()' method to be deprecated. Use 'loadLayout()' instead.")
-        return self.loadLayout(layout_file=layout_file, layout_dict=layout_dict, package=package, labware_package=labware_package)
-
-    def remove_labware(self, index:int|None = None, name:str|None = None):
-        """
-        Remove Labware in slot using slot id or name
-
-        Args:
-            index (int|None, optional): slot id. Defaults to None.
-            name (str|None, optional): nickname of Labware. Defaults to None.
-
-        Raises:
-            Exception: Please input either slot id or name
-        """
-        logger.warning("'remove_labware()' method to be deprecated. Use 'removeLabware()' instead.")
-        return self.removeLabware(index=index, name=name)
 
 
 @dataclass
