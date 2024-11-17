@@ -466,46 +466,6 @@ class Well:
         else:
             logger.error(f"Invalid shape: {self.shape}")
         return
-    
-    # Deprecated methods
-    def from_bottom(self, offset:tuple[float]) -> np.ndarray:
-        """
-        Offset from bottom of well
-
-        Args:
-            offset (tuple): x,y,z offset
-
-        Returns:
-            tuple: bottom of well with offset
-        """
-        logger.warning("'from_bottom()' method to be deprecated. Use 'fromBottom()' instead.")
-        return self.fromBottom(offset=offset)
-    
-    def from_middle(self, offset:tuple[float]) -> np.ndarray:
-        """
-        Offset from middle of well
-
-        Args:
-            offset (tuple): x,y,z offset
-
-        Returns:
-            tuple: middle of well with offset
-        """
-        logger.warning("'from_middle()' method to be deprecated. Use 'fromMiddle()' instead.")
-        return self.fromMiddle(offset=offset)
-    
-    def from_top(self, offset:tuple[float]) -> np.ndarray:
-        """
-        Offset from top of well
-
-        Args:
-            offset (tuple): x,y,z offset
-
-        Returns:
-            tuple: top of well with offset
-        """
-        logger.warning("'from_top()' method to be deprecated. Use 'fromTop()' instead.")
-        return self.fromTop(offset=offset)
 
 
 @dataclass
@@ -860,21 +820,7 @@ class Labware:
         for well in self._wells.values():
             well._draw(ax, zoom_out=zoom_out, **kwargs)
         return
-    
-    # Deprecated methods
-    def get_well(self, name:str) -> Well:
-        """
-        Get `Well` using its name
 
-        Args:
-            name (str): name of well
-
-        Returns:
-            Well: `Well` object
-        """
-        logger.warning("'get_well()' method to be deprecated. Use 'getWell()' instead.")
-        return self.getWell(name=name)
-    
 
 @dataclass
 class Slot:
@@ -1398,31 +1344,6 @@ class Deck:
         fig.set_size_inches(new_size)
         return fig
     
-    def _draw(self, ax: plt.Axes, zoom_out:bool = False, *, color_iterator:Iterator|None = None, **kwargs):
-        """
-        Draw Deck on matplotlib axis
-        
-        Args:
-            ax (matplotlib.pyplot.Axes): plot axes
-            zoom_out (bool, optional): whether to use zoomed out view. Defaults to False.
-            color_iterator (Iterator|None, optional): iterator for colors. Defaults to None.
-        """
-        bg_color = next(color_iterator) if isinstance(color_iterator,Iterator) else None
-        ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], alpha=0.5, color=bg_color, **kwargs))
-        ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, **kwargs))
-        logger.info(f"{bg_color.replace('tab:','')} -> {self.name.replace('_sub','.')}")
-        for zone in self._zones.values():
-            if isinstance(zone, Deck):
-                zone._draw(ax, zoom_out=zoom_out, color_iterator=color_iterator, **kwargs)
-        
-        def draw_slots(ax, slots:dict[str, Slot|SimpleNamespace], **kwargs):
-            for slot in slots.values():
-                if isinstance(slot, Slot):
-                    slot._draw(ax, zoom_out=zoom_out, **kwargs)
-            return
-        draw_slots(ax, self._slots, **kwargs)
-        return
-    
     def loadLabware(self, dst_slot: Slot, labware:Labware):
         """
         Load `Labware` into `Slot`
@@ -1460,6 +1381,32 @@ class Deck:
         assert isinstance(dst_slot, Slot), "Please input a valid destination slot"
         labware = src_slot.removeLabware()
         dst_slot.loadLabware(labware=labware)
+        return
+    
+    def _draw(self, ax: plt.Axes, zoom_out:bool = False, *, color_iterator:Iterator|None = None, **kwargs):
+        """
+        Draw Deck on matplotlib axis
+        
+        Args:
+            ax (matplotlib.pyplot.Axes): plot axes
+            zoom_out (bool, optional): whether to use zoomed out view. Defaults to False.
+            color_iterator (Iterator|None, optional): iterator for colors. Defaults to None.
+        """
+        bg_color = next(color_iterator) if isinstance(color_iterator,Iterator) else None
+        ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], alpha=0.5, color=bg_color, **kwargs))
+        ax.add_patch(plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, **kwargs))
+        logger.info(f"{bg_color.replace('tab:','')} -> {self.name.replace('_sub','.')}")
+        for zone in self._zones.values():
+            if isinstance(zone, Deck):
+                zone._draw(ax, zoom_out=zoom_out, color_iterator=color_iterator, **kwargs)
+        
+        def draw_slots(ax, slots:dict[str, Slot|SimpleNamespace], **kwargs):
+            for slot in slots.values():
+                if isinstance(slot, Slot):
+                    logger.debug(f"Drawing: {slot.name}")
+                    slot._draw(ax, zoom_out=zoom_out, **kwargs)
+            return
+        draw_slots(ax, self._slots, **kwargs)
         return
 
 
