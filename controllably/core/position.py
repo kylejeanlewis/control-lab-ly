@@ -832,7 +832,6 @@ class Labware:
             return patches
         
         for well in self._wells.values():
-            logger.debug(f"Drawing: {well.name}")
             patch = well._draw(ax, zoom_out=zoom_out, **kwargs)
             patches.append(patch)
         # ax.add_collection(PatchCollection(patches, match_original=True))
@@ -1068,7 +1067,6 @@ class Slot:
         patches.append(patch)
         
         if isinstance(self.loaded_labware, Labware):
-            logger.debug(f"Drawing: {self.loaded_labware.name}")
             _patches = self.loaded_labware._draw(ax, zoom_out=zoom_out,**kwargs)
             patches.extend(_patches)
         # ax.add_collection(PatchCollection(patches, match_original=True))
@@ -1437,16 +1435,10 @@ class Deck:
                 _patches = zone._draw(ax, zoom_out=zoom_out, color_iterator=color_iterator, **kwargs)
                 patches.extend(_patches)
         
-        def draw_slots(ax, slots:dict[str, Slot|SimpleNamespace], **kwargs):
-            _inner_patches = []
-            for slot in slots.values():
-                if isinstance(slot, Slot):
-                    logger.debug(f"Drawing: {slot.name}")
-                    _inner_slot_patches = slot._draw(ax, zoom_out=zoom_out, **kwargs)
-                    _inner_patches.extend(_inner_slot_patches)
-            return _inner_patches
-        _patches = draw_slots(ax, self._slots, **kwargs)
-        patches.extend(_patches)
+        for slot in self.slots.values():
+            if isinstance(slot, Slot):
+                _patches = slot._draw(ax, zoom_out=zoom_out, **kwargs)
+                patches.extend(_patches)
         return patches
 
 
