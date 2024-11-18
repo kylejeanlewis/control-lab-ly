@@ -408,7 +408,7 @@ class QInstrumentsDevice:
             bool|None: whether the LED is enabled
         """
         response = self.query("getCLED", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         state = bool(int(response)%2)
         return state
@@ -466,7 +466,7 @@ class QInstrumentsDevice:
         """
         self.query("resetDevice")
         start_time = time.perf_counter()
-        while self.getShakeState(verbose=False) != 3:
+        while self.getShakeState() != 3:
             time.sleep(0.1)
             if time.perf_counter() - start_time > timeout:
                 break
@@ -505,7 +505,7 @@ class QInstrumentsDevice:
         """
         self.query("leaveEcoMode")
         start_time = time.perf_counter()
-        while self.getShakeState(verbose=False) != 3:
+        while self.getShakeState() != 3:
             time.sleep(0.1)
             if time.perf_counter() - start_time > timeout:
                 break
@@ -538,7 +538,7 @@ class QInstrumentsDevice:
             float|None: acceleration/deceleration value
         """
         response = self.query("getShakeAcceleration", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
         
@@ -550,7 +550,7 @@ class QInstrumentsDevice:
             float|None: acceleration/deceleration time in seconds
         """
         response = self.query("getShakeAccelerationMax", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
     
@@ -562,7 +562,7 @@ class QInstrumentsDevice:
             float|None: acceleration/deceleration time in seconds
         """
         response = self.query("getShakeAccelerationMin", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
     
@@ -574,7 +574,7 @@ class QInstrumentsDevice:
             float|None: current mixing speed
         """
         response = self.query("getShakeActualSpeed", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
     
@@ -586,7 +586,7 @@ class QInstrumentsDevice:
             bool|None: whether mixing direction is counterclockwise
         """
         response = self.query("getShakeDefaultDirection", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         state = bool(int(response)%2)
         return state
@@ -599,7 +599,7 @@ class QInstrumentsDevice:
             bool|None: whether mixing direction is counterclockwise
         """
         response = self.query("getShakeDirection", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         state = bool(int(response)%2)
         return state
@@ -612,7 +612,7 @@ class QInstrumentsDevice:
             float|None: maximum target shake speed
         """
         response = self.query("getShakeMaxRpm", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
     
@@ -624,7 +624,7 @@ class QInstrumentsDevice:
             float|None: minimum target shake speed
         """
         response = self.query("getShakeMinRpm", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
     
@@ -636,7 +636,7 @@ class QInstrumentsDevice:
             float|None: minimum target shake speed
         """
         response = self.query("getShakeRemainingTime", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
     
@@ -648,7 +648,7 @@ class QInstrumentsDevice:
             float|None: upper limit for the target speed
         """
         response = self.query("getShakeSpeedLimitMax", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
     
@@ -660,7 +660,7 @@ class QInstrumentsDevice:
             float|None: lower limit for the target speed
         """
         response = self.query("getShakeSpeedLimitMin", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
     
@@ -672,7 +672,7 @@ class QInstrumentsDevice:
             int|None: shaker state as integer
         """
         response = self.query("getShakeState", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         code = f"ss{int(response)}"
         if code in ShakeStateCode._member_names_:
@@ -700,7 +700,7 @@ class QInstrumentsDevice:
             float|None: target mixing speed
         """
         response = self.query("getShakeTargetSpeed", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
     
@@ -784,7 +784,7 @@ class QInstrumentsDevice:
         """
         self.query("shakeGoHome")
         start_time = time.perf_counter()
-        while self.getShakeState(verbose=False) != 3:
+        while self.getShakeState() != 3:
             time.sleep(0.1)
             if time.perf_counter() - start_time > timeout:
                 break
@@ -833,7 +833,7 @@ class QInstrumentsDevice:
             float|None: offset value at the 40°C calibration point
         """
         response = self.query("getTemp40Calibr", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
     
@@ -845,7 +845,7 @@ class QInstrumentsDevice:
             float|None: offset value at the 90°C calibration point
         """
         response = self.query("getTemp90Calibr", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
     
@@ -857,7 +857,7 @@ class QInstrumentsDevice:
             float|None: current temperature in celsius
         """
         response = self.query("getTempActual", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
         
@@ -869,7 +869,7 @@ class QInstrumentsDevice:
             float|None: upper limit for the target temperature in celsius
         """
         response = self.query("getTempLimiterMax", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
     
@@ -881,7 +881,7 @@ class QInstrumentsDevice:
             float|None: lower limit for the target temperature in celsius
         """
         response = self.query("getTempLimiterMin", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
     
@@ -893,7 +893,7 @@ class QInstrumentsDevice:
             float|None: device specific maximum target temperature in celsius
         """
         response = self.query("getTempMax", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
     
@@ -905,7 +905,7 @@ class QInstrumentsDevice:
             float|None: device specific minimum target temperature in celsius
         """
         response = self.query("getTempMin", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
     
@@ -917,7 +917,7 @@ class QInstrumentsDevice:
             bool: whether temperature control is enabled
         """
         response = self.query("getTempState", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         state = bool(int(response)%2)
         return state
@@ -930,7 +930,7 @@ class QInstrumentsDevice:
             float|None: target temperature
         """
         response = self.query("getTempTarget", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         return response
         
@@ -1008,7 +1008,7 @@ class QInstrumentsDevice:
             bool: whether ELM self-test is enabled at device startup
         """
         response = self.query("getElmSelftest", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         state = bool(int(response)%2)
         return state
@@ -1021,7 +1021,7 @@ class QInstrumentsDevice:
             bool: whether ELM is unlocked after device startup
         """
         response = self.query("getElmStartupPosition", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         state = bool(int(response)%2)
         return state
@@ -1034,7 +1034,7 @@ class QInstrumentsDevice:
             int|None: ELM status as integer
         """
         response = self.query("getElmState", numeric=True)
-        if response is None:
+        if response is None or response == '':
             return None
         code = f"es{int(response)}"
         if code in ELMStateCode._member_names_:
