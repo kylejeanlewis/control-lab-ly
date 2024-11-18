@@ -728,12 +728,12 @@ class Labware:
         """List wells by rows"""
         return [list(r) for r in zip(*self._ordering)]
     
-    def listWells(self, by:str) -> list[Well]:
+    def listWells(self, by:str = 'col') -> list[Well]:
         """
         List wells, by columns or rows
         
         Args:
-            by (str): 'columns' or 'rows'
+            by (str, optional): 'columns' or 'rows'. Defaults to 'col'.
             
         Returns:
             list[Well]: list of `Well` objects
@@ -1303,7 +1303,7 @@ class Deck:
         Returns:
             Slot: `Slot` object
         """
-        if isinstance(value, int):
+        if not isinstance(value, str):
             value = f"slot_{value:02}"
         return self._slots.get(value, None)
     
