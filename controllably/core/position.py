@@ -978,8 +978,10 @@ class Slot:
         """
         assert self.loaded_labware is None, "Labware already loaded in slot"
         labware.parent = self
+        labware.is_stackable = labware.is_stackable
         self.loaded_labware = labware
-        self.slot_above = self.loaded_labware.slot_above
+        if isinstance(self.loaded_labware.slot_above, Slot):
+            self._add_slot_above(self.loaded_labware.slot_above)
         return
     
     def loadLabwareFromConfigs(self, details:dict[str, Any]):
@@ -1016,7 +1018,7 @@ class Slot:
             self.loaded_labware.slot_above.slot_below = None
         labware = self.loaded_labware
         self.loaded_labware = None
-        self.slot_above = None
+        self._delete_slot_above()
         return labware
     
     def _add_slot_above(self, slot_above: Slot, directly:bool = True) -> Slot|None:
