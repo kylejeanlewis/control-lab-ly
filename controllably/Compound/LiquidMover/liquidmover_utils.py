@@ -537,6 +537,7 @@ class LiquidMover(Compound):
             self.current_tip_detail: dict[str, str|np.ndarray] = {}
             
         # self.connect()
+        self.findTipRacks()
         return
     
     # Properties
@@ -647,11 +648,24 @@ class LiquidMover(Compound):
         return well.top
     
     # For liquid handlers with replaceable tips
+    def findTipRacks(self):
+        """Find all tip racks on the deck"""
+        deck = self.mover.deck
+        assert isinstance(deck, Deck), "Please first load a Deck using `Mover.loadDeck()`."
+        count = 0
+        for slot_name, slot in deck.slots.items():
+            labware = deck.slots[slot].loaded_labware
+            if isinstance(labware, Labware) and labware.is_tiprack:
+                self.assignTipRack(slot=slot_name, use_by_columns=True)
+                count += 1
+        self._logger.info(f"Found and assigned {count} tip racks.")
+        return
+    
     def assignTipRack(self, 
         slot:str, 
         zone:str|None = None, 
         *, 
-        use_by_columns:bool, 
+        use_by_columns:bool = True, 
         start_tip:str|None = None
     ):
         """
@@ -660,7 +674,7 @@ class LiquidMover(Compound):
         Args:
             slot (str): name of slot with tip rack
             zone (str|None, optional): name of zone. Defaults to None.
-            use_by_columns (bool): whether to use tips by columns
+            use_by_columns (bool, optional): whether to use tips by columns. Defaults to True.
             start_tip (str|None, optional): name of start tip. Defaults to None.
         """
         deck = self.mover.deck
