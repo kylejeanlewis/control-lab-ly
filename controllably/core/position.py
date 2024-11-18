@@ -498,7 +498,7 @@ class Labware:
         `z` (float): z offset
         `offset` (numpy.ndarray): Labware offset from Slot reference point
         `center` (numpy.ndarray): center of Labware
-        `top` (numpy.ndarray): top of well
+        `top` (numpy.ndarray): top of Labware
         `bottom_left_corner` (Position): bottom left corner of Labware
         `dimensions` (numpy.ndarray): size of Labware
         `exclusion_zone` (BoundingBox): exclusion zone to avoid
@@ -517,9 +517,9 @@ class Labware:
         `fromFile`: factory method to load Labware from file
     
     ### Methods:
-        `_addSlotAbove`: add Slot above for stackable Labware
-        `_deleteSlotAbove`: delete Slot above for stackable Labware
-        `fromTop`: offset from top of well
+        `_add_slot_above`: add Slot above for stackable Labware
+        `_delete_slot_above`: delete Slot above for stackable Labware
+        `fromTop`: offset from top of Labware
         `getAllPositions`: get all positions in Labware
         `getWell`: get `Well` using its name
         `listColumns`: list wells by columns
@@ -558,7 +558,7 @@ class Labware:
         self.exclusion_zone = BoundingBox(self.bottom_left_corner, self._dimensions, buffer)
         
         if self.is_stackable:
-            self._addSlotAbove()
+            self._add_slot_above()
         return
     
     def __repr__(self) -> str:
@@ -621,7 +621,7 @@ class Labware:
     
     @property
     def top(self) -> np.ndarray:
-        """Top of well"""
+        """Top of Labware"""
         return self.center + np.array((0,0,self.z))
     
     @property
@@ -676,10 +676,10 @@ class Labware:
             logger.warning("No details for Slot above")
             return
         self._is_stackable = value
-        _ = self._addSlotAbove() if value else self._deleteSlotAbove()
+        _ = self._add_slot_above() if value else self._delete_slot_above()
         return
     
-    def _addSlotAbove(self) -> Slot|None:
+    def _add_slot_above(self) -> Slot|None:
         """ 
         Add Slot above for stackable Labware
         
@@ -701,10 +701,10 @@ class Labware:
         slot_above.slot_below = self.parent
         self.slot_above = slot_above
         if isinstance(self.parent, Slot):
-            self.parent._addSlotAbove(slot_above)
+            self.parent._add_slot_above(slot_above)
         return slot_above
     
-    def _deleteSlotAbove(self) -> Slot|None:
+    def _delete_slot_above(self) -> Slot|None:
         """
         Delete Slot above for stackable Labware
         
@@ -716,18 +716,18 @@ class Labware:
         slot_above = self.slot_above
         self.slot_above = None
         if isinstance(self.parent, Slot):
-            self.parent._deleteSlotAbove()
+            self.parent._delete_slot_above()
         return slot_above
     
     def fromTop(self, offset:Sequence[float]|np.ndarray) -> np.ndarray:
         """
-        Offset from top of well
+        Offset from top of Labware
 
         Args:
             offset (Sequence[float]|numpy.ndarray): x,y,z offset
 
         Returns:
-            tuple: top of well with offset
+            tuple: top of Labware with offset
         """
         return self.top + np.array(offset)
 
@@ -866,8 +866,8 @@ class Slot:
         `slot_below` (Slot|None): Slot below
         
     ### Methods:
-        `_addSlotAbove`: add Slot above of stack
-        `_deleteSlotAbove`: delete Slot above of stack
+        `_add_slot_above`: add Slot above of stack
+        `_delete_slot_above`: delete Slot above of stack
         `getAllPositions`: get all positions in Slot
         `loadLabware`: load Labware in Slot
         `loadLabwareFromConfigs`: load Labware from dictionary
@@ -948,7 +948,7 @@ class Slot:
         """Exclusion zone of loaded Labware to avoid"""
         return self.loaded_labware.exclusion_zone if isinstance(self.loaded_labware, Labware) else None
 
-    def _addSlotAbove(self, slot_above: Slot, directly:bool = True) -> Slot|None:
+    def _add_slot_above(self, slot_above: Slot, directly:bool = True) -> Slot|None:
         """ 
         Add Slot above of stack
         
@@ -964,10 +964,10 @@ class Slot:
         if isinstance(self.parent, Deck):
             self.parent._slots[slot_above.name] = slot_above
         elif isinstance(self.parent, Labware):
-            self.slot_below._addSlotAbove(slot_above, directly=False)
+            self.slot_below._add_slot_above(slot_above, directly=False)
         return slot_above
     
-    def _deleteSlotAbove(self, slot_above: Slot|None = None, directly:bool = True) -> Slot|None:
+    def _delete_slot_above(self, slot_above: Slot|None = None, directly:bool = True) -> Slot|None:
         """
         Delete Slot above of stack
         
@@ -982,10 +982,22 @@ class Slot:
         if isinstance(self.parent, Deck):
             self.parent._slots.pop(slot_above.name, None)
         elif isinstance(self.parent, Labware):
-            self.slot_below._deleteSlotAbove(slot_above, directly=False)
+            self.slot_below._delete_slot_above(slot_above, directly=False)
         if directly:
             self.slot_above = None
         return slot_above
+    
+    def fromCenter(self, offset:Sequence[float]|np.ndarray) -> np.ndarray:
+        """
+        Offset from center of Slot
+
+        Args:
+            offset (Sequence[float]|numpy.ndarray): x,y,z offset
+
+        Returns:
+            tuple: center of Slot with offset
+        """
+        return self.center + np.array(offset)
     
     def getAllPositions(self) -> dict[str, tuple[float]|dict]:
         """
