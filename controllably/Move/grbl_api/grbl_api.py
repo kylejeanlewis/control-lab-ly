@@ -341,7 +341,7 @@ class GRBL(SerialDevice):
         assert (0.0 <= speed_factor <= 1.0), "Ensure speed factor is between 0.0 and 1.0"
         feed_rate = int(speed_factor * speed_max) * 60      # Convert to mm/min
         self.write(f'G90 F{feed_rate}')
-        self.read()
+        self.read(lines=True)
         return
     
     def _wait_for_status(self, statuses:Sequence[str], timeout:int = MOVEMENT_TIMEOUT) -> bool:
