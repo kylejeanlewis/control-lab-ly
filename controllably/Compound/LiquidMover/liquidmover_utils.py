@@ -653,7 +653,7 @@ class LiquidMover(Compound):
         assert isinstance(deck, Deck), "Please first load a Deck using `Mover.loadDeck()`."
         count = 0
         for slot_name, slot in deck.slots.items():
-            labware = deck.slots[slot].loaded_labware
+            labware = deck.slots[slot_name].loaded_labware
             if isinstance(labware, Labware) and labware.is_tiprack:
                 self.assignTipRack(slot=slot_name, use_by_columns=True)
                 count += 1
