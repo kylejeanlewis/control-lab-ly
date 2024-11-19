@@ -223,7 +223,7 @@ class ForceSensor(Measurer):
         }
         device = None
         try:
-            device = SerialDevice(port, baudrate, timeout=timeout, simulation=simulation, verbose=verbose)
+            device = SerialDevice(port, baudrate, timeout=timeout, simulation=simulation, verbose=False)
             device.connect()
         except Exception as e:
             logger.warning(f"Could not connect to {port}")
