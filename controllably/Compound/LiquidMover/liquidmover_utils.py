@@ -536,9 +536,7 @@ class LiquidMover(Compound):
             self.tip_racks: dict[int, Labware] = {}
             self.tip_lists: dict[int, list[str]] = {}
             self.current_tip_detail: dict[str, str|np.ndarray] = {}
-            
-        # self.connect()
-        self.findTipRacks()
+        
         return
     
     # Properties
