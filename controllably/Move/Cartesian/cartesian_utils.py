@@ -39,7 +39,7 @@ class Gantry(GCode):
         `workspace` (BoundingBox, optional): workspace bounding box. Defaults to None.
         `safe_height` (float, optional): safe height in terms of robot coordinate system. Defaults to None.
         `saved_positions` (dict, optional): dictionary of saved positions. Defaults to dict().
-        `speed_max` (float, optional): maximum speed of robot in mm/min. Defaults to 600.
+        `speed_max` (float, optional): maximum speed of robot in mm/min. Defaults to None.
         `device_type_name` (str, optional): name of the device type. Defaults to 'GRBL'.
         `baudrate` (int, optional): baudrate. Defaults to 115200.
         `movement_buffer` (Optional[int], optional): buffer for movement. Defaults to None.
@@ -124,7 +124,7 @@ class Gantry(GCode):
         scale: float = 1.0,
         deck: Deck|None = None,
         safe_height: float|None = None,                                 # in terms of robot coordinate system
-        saved_positions: dict = dict(),                     # in terms of robot coordinate system
+        saved_positions: dict = dict(),                                 # in terms of robot coordinate system
         speed_max: float|None = None,                                   # in mm/min
         device_type_name: str = 'GRBL',
         baudrate: int = 115200, 
@@ -134,6 +134,28 @@ class Gantry(GCode):
         simulation: bool = False,
         **kwargs
     ):
+        """ 
+        Initialize Gantry class
+        
+        Args:
+            port (str): serial port address
+            limits (Sequence[Sequence[float]], optional): lower and upper limits of gantry, in terms of robot coordinate system. Defaults to ((0, 0, 0), (0, 0, 0)).
+            robot_position (Position, optional): current position of the robot. Defaults to Position().
+            home_position (Position, optional): home position of the robot in terms of robot coordinate system. Defaults to Position().
+            tool_offset (Position, optional): tool offset from robot to end effector. Defaults to Position().
+            calibrated_offset (Position, optional): calibrated offset from robot to work position. Defaults to Position().
+            scale (float, optional): factor to scale the basis vectors by. Defaults to 1.0.
+            deck (Deck, optional): Deck object for workspace. Defaults to None.
+            safe_height (float, optional): safe height in terms of robot coordinate system. Defaults to None.
+            saved_positions (dict, optional): dictionary of saved positions. Defaults to dict().
+            speed_max (float, optional): maximum speed of robot in mm/min. Defaults to None.
+            device_type_name (str, optional): name of the device type. Defaults to 'GRBL'.
+            baudrate (int, optional): baudrate. Defaults to 115200.
+            movement_buffer (Optional[int], optional): buffer for movement. Defaults to None.
+            movement_timeout (Optional[int], optional): timeout for movement. Defaults to None.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+            simulation (bool, optional): whether to simulate. Defaults to False.
+        """
         workspace = BoundingBox(buffer=limits)
         _speed_max = speed_max if speed_max is not None else 600
         super().__init__(
