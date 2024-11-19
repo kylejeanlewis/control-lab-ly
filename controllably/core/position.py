@@ -776,6 +776,8 @@ class Labware:
         Returns:
             Slot|None: Slot above
         """
+        if not isinstance(self.slot_above, Slot):
+            return None
         assert isinstance(self.slot_above, Slot), "There is no Slot above to delete"
         assert not isinstance(self.slot_above.loaded_labware, Labware), "Labware is still loaded on the Slot above"
         slot_above = self.slot_above
