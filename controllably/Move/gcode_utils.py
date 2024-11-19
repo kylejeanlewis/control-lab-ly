@@ -235,7 +235,7 @@ class GCode(Mover):
             xyz = [(coord if axis.upper()!=ax else 0) for coord,ax in zip(self.robot_position.coordinates,'XYZ')]
         self.updateRobotPosition(to=Position(xyz))
         if any(self.home_position.coordinates):
-            self.moveTo(self.home_position, self.speed_factor)
+            self.moveTo(self.home_position, self.speed_factor, robot=True)
         self.updateRobotPosition(to=self.home_position)
         self._logger.info(f"Home | {axis=}")
         return success
