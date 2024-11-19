@@ -104,11 +104,7 @@ class ForceSensor(Measurer):
     
     def disconnect(self):
         """Disconnect from device"""
-        try:
-            self.device.close()
-        except Exception as e:
-            if self.verbose:
-                logger.exception(e)
+        self.device.disconnect()
         self.setFlag(connected=False)
         return
     
@@ -119,7 +115,7 @@ class ForceSensor(Measurer):
         Returns:
             str: device response
         """
-        response = self._read()
+        response = self.device.read()
         now = datetime.now()
         try:
             value = int(response)
@@ -228,6 +224,7 @@ class ForceSensor(Measurer):
         device = None
         try:
             device = SerialDevice(port, baudrate, timeout=timeout, simulation=simulation, verbose=verbose)
+            device.connect()
         except Exception as e:
             logger.warning(f"Could not connect to {port}")
             if self.verbose:
@@ -249,23 +246,4 @@ class ForceSensor(Measurer):
             self.getForce()
         print('Stop listening...')
         return
-
-    def _read(self) -> str:
-        """
-        Read response from device
-
-        Returns:
-            str: response string
-        """
-        response = ''
-        try:
-            response = self.device.readline()
-        except Exception as e:
-            if self.verbose:
-                logger.exception(e)
-        else:
-            response = response.decode('utf-8','replace').strip()
-            if self.verbose:
-                logger.debug(response)
-        return response
  
