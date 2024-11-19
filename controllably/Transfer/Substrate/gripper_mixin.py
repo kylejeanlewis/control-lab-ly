@@ -2,21 +2,32 @@
 """
 This module contains the GripperMixin class.
 
+Attributes:
+    GRIPPER_ON_DELAY (int): delay for gripper on
+    GRIPPER_OFF_DELAY (int): delay for gripper off
+
 ## Classes:
     `GripperMixin`: Mixin class for gripper control
     
-<i>Documentation last updated: 2024-11-14</i>
+<i>Documentation last updated: 2024-11-19</i>
 """
 # Standard library imports
 from __future__ import annotations
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
 
+GRIPPER_ON_DELAY = 0
+GRIPPER_OFF_DELAY = 0
+
 class GripperMixin:
     """
     Mixin class for vacuum control
+    
+    ### Attributes
+        `gripper_delays` (dict): delays for gripper control
     
     ### Methods
         `drop`: Drop to release object
@@ -27,17 +38,34 @@ class GripperMixin:
     def __init__(self):
         """Initialize GripperMixin class"""
         super().__init__()
+        self.gripper_delays = dict(on=GRIPPER_ON_DELAY, off=GRIPPER_OFF_DELAY)
         return
     
-    def drop(self):
-        """Drop to release object"""
+    def drop(self, wait:float|None = None):
+        """
+        Drop to release object
+        
+        Args:
+            wait (float|None): Time to wait after dropping. Defaults to None.
+        """
         logger.warning("Dropping object")
-        return self.toggleGrip(False)
+        self.toggleGrip(False)
+        wait = self.gripper_delays["off"] if wait is None else wait
+        time.sleep(wait)
+        return 
     
-    def grab(self):
-        """Grab to secure object"""
+    def grab(self, wait:float|None = None):
+        """
+        Grab to secure object
+        
+        Args:
+            wait (float|None): Time to wait after grabbing. Defaults to None
+        """
         logger.warning("Grabbing object")
-        return self.toggleGrip(True)
+        self.toggleGrip(True)
+        wait = self.gripper_delays["on"] if wait is None else wait
+        time.sleep(wait)
+        return 
     
     def toggleGrip(self, on:bool):
         """Toggle grip"""
