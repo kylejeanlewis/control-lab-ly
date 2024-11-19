@@ -376,7 +376,11 @@ class GRBL(SerialDevice):
         startup_lines = self.read(True)
         self.clearAlarms()
         info = self.checkInfo()
-        self._version = info[0].split(':')[1]
+        try:
+            self._version = info[0].split(':')[1]
+        except:
+            self._version = '1.1'
+            self._logger.error(f"GRBL version not found. Defaulting to {self._version}")
         parameters = self.checkParameters()
         self._home_offset = np.array(parameters.get('G54', [0,0,0]))
         
