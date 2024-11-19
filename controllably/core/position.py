@@ -1054,7 +1054,7 @@ class Slot:
             Slot|None: Slot above
         """
         slot_above = self.slot_above if slot_above is None else slot_above
-        if isinstance(self.parent, Deck):
+        if isinstance(self.parent, Deck) and isinstance(slot_above, Slot):
             self.parent._slots.pop(slot_above.name, None)
         elif isinstance(self.parent, Labware):
             self.slot_below._delete_slot_above(slot_above, directly=False)
