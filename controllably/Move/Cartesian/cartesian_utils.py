@@ -81,6 +81,8 @@ class Gantry(GCode):
         `disconnect`: disconnect from the device
         `resetFlags`: reset all flags to class attribute `_default_flags`
         `shutdown`: shutdown procedure for tool
+        `enterZone`: enter a zone on the deck
+        `exitZone`: exit the current zone on the deck
         `halt`: halt robot movement
         `home`: make the robot go home
         `isFeasible`: checks and returns whether the target coordinates is feasible

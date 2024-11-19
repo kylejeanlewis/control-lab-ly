@@ -488,6 +488,7 @@ class LiquidMover(Compound):
         `touchTip`: touch the tip against the inner walls of the well
         
         #### (For liquid handlers with replaceable tips)
+        `findTipRacks`: find all tip racks on the deck
         `assignTipRack`: assign a tip rack by its slot
         `assignBin`: assign a bin by its slot
         `attachTip`: attach new pipette tip from next available rack position
