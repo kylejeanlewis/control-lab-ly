@@ -269,7 +269,7 @@ class BioShake(Maker):
         self.flags.speed_reached = flag
         return self.set_speed, self.speed
     
-    def getStatus(self, verbose:bool = True) -> tuple[int|None]:
+    def getStatus(self) -> tuple[int|None]:
         """
         Retrieve the status of the device's ELM, shaker, and temperature control
 
@@ -279,8 +279,8 @@ class BioShake(Maker):
         Returns:
             tuple[int]: ELM status, shaker status, temperature control status
         """
-        state_elm = self.device.getElmState(verbose=verbose)
-        state_shake = self.device.getShakeState(verbose=verbose)
+        state_elm = self.device.getElmState()
+        state_shake = self.device.getShakeState()
         state_temperature = int(self.device.getTempState())
         return state_elm, state_shake, state_temperature
     
