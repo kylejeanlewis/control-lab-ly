@@ -526,7 +526,7 @@ class QInstrumentsDevice:
         while not response:
             if time.perf_counter() - start_time > timeout:
                 break
-            response = self.read()[0]
+            response = self.read()#[0]
         return
         
     # Shaking methods
@@ -1065,7 +1065,7 @@ class QInstrumentsDevice:
         while not response:
             if time.perf_counter() - start_time > timeout:
                 break
-            response = self.read()[0]
+            response = self.read()#[0]
         return
     
     def setElmSelftest(self, enable:bool):
@@ -1102,6 +1102,6 @@ class QInstrumentsDevice:
         while not response:
             if time.perf_counter() - start_time > timeout:
                 break
-            response = self.read()[0]
+            response = self.read()#[0]
         return
     
