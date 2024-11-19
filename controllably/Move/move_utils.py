@@ -805,7 +805,8 @@ class Mover:
             deck_heights = {name: max(bounds.bounds[:,2]) for name,bounds in self.deck.exclusion_zone.items()}
             heights_list = [height for height in deck_heights.values()]
             worktool_height = self.transformRobotToWork(self.transformRobotToTool(Position((0,0,height)),self.tool_offset),self.calibrated_offset).z
-            assert worktool_height >= max(set(heights_list)), f"Ensure safe height is above all deck heights: {deck_heights}"
+            if len(heights_list) > 0:
+                assert worktool_height >= max(set(heights_list)), f"Ensure safe height is above all deck heights: {deck_heights}"
         self.safe_height = height
         return
     
