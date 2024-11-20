@@ -18,7 +18,8 @@ import time
 
 # Local application imports
 from ...core.connection import SerialDevice
-from ..measure_utils import Measurer
+# from ..measure_utils import Measurer
+from ..measure_utils import Programmable
 
 _logger = logging.getLogger("controllably.Measure")
 _logger.debug(f"Import: OK <{__name__}>")
@@ -34,7 +35,7 @@ CALIBRATION_FACTOR = 6.862879436681862  # FIXME: needs to be calibrated
 COLUMNS = ('Time', 'Value', 'Factor', 'Baseline', 'Force')
 """Headers for output data from force sensor"""
 
-class ForceSensor(Measurer):
+class ForceSensor(Programmable):
     """
     ForceSensor provides methods to read out values from a force sensor
 
