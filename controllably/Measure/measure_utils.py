@@ -389,7 +389,7 @@ class Programmable(Measurer):
     def reset(self):
         """Reset the device"""
         super().reset()
-        self.device.reset()
+        # self.device.reset()
         self.datatype = self._default_datatype
         self.program_type = self._default_program
         self.recent_parameters = []
