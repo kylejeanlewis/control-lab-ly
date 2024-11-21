@@ -1,4 +1,4 @@
-# %% -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 This module holds the base class for jointed mover tools.
 
@@ -7,12 +7,15 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
-from abc import abstractmethod
 import logging
+from typing import Sequence
+
+# Third party imports 
 import numpy as np
-from typing import Optional
+from scipy.spatial.transform import Rotation
 
 # Local application imports
+from ...core.position import Position
 from ..move_utils import Mover
 
 logger = logging.getLogger(__name__)
@@ -25,7 +28,7 @@ class RobotArm(Mover):
     
     ### Constructor
     Args:
-        `safe_height` (Optional[float], optional): height at which obstacles can be avoided. Defaults to None.
+        `safe_height` (float|None, optional): height at which obstacles can be avoided. Defaults to None.
         `retract` (bool, optional): whether to retract arm before movement. Defaults to False.
 
     ### Methods
@@ -34,8 +37,8 @@ class RobotArm(Mover):
     - `isFeasible`: checks and returns whether the target coordinate is feasible
     - `moveCoordBy`: relative Cartesian movement and tool orientation, using robot coordinates
     - `moveCoordTo`: absolute Cartesian movement and tool orientation, using robot coordinates
-    - `moveJointBy`: relative joint movement
-    - `moveJointTo`: absolute joint movement
+    - `jointMoveBy`: relative joint movement
+    - `jointMoveTo`: absolute joint movement
     - `reset`: reset the robot
     - `retractArm`: tuck in arm, rotate about base, then extend again
     - `setSpeed`: set the speed of the robot
@@ -49,63 +52,58 @@ class RobotArm(Mover):
     - `rotateTo`: absolute end effector rotation
     """
     
-    _default_flags = {
-        'busy': False,
-        'connected': False,
-        'retract': False
-    }
     _place: str = '.'.join(__name__.split('.')[1:-1])
-    def __init__(self, safe_height:Optional[float] = None, retract:bool = False, **kwargs):
+    def __init__(self, **kwargs):
         """
         Instantiate the class
 
         Args:
-            safe_height (Optional[float], optional): height at which obstacles can be avoided. Defaults to None.
+            safe_height (float|None, optional): height at which obstacles can be avoided. Defaults to None.
             retract (bool, optional): whether to retract arm before movement. Defaults to False.
         """
         super().__init__(**kwargs)
-        
-        self.setFlag(retract=retract)
-        if safe_height is not None:
-            self.setHeight(safe=safe_height)
+        self.joint_limits = np.array([[-180]*6, [180]*6])
+        self._joint_angles = np.zeros(6)
         return
     
-    @abstractmethod
-    def moveCoordBy(self, 
-        vector: tuple[float] = (0,0,0), 
-        angles: tuple[float] = (0,0,0),
-        **kwargs
-    ) -> bool:
+    @property
+    def joint_angles(self) -> np.ndarray:
+        """Current joint angles"""
+        return self._joint_angles
+    @joint_angles.setter
+    def joint_angles(self, value: Sequence[float]|np.ndarray):
+        assert isinstance(value, (Sequence, np.ndarray)), f"Ensure `value` is a Sequence or np.ndarray object"
+        assert len(value) == 6, f"Ensure `value` is a 6-element sequence for j1~j6"
+        self._joint_angles = np.array(value)
+        return
+    
+    def isFeasibleJoint(self, joint_angles: Sequence[float]|np.ndarray) -> bool:
         """
-        Relative Cartesian movement and tool orientation, using robot coordinates
-
-        Args:
-            vector (tuple[float], optional): x,y,z displacement vector. Defaults to (0,0,0).
-            angles (tuple[float], optional): a,b,c rotation angles in degrees. Defaults to (0,0,0).
-
-        Returns:
-            bool: whether movement is successful
-        """
-
-    @abstractmethod
-    def moveCoordTo(self, 
-        coordinates: Optional[tuple[float]] = None, 
-        orientation: Optional[tuple[float]] = None,
-        **kwargs
-    ) -> bool:
-        """
-        Absolute Cartesian movement and tool orientation, using robot coordinates
-
-        Args:
-            coordinates (Optional[tuple[float]], optional): x,y,z position vector. Defaults to None.
-            orientation (Optional[tuple[float]], optional): a,b,c orientation angles in degrees. Defaults to None.
+        Check if the target joint angles are feasible
         
+        Args:
+            joint_angles (tuple[float]): j1~j6 orientation angles in degrees
+            
         Returns:
-            bool: whether movement is successful
+            bool: whether the target position is feasible
         """
-
-    @abstractmethod
-    def moveJointBy(self, relative_angles: tuple[float], **kwargs) -> bool:
+        assert isinstance(joint_angles, (Sequence, np.ndarray)), "Ensure `joint_angles` is a Sequence or np.ndarray object"
+        assert len(joint_angles) == 6, "Ensure `joint_angles` is a 6-element sequence for j1~j6"
+        
+        feasible = all([(self.joint_limits[0][i] <= angle <= self.joint_limits[1][i]) for i, angle in enumerate(joint_angles)])
+        if not feasible:
+            self._logger.error(f"Target set of joints {joint_angles} is not feasible")
+            raise RuntimeError(f"Target set of joints {joint_angles} is not feasible")
+        return feasible
+    
+    def jointMoveBy(self, 
+        by: Sequence[float]|np.ndarray, 
+        speed_factor: float|None = None,
+        *,
+        jog: bool = False,
+        rapid: bool = False,
+        robot: bool = True
+    ) -> np.ndarray:
         """
         Relative joint movement
 
@@ -118,11 +116,34 @@ class RobotArm(Mover):
         Returns:
             bool: whether movement is successful
         """
-        if len(relative_angles) == 6:
-            raise ValueError('Length of input needs to be 6.')
+        assert isinstance(by, (Sequence, np.ndarray)), "Ensure `by` is a Sequence or np.ndarray object"
+        assert len(by) == 6, "Ensure `by` is a 6-element sequence for j1~j6"
+        assert robot, "Ensure `robot` is True for joint movement"
+        joint_move_by = np.array(by)
+        speed_factor = self.speed_factor if speed_factor is None else speed_factor
+        self._logger.info(f"Joint Move By | {joint_move_by} at speed factor {speed_factor}")
+        
+        # Convert to robot coordinates
+        if not self.isFeasibleJoint(self.joint_angles + joint_move_by):
+            self._logger.warning(f"Target movement {joint_move_by} is not feasible")
+            return self.joint_angles
+        
+        # Implementation of relative movement
+        ...
+        
+        # Update position
+        self.updateJointPosition(by=joint_move_by)
+        raise NotImplementedError
+        return self.joint_angles
 
-    @abstractmethod
-    def moveJointTo(self, absolute_angles: tuple[float], **kwargs) -> bool:
+    def jointMoveTo(self,
+        to: Sequence[float]|np.ndarray,
+        speed_factor: float|None = None,
+        *,
+        jog: bool = False,
+        rapid: bool = False,
+        robot: bool = True
+    ) -> Position:
         """
         Absolute joint movement
 
@@ -135,34 +156,27 @@ class RobotArm(Mover):
         Returns:
             bool: whether movement is successful
         """
-        if len(absolute_angles) != 6:
-            raise ValueError('Length of input needs to be 6.')
-    
-    @abstractmethod
-    def retractArm(self, target: Optional[tuple[float]] = None) -> bool:
-        """
-        Tuck in arm, rotate about base, then extend again
-
-        Args:
-            target (Optional[tuple[float]], optional): x,y,z coordinates of destination. Defaults to None.
-
-        Returns:
-            bool: whether movement is successful
-        """
+        assert isinstance(to, (Sequence, np.ndarray)), "Ensure `to` is a Sequence or np.ndarray object"
+        assert len(to) == 6, "Ensure `to` is a 6-element sequence for j1~j6"
+        assert robot, "Ensure `robot` is True for joint movement"
+        joint_move_to = np.array(to)
+        speed_factor = self.speed_factor if speed_factor is None else speed_factor
+        self._logger.info(f"Joint Move To | {joint_move_to} at speed factor {speed_factor}")
         
-    @abstractmethod
-    def _convert_cartesian_to_angles(self, src_point:np.ndarray, dst_point: np.ndarray) -> float:
-        """
-        Convert travel between two points into relevant rotation angles and/or distances
+        # Convert to robot coordinates
+        if not self.isFeasibleJoint(joint_move_to):
+            self._logger.warning(f"Target position {joint_move_to} is not feasible")
+            return self.joint_angles
+        
+        # Implementation of absolute movement
+        ...
+        
+        # Update position
+        self.updateJointPosition(to=joint_move_to)
+        raise NotImplementedError
+        return self.joint_angles
+      
 
-        Args:
-            src_point (np.ndarray): (x,y,z) coordinates, orientation of starting point
-            dst_point (np.ndarray): (x,y,z) coordinates, orientation of ending point
-
-        Returns:
-            float: relevant rotation angles (in degrees) and/or distances (in mm)
-        """
-    
     def home(self, safe:bool = True, tool_offset:bool = True) -> bool:
         """
         Make the robot go home
@@ -193,145 +207,82 @@ class RobotArm(Mover):
         print("Homed")
         return all(success)
     
-    def moveBy(self, 
-        vector: tuple[float] = (0,0,0), 
-        angles: tuple[float] = (0,0,0), 
-        speed_factor: Optional[float] = None,
-        **kwargs
-    ) -> bool:
+    def rotateBy(self,
+        by: Sequence[float]|Rotation|np.ndarray,
+        speed_factor: float|None = None,
+        *,
+        jog: bool = False,
+        robot: bool = True
+    ) -> Rotation:
         """
-        Move the robot by target direction, by specified vector and angles
-
+        Rotate the robot by target direction
+        
         Args:
-            vector (tuple[float], optional): x,y,z vector to move in. Defaults to (0,0,0).
-            angles (tuple[float], optional): a,b,c angles to move in. Defaults to (0,0,0).
-            speed_factor (Optional[float], optional): speed factor of travel. Defaults to None.
-
-        Returns:
-            bool: whether movement is successful
-        """
-        vector = self._transform_in(vector=vector)
-        vector = np.array(vector)
-        angles = np.array(angles)
-        
-        speed_change, prevailing_speed_factor = False, self.speed_factor
-        if self.speed_factor != speed_factor:
-            speed_change, prevailing_speed_factor = self.setSpeedFactor(speed_factor)
-        
-        ret = False
-        if len(angles) == 3:
-            ret = self.moveCoordBy(vector, angles, **kwargs)
-        elif len(angles) == 6:
-            ret = self.moveJointBy(relative_angle=angles, **kwargs)
-        
-        if speed_change:
-            self.setSpeedFactor(prevailing_speed_factor)
-        return ret
-
-    def moveTo(self, 
-        coordinates: Optional[tuple[float]] = None, 
-        orientation: Optional[tuple[float]] = None, 
-        tool_offset: bool = True, 
-        speed_factor: Optional[float] = None,
-        retract: bool = False, 
-        **kwargs
-    ) -> bool:
-        """
-        Move the robot to target position, using workspace coordinates
-
-        Args:
-            coordinates (Optional[tuple[float]], optional): x,y,z coordinates to move to. Defaults to None.
-            orientation (Optional[tuple[float]], optional): a,b,c orientation to move to. Defaults to None.
-            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
-            speed_factor (Optional[float], optional): speed factor of travel. Defaults to None.
-            retract (bool, optional): whether to retract arm before movement. Defaults to False.
-
-        Returns:
-            bool: whether movement is successful
-        """
-        if coordinates is None:
-            coordinates,_ = self.tool_position if tool_offset else self.user_position
-        if orientation is None:
-            orientation = self.orientation
-        coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
-        coordinates = np.array(coordinates)
-        orientation = np.array(orientation)
-        
-        speed_change, prevailing_speed_factor = False, self.speed_factor
-        if self.speed_factor != speed_factor:
-            speed_change, prevailing_speed_factor = self.setSpeedFactor(speed_factor)
-        
-        if self.flags['retract'] and retract:
-            self.retractArm(coordinates)
-        
-        ret = False
-        if len(orientation) == 3:
-            ret = self.moveCoordTo(coordinates, orientation, **kwargs)
-        elif len(orientation) == 6:
-            ret = self.moveJointTo(absolute_angle=orientation, **kwargs)
-        
-        if speed_change:
-            self.setSpeedFactor(prevailing_speed_factor)
-        return ret
-    
-    def rotateBy(self, angles: tuple[float], speed_factor: Optional[float] = None, **kwargs) -> bool:
-        """
-        Relative effector rotation
-
-        Args:
-            angles (tuple[float]): a,b,c rotation angles in degrees
-            speed_factor (Optional[float], optional): speed factor of travel. Defaults to None.
+            by (Sequence[float] | Rotation | np.ndarray): target direction
+            speed_factor (float, optional): fraction of maximum speed to rotate at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            robot (bool, optional): whether to rotate the robot. Defaults to False.
             
-        Raises:
-            Exception: Length of input needs to be 3 or 6
-        
         Returns:
-            bool: whether movement is successful
+            Rotation: new tool/robot orientation
         """
-        if not any(angles):
-            return True
-        speed_change, prevailing_speed_factor = False, self.speed_factor
-        if self.speed_factor != speed_factor:
-            speed_change, prevailing_speed_factor = self.setSpeedFactor(speed_factor)
+        assert isinstance(by, (Sequence, Rotation, np.ndarray)), f"Ensure `by` is a Sequence or Rotation or np.ndarray object"
+        if isinstance(by, (Sequence, np.ndarray)):
+            assert len(by) == 3, f"Ensure `by` is a 3-element sequence for c,b,a"
+        rotate_by = by if isinstance(by, Rotation) else Rotation.from_euler('zyx', by, degrees=True)
+        speed_factor = self.speed_factor if speed_factor is None else speed_factor
+        self._logger.info(f"Rotate By | {rotate_by} at speed factor {speed_factor}")
         
-        ret = None
-        if len(angles) == 3:
-            ret = self.moveJointBy((0,0,0,*angles), **kwargs)
-        if len(angles) == 6:
-            ret = self.moveJointBy(angles, **kwargs)
-        if ret is None:
-            raise ValueError('Length of input needs to be 3 or 6.')
-        if speed_change:
-            self.setSpeedFactor(prevailing_speed_factor)
-        return ret
+        # Convert to robot coordinates
+        rotate_by = rotate_by               # not affected by robot or tool coordinates for rotation
         
-    def rotateTo(self, orientation: tuple[float], speed_factor: Optional[float] = None, **kwargs) -> bool:
+        # Implementation of relative rotation
+        current_orientation = self.robot_position.Rotation if robot else self.tool_position.Rotation
+        new_orientation = rotate_by * current_orientation
+        return self.rotateTo(new_orientation, speed_factor=speed_factor, jog=jog, robot=robot)
+        ...
+        
+        # Update position
+        self.updateJointPosition(by=rotate_by)
+        raise NotImplementedError
+        return self.robot_position.Rotation if robot else self.worktool_position.Rotation
+        
+    def rotateTo(self,
+        to: Sequence[float]|Rotation|np.ndarray,
+        speed_factor: float|None = None,
+        *,
+        jog: bool = False,
+        robot: bool = False
+    ) -> Rotation:
         """
-        Absolute end effector rotation
-
+        Rotate the robot to target orientation
+        
         Args:
-            orientation (tuple[float]): a,b,c orientation angles in degrees
-            speed_factor (Optional[float], optional): speed factor of travel. Defaults to None.
-        
-        Raises:
-            Exception: Length of input needs to be 3 or 6
-        
+            to (Sequence[float] | Rotation | np.ndarray): target orientation
+            speed_factor (float, optional): fraction of maximum speed to rotate at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            robot (bool, optional): whether to rotate the robot. Defaults to False.
+            
         Returns:
-            bool: whether movement is successful
+            Rotation: new tool/robot orientation
         """
-        if not any(orientation):
-            return True
-        speed_change, prevailing_speed_factor = False, self.speed_factor
-        if self.speed_factor != speed_factor:
-            speed_change, prevailing_speed_factor = self.setSpeedFactor(speed_factor)
+        assert isinstance(to, (Sequence, Rotation, np.ndarray)), f"Ensure `to` is a Sequence or Rotation or np.ndarray object"
+        if isinstance(to, (Sequence, np.ndarray)):
+            assert len(to) == 3, f"Ensure `to` is a 3-element sequence for c,b,a"
+        rotate_to = to if isinstance(to, Rotation) else Rotation.from_euler('zyx', to, degrees=True)
+        speed_factor = self.speed_factor if speed_factor is None else speed_factor
+        self._logger.info(f"Rotate To | {rotate_to} at speed factor {speed_factor}")
         
-        ret = None
-        if len(orientation) == 3:
-            ret = self.rotateBy(orientation - self.orientation, **kwargs)
-        if len(orientation) == 6:
-            ret = self.moveJointTo(orientation, **kwargs)
-        if ret is None:
-            raise ValueError('Length of input needs to be 3 or 6.')
-        if speed_change:
-            self.setSpeedFactor(prevailing_speed_factor)
-        return ret
+        # Convert to robot coordinates
+        if robot:
+            rotate_to = rotate_to
+        else:
+            rotate_to = self.tool_offset.invert().Rotation * self.calibrated_offset.invert().Rotation * rotate_to
+        
+        # Implementation of absolute rotation
+        joint_angles = [0,0,0,*rotate_to.as_euler('xyz', degrees=True)]
+        self.jointMoveTo(joint_angles, speed_factor=speed_factor, jog=jog, robot=True)
+        
+        # Update position
+        # self.updateJointPosition(to=joint_angles)
+        return self.robot_position.Rotation if robot else self.worktool_position.Rotation
