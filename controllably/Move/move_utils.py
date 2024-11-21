@@ -374,10 +374,11 @@ class Mover:
         deck_safe = True
         if isinstance(self.deck, Deck):
             deck_safe = not self.deck.isExcluded(ex_pos.coordinates)
-        if not all([within_range, deck_safe]):
+        feasible = all([within_range, deck_safe])
+        if not feasible:
             self._logger.error(f"Target position {position} is not feasible")
             raise RuntimeError(f"Target position {position} is not feasible")
-        return all([within_range, deck_safe])
+        return feasible
     
     def loadDeck(self, deck: Deck):
         """
