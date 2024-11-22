@@ -225,7 +225,7 @@ from controllably.core.position import BoundingBox, Position
 p = Position((1,2,3))
 dim = (100,200,300)
 buffer = ((-10,-20,-30),(40,50,60))
-bb = BoundingBox(p, dim, buffer)
+bb = BoundingBox(reference=p, dimensions=dim, buffer=buffer)
 
 # %%
 point = (1,2,3)
