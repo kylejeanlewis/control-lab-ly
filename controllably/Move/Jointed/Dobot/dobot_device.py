@@ -113,10 +113,8 @@ class DobotDevice:
         self.move_api = move_api
         self._logger.info(f"Connected to {self.host} at {DASHBOARD_PORT} and {FEEDBACK_PORT}")
         
+        self.reset()
         if isinstance(self.dashboard_api, DobotApiDashboard):
-            self.dashboard_api.DisableRobot()
-            self.dashboard_api.ClearError()
-            self.dashboard_api.EnableRobot()
             self.dashboard_api.User(0)
             self.dashboard_api.Tool(0)
             self.dashboard_api.SpeedFactor(100)
@@ -140,6 +138,13 @@ class DobotDevice:
         else:
             self._logger.info(f"Disconnected from {self.host}")
         self.flags.connected = False
+        return
+    
+    def reset(self):
+        if isinstance(self.dashboard_api, DobotApiDashboard):
+            self.dashboard_api.DisableRobot()
+            self.dashboard_api.ClearError()
+            self.dashboard_api.EnableRobot()
         return
     
     def query(self, data:Any, lines:bool = True) -> list[str]|None:     # NOTE: not implemented
@@ -196,3 +201,27 @@ class DobotDevice:
         except socket.error as e:
             self._logger.debug(f"Failed to send: {data!r}")
         return False
+
+    # Dashboard API
+    def DisableRobot(self):
+        return self.dashboard_api.DisableRobot() if isinstance(self.dashboard_api, DobotApiDashboard) else None
+    
+    def ResetRobot(self):
+        return self.dashboard_api.ResetRobot() if isinstance(self.dashboard_api, DobotApiDashboard) else None
+    
+    def SpeedFactor(self, speed_factor:int):
+        return self.dashboard_api.SpeedFactor(speed_factor) if isinstance(self.dashboard_api, DobotApiDashboard) else None
+    
+    # Move API
+    def JointMovJ(self, j1:float, j2:float, j3:float, j4:float, **kwargs):
+        return self.move_api.JointMovJ(j1,j2,j3,j4, **kwargs) if isinstance(self.move_api, DobotApiMove) else None    
+    
+    def MovJ(self, x:float, y:float, z:float, r:float, **kwargs):
+        return self.move_api.MovJ(x,y,z,r, **kwargs) if isinstance(self.move_api, DobotApiMove) else None
+    
+    def RelMovL(self, offsetX:float, offsetY:float, offsetZ:float, offsetR:float, **kwargs):
+        return self.move_api.RelMovL(offsetX,offsetY,offsetZ,offsetR, **kwargs) if isinstance(self.move_api, DobotApiMove) else None
+    
+    def RelMovJ(self, offset1:float, offset2:float, offset3:float, offset4:float, **kwargs):
+        return self.move_api.RelMovJ(offset1,offset2,offset3,offset4, **kwargs) if isinstance(self.move_api, DobotApiMove) else None
+    
