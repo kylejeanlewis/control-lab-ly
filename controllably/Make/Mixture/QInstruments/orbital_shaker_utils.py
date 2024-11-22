@@ -119,7 +119,7 @@ class BioShake(Maker):
             simulation (bool, optional): whether to simulate. Defaults to False.
         """
         super().__init__(device_type=QInstrumentsDevice, port=port, verbose=verbose, simulation=simulation, **kwargs)
-        assert isinstance(self.device, QInstrumentsDevice), f"Device ({self.device}) not supported for {self.__class__.__name__}"
+        assert isinstance(self.device, QInstrumentsDevice), "Ensure device is of type `QInstrumentsDevice`"
         self.device: QInstrumentsDevice = self.device
         self.buffer_df = pd.DataFrame(columns=list(COLUMNS))
         
