@@ -118,7 +118,7 @@ class MG400(Dobot):
             x,y = (x*w,y*w)
         else:
             x,y = (0,safe_radius)
-        ret = self.moveCoordTo((x,y,safe_height), self.orientation)
+        ret = self.moveTo((x,y,safe_height), self.orientation)
         return_values.append(ret)
 
         if target is not None and len(target) == 3:
@@ -128,7 +128,7 @@ class MG400(Dobot):
                 x1,y1 = (x1*w1,y1*w1)
             else:
                 x1,y1 = (0,safe_radius)
-            ret = self.moveCoordTo((x1,y1,SAFE_HEIGHT), self.orientation)
+            ret = self.moveTo((x1,y1,SAFE_HEIGHT), self.orientation)
             return_values.append(ret)
         return all(return_values)
     
