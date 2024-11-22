@@ -33,7 +33,7 @@ class M1Pro(Dobot):
     ### Methods
     - `home`: make the robot go home
     - `isFeasible`: checks and returns whether the target coordinate is feasible
-    - `moveCoordBy`: relative Cartesian movement and tool orientation, using robot coordinates
+    - `moveBy`: relative Cartesian movement and tool orientation, using robot coordinates
     - `retractArm`: tuck in arm, rotate about base, then extend again (NOTE: not implemented)
     - `setHandedness`: set the handedness of the robot
     - `stretchArm`: extend the arm to full reach
@@ -128,7 +128,7 @@ class M1Pro(Dobot):
             self.setHandedness(right_hand=right_hand, stretch=True) 
         return not self.deck.isExcluded(self._transform_out(coordinates, tool_offset=True))
     
-    def moveCoordBy(self, 
+    def moveBy(self, 
         vector: tuple[float] = (0,0,0), 
         angles: tuple[float] = (0,0,0),
         **kwargs
@@ -150,7 +150,7 @@ class M1Pro(Dobot):
         coordinates, orientation = self.position
         new_coordinates = np.array(coordinates) + np.array(vector)
         new_orientation = np.array(orientation) + np.array(angles)
-        return self.moveCoordTo(new_coordinates, new_orientation, **kwargs)
+        return self.moveTo(new_coordinates, new_orientation, **kwargs)
     
     def retractArm(self, target:Optional[tuple[float]] = None) -> bool:         # NOTE: not implemented
         """
@@ -205,10 +205,10 @@ class M1Pro(Dobot):
         x,y,z = self.coordinates
         y_stretch = math.copysign(240, y)
         z_home = self.home_coordinates[2]
-        ret1 = self.moveCoordTo(coordinates=(x,y,z_home))
-        ret2 = self.moveCoordTo(coordinates=(320,y_stretch,z_home))
-        ret3 = self.moveCoordTo(coordinates=(x,y,z_home))
-        ret4 = self.moveCoordTo(coordinates=(x,y,z))
+        ret1 = self.moveTo(coordinates=(x,y,z_home))
+        ret2 = self.moveTo(coordinates=(320,y_stretch,z_home))
+        ret3 = self.moveTo(coordinates=(x,y,z_home))
+        ret4 = self.moveTo(coordinates=(x,y,z))
         self.setFlag(stretched=True)
         return all([ret1,ret2,ret3,ret4])
    
