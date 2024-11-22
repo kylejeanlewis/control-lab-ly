@@ -264,9 +264,9 @@ class QInstrumentsDevice:
 
     def connect(self):
         """Connect to the device"""
+        if self.is_connected:
+            return
         try:
-            if self.is_connected:
-                return
             self.serial.open()
         except serial.SerialException as e:
             self._logger.error(f"Failed to connect to {self.port} at {self.baudrate} baud")
@@ -280,9 +280,9 @@ class QInstrumentsDevice:
 
     def disconnect(self):
         """Disconnect from the device"""
+        if not self.is_connected:
+            return
         try:
-            if not self.is_connected:
-                return
             self.serial.close()
         except serial.SerialException as e:
             self._logger.error(f"Failed to disconnect from {self.port}")
