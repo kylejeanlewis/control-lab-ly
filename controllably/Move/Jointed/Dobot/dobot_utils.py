@@ -70,8 +70,9 @@ class Dobot(RobotArm):
     
     def __init__(self, 
         host: str,
+        joint_limits: Sequence[Sequence[float]]|None = None,
         *,
-        device_type_name: str = 'DobotDevice',
+        home_waypoints: Sequence[Position] = list(),
         movement_buffer: int|None = None,
         movement_timeout: int|None = None,
         verbose: bool = False, 
@@ -84,8 +85,12 @@ class Dobot(RobotArm):
             ip_address (str): IP address of Dobot
             attachment_name (str, optional): name of attachment. Defaults to None.
         """
-        device_type = globals().get(device_type_name, DobotDevice)
-        super().__init__(device_type=device_type, host=host, verbose=verbose, **kwargs)
+        super().__init__(
+            device_type=DobotDevice, host=host, verbose=verbose, 
+            home_waypoints=home_waypoints, joint_limits=joint_limits,
+            movement_buffer=movement_buffer, movement_timeout=movement_timeout,
+            **kwargs
+        )
         assert isinstance(self.device, DobotDevice), "Ensure device is of type `DobotDevice`"
         self.device: DobotDevice = self.device
         self.movement_buffer = movement_buffer if movement_buffer is not None else MOVEMENT_BUFFER
