@@ -20,7 +20,7 @@ from scipy.spatial.transform import Rotation
 
 # Local application imports
 from ..core.connection import DeviceFactory, Device
-from ..core.position import Deck, Position, get_transform, BoundingBox, convert_to_position
+from ..core.position import Deck, Position, get_transform, BoundingVolume, convert_to_position
 
 logger = logging.getLogger("controllably.Move")
 logger.setLevel(logging.DEBUG)
@@ -37,7 +37,7 @@ class Mover:
         `calibrated_offset` (Position, optional): calibrated offset from robot to work position. Defaults to Position().
         `scale` (float, optional): factor to scale the basis vectors by. Defaults to 1.0.
         `deck` (Deck, optional): Deck object for workspace. Defaults to None.
-        `workspace` (BoundingBox, optional): workspace bounding box. Defaults to None.
+        `workspace` (BoundingVolume, optional): workspace bounding box. Defaults to None.
         `safe_height` (float, optional): safe height in terms of robot coordinate system. Defaults to None.
         `saved_positions` (dict, optional): dictionary of saved positions. Defaults to dict().
         `speed_max` (float, optional): maximum speed of robot in mm/min. Defaults to 600.
@@ -51,7 +51,7 @@ class Mover:
         `is_connected` (bool): whether the device is connected
         `verbose` (bool): verbosity of class
         `deck` (Deck): Deck object for workspace
-        `workspace` (BoundingBox): workspace bounding box
+        `workspace` (BoundingVolume): workspace bounding box
         `safe_height` (float): safe height in terms of robot coordinate system
         `saved_positions` (dict): dictionary of saved positions
         `current_zone_waypoints` (tuple[str, list[Position]]): current zone entry waypoints
@@ -114,7 +114,7 @@ class Mover:
         calibrated_offset: Position = Position(),
         scale: float = 1.0,
         deck: Deck|None = None,
-        workspace: BoundingBox|None = None,
+        workspace: BoundingVolume|None = None,
         safe_height: float|None = None,                     # in terms of robot coordinate system
         saved_positions: dict = dict(),                     # in terms of robot coordinate system
         speed_max: float = 600,                             # in mm/min
@@ -131,7 +131,7 @@ class Mover:
             calibrated_offset (Position, optional): calibrated offset from robot to work position. Defaults to Position().
             scale (float, optional): factor to scale the basis vectors by. Defaults to 1.0.
             deck (Deck, optional): Deck object for workspace. Defaults to None.
-            workspace (BoundingBox, optional): workspace bounding box. Defaults to None.
+            workspace (BoundingVolume, optional): workspace bounding box. Defaults to None.
             safe_height (float, optional): safe height in terms of robot coordinate system. Defaults to None.
             speed_max (float, optional): maximum speed of robot in mm/min. Defaults to 600.
             verbose (bool, optional): verbosity of class. Defaults to False.
@@ -145,7 +145,7 @@ class Mover:
         
         # Category specific attributes
         self.deck = deck
-        self.workspace: BoundingBox = workspace
+        self.workspace: BoundingVolume = workspace
         self.safe_height: float = safe_height if safe_height is not None else home_position.z
         self.saved_positions = saved_positions
         self.current_zone_waypoints: tuple[str, list[Position]]|None = None
@@ -369,7 +369,7 @@ class Mover:
             ex_pos = self.transformRobotToTool(in_pos, self.tool_offset) if tool_offset else in_pos
             ex_pos = self.transformRobotToWork(ex_pos, self.calibrated_offset, self.scale)
         within_range = True
-        if isinstance(self.workspace, BoundingBox):
+        if isinstance(self.workspace, BoundingVolume):
             within_range = self.workspace.contains(in_pos.coordinates)
         deck_safe = True
         if isinstance(self.deck, Deck):
@@ -799,9 +799,9 @@ class Mover:
         Args:
             height (float): safe height in terms of robot coordinate system
         """
-        if isinstance(self.workspace, BoundingBox):
-            bounds = self.workspace.bounds
-            assert (min(bounds[:,2]) <= height <= max(bounds[:,2])), f"Ensure safe height is within workspace"
+        if isinstance(self.workspace, BoundingVolume):
+            x,y,_ = self.home_position.coordinates
+            assert self.workspace.contains((x,y,height)), "Ensure safe height is within workspace"
         if isinstance(self.deck, Deck):
             deck_heights = {name: max(bounds.bounds[:,2]) for name,bounds in self.deck.exclusion_zone.items()}
             heights_list = [height for height in deck_heights.values()]
