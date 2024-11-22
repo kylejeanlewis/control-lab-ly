@@ -106,6 +106,35 @@ class MG400(Dobot):
         self.home()
         return
     
+    def retractArm(self, target:tuple[float]|None = None) -> bool:
+        """
+        Tuck in arm, rotate about base, then extend again
+
+        Args:
+            target (tuple[float]|None, optional): x,y,z coordinates of destination. Defaults to None.
+
+        Returns:
+            bool: whether movement is successful
+        """
+        safe_radius = 225
+        x,y,_ = self.robot_position.coordinates
+        if any((x,y)):
+            w = ( (safe_radius**2)/(x**2 + y**2) )**0.5
+            x,y = (x*w,y*w)
+        else:
+            x,y = (0,safe_radius)
+        self.moveTo((x,y,self.safe_height))
+
+        if target is not None and len(target) == 3:
+            x1,y1,_ = target
+            if any((x1,y1)):
+                w1 = ( (safe_radius**2)/(x1**2 + y1**2) )**0.5
+                x1,y1 = (x1*w1,y1*w1)
+            else:
+                x1,y1 = (0,safe_radius)
+            self.moveTo((x1,y1,self.safe_height))
+        return True
+    
     # def _isFeasible(self, 
     #     coordinates: tuple[float], 
     #     transform_in: bool = False, 
@@ -138,35 +167,6 @@ class MG400(Dobot):
     #     if not (-150 < z < 230):
     #         return False
     #     return not self.deck.isExcluded(self._transform_out(coordinates, tool_offset=True))
-    
-    def retractArm(self, target:tuple[float]|None = None) -> bool:
-        """
-        Tuck in arm, rotate about base, then extend again
-
-        Args:
-            target (tuple[float]|None, optional): x,y,z coordinates of destination. Defaults to None.
-
-        Returns:
-            bool: whether movement is successful
-        """
-        safe_radius = 225
-        x,y,_ = self.robot_position.coordinates
-        if any((x,y)):
-            w = ( (safe_radius**2)/(x**2 + y**2) )**0.5
-            x,y = (x*w,y*w)
-        else:
-            x,y = (0,safe_radius)
-        self.moveTo((x,y,self.safe_height))
-
-        if target is not None and len(target) == 3:
-            x1,y1,_ = target
-            if any((x1,y1)):
-                w1 = ( (safe_radius**2)/(x1**2 + y1**2) )**0.5
-                x1,y1 = (x1*w1,y1*w1)
-            else:
-                x1,y1 = (0,safe_radius)
-            self.moveTo((x1,y1,self.safe_height))
-        return True
     
     # # Protected method(s)
     # def _get_move_wait_time(self, 
