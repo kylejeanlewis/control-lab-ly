@@ -83,6 +83,25 @@ class RobotArm(Mover):
         self._joint_position = np.array(value)
         return
     
+    def home(self, axis: str|None = None) -> bool:
+        """
+        Make the robot go home
+
+        Args:
+            safe (bool, optional): whether to use `safeMoveTo()`. Defaults to True.
+            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
+        
+        Returns:
+            bool: whether movement is successful
+        """
+        self.moveToSafeHeight()
+        if isinstance(axis,str) and axis.lower() == 'z':
+            return True
+        for waypoint in self.home_waypoints:
+            self.moveTo(waypoint, robot=True)
+        self.moveTo(self.home_position, robot=True)
+        return True
+    
     def isFeasibleJoint(self, joint_position: Sequence[float]|np.ndarray) -> bool:
         """
         Check if the target joint angles are feasible
@@ -181,25 +200,6 @@ class RobotArm(Mover):
         self.updateJointPosition(to=joint_move_to)
         raise NotImplementedError
         return self.joint_position
-      
-    def home(self, axis: str|None = None) -> bool:
-        """
-        Make the robot go home
-
-        Args:
-            safe (bool, optional): whether to use `safeMoveTo()`. Defaults to True.
-            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
-        
-        Returns:
-            bool: whether movement is successful
-        """
-        self.moveToSafeHeight()
-        if isinstance(axis,str) and axis.lower() == 'z':
-            return True
-        for waypoint in self.home_waypoints:
-            self.moveTo(waypoint, robot=True)
-        self.moveTo(self.home_position, robot=True)
-        return True
     
     def rotateBy(self,
         by: Sequence[float]|Rotation|np.ndarray,
@@ -300,3 +300,4 @@ class RobotArm(Mover):
             elif isinstance(to, Rotation):
                 self.joint_position = np.array([*self.joint_position[:3],*to.as_euler('xyz', degrees=True)])
         return
+    
