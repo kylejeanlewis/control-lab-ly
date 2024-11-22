@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from typing import Any
 
 # Local imports
-from .dobot_api import dobot_api_dashboard, dobot_api_feedback
+from .dobot_api import DobotApiDashboard, DobotApiMove
 
 logger = logging.getLogger("controllably.Move")
 logger.setLevel(logging.DEBUG)
@@ -35,8 +35,8 @@ class DobotDevice:
         self.port = port
         self.timeout = timeout
         self.socket = socket.socket()
-        self.dashboard: dobot_api_dashboard|None = None
-        self.feedback: dobot_api_feedback|None = None
+        self.dashboard_api: DobotApiDashboard|None = None
+        self.move_api: DobotApiMove|None = None
         self.flags = deepcopy(self._default_flags)
         
         self.socket.settimeout(self.timeout)
@@ -50,7 +50,7 @@ class DobotDevice:
     @property
     def connection_details(self) -> dict:
         """Connection details for the device"""
-        ports = tuple([s.port for s in (self.dashboard, self.feedback) if s is not None])
+        ports = tuple([s.port for s in (self.dashboard_api, self.move_api) if s is not None])
         return {
             'host': self.host,
             'port': ports,
@@ -101,25 +101,25 @@ class DobotDevice:
             raise ConnectionError("Ensure device is connected to the same network as the machine")
         
         start_time = time.perf_counter()
-        dashboard = dobot_api_dashboard(self.host, DASHBOARD_PORT)
+        dashboard_api = DobotApiDashboard(self.host, DASHBOARD_PORT)
         if time.perf_counter() - start_time > self.timeout:
             raise ConnectionAbortedError(f"Failed to connect to {self.host} at {DASHBOARD_PORT}")
-        self.dashboard = dashboard
+        self.dashboard_api = dashboard_api
         
         start_time = time.perf_counter()
-        feedback = dobot_api_feedback(self.host, FEEDBACK_PORT)
+        move_api = DobotApiMove(self.host, FEEDBACK_PORT)
         if time.perf_counter() - start_time > self.timeout:
             raise ConnectionAbortedError(f"Failed to connect to {self.host} at {FEEDBACK_PORT}")
-        self.feedback = feedback
+        self.move_api = move_api
         self._logger.info(f"Connected to {self.host} at {DASHBOARD_PORT} and {FEEDBACK_PORT}")
         
-        if isinstance(self.dashboard, dobot_api_dashboard):
-            self.dashboard.DisableRobot()
-            self.dashboard.ClearError()
-            self.dashboard.EnableRobot()
-            self.dashboard.User(0)
-            self.dashboard.Tool(0)
-            self.dashboard.SpeedFactor(100)
+        if isinstance(self.dashboard_api, DobotApiDashboard):
+            self.dashboard_api.DisableRobot()
+            self.dashboard_api.ClearError()
+            self.dashboard_api.EnableRobot()
+            self.dashboard_api.User(0)
+            self.dashboard_api.Tool(0)
+            self.dashboard_api.SpeedFactor(100)
         self.flags.connected = True
         return
 
@@ -128,12 +128,12 @@ class DobotDevice:
         if not self.is_connected:
             return
         try:
-            if isinstance(self.dashboard, dobot_api_dashboard):
-                self.dashboard.close()
-                self.dashboard = None
-            if isinstance(self.feedback, dobot_api_feedback):
-                self.feedback.close()
-                self.feedback = None
+            if isinstance(self.dashboard_api, DobotApiDashboard):
+                self.dashboard_api.close()
+                self.dashboard_api = None
+            if isinstance(self.move_api, DobotApiMove):
+                self.move_api.close()
+                self.move_api = None
         except socket.error as e:
             self._logger.error(f"Failed to disconnect from {self.host}")
             self._logger.debug(e)
