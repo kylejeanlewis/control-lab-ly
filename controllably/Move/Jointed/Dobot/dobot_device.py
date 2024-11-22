@@ -204,24 +204,31 @@ class DobotDevice:
 
     # Dashboard API
     def DisableRobot(self):
+        self._logger.debug("DisableRobot")
         return self.dashboard_api.DisableRobot() if isinstance(self.dashboard_api, DobotApiDashboard) else None
     
     def ResetRobot(self):
+        self._logger.debug("ResetRobot")
         return self.dashboard_api.ResetRobot() if isinstance(self.dashboard_api, DobotApiDashboard) else None
     
     def SpeedFactor(self, speed_factor:int):
+        self._logger.debug(f"SpeedFactor | {speed_factor=}")
         return self.dashboard_api.SpeedFactor(speed_factor) if isinstance(self.dashboard_api, DobotApiDashboard) else None
     
     # Move API
     def JointMovJ(self, j1:float, j2:float, j3:float, j4:float, **kwargs):
+        self._logger.debug(f"JointMovJ | {j1=}, {j2=}, {j3=}, {j4=}")
         return self.move_api.JointMovJ(j1,j2,j3,j4, **kwargs) if isinstance(self.move_api, DobotApiMove) else None    
     
     def MovJ(self, x:float, y:float, z:float, r:float, **kwargs):
+        self._logger.debug(f"MovJ | {x=}, {y=}, {z=}, {r=}")
         return self.move_api.MovJ(x,y,z,r, **kwargs) if isinstance(self.move_api, DobotApiMove) else None
     
     def RelMovL(self, offsetX:float, offsetY:float, offsetZ:float, offsetR:float, **kwargs):
+        self._logger.debug(f"RelMovL | {offsetX=}, {offsetY=}, {offsetZ=}, {offsetR=}")
         return self.move_api.RelMovL(offsetX,offsetY,offsetZ,offsetR, **kwargs) if isinstance(self.move_api, DobotApiMove) else None
     
     def RelMovJ(self, offset1:float, offset2:float, offset3:float, offset4:float, **kwargs):
+        self._logger.debug(f"RelMovJ | {offset1=}, {offset2=}, {offset3=}, {offset4=}")
         return self.move_api.RelMovJ(offset1,offset2,offset3,offset4, **kwargs) if isinstance(self.move_api, DobotApiMove) else None
     
