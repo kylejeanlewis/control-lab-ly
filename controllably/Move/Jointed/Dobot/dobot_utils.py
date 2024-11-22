@@ -64,10 +64,10 @@ class Dobot(RobotArm):
     - `calibrate`: calibrate the internal and external coordinate systems, then verify points
     - `disconnect`: disconnect from device
     - `getConfigSettings`: retrieve the robot's configuration
-    - `moveCoordBy`: relative Cartesian movement and tool orientation, using robot coordinates
-    - `moveCoordTo`: absolute Cartesian movement and tool orientation, using robot coordinates
-    - `moveJointBy`: relative joint movement
-    - `moveJointTo`: absolute joint movement
+    - `moveBy`: relative Cartesian movement and tool orientation, using robot coordinates
+    - `moveTo`: absolute Cartesian movement and tool orientation, using robot coordinates
+    - `jointMoveBy`: relative joint movement
+    - `jointMoveTo`: absolute joint movement
     - `reset`: reset the robot
     - `setSpeed`: set the speed of the robot
     - `shutdown`: shutdown procedure for tool
@@ -168,7 +168,7 @@ class Dobot(RobotArm):
         return super().getConfigSettings(attributes)
 
     @Helper.safety_measures
-    def moveCoordBy(self, 
+    def moveBy(self, 
         vector: tuple[float] = (0,0,0), 
         angles: tuple[float] = (0,0,0),
         **kwargs
@@ -209,7 +209,7 @@ class Dobot(RobotArm):
         return True
 
     @Helper.safety_measures
-    def moveCoordTo(self, 
+    def moveTo(self, 
         coordinates: Optional[tuple[float]] = None, 
         orientation: Optional[tuple[float]] = None,
         **kwargs
@@ -257,7 +257,7 @@ class Dobot(RobotArm):
         return True
 
     @Helper.safety_measures
-    def moveJointBy(self, relative_angles: tuple[float], **kwargs) -> bool:
+    def jointMoveBy(self, relative_angles: tuple[float], **kwargs) -> bool:
         """
         Relative joint movement
 
@@ -293,7 +293,7 @@ class Dobot(RobotArm):
         return True
 
     @Helper.safety_measures
-    def moveJointTo(self, absolute_angles: tuple[float], **kwargs) -> bool:
+    def jointMoveTo(self, absolute_angles: tuple[float], **kwargs) -> bool:
         """
         Absolute joint movement
 
