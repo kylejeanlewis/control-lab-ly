@@ -39,12 +39,12 @@ class GRBL(SerialDevice):
     Refer to https://github.com/gnea/grbl/tree/master/doc/markdown for more information on the GRBL firmware.
     
     ### Constructor
-        `port` (str|None): Serial port to connect to. Default is None.
-        `baudrate` (int): Baudrate of the serial connection. Default is 9600.
-        `timeout` (int): Timeout for serial connection. Default is 1.
-        `init_timeout` (int): Timeout for initialization of serial connection. Default is 2.
-        `message_end` (str): Message end character for serial communication. Default is '\n'.
-        `simulation` (bool): Simulation mode for testing. Default is False.
+        `port` (str|None): Serial port to connect to. Defaults to None.
+        `baudrate` (int): Baudrate of the serial connection. Defaults to 115200.
+        `timeout` (int): Timeout for serial connection. Defaults to 1.
+        `init_timeout` (int): Timeout for initialization of serial connection. Defaults to 2.
+        `message_end` (str): Message end character for serial communication. Defaults to '\n'.
+        `simulation` (bool): Simulation mode for testing. Defaults to False.
         
     ### Attributes and properties
         `port` (str): device serial port
@@ -81,7 +81,7 @@ class GRBL(SerialDevice):
     
     def __init__(self,
         port: str|None = None, 
-        baudrate: int = 9600, 
+        baudrate: int = 115200, 
         timeout: int = 1, 
         init_timeout: int = 2,
         message_end: str = '\n',
@@ -90,6 +90,15 @@ class GRBL(SerialDevice):
         **kwargs
     ):
         """
+        Initialize GRBL class
+        
+        Args:
+            port (str|None): Serial port to connect to. Defaults to None.
+            baudrate (int): baudrate for serial communication. Defaults to 115200.
+            timeout (int): timeout for serial communication. Defaults to 1.
+            init_timeout (int): timeout for initialization of serial communication. Defaults to 2.
+            message_end (str): message end character for serial communication. Defaults to '\n'.
+            simulation (bool): simulation mode for testing. Defaults to False.
         """
         super().__init__(
             port=port, 
@@ -297,7 +306,7 @@ class GRBL(SerialDevice):
         Home the device
         
         Args:
-            axis (str|None): axis to home
+            axis (str|None): axis to home. Defaults to None.
             timeout (int|None): timeout for homing
             
         Returns:
