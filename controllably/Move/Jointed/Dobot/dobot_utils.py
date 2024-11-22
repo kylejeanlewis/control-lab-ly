@@ -138,6 +138,8 @@ class Dobot(RobotArm):
         
         # Implementation of relative movement
         self.device.RelMovL(*move_by.coordinates, move_by.Rotation.as_euler('xyz', degrees=True)[-1])
+        
+        # Adding time delays to coincide with movement
         ... # wait time
         
         # Update position
@@ -180,6 +182,8 @@ class Dobot(RobotArm):
         
         # Implementation of absolute movement
         self.device.MovJ(*move_to.coordinates, move_to.Rotation.as_euler('xyz', degrees=True)[-1])
+        
+        # Adding time delays to coincide with movement
         ... # wait time
         
         # Update position
@@ -295,5 +299,12 @@ class Dobot(RobotArm):
     def stop(self):
         """Halt robot movement"""
         self.device.ResetRobot()
+        return
+    
+    # Overwritten methods
+    def connect(self):
+        """Connect to the device"""
+        self.device.connect()
+        self.setSpeedFactor(1.0)
         return
     
