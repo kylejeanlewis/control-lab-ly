@@ -52,8 +52,12 @@ class RobotArm(Mover):
     - `rotateTo`: absolute end effector rotation
     """
     
-    _place: str = '.'.join(__name__.split('.')[1:-1])
-    def __init__(self, **kwargs):
+    def __init__(self,
+        *args,
+        home_waypoints: Sequence[Position] = list(),
+        joint_limits: Sequence[Sequence[float]]|None = None,
+        **kwargs
+    ):
         """
         Instantiate the class
 
@@ -61,39 +65,41 @@ class RobotArm(Mover):
             safe_height (float|None, optional): height at which obstacles can be avoided. Defaults to None.
             retract (bool, optional): whether to retract arm before movement. Defaults to False.
         """
-        super().__init__(**kwargs)
-        self.joint_limits = np.array([[-180]*6, [180]*6])
-        self._joint_angles = np.zeros(6)
+        super().__init__(*args, **kwargs)
+        self.joint_limits = np.array([[-180]*6, [180]*6]) if joint_limits is None else np.array(joint_limits)
+        self._joint_position = np.zeros(6)
+        
+        self.home_waypoints: list[Position] = home_waypoints
         return
     
     @property
-    def joint_angles(self) -> np.ndarray:
+    def joint_position(self) -> np.ndarray:
         """Current joint angles"""
-        return self._joint_angles
-    @joint_angles.setter
-    def joint_angles(self, value: Sequence[float]|np.ndarray):
+        return self._joint_position
+    @joint_position.setter
+    def joint_position(self, value: Sequence[float]|np.ndarray):
         assert isinstance(value, (Sequence, np.ndarray)), f"Ensure `value` is a Sequence or np.ndarray object"
         assert len(value) == 6, f"Ensure `value` is a 6-element sequence for j1~j6"
-        self._joint_angles = np.array(value)
+        self._joint_position = np.array(value)
         return
     
-    def isFeasibleJoint(self, joint_angles: Sequence[float]|np.ndarray) -> bool:
+    def isFeasibleJoint(self, joint_position: Sequence[float]|np.ndarray) -> bool:
         """
         Check if the target joint angles are feasible
         
         Args:
-            joint_angles (tuple[float]): j1~j6 orientation angles in degrees
+            joint_position (tuple[float]): j1~j6 orientation angles in degrees
             
         Returns:
             bool: whether the target position is feasible
         """
-        assert isinstance(joint_angles, (Sequence, np.ndarray)), "Ensure `joint_angles` is a Sequence or np.ndarray object"
-        assert len(joint_angles) == 6, "Ensure `joint_angles` is a 6-element sequence for j1~j6"
+        assert isinstance(joint_position, (Sequence, np.ndarray)), "Ensure `joint_position` is a Sequence or np.ndarray object"
+        assert len(joint_position) == 6, "Ensure `joint_position` is a 6-element sequence for j1~j6"
         
-        feasible = all([(self.joint_limits[0][i] <= angle <= self.joint_limits[1][i]) for i, angle in enumerate(joint_angles)])
+        feasible = all([(self.joint_limits[0][i] <= angle <= self.joint_limits[1][i]) for i, angle in enumerate(joint_position)])
         if not feasible:
-            self._logger.error(f"Target set of joints {joint_angles} is not feasible")
-            raise RuntimeError(f"Target set of joints {joint_angles} is not feasible")
+            self._logger.error(f"Target set of joints {joint_position} is not feasible")
+            raise RuntimeError(f"Target set of joints {joint_position} is not feasible")
         return feasible
     
     def jointMoveBy(self, 
@@ -124,9 +130,9 @@ class RobotArm(Mover):
         self._logger.info(f"Joint Move By | {joint_move_by} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
-        if not self.isFeasibleJoint(self.joint_angles + joint_move_by):
+        if not self.isFeasibleJoint(self.joint_position + joint_move_by):
             self._logger.warning(f"Target movement {joint_move_by} is not feasible")
-            return self.joint_angles
+            return self.joint_position
         
         # Implementation of relative movement
         ...
@@ -134,7 +140,7 @@ class RobotArm(Mover):
         # Update position
         self.updateJointPosition(by=joint_move_by)
         raise NotImplementedError
-        return self.joint_angles
+        return self.joint_position
 
     def jointMoveTo(self,
         to: Sequence[float]|np.ndarray,
@@ -166,7 +172,7 @@ class RobotArm(Mover):
         # Convert to robot coordinates
         if not self.isFeasibleJoint(joint_move_to):
             self._logger.warning(f"Target position {joint_move_to} is not feasible")
-            return self.joint_angles
+            return self.joint_position
         
         # Implementation of absolute movement
         ...
@@ -174,10 +180,9 @@ class RobotArm(Mover):
         # Update position
         self.updateJointPosition(to=joint_move_to)
         raise NotImplementedError
-        return self.joint_angles
+        return self.joint_position
       
-
-    def home(self, safe:bool = True, tool_offset:bool = True) -> bool:
+    def home(self, axis: str|None = None) -> bool:
         """
         Make the robot go home
 
@@ -188,24 +193,13 @@ class RobotArm(Mover):
         Returns:
             bool: whether movement is successful
         """
-        success= []
-        ret = False
-        coordinates = self.home_coordinates - self.implement_offset if tool_offset else self.home_coordinates
-        
-        # Tuck arm in to avoid collision
-        if self.flags.get('retract', False):
-            ret = self.retractArm(coordinates)
-            success.append(ret)
-        
-        # Go to home position
-        if safe:
-            coordinates = self._transform_out(coordinates=coordinates, tool_offset=tool_offset)
-            ret = self.safeMoveTo(coordinates=coordinates, orientation=self.home_orientation, tool_offset=tool_offset)
-        else:
-            ret = self.moveCoordTo(coordinates, self.home_orientation)
-        success.append(ret)
-        print("Homed")
-        return all(success)
+        self.moveToSafeHeight()
+        if isinstance(axis,str) and axis.lower() == 'z':
+            return True
+        for waypoint in self.home_waypoints:
+            self.moveTo(waypoint, robot=True)
+        self.moveTo(self.home_position, robot=True)
+        return True
     
     def rotateBy(self,
         by: Sequence[float]|Rotation|np.ndarray,
@@ -237,14 +231,11 @@ class RobotArm(Mover):
         rotate_by = rotate_by               # not affected by robot or tool coordinates for rotation
         
         # Implementation of relative rotation
-        current_orientation = self.robot_position.Rotation if robot else self.tool_position.Rotation
-        new_orientation = rotate_by * current_orientation
-        return self.rotateTo(new_orientation, speed_factor=speed_factor, jog=jog, robot=robot)
-        ...
+        joint_position = [0,0,0,*rotate_by.as_euler('xyz', degrees=True)]
+        self.jointMoveBy(joint_position, speed_factor=speed_factor, jog=jog, robot=True)
         
         # Update position
-        self.updateJointPosition(by=rotate_by)
-        raise NotImplementedError
+        # self.updateJointPosition(by=rotate_by)
         return self.robot_position.Rotation if robot else self.worktool_position.Rotation
         
     def rotateTo(self,
@@ -280,9 +271,32 @@ class RobotArm(Mover):
             rotate_to = self.tool_offset.invert().Rotation * self.calibrated_offset.invert().Rotation * rotate_to
         
         # Implementation of absolute rotation
-        joint_angles = [0,0,0,*rotate_to.as_euler('xyz', degrees=True)]
-        self.jointMoveTo(joint_angles, speed_factor=speed_factor, jog=jog, robot=True)
+        joint_position = [0,0,0,*rotate_to.as_euler('xyz', degrees=True)]
+        self.jointMoveTo(joint_position, speed_factor=speed_factor, jog=jog, robot=True)
         
         # Update position
-        # self.updateJointPosition(to=joint_angles)
+        # self.updateJointPosition(to=joint_position)
         return self.robot_position.Rotation if robot else self.worktool_position.Rotation
+
+    def updateJointPosition(self, by: Sequence[float]|Rotation|np.ndarray|None = None, to: Sequence[float]|Rotation|np.ndarray|None = None) -> None:
+        """
+        Update the joint position based on relative or absolute movement
+        
+        Args:
+            by (Sequence[float] | Rotation | np.ndarray | None, optional): relative movement. Defaults to None.
+            to (Sequence[float] | Rotation | np.ndarray | None, optional): absolute movement. Defaults to None.
+        """
+        assert (by is None) != (to is None), f"Ensure input only for one of `by` or `to`"
+        if by is not None:
+            if isinstance(by, (Sequence, np.ndarray)):
+                assert len(by) == 6, f"Ensure `by` is a 6-element sequence for j1~j6"
+                self.joint_position += np.array(by)
+            elif isinstance(by, Rotation):
+                self.joint_position += np.array([0,0,0,*by.as_euler('xyz', degrees=True)])
+        elif to is not None:
+            if isinstance(to, (Sequence, np.ndarray)):
+                assert len(to) == 6, f"Ensure `to` is a 6-element sequence for j1~j6"
+                self.joint_position = np.array(to)
+            elif isinstance(to, Rotation):
+                self.joint_position = np.array([*self.joint_position[:3],*to.as_euler('xyz', degrees=True)])
+        return
