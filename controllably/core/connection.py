@@ -274,9 +274,9 @@ class SerialDevice:
 
     def connect(self):
         """Connect to the device"""
+        if self.is_connected:
+            return
         try:
-            if self.is_connected:
-                return
             self.serial.open()
         except serial.SerialException as e:
             self._logger.error(f"Failed to connect to {self.port} at {self.baudrate} baud")
@@ -289,9 +289,9 @@ class SerialDevice:
 
     def disconnect(self):
         """Disconnect from the device"""
+        if not self.is_connected:
+            return
         try:
-            if not self.is_connected:
-                return
             self.serial.close()
         except serial.SerialException as e:
             self._logger.error(f"Failed to disconnect from {self.port}")
@@ -459,9 +459,9 @@ class SocketDevice:
 
     def connect(self):
         """Connect to the device"""
+        if self.is_connected:
+            return
         try:
-            if self.is_connected:
-                return
             self.socket.connect((self.host, self.port))
         except socket.error as e:
             self._logger.error(f"Failed to connect to {self.host} at {self.port}")
@@ -473,9 +473,9 @@ class SocketDevice:
 
     def disconnect(self):
         """Disconnect from the device"""
+        if not self.is_connected:
+            return
         try:
-            if not self.is_connected:
-                return
             self.socket.close()
         except socket.error as e:
             self._logger.error(f"Failed to disconnect from {self.host}")
