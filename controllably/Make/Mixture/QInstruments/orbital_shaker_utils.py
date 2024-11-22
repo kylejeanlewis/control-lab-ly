@@ -10,7 +10,7 @@ Attributes:
 ## Classes:
     `BioShake`: BioShake provides methods to control the QInstruments BioShake device.
 
-<i>Documentation last updated: 2024-11-146/i>
+<i>Documentation last updated: 2024-11-16/i>
 """
 # Standard library imports
 from __future__ import annotations

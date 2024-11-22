@@ -11,6 +11,7 @@ import logging
 import math
 import numpy as np
 import time
+from types import SimpleNamespace
 from typing import Optional
 
 # Local application imports
@@ -39,13 +40,7 @@ class M1Pro(Dobot):
     - `stretchArm`: extend the arm to full reach
     """
     
-    _default_flags = {
-        'busy': False,
-        'connected': False,
-        'retract': False, 
-        'right_handed': False,
-        'stretched': False
-    }
+    _default_flags = SimpleNamespace(busy=False, connected=False, retract=False, right_handed=False, stretched=False)
     _default_speeds = dict(j1=180, j2=180, j3=1000, j4=1000)
     def __init__(self, 
         ip_address: str, 
@@ -70,22 +65,9 @@ class M1Pro(Dobot):
             **kwargs
         )
         self._speed_max = self._default_speeds
-        self.setHandedness(right_hand=right_handed, stretch=False)
+        self.setHandedness(right_handed=right_handed, stretch=False)
         self.home()
         return
-    
-    def home(self, safe:bool = True, tool_offset:bool = False) -> bool:
-        """
-        Make the robot go home
-
-        Args:
-            safe (bool, optional): whether to use `safeMoveTo()`. Defaults to True.
-            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to False.
-        
-        Returns:
-            bool: whether movement is successful
-        """
-        return super().home(safe=safe, tool_offset=tool_offset)
     
     def isFeasible(self, 
         coordinates: tuple[float], 
@@ -124,62 +106,27 @@ class M1Pro(Dobot):
         grad = abs(y/(x+1E-6))
         gradient_threshold = 0.25
         if grad > gradient_threshold or x < 0:
-            right_hand = (y>0)
-            self.setHandedness(right_hand=right_hand, stretch=True) 
+            right_handed = (y>0)
+            self.setHandedness(right_handed=right_handed, stretch=True) 
         return not self.deck.isExcluded(self._transform_out(coordinates, tool_offset=True))
-    
-    def moveBy(self, 
-        vector: tuple[float] = (0,0,0), 
-        angles: tuple[float] = (0,0,0),
-        **kwargs
-    ) -> bool:
-        """
-        Relative Cartesian movement and tool orientation, using robot coordinates
 
-        Args:
-            vector (tuple[float], optional): x,y,z displacement vector. Defaults to (0,0,0).
-            angles (tuple[float], optional): a,b,c rotation angles in degrees. Defaults to (0,0,0).
-
-        Returns:
-            bool: whether movement is successful
-        """
-        if vector is None:
-            vector = (0,0,0)
-        if angles is None:
-            angles = (0,0,0)
-        coordinates, orientation = self.position
-        new_coordinates = np.array(coordinates) + np.array(vector)
-        new_orientation = np.array(orientation) + np.array(angles)
-        return self.moveTo(new_coordinates, new_orientation, **kwargs)
-    
-    def retractArm(self, target:Optional[tuple[float]] = None) -> bool:         # NOTE: not implemented
-        """
-        Tuck in arm, rotate about base, then extend again
-
-        Args:
-            target (Optional[tuple[float]], optional): x,y,z coordinates of destination. Defaults to None.
-
-        Returns:
-            bool: whether movement is successful
-        """    
-        return super().retractArm()
-    
-    def setHandedness(self, right_hand:bool, stretch:bool = False) -> bool:
+    def setHandedness(self, right_handed:bool, stretch:bool = False) -> bool:
         """
         Set the handedness of the robot
 
         Args:
-            right_hand (bool): whether to select right-handedness
+            right_handed (bool): whether to select right-handedness
             stretch (bool, optional): whether to stretch the arm. Defaults to False.
 
         Returns:
             bool: whether movement is successful
         """
-        if right_hand == self.flags['right_handed']:
+        if right_handed == self.flags.right_handed:
             return False
         
         try:
-            self.dashboard.SetArmOrientation(int(right_hand),1,1,1)
+            # self.dashboard.SetArmOrientation(int(right_handed),1,1,1)
+            self.device.SetArmOrientation(right_handed)
         except (AttributeError, OSError):
             if self.verbose:
                 print("Not connected to arm!")
@@ -190,7 +137,7 @@ class M1Pro(Dobot):
                 # self.stretchArm()
                 # time.sleep(1/self.speed_factor)
                 self._move_time_buffer = 1/self.speed_factor + self._default_move_time_buffer
-            self.setFlag(right_handed=right_hand)
+            self.setFlag(right_handed=right_handed)
         return True
             
     def stretchArm(self) -> bool:

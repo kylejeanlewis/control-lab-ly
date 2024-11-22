@@ -20,11 +20,13 @@ MOVEMENT_TIMEOUT = 30
 
 class Marlin(SerialDevice):
     """
+    Marlin class provides methods to interact with the Marlin firmware.
     Refer to https://marlinfw.org/meta/gcode/ for more information on the Marlin firmware.
     """
+    
     def __init__(self,
         port: str|None = None, 
-        baudrate: int = 9600, 
+        baudrate: int = 115200, 
         timeout: int = 1, 
         init_timeout: int = 2,
         message_end: str = '\n',
@@ -33,6 +35,15 @@ class Marlin(SerialDevice):
         **kwargs
     ):
         """
+        Initialize Marlin class
+        
+        Args:
+            port (str|None): Serial port to connect to. Defaults to None.
+            baudrate (int): baudrate for serial communication. Defaults to 115200.
+            timeout (int): timeout for serial communication. Defaults to 1.
+            init_timeout (int): timeout for initialization of serial communication. Defaults to 2.
+            message_end (str): message end character for serial communication. Defaults to '\n'.
+            simulation (bool): simulation mode for testing. Defaults to False.
         """
         logger.warning('Marlin firmware support still under development. Proceed with care.')        # TODO: Remove warning when fully supported
         super().__init__(
@@ -54,6 +65,10 @@ class Marlin(SerialDevice):
     
     def checkInfo(self) -> dict[str, str]:
         """
+        Query device information
+        
+        Returns:
+            dict[str, str]: information in the response
         """
         responses = self.query('M115')
         info = {}
@@ -74,6 +89,10 @@ class Marlin(SerialDevice):
     
     def checkSettings(self) -> dict[str, int|float|str]:
         """
+        Query device settings
+        
+        Returns:
+            dict[str, int|float|str]: settings in the response
         """
         self.clear()
         responses = self.query('M503')
@@ -120,6 +139,10 @@ class Marlin(SerialDevice):
     
     def checkStatus(self) -> tuple[str, np.ndarray[float], np.ndarray[float]]:  # TODO: Implement status check
         """
+        Query device status
+        
+        Returns:
+            tuple[str, np.ndarray[float], np.ndarray[float]]: status, current position, home offset
         """
         self.clear()
         responses = self.query('M114 R', lines=False)
@@ -142,14 +165,20 @@ class Marlin(SerialDevice):
         return (status, current_position, self._home_offset)
     
     def halt(self) -> Position:         # TODO: Check if this is the correct implementation
-        """
-        """
+        """Halt the device"""
         self.query('M410')
         _,coordinates,_home_offset = self.checkStatus()
         return Position(coordinates-_home_offset)
     
     def home(self, axis: str|None = None, **kwargs) -> bool:        # TODO: Test if single axis homing works
         """
+        Home the device
+        
+        Args:
+            axis (str|None): axis to home. Defaults to None.
+            
+        Returns:
+            bool: whether the device was homed
         """
         # if axis is not None:
         #     self._logger.warning("Ignoring homing axis parameter for Marlin firmware")
@@ -172,6 +201,13 @@ class Marlin(SerialDevice):
         return True
     
     def setSpeedFactor(self, speed_factor:float, *, speed_max:int, **kwargs):
+        """
+        Set the speed factor in the device
+        
+        Args:
+            speed_factor (float): speed factor
+            speed_max (int): maximum speed
+        """
         assert isinstance(speed_factor, float), "Ensure speed factor is a float"
         assert (0.0 <= speed_factor <= 1.0), "Ensure speed factor is between 0.0 and 1.0"
         # feed_rate = int(speed_factor * speed_max) * 60      # Convert to mm/min
@@ -183,8 +219,7 @@ class Marlin(SerialDevice):
     
     # Overwritten methods
     def connect(self):
-        """
-        """
+        """Connect to the device"""
         super().connect()
         startup_lines = self.read(True)
         for line in startup_lines:
@@ -200,6 +235,15 @@ class Marlin(SerialDevice):
     
     def query(self, data: Any, lines:bool = True, *, wait:bool = False, **kwargs) -> list[str]|None:
         """
+        Query the device (i.e. write and read data)
+        
+        Args:
+            data (Any): data to query
+            lines (bool): whether to read lines
+            wait (bool): whether to wait for the device to reach the status
+            
+        Returns:
+            list[str]|None: response from the device
         """
         if data.startswith('F'):
             data = f'G1 {data}'
@@ -214,17 +258,17 @@ class Marlin(SerialDevice):
         #     return []
         return responses
     
-    def _wait_for_idle(self, timeout:int = MOVEMENT_TIMEOUT) -> bool:
-        """
-        """
-        if not self.is_connected or self.flags.simulation:
-            return True
-        start_time = time.perf_counter()
-        while True:
-            time.sleep(LOOP_INTERVAL)
-            responses = self.read()
-            if len(responses) and 'echo:busy: processing' not in responses[-1]:
-                break
-            if time.perf_counter() - start_time > timeout:
-                return False
-        return True
+    # def _wait_for_idle(self, timeout:int = MOVEMENT_TIMEOUT) -> bool:
+    #     """
+    #     """
+    #     if not self.is_connected or self.flags.simulation:
+    #         return True
+    #     start_time = time.perf_counter()
+    #     while True:
+    #         time.sleep(LOOP_INTERVAL)
+    #         responses = self.read()
+    #         if len(responses) and 'echo:busy: processing' not in responses[-1]:
+    #             break
+    #         if time.perf_counter() - start_time > timeout:
+    #             return False
+    #     return True

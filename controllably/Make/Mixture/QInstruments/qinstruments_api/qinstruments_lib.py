@@ -1,4 +1,4 @@
-# %% -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """This module holds the references for QInstruments firmware."""
 # Standard library imports
 from enum import Enum
