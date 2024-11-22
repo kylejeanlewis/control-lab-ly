@@ -23,12 +23,13 @@ Attributes:
 # Standard library imports
 from __future__ import annotations
 from dataclasses import dataclass, field
+import inspect
 import itertools
 import json
 import logging
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Sequence, Any, Iterator
+from typing import Sequence, Any, Iterator, Callable
 
 # Third party imports
 import matplotlib
@@ -553,7 +554,11 @@ class Labware:
         self._wells = {name:Well(name=name, _details=details, parent=self) for name,details in self._details.get('wells',{}).items()}
         
         buffer = self._details.get('exclusionBuffer', ((0,0,0),(0,0,0)))
-        self.exclusion_zone = BoundingBox(self.bottom_left_corner, self._dimensions, buffer)
+        self.exclusion_zone = BoundingBox(
+            reference=self.bottom_left_corner, 
+            dimensions=self._dimensions, 
+            buffer=buffer
+        )
         
         if self.is_stackable:
             self._add_slot_above()
@@ -1454,8 +1459,51 @@ class Deck:
         return patches
 
 
-@dataclass
-class BoundingBox:
+@dataclass(kw_only=True)
+class BoundingVolume:
+    """
+    `BoundingVolume` represents a single BoundingVolume object
+
+    ### Constructor:
+        `parametric_function` (dict[str, Callable[[Sequence[float],Any], bool]): name, parametric function
+        
+    ### Attributes and properties:
+        `parametric_function` (dict[str, Callable[[Sequence[float],Any], bool]): name, parametric function
+        
+    ### Methods:
+        `contains`: check if point is within BoundingVolume
+    """
+    
+    parametric_function: dict[str, Callable[[Sequence[float],Any], bool]]
+    
+    def __post_init__(self):
+        assert isinstance(self.parametric_function, dict) and len(self.parametric_function) == 1, "Please input a single parametric function"
+        func = list(self.parametric_function.values())[0]
+        assert callable(func), "Please input a valid parametric function"
+        signature = inspect.signature(func)
+        ... # check if signature is valid
+        return
+    
+    def __contains__(self, point:Sequence[float]) -> bool:
+        return self.contains(point=point)
+    
+    def contains(self, point:Sequence[float]|np.ndarray) -> bool:
+        """
+        Check if point is within BoundingVolume
+        
+        Args:
+            point (Sequence[float]|numpy.ndarray): x,y,z coordinates
+            
+        Returns:
+            bool: whether point is within BoundingVolume
+        """
+        assert len(point) == 3, "Please input x,y,z coordinates"
+        func = list(self.parametric_function.values())[0]
+        return func(point)
+
+    
+@dataclass(kw_only=True)
+class BoundingBox(BoundingVolume):
     """
     `BoundingBox` represents a single BoundingBox object
 
@@ -1478,6 +1526,8 @@ class BoundingBox:
     dimensions: Sequence[float]|np.ndarray = (0,0,0)
     buffer: Sequence[Sequence[float]]|np.ndarray = ((0,0,0),(0,0,0))
     
+    parametric_function: dict[str, Callable[[Sequence[float],Any], bool]] = field(init=False, default_factory=dict)
+    
     def __post_init__(self):
         assert isinstance(self.reference, Position), "Please input a valid reference position of type `Position`"
         assert isinstance(self.dimensions, (Sequence,np.ndarray)), "Please input Sequence or numpy.ndarray for x,y,z dimensions"
@@ -1488,10 +1538,9 @@ class BoundingBox:
         assert all([len(b) == 3 for b in self.buffer]), "Please input x,y,z buffer"
         self.dimensions = np.array(self.dimensions)
         self.buffer = np.array(self.buffer)
+        
+        self.parametric_function['box'] = lambda p: all([min(b) <= p[i] <= max(b) for i,b in enumerate(list(zip(*self.bounds)))])
         return
-    
-    def __contains__(self, point:Sequence[float]) -> bool:
-        return self.contains(point=point)
     
     @property
     def bounds(self):
@@ -1501,15 +1550,3 @@ class BoundingBox:
         bounds = np.array([self.reference.coordinates, other_corner])
         return bounds + self.reference.Rotation.apply(self.buffer)
     
-    def contains(self, point:Sequence[float]|np.ndarray) -> bool:
-        """
-        Check if point is within BoundingBox
-        
-        Args:
-            point (Sequence[float]|numpy.ndarray): x,y,z coordinates
-            
-        Returns:
-            bool: whether point is within BoundingBox
-        """
-        assert len(point) == 3, "Please input x,y,z coordinates"
-        return all([min(b) <= p <= max(b) for b,p in zip(list(zip(*self.bounds)), point)])
