@@ -1480,8 +1480,8 @@ class BoundingVolume:
         assert isinstance(self.parametric_function, dict) and len(self.parametric_function) == 1, "Please input a single parametric function"
         func = list(self.parametric_function.values())[0]
         assert callable(func), "Please input a valid parametric function"
-        signature = inspect.signature(func)
-        ... # check if signature is valid
+        # signature = inspect.signature(func)
+        # ... # check if signature is valid
         return
     
     def __contains__(self, point:Sequence[float]) -> bool:
