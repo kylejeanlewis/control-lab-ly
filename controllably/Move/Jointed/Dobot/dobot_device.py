@@ -34,7 +34,7 @@ class DobotDevice:
         self.host = host
         self.port = port
         self.timeout = timeout
-        self.socket = socket.socket()
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.dashboard_api: DobotApiDashboard|None = None
         self.move_api: DobotApiMove|None = None
         self.flags = deepcopy(self._default_flags)
@@ -60,7 +60,7 @@ class DobotDevice:
     @property
     def is_connected(self) -> bool:
         """Whether the device is connected"""
-        connected = self.flags.connected if self.flags.simulation else (self.socket.fileno() != -1)
+        connected = self.flags.connected
         return connected
     
     @property
@@ -78,15 +78,6 @@ class DobotDevice:
             handler.setLevel(level)
         return
     
-    def clear(self):
-        """Clear the input and output buffers"""
-        if self.flags.simulation:
-            return
-        self.socket.settimeout(0)
-        self.socket.recv(1024)
-        self.socket.settimeout(self.timeout)
-        return
-
     def connect(self):
         """Connect to the device"""
         if self.is_connected:
@@ -240,11 +231,20 @@ class DobotDevice:
         self._logger.debug(f"MovJ | {x=}, {y=}, {z=}, {r=}")
         return self.move_api.MovJ(x,y,z,r, *args) if isinstance(self.move_api, DobotApiMove) else None
     
-    def RelMovL(self, offsetX:float, offsetY:float, offsetZ:float, offsetR:float, *args):
-        self._logger.debug(f"RelMovL | {offsetX=}, {offsetY=}, {offsetZ=}, {offsetR=}")
-        return self.move_api.RelMovL(offsetX,offsetY,offsetZ,offsetR, *args) if isinstance(self.move_api, DobotApiMove) else None
-    
     def RelMovJ(self, offset1:float, offset2:float, offset3:float, offset4:float, *args):
         self._logger.debug(f"RelMovJ | {offset1=}, {offset2=}, {offset3=}, {offset4=}")
         return self.move_api.RelMovJ(offset1,offset2,offset3,offset4, *args) if isinstance(self.move_api, DobotApiMove) else None
+    
+    def RelMovL(self, offsetX:float, offsetY:float, offsetZ:float, offsetR:float, *args):
+        """
+        Move the robot by the specified cartesian offsets
+        
+        Args:
+            offsetX (float): x offset
+            offsetY (float): y offset
+            offsetZ (float): z offset
+            offsetR (float): r offset
+        """
+        self._logger.debug(f"RelMovL | {offsetX=}, {offsetY=}, {offsetZ=}, {offsetR=}")
+        return self.move_api.RelMovL(offsetX,offsetY,offsetZ,offsetR, *args) if isinstance(self.move_api, DobotApiMove) else None
     
