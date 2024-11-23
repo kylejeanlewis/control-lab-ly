@@ -13,7 +13,9 @@ Other constants and variables:
 """
 # Standard library imports
 from __future__ import annotations
+from copy import deepcopy
 import logging
+import time
 from typing import Sequence
 
 # Third party imports
@@ -100,6 +102,29 @@ class Dobot(RobotArm):
         self.connect()
         return
     
+    # Properties
+    @property
+    def max_joint_accels(self) -> np.ndarray:
+        """Maximum joint accelerations of the robot"""
+        accel_j1 = self.settings.get('max_accel_j1', 0)
+        accel_j2 = self.settings.get('max_accel_j2', 0)
+        accel_j3 = self.settings.get('max_accel_j3', 0)
+        accel_j4 = self.settings.get('max_accel_j4', 0)
+        accel_j5 = self.settings.get('max_accel_j5', 0)
+        accel_j6 = self.settings.get('max_accel_j6', 0)
+        return np.array([accel_j1, accel_j2, accel_j3, accel_j4, accel_j5, accel_j6])
+    
+    @property
+    def max_joint_speeds(self) -> np.ndarray:
+        """Maximum joint speeds of the robot"""
+        speed_j1 = self.settings.get('max_speed_j1', 0)
+        speed_j2 = self.settings.get('max_speed_j2', 0)
+        speed_j3 = self.settings.get('max_speed_j3', 0)
+        speed_j4 = self.settings.get('max_speed_j4', 0)
+        speed_j5 = self.settings.get('max_speed_j5', 0)
+        speed_j6 = self.settings.get('max_speed_j6', 0)
+        return np.array([speed_j1, speed_j2, speed_j3, speed_j4, speed_j5, speed_j6])
+    
     def moveBy(self,
         by: Sequence[float]|Position|np.ndarray,
         speed_factor: float|None = None,
@@ -145,7 +170,15 @@ class Dobot(RobotArm):
         self.device.RelMovL(*move_by.coordinates, move_by.Rotation.as_euler('xyz', degrees=True)[-1])
         
         # Adding time delays to coincide with movement
-        ... # wait time
+        if not jog:
+            speed_factor = self.speed_factor if speed_factor is None else speed_factor
+            current_position = deepcopy(self.robot_position)
+            move_to = move_by.apply(current_position)
+            angular_distances = self._convert_cartesian_to_angles(self.robot_position.coordinates, move_to.coordinates)
+            speeds = speed_factor*self.max_joint_speeds
+            accels = self.max_joint_accels
+            move_time = self._get_move_wait_time([*angular_distances,0,0,0], speeds, accels)
+            time.sleep(move_time+self.movement_buffer)
         
         # Update position
         self.updateRobotPosition(by=move_by)
@@ -189,7 +222,13 @@ class Dobot(RobotArm):
         self.device.MovJ(*move_to.coordinates, move_to.Rotation.as_euler('xyz', degrees=True)[-1])
         
         # Adding time delays to coincide with movement
-        ... # wait time
+        if not jog:
+            speed_factor = self.speed_factor if speed_factor is None else speed_factor
+            angular_distances = self._convert_cartesian_to_angles(self.robot_position.coordinates, move_to.coordinates)
+            speeds = speed_factor*self.max_joint_speeds
+            accels = self.max_joint_accels
+            move_time = self._get_move_wait_time([*angular_distances,0,0,0], speeds, accels)
+            time.sleep(move_time+self.movement_buffer)
         
         # Update position
         self.updateRobotPosition(to=move_to)
@@ -229,7 +268,15 @@ class Dobot(RobotArm):
         
         # Implementation of relative movement
         self.device.RelMovJ(*joint_move_by[:3], joint_move_by[-1])
-        ... # wait time
+        
+        # Adding time delays to coincide with movement
+        if not jog:
+            speed_factor = self.speed_factor if speed_factor is None else speed_factor
+            angular_distances = abs(joint_move_by)
+            speeds = speed_factor*self.max_joint_speeds
+            accels = self.max_joint_accels
+            move_time = self._get_move_wait_time(angular_distances, speeds, accels)
+            time.sleep(move_time+self.movement_buffer)
         
         # Update position
         self.updateJointPosition(by=joint_move_by)
@@ -269,7 +316,15 @@ class Dobot(RobotArm):
         
         # Implementation of absolute movement
         self.device.JointMovJ(*joint_move_to[:3], joint_move_to[-1])
-        ... # wait time
+        
+        # Adding time delays to coincide with movement
+        if not jog:
+            speed_factor = self.speed_factor if speed_factor is None else speed_factor
+            angular_distances = abs(joint_move_to - self.joint_position)
+            speeds = speed_factor*self.max_joint_speeds
+            accels = self.max_joint_accels
+            move_time = self._get_move_wait_time(angular_distances, speeds, accels)
+            time.sleep(move_time+self.movement_buffer)
         
         # Update position
         self.updateJointPosition(to=joint_move_to)
@@ -295,13 +350,7 @@ class Dobot(RobotArm):
             self.speed_factor = speed_factor
         return
     
-    def shutdown(self):
-        """Shutdown procedure for tool"""
-        self.device.ResetRobot()
-        self.device.DisableRobot()
-        return super().shutdown()
-    
-    def stop(self):
+    def halt(self):
         """Halt robot movement"""
         self.device.ResetRobot()
         return
@@ -312,4 +361,26 @@ class Dobot(RobotArm):
         self.device.connect()
         self.setSpeedFactor(1.0)
         return
+    
+    def shutdown(self):
+        """Shutdown procedure for tool"""
+        self.device.ResetRobot()
+        self.device.DisableRobot()
+        return super().shutdown()
+    
+    # Protected method(s)
+    def _convert_cartesian_to_angles(self, src_point:np.ndarray, dst_point: np.ndarray) -> np.ndarray:
+        """
+        Convert travel between two points into relevant rotation angles and/or distances
+
+        Args:
+            src_point (np.ndarray): (x,y,z) coordinates, orientation of starting point
+            dst_point (np.ndarray): (x,y,z) coordinates, orientation of ending point
+
+        Returns:
+            np.ndarray: relevant rotation angles (in degrees) and/or distances (in mm)
+        """
+        assert len(src_point) == 3 and len(dst_point) == 3, f"Ensure both points are 3D coordinates"
+        assert isinstance(src_point, np.ndarray) and isinstance(dst_point, np.ndarray), f"Ensure both points are numpy arrays"
+        raise NotImplementedError
     
