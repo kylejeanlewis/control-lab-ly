@@ -25,7 +25,7 @@ from .dobot_utils import Dobot
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
 
-DEFAULT_SPEEDS = dict(j1=300, j2=300, j3=300, j4=300)
+DEFAULT_SPEEDS = dict(max_speed_j1=300, max_speed_j2=300, max_speed_j3=300, max_speed_j4=300)
 
 def within_volume(point: Sequence[float]) -> bool:
     assert len(point) == 3, f"Ensure point is a 3D coordinate"
@@ -64,7 +64,6 @@ class MG400(Dobot):
     def __init__(self, 
         host: str,
         joint_limits: Sequence[Sequence[float]]|None = None,
-        right_handed: bool = True, 
         *,
         robot_position: Position = Position(),
         home_waypoints: Sequence[Position] = list(),
@@ -93,7 +92,7 @@ class MG400(Dobot):
         """
         workspace = BoundingVolume(dict(volume=within_volume))
         super().__init__(
-            host=host, joint_limits=joint_limits, right_handed=right_handed,
+            host=host, joint_limits=joint_limits,
             robot_position=robot_position, home_waypoints=home_waypoints, home_position=home_position,
             tool_offset=tool_offset, calibrated_offset=calibrated_offset, scale=scale,
             deck=deck, workspace=workspace, safe_height=safe_height, saved_positions=saved_positions,
@@ -102,11 +101,12 @@ class MG400(Dobot):
             **kwargs
         )
         self._speed_max = max(self._default_speeds.values()) if speed_max is None else speed_max
+        self.settings.update(self._default_speeds)
         self.retractArm()
         self.home()
         return
     
-    def retractArm(self, target:tuple[float]|None = None) -> bool:
+    def retractArm(self, target:Sequence[float]|None = None) -> Position:
         """
         Tuck in arm, rotate about base, then extend again
 
@@ -133,76 +133,24 @@ class MG400(Dobot):
             else:
                 x1,y1 = (0,safe_radius)
             self.moveTo((x1,y1,self.safe_height))
-        return True
+        return self.robot_position
     
-    # def _isFeasible(self, 
-    #     coordinates: tuple[float], 
-    #     transform_in: bool = False, 
-    #     tool_offset: bool = False, 
-    #     **kwargs
-    # ) -> bool:
-    #     """
-    #     Checks and returns whether the target coordinate is feasible
+    # Protected method(s)
+    def _convert_cartesian_to_angles(self, src_point:np.ndarray, dst_point: np.ndarray) -> np.ndarray:
+        """
+        Convert travel between two points into relevant rotation angles and/or distances
 
-    #     Args:
-    #         coordinates (tuple[float]): target coordinates
-    #         transform_in (bool, optional): whether to convert to internal coordinates first. Defaults to False.
-    #         tool_offset (bool, optional): whether to convert from tool tip coordinates first. Defaults to False.
+        Args:
+            src_point (np.ndarray): (x,y,z) coordinates, orientation of starting point
+            dst_point (np.ndarray): (x,y,z) coordinates, orientation of ending point
 
-    #     Returns:
-    #         bool: whether the target coordinate is feasible
-    #     """
-    #     if transform_in:
-    #         coordinates = self._transform_in(coordinates=coordinates, tool_offset=tool_offset)
-    #     x,y,z = coordinates
-        
-    #     # XY-plane
-    #     j1 = round(math.degrees(math.atan(x/(y + 1E-6))), 3)
-    #     if y < 0:
-    #         j1 += (180 * math.copysign(1, x))
-    #     if abs(j1) > 160:
-    #         return False
-        
-    #     # Z-axis
-    #     if not (-150 < z < 230):
-    #         return False
-    #     return not self.deck.isExcluded(self._transform_out(coordinates, tool_offset=True))
-    
-    # # Protected method(s)
-    # def _get_move_wait_time(self, 
-    #     distances: np.ndarray, 
-    #     speeds: np.ndarray, 
-    #     accels: np.ndarray|None = None,
-    #     cartesian_to_angles: bool = False
-    # ) -> float:
-    #     """
-    #     Get the amount of time to wait to complete movement
-
-    #     Args:
-    #         distances (np.ndarray): array of distances to travel
-    #         speeds (np.ndarray): array of axis speeds
-    #         accels (np.ndarray|None, optional): array of axis accelerations. Defaults to None.
-    #         cartesian_to_angles (bool, optional): whether from coordinates to joint rotations angles. Defaults to False.
-
-    #     Returns:
-    #         float: wait time to complete travel
-    #     """
-    #     if cartesian_to_angles is None:
-    #         return super()._get_move_wait_time(distances=distances, speeds=speeds, accels=accels)
-        
-    #     dx,dy,dz = distances[:3]
-    #     rotation_1 = abs( math.degrees(math.atan2(dy, dx)) )                    # joint 1
-    #     # rotation_2 = math.degrees(math.atan2(dz, np.linalg.norm([dx,dy])))      # joint 2
-        
-    #     distances = np.array([rotation_1, *distances[3:]])
-    #     speeds = np.array([speeds[0], *speeds[3:]])
-    #     accels = np.zeros(len(speeds)) if accels is None else accels
-        
-    #     times = [self._calculate_travel_time(d,s,a,a) for d,s,a in zip(distances, speeds, accels)]
-    #     move_time = max(times[1:]) + times[0]
-    #     if self.verbose:
-    #         print(distances)
-    #         print(speeds)
-    #         print(accels)
-    #         print(times)
-    #     return move_time
+        Returns:
+            np.ndarray: relevant rotation angles (in degrees) and/or distances (in mm)
+        """
+        assert len(src_point) == 3 and len(dst_point) == 3, f"Ensure both points are 3D coordinates"
+        assert isinstance(src_point, np.ndarray) and isinstance(dst_point, np.ndarray), f"Ensure both points are numpy arrays"
+        distances = abs(dst_point - src_point)
+        dx,dy,dz = distances[:3]
+        j1_angle = abs( math.degrees(math.atan2(dy, dx)) )                    # joint 1
+        j2_angle = math.degrees(math.atan2(dz, np.linalg.norm([dx,dy])))      # joint 2
+        return np.array((j1_angle, j2_angle, dz))
