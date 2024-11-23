@@ -429,7 +429,7 @@ class Mover:
         
         Args:
             axis (str): axis to move
-            by (float): distance to move
+            by (float): displacement to move
             speed_factor (float, optional): fraction of maximum speed to travel at. Defaults to None.
             jog (bool, optional): whether to jog the robot. Defaults to False.
             rapid (bool, optional): whether to move rapidly. Defaults to False.
@@ -632,10 +632,10 @@ class Mover:
         robot: bool = False
     ) -> Rotation:
         """
-        Rotate the robot by target direction
+        Rotate the robot by target rotation
         
         Args:
-            by (Sequence[float] | Rotation | np.ndarray): target direction
+            by (Sequence[float] | Rotation | np.ndarray): target rotation
             speed_factor (float, optional): fraction of maximum speed to rotate at. Defaults to None.
             jog (bool, optional): whether to jog the robot. Defaults to False.
             robot (bool, optional): whether to rotate the robot. Defaults to False.

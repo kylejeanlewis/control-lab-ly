@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-This module holds the base class for jointed mover tools.
+This module provides the base class for jointed robot arms.
 
-Classes:
-    RobotArm (Mover)
+## Classes:
+    `RobotArm`: RobotArm provides methods to control a robot arm
+
+<i>Documentation last updated: 2024-11-23</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -23,33 +25,79 @@ logger.debug(f"Import: OK <{__name__}>")
 
 class RobotArm(Mover):
     """
-    Abstract Base Class (ABC) for Robot Arm objects. RobotArm provides controls for jointed robots with articulated arms.
-    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
+    RobotArm provides methods to control a robot arm
     
     ### Constructor
-    Args:
-        `safe_height` (float|None, optional): height at which obstacles can be avoided. Defaults to None.
-        `retract` (bool, optional): whether to retract arm before movement. Defaults to False.
-
+        `home_waypoints` (Sequence[Position], optional): home waypoints for the robot. Defaults to list().
+        `joint_limits` (Sequence[Sequence[float]], optional): joint limits for the robot. Defaults to None.
+    
+    ### Attributes and properties
+        `home_waypoints` (list[Position]): home waypoints for the robot
+        `joint_limits` (np.ndarray): joint limits for the robot
+        `joint_position` (np.ndarray): current joint angles
+        `connection_details` (dict): connection details for the device
+        `device` (Device): device object that communicates with physical tool
+        `flags` (SimpleNamespace[str, bool]): flags for the class
+        `is_busy` (bool): whether the device is busy
+        `is_connected` (bool): whether the device is connected
+        `verbose` (bool): verbosity of class
+        `deck` (Deck): Deck object for workspace
+        `workspace` (BoundingVolume): workspace bounding box
+        `safe_height` (float): safe height in terms of robot coordinate system
+        `saved_positions` (dict): dictionary of saved positions
+        `current_zone_waypoints` (tuple[str, list[Position]]): current zone entry waypoints
+        `speed` (float): travel speed of robot
+        `speed_factor` (float): fraction of maximum travel speed of robot
+        `speed_max` (float): maximum speed of robot in mm/min
+        `robot_position` (Position): current position of the robot
+        `home_position` (Position): home position of the robot in terms of robot coordinate system
+        `tool_offset` (Position): tool offset from robot to end effector
+        `calibrated_offset` (Position): calibrated offset from robot to work position
+        `scale` (float): factor to scale the basis vectors by
+        `tool_position` (Position): robot position of the tool end effector
+        `work_position` (Position): work position of the robot
+        `worktool_position` (Position): work position of the tool end effector
+        `position` (Position): work position of the tool end effector; alias for `worktool_position`
+    
     ### Methods
-    #### Abstract
-    - `disconnect`: disconnect from device
-    - `isFeasible`: checks and returns whether the target coordinate is feasible
-    - `moveCoordBy`: relative Cartesian movement and tool orientation, using robot coordinates
-    - `moveCoordTo`: absolute Cartesian movement and tool orientation, using robot coordinates
-    - `jointMoveBy`: relative joint movement
-    - `jointMoveTo`: absolute joint movement
-    - `reset`: reset the robot
-    - `retractArm`: tuck in arm, rotate about base, then extend again
-    - `setSpeed`: set the speed of the robot
-    - `shutdown`: shutdown procedure for tool
-    - `_connect`: connection procedure for tool
-    #### Public
-    - `home`: make the robot go home
-    - `moveBy`: move the robot by target direction, by specified vector and angles
-    - `moveTo`: move the robot to target position, using workspace coordinates
-    - `rotateBy`: relative end effector rotation
-    - `rotateTo`: absolute end effector rotation
+        `isFeasibleJoint`: checks and returns whether the target joint angles are feasible
+        `jointMoveBy`: move the robot by target joint angles
+        `jointMoveTo`: move the robot to target joint position
+        `updateJointPosition`: update the joint position based on relative or absolute movement
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `resetFlags`: reset all flags to class attribute `_default_flags`
+        `shutdown`: shutdown procedure for tool
+        `enterZone`: enter a zone on the deck
+        `exitZone`: exit the current zone on the deck
+        `halt`: halt robot movement
+        `home`: make the robot go home
+        `isFeasible`: checks and returns whether the target coordinates is feasible
+        `loadDeck`: load `Deck` layout object to mover
+        `loadDeckFromDict`: load `Deck` layout object from dictionary
+        `loadDeckFromFile`: load `Deck` layout object from file
+        `move`: move the robot in a specific axis by a specific value
+        `moveBy`: move the robot by target direction
+        `moveTo`: move the robot to target position
+        `moveToSafeHeight`: move the robot to safe height
+        `moveRobotTo`: move the robot to target position
+        `moveToolTo`: move the tool end effector to target position
+        `reset`: reset the robot
+        `rotate`: rotate the robot in a specific axis by a specific value
+        `rotateBy`: rotate the robot by target rotation
+        `rotateTo`: rotate the robot to target orientation
+        `rotateRobotTo`: rotate the robot to target orientation
+        `rotateToolTo`: rotate the tool end effector to target orientation
+        `safeMoveTo`: safe version of moveTo by moving to safe height first
+        `setSafeHeight`: set safe height for robot
+        `setSpeedFactor`: set the speed factor of the robot
+        `setToolOffset`: set the tool offset of the robot
+        `updateRobotPosition`: update the robot position
+        `transformRobotToTool`: transform robot coordinates to tool coordinates
+        `transformRobotToWork`: transform robot coordinates to work coordinates
+        `transformToolToRobot`: transform tool coordinates to robot coordinates
+        `transformWorkToRobot`: transform work coordinates to robot coordinates
+        `calibrate`: calibrate the internal and external coordinate systems
     """
     
     def __init__(self,
@@ -59,11 +107,11 @@ class RobotArm(Mover):
         **kwargs
     ):
         """
-        Instantiate the class
+        Initialize RobotArm class
 
         Args:
-            safe_height (float|None, optional): height at which obstacles can be avoided. Defaults to None.
-            retract (bool, optional): whether to retract arm before movement. Defaults to False.
+            home_waypoints (Sequence[Position], optional): home waypoints for the robot. Defaults to list().
+            joint_limits (Sequence[Sequence[float]], optional): joint limits for the robot. Defaults to None.
         """
         super().__init__(*args, **kwargs)
         self.joint_limits = np.array([[-180]*6, [180]*6]) if joint_limits is None else np.array(joint_limits)
@@ -86,13 +134,12 @@ class RobotArm(Mover):
     def home(self, axis: str|None = None) -> bool:
         """
         Make the robot go home
-
-        Args:
-            safe (bool, optional): whether to use `safeMoveTo()`. Defaults to True.
-            tool_offset (bool, optional): whether to consider tooltip offset. Defaults to True.
         
+        Args:
+            axis (str, optional): axis to home. Defaults to None.
+            
         Returns:
-            bool: whether movement is successful
+            bool: whether the robot successfully homed
         """
         self.moveToSafeHeight()
         if isinstance(axis,str) and axis.lower() == 'z':
@@ -104,13 +151,13 @@ class RobotArm(Mover):
     
     def isFeasibleJoint(self, joint_position: Sequence[float]|np.ndarray) -> bool:
         """
-        Check if the target joint angles are feasible
+        Checks and returns whether the target joint angles are feasible
         
         Args:
-            joint_position (tuple[float]): j1~j6 orientation angles in degrees
+            joint_position (Sequence[float]|np.ndarray): target joint angles
             
         Returns:
-            bool: whether the target position is feasible
+            bool: whether the target coordinates are feasible
         """
         assert isinstance(joint_position, (Sequence, np.ndarray)), "Ensure `joint_position` is a Sequence or np.ndarray object"
         assert len(joint_position) == 6, "Ensure `joint_position` is a 6-element sequence for j1~j6"
@@ -130,16 +177,17 @@ class RobotArm(Mover):
         robot: bool = True
     ) -> np.ndarray:
         """
-        Relative joint movement
+        Move the robot by target joint angles
 
         Args:
-            relative_angles (tuple[float]): j1~j6 rotation angles in degrees
-
-        Raises:
-            ValueError: Length of input needs to be 6.
-
+            to (Sequence[float] | np.ndarray): target joint angles
+            speed_factor (float, optional): fraction of maximum speed to travel at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            rapid (bool, optional): whether to move rapidly. Defaults to False.
+            robot (bool, optional): whether to move the robot. Defaults to True.
+            
         Returns:
-            bool: whether movement is successful
+            np.ndarray: new robot joint position
         """
         assert isinstance(by, (Sequence, np.ndarray)), "Ensure `by` is a Sequence or np.ndarray object"
         assert len(by) == 6, "Ensure `by` is a 6-element sequence for j1~j6"
@@ -170,16 +218,17 @@ class RobotArm(Mover):
         robot: bool = True
     ) -> Position:
         """
-        Absolute joint movement
+        Move the robot to target joint position
 
         Args:
-            absolute_angles (tuple[float]): j1~j6 orientation angles in degrees
-
-        Raises:
-            ValueError: Length of input needs to be 6.
-
+            to (Sequence[float] | np.ndarray): target joint positions
+            speed_factor (float, optional): fraction of maximum speed to travel at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            rapid (bool, optional): whether to move rapidly. Defaults to False.
+            robot (bool, optional): whether to move the robot. Defaults to True.
+            
         Returns:
-            bool: whether movement is successful
+            np.ndarray: new robot joint position
         """
         assert isinstance(to, (Sequence, np.ndarray)), "Ensure `to` is a Sequence or np.ndarray object"
         assert len(to) == 6, "Ensure `to` is a 6-element sequence for j1~j6"
@@ -209,10 +258,10 @@ class RobotArm(Mover):
         robot: bool = True
     ) -> Rotation:
         """
-        Rotate the robot by target direction
+        Rotate the robot by target rotation
         
         Args:
-            by (Sequence[float] | Rotation | np.ndarray): target direction
+            by (Sequence[float] | Rotation | np.ndarray): target rotation
             speed_factor (float, optional): fraction of maximum speed to rotate at. Defaults to None.
             jog (bool, optional): whether to jog the robot. Defaults to False.
             robot (bool, optional): whether to rotate the robot. Defaults to False.

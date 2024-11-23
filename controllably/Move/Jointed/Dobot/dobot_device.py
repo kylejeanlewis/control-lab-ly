@@ -1,4 +1,16 @@
 # -*- coding: utf-8 -*-
+""" 
+This module provides a class to connect and interface with Dobot's arms
+
+Attributes:
+    DASHBOARD_PORT (int): port number for the dashboard API
+    FEEDBACK_PORT (int): port number for the feedback API
+    
+## Classes:
+    `DobotDevice`: DobotDevice provides methods to connect and interface with Dobot's arms
+    
+<i>Documentation last updated: 2024-11-23</i>
+"""
 # Standard imports
 from __future__ import annotations
 from copy import deepcopy
@@ -20,6 +32,48 @@ DASHBOARD_PORT = 29999
 FEEDBACK_PORT = 30003
 
 class DobotDevice:
+    """ 
+    DobotDevice provides methods to connect and interface with Dobot's arms
+    
+    ### Constructor
+        `host` (str): IP address of Dobot
+        `port` (int, optional): port number. Defaults to None.
+        `timeout` (int, optional): timeout for connection. Defaults to 10.
+        `simulation` (bool, optional): whether to simulate the connection. Defaults to False.
+        `verbose` (bool, optional): whether to log debug messages. Defaults to False.
+    
+    ### Attributes and properties
+        `host` (str): device host
+        `port` (int): device port
+        `timeout` (int): device timeout
+        `connection_details` (dict): connection details for the device
+        `socket` (socket.socket): socket object for the device
+        `dashboard_api` (DobotApiDashboard): dashboard API for the device
+        `move_api` (DobotApiMove): move API for the device
+        `flags` (SimpleNamespace[str, bool]): flags for the device
+        `is_connected` (bool): whether the device is connected
+        `verbose` (bool): verbosity of class
+        
+    ### Methods
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `reset`: reset the device
+        `clear`: clear the input and output buffers
+        `query`: query the device
+        `read`: read data from the device
+        `write`: write data to the device
+        `close`: close the connection to the device
+        `ClearError`: clear any errors on the device
+        `DisableRobot`: disable the robot
+        `EnableRobot`: enable the robot
+        `ResetRobot`: stop the robot
+        `SetArmOrientation`: set the handedness of the robot
+        `SpeedFactor`: set the speed factor of the robot
+        `JointMovJ`: move the robot to the specified joint coordinates
+        `MovJ`: move the robot to the specified cartesian coordinates
+        `RelMovJ`: move the robot by the specified joint offsets
+        `RelMovL`: move the robot by the specified cartesian offsets
+    """
     
     _default_flags: SimpleNamespace = SimpleNamespace(verbose=False, connected=False, simulation=False)
     def __init__(self, 
@@ -126,9 +180,20 @@ class DobotDevice:
         return
     
     def reset(self):
+        """Reset the device"""
         self.DisableRobot()
         self.ClearError()
         self.EnableRobot()
+        return
+    
+    def clear(self):                                                    # NOTE: not implemented
+        """Clear the input and output buffers"""
+        raise NotImplementedError
+        if self.flags.simulation:
+            return
+        self.socket.settimeout(0)
+        self.socket.recv(1024)
+        self.socket.settimeout(self.timeout)
         return
     
     def query(self, data:Any, lines:bool = True) -> list[str]|None:     # NOTE: not implemented
@@ -188,6 +253,7 @@ class DobotDevice:
 
     # Dobot API
     def close(self):
+        """Close the connection to the device"""
         self._logger.debug("close")
         if isinstance(self.dashboard_api, DobotApiDashboard):
             self.dashboard_api.close()
@@ -199,39 +265,82 @@ class DobotDevice:
 
     # Dashboard API
     def ClearError(self):
+        """Clear any errors on the device"""
         self._logger.debug("ClearError")
         return self.dashboard_api.ClearError() if isinstance(self.dashboard_api, DobotApiDashboard) else None
     
     def DisableRobot(self):
+        """Disable the robot"""
         self._logger.debug("DisableRobot")
         return self.dashboard_api.DisableRobot() if isinstance(self.dashboard_api, DobotApiDashboard) else None
     
     def EnableRobot(self, *args):
+        """Enable the robot"""
         self._logger.debug("EnableRobot")
         return self.dashboard_api.EnableRobot(*args) if isinstance(self.dashboard_api, DobotApiDashboard) else None
     
     def ResetRobot(self):
+        """Stop the robot"""
         self._logger.debug("ResetRobot")
         return self.dashboard_api.ResetRobot() if isinstance(self.dashboard_api, DobotApiDashboard) else None
     
     def SetArmOrientation(self, right_handed:bool):
+        """ 
+        Set the handedness of the robot
+        
+        Args:
+            right_handed (bool): whether to select right-handed mode
+        """
         self._logger.debug(f"SetArmOrientation | {right_handed=}")
         return self.dashboard_api.SetArmOrientation(int(right_handed)) if isinstance(self.dashboard_api, DobotApiDashboard) else None
     
     def SpeedFactor(self, speed_factor:int):
+        """
+        Set the speed factor of the robot
+        
+        Args:
+            speed_factor (int): speed factor to set
+        """
         self._logger.debug(f"SpeedFactor | {speed_factor=}")
         return self.dashboard_api.SpeedFactor(speed_factor) if isinstance(self.dashboard_api, DobotApiDashboard) else None
     
     # Move API
     def JointMovJ(self, j1:float, j2:float, j3:float, j4:float, *args):
+        """ 
+        Move the robot to the specified joint coordinates
+        
+        Args:
+            j1 (float): joint 1 coordinate
+            j2 (float): joint 2 coordinate
+            j3 (float): joint 3 coordinate
+            j4 (float): joint 4 coordinate
+        """
         self._logger.debug(f"JointMovJ | {j1=}, {j2=}, {j3=}, {j4=}")
         return self.move_api.JointMovJ(j1,j2,j3,j4, *args) if isinstance(self.move_api, DobotApiMove) else None    
     
     def MovJ(self, x:float, y:float, z:float, r:float, *args):
+        """
+        Move the robot to the specified cartesian coordinates
+        
+        Args:
+            x (float): x-coordinate
+            y (float): y-coordinate
+            z (float): z-coordinate
+            r (float): r-coordinate
+        """
         self._logger.debug(f"MovJ | {x=}, {y=}, {z=}, {r=}")
         return self.move_api.MovJ(x,y,z,r, *args) if isinstance(self.move_api, DobotApiMove) else None
     
     def RelMovJ(self, offset1:float, offset2:float, offset3:float, offset4:float, *args):
+        """
+        Move the robot by the specified joint offsets
+        
+        Args:
+            offset1 (float): joint 1 offset
+            offset2 (float): joint 2 offset
+            offset3 (float): joint 3 offset
+            offset4 (float): joint 4 offset
+        """
         self._logger.debug(f"RelMovJ | {offset1=}, {offset2=}, {offset3=}, {offset4=}")
         return self.move_api.RelMovJ(offset1,offset2,offset3,offset4, *args) if isinstance(self.move_api, DobotApiMove) else None
     

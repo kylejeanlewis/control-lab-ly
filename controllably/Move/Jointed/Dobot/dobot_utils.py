@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-This module holds the base class for movement tools from Dobot.
+This module provides utility functions for Dobot's robot arms
 
-Classes:
-    Dobot (RobotArm)
+Attributes:
+    MOVEMENT_BUFFER (float): buffer time for movement
+    MOVEMENT_TIMEOUT (float): timeout for movement
+    
+## Classes:
+    `Dobot`: Dobot provides methods to control Dobot's robot arms
 
-Other types:
-    Device (namedtuple)
-
-Other constants and variables:
-    MOVE_TIME_BUFFER_S (float) = 0.5
+<i>Documentation last updated: 2024-11-23</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -32,42 +32,89 @@ logger.debug(f"Import: OK <{__name__}>")
 MOVEMENT_BUFFER = 0.5
 MOVEMENT_TIMEOUT = 30
 
-
 class Dobot(RobotArm):
     """
-    Abstract Base Class (ABC) for Dobot objects. Dobot provides controls for articulated robots from Dobot.
-    ABC cannot be instantiated, and must be subclassed with abstract methods implemented before use.
+    Dobot provides methods to control Dobot's robot arms
     
     ### Constructor
-    Args:
-        `ip_address` (str): IP address of Dobot
-        `attachment_name` (str, optional): name of attachment. Defaults to None.
-    
-    ### Attributes
-    - `attachment` (DobotAttachment): attached Dobot tool
-    
-    ### Properties
-    - `dashboard` (dobot_api_dashboard): connection to status and signal control
-    - `feedback` (dobot_api_feedback): connection to movement controls
-    - `ip_address` (str): IP address of Dobot
-    
+        `host` (str): IP address of Dobot
+        `joint_limits` (Optional[Sequence[Sequence[float]]], optional): joint limits of the robot. Defaults to None.
+        `home_waypoints` (Sequence[Position], optional): home waypoints for the robot. Defaults to [].
+        `movement_buffer` (Optional[int], optional): buffer time for movement. Defaults to None.
+        `movement_timeout` (Optional[int], optional): timeout for movement. Defaults to None.
+        `verbose` (bool, optional): whether to output logs. Defaults to False.
+        
+    ### Attributes and properties
+        `movement_buffer` (int): buffer time for movement
+        `movement_timeout` (int): timeout for movement
+        `max_joint_accels` (np.ndarray): maximum joint accelerations of the robot
+        `max_joint_speeds` (np.ndarray): maximum joint speeds of the robot
+        `home_waypoints` (list[Position]): home waypoints for the robot
+        `joint_limits` (np.ndarray): joint limits for the robot
+        `joint_position` (np.ndarray): current joint angles
+        `connection_details` (dict): connection details for the device
+        `device` (Device): device object that communicates with physical tool
+        `flags` (SimpleNamespace[str, bool]): flags for the class
+        `is_busy` (bool): whether the device is busy
+        `is_connected` (bool): whether the device is connected
+        `verbose` (bool): verbosity of class
+        `deck` (Deck): Deck object for workspace
+        `workspace` (BoundingVolume): workspace bounding box
+        `safe_height` (float): safe height in terms of robot coordinate system
+        `saved_positions` (dict): dictionary of saved positions
+        `current_zone_waypoints` (tuple[str, list[Position]]): current zone entry waypoints
+        `speed` (float): travel speed of robot
+        `speed_factor` (float): fraction of maximum travel speed of robot
+        `speed_max` (float): maximum speed of robot in mm/min
+        `robot_position` (Position): current position of the robot
+        `home_position` (Position): home position of the robot in terms of robot coordinate system
+        `tool_offset` (Position): tool offset from robot to end effector
+        `calibrated_offset` (Position): calibrated offset from robot to work position
+        `scale` (float): factor to scale the basis vectors by
+        `tool_position` (Position): robot position of the tool end effector
+        `work_position` (Position): work position of the robot
+        `worktool_position` (Position): work position of the tool end effector
+        `position` (Position): work position of the tool end effector; alias for `worktool_position`
+        
     ### Methods
-    #### Abstract
-    - `isFeasible`: checks and returns whether the target coordinate is feasible
-    #### Public
-    - `calibrate`: calibrate the internal and external coordinate systems, then verify points
-    - `disconnect`: disconnect from device
-    - `getConfigSettings`: retrieve the robot's configuration
-    - `moveBy`: relative Cartesian movement and tool orientation, using robot coordinates
-    - `moveTo`: absolute Cartesian movement and tool orientation, using robot coordinates
-    - `jointMoveBy`: relative joint movement
-    - `jointMoveTo`: absolute joint movement
-    - `reset`: reset the robot
-    - `setSpeed`: set the speed of the robot
-    - `shutdown`: shutdown procedure for tool
-    - `stop`: halt robot movement
-    - `toggleAttachment`: couple or remove Dobot attachment that interfaces with Dobot's digital output
-    - `toggleCalibration`: enter or exit calibration mode, with a sharp point implement for alignment
+        `isFeasibleJoint`: checks and returns whether the target joint angles are feasible
+        `jointMoveBy`: move the robot by target joint angles
+        `jointMoveTo`: move the robot to target joint position
+        `updateJointPosition`: update the joint position based on relative or absolute movement
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `resetFlags`: reset all flags to class attribute `_default_flags`
+        `shutdown`: shutdown procedure for tool
+        `enterZone`: enter a zone on the deck
+        `exitZone`: exit the current zone on the deck
+        `halt`: halt robot movement
+        `home`: make the robot go home
+        `isFeasible`: checks and returns whether the target coordinates is feasible
+        `loadDeck`: load `Deck` layout object to mover
+        `loadDeckFromDict`: load `Deck` layout object from dictionary
+        `loadDeckFromFile`: load `Deck` layout object from file
+        `move`: move the robot in a specific axis by a specific value
+        `moveBy`: move the robot by target direction
+        `moveTo`: move the robot to target position
+        `moveToSafeHeight`: move the robot to safe height
+        `moveRobotTo`: move the robot to target position
+        `moveToolTo`: move the tool end effector to target position
+        `reset`: reset the robot
+        `rotate`: rotate the robot in a specific axis by a specific value
+        `rotateBy`: rotate the robot by target rotation
+        `rotateTo`: rotate the robot to target orientation
+        `rotateRobotTo`: rotate the robot to target orientation
+        `rotateToolTo`: rotate the tool end effector to target orientation
+        `safeMoveTo`: safe version of moveTo by moving to safe height first
+        `setSafeHeight`: set safe height for robot
+        `setSpeedFactor`: set the speed factor of the robot
+        `setToolOffset`: set the tool offset of the robot
+        `updateRobotPosition`: update the robot position
+        `transformRobotToTool`: transform robot coordinates to tool coordinates
+        `transformRobotToWork`: transform robot coordinates to work coordinates
+        `transformToolToRobot`: transform tool coordinates to robot coordinates
+        `transformWorkToRobot`: transform work coordinates to robot coordinates
+        `calibrate`: calibrate the internal and external coordinate systems
     """
     
     def __init__(self, 
@@ -81,11 +128,15 @@ class Dobot(RobotArm):
         **kwargs
     ):
         """
-        Instantiate the class
-
+        Initialize Dobot class
+        
         Args:
-            ip_address (str): IP address of Dobot
-            attachment_name (str, optional): name of attachment. Defaults to None.
+            host (str): IP address of Dobot
+            joint_limits (Optional[Sequence[Sequence[float]]], optional): joint limits of the robot. Defaults to None.
+            home_waypoints (Sequence[Position], optional): home waypoints for the robot. Defaults to [].
+            movement_buffer (Optional[int], optional): buffer time for movement. Defaults to None.
+            movement_timeout (Optional[int], optional): timeout for movement. Defaults to None.
+            verbose (bool, optional): whether to output logs. Defaults to False.
         """
         super().__init__(
             device_type=DobotDevice, host=host, verbose=verbose, 
@@ -243,16 +294,17 @@ class Dobot(RobotArm):
         robot: bool = True
     ) -> np.ndarray:
         """
-        Relative joint movement
+        Move the robot by target direction
 
         Args:
-            relative_angles (tuple[float]): j1~j6 rotation angles in degrees
-
-        Raises:
-            ValueError: Length of input needs to be 6.
-
+            to (Sequence[float] | np.ndarray): target joint positions
+            speed_factor (float, optional): fraction of maximum speed to travel at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            rapid (bool, optional): whether to move rapidly. Defaults to False.
+            robot (bool, optional): whether to move the robot. Defaults to True.
+            
         Returns:
-            bool: whether movement is successful
+            np.ndarray: new robot joint position
         """
         assert isinstance(by, (Sequence, np.ndarray)), "Ensure `by` is a Sequence or np.ndarray object"
         assert len(by) == 6, "Ensure `by` is a 6-element sequence for j1~j6"
@@ -291,16 +343,17 @@ class Dobot(RobotArm):
         robot: bool = True
     ) -> Position:
         """
-        Absolute joint movement
+        Move the robot by target direction
 
         Args:
-            absolute_angles (tuple[float]): j1~j6 orientation angles in degrees
-
-        Raises:
-            ValueError: Length of input needs to be 6.
-
+            to (Sequence[float] | np.ndarray): target joint positions
+            speed_factor (float, optional): fraction of maximum speed to travel at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            rapid (bool, optional): whether to move rapidly. Defaults to False.
+            robot (bool, optional): whether to move the robot. Defaults to True.
+            
         Returns:
-            bool: whether movement is successful
+            np.ndarray: new robot joint position
         """
         assert isinstance(to, (Sequence, np.ndarray)), "Ensure `to` is a Sequence or np.ndarray object"
         assert len(to) == 6, "Ensure `to` is a 6-element sequence for j1~j6"

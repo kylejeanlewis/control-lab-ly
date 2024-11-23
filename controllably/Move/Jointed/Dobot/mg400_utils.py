@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-This module holds the class for the MG400 from Dobot.
+This module provides methods to control Dobot's MG400 robot arm
 
-Classes:
-    MG400 (Dobot)
+Attributes:
+    DEFAULT_SPEEDS (dict): default speeds of the robot
+    
+## Classes:
+    `MG400`: MG400 provides methods to control Dobot's MG400 robot arm
 
-Other constants and variables:
-    SAFE_HEIGHT (float) = 75
+<i>Documentation last updated: 2024-11-23</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -36,7 +38,6 @@ def within_volume(point: Sequence[float]) -> bool:
         j1 += (180 * math.copysign(1, x))
     if abs(j1) > 160:
         return False
-    
     # Z-axis
     if not (-150 < z < 230):
         return False
@@ -45,18 +46,98 @@ def within_volume(point: Sequence[float]) -> bool:
 @final
 class MG400(Dobot):
     """
-    MG400 provides methods to control Dobot's MG 400 arm
+    MG400 provides methods to control Dobot's MG400 robot arm
 
     ### Constructor
-    Args:
-        `ip_address` (str): IP address of Dobot
-        `safe_height` (Optional[float], optional): height at which obstacles can be avoided. Defaults to SAFE_HEIGHT.
-        `retract` (bool, optional): whether to retract arm before movement. Defaults to True.
-        `home_coordinates` (tuple[float], optional): home coordinates for the robot. Defaults to (0,300,0).
+        `host` (str): IP address of Dobot
+        `joint_limits` (Sequence[Sequence[float]]|None, optional): joint limits of the robot. Defaults to None.
+        `robot_position` (Position, optional): current position of the robot. Defaults to Position().
+        `home_waypoints` (Sequence[Position], optional): home waypoints for the robot. Defaults to list().
+        `home_position` (Position, optional): home position of the robot in terms of robot coordinate system. Defaults to Position((0,300,0)).
+        `tool_offset` (Position, optional): tool offset from robot to end effector. Defaults to Position().
+        `calibrated_offset` (Position, optional): calibrated offset from robot to work position. Defaults to Position().
+        `scale` (float, optional): factor to scale the basis vectors by. Defaults to 1.0.
+        `deck` (Deck|None, optional): Deck object for workspace. Defaults to None.
+        `safe_height` (float|None, optional): safe height in terms of robot coordinate system. Defaults to 75.
+        `saved_positions` (dict, optional): dictionary of saved positions. Defaults to dict().
+        `speed_max` (float|None, optional): maximum speed of robot in mm/min. Defaults to None.
+        `movement_buffer` (int|None, optional): buffer time for movement. Defaults to None.
+        `movement_timeout` (int|None, optional): timeout for movement. Defaults to None.
+        `verbose` (bool, optional): whether to output logs. Defaults to False.
+        `simulation` (bool, optional): whether to simulate the robot. Defaults to False.
+    
+    ### Attributes and properties
+        `movement_buffer` (int): buffer time for movement
+        `movement_timeout` (int): timeout for movement
+        `max_joint_accels` (np.ndarray): maximum joint accelerations of the robot
+        `max_joint_speeds` (np.ndarray): maximum joint speeds of the robot
+        `home_waypoints` (list[Position]): home waypoints for the robot
+        `joint_limits` (np.ndarray): joint limits for the robot
+        `joint_position` (np.ndarray): current joint angles
+        `connection_details` (dict): connection details for the device
+        `device` (Device): device object that communicates with physical tool
+        `flags` (SimpleNamespace[str, bool]): flags for the class
+        `is_busy` (bool): whether the device is busy
+        `is_connected` (bool): whether the device is connected
+        `verbose` (bool): verbosity of class
+        `deck` (Deck): Deck object for workspace
+        `workspace` (BoundingVolume): workspace bounding box
+        `safe_height` (float): safe height in terms of robot coordinate system
+        `saved_positions` (dict): dictionary of saved positions
+        `current_zone_waypoints` (tuple[str, list[Position]]): current zone entry waypoints
+        `speed` (float): travel speed of robot
+        `speed_factor` (float): fraction of maximum travel speed of robot
+        `speed_max` (float): maximum speed of robot in mm/min
+        `robot_position` (Position): current position of the robot
+        `home_position` (Position): home position of the robot in terms of robot coordinate system
+        `tool_offset` (Position): tool offset from robot to end effector
+        `calibrated_offset` (Position): calibrated offset from robot to work position
+        `scale` (float): factor to scale the basis vectors by
+        `tool_position` (Position): robot position of the tool end effector
+        `work_position` (Position): work position of the robot
+        `worktool_position` (Position): work position of the tool end effector
+        `position` (Position): work position of the tool end effector; alias for `worktool_position`
     
     ### Methods
-    - `isFeasible`: checks and returns whether the target coordinate is feasible
-    - `retractArm`: tuck in arm, rotate about base, then extend again
+        `retractArm`: retract arm, rotate about base, then extend again
+        `isFeasibleJoint`: checks and returns whether the target joint angles are feasible
+        `jointMoveBy`: move the robot by target joint angles
+        `jointMoveTo`: move the robot to target joint position
+        `updateJointPosition`: update the joint position based on relative or absolute movement
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `resetFlags`: reset all flags to class attribute `_default_flags`
+        `shutdown`: shutdown procedure for tool
+        `enterZone`: enter a zone on the deck
+        `exitZone`: exit the current zone on the deck
+        `halt`: halt robot movement
+        `home`: make the robot go home
+        `isFeasible`: checks and returns whether the target coordinates is feasible and sets the handedness of the robot if necessary
+        `loadDeck`: load `Deck` layout object to mover
+        `loadDeckFromDict`: load `Deck` layout object from dictionary
+        `loadDeckFromFile`: load `Deck` layout object from file
+        `move`: move the robot in a specific axis by a specific value
+        `moveBy`: move the robot by target direction
+        `moveTo`: move the robot to target position
+        `moveToSafeHeight`: move the robot to safe height
+        `moveRobotTo`: move the robot to target position
+        `moveToolTo`: move the tool end effector to target position
+        `reset`: reset the robot
+        `rotate`: rotate the robot in a specific axis by a specific value
+        `rotateBy`: rotate the robot by target rotation
+        `rotateTo`: rotate the robot to target orientation
+        `rotateRobotTo`: rotate the robot to target orientation
+        `rotateToolTo`: rotate the tool end effector to target orientation
+        `safeMoveTo`: safe version of moveTo by moving to safe height first
+        `setSafeHeight`: set safe height for robot
+        `setSpeedFactor`: set the speed factor of the robot
+        `setToolOffset`: set the tool offset of the robot
+        `updateRobotPosition`: update the robot position
+        `transformRobotToTool`: transform robot coordinates to tool coordinates
+        `transformRobotToWork`: transform robot coordinates to work coordinates
+        `transformToolToRobot`: transform tool coordinates to robot coordinates
+        `transformWorkToRobot`: transform work coordinates to robot coordinates
+        `calibrate`: calibrate the internal and external coordinate systems
     """
     
     _default_flags = SimpleNamespace(busy=False, connected=False, right_handed=False, stretched=False)
@@ -82,13 +163,25 @@ class MG400(Dobot):
         **kwargs
     ):
         """
-        Instantiate the class
-
+        Initialize MG400 class
+        
         Args:
-            ip_address (str): IP address of Dobot
-            right_handed (bool, optional): whether the robot is in right-handed mode (i.e elbow bends to the right). Defaults to True.
-            safe_height (float, optional): height at which obstacles can be avoided. Defaults to 100.
-            home_coordinates (tuple[float], optional): home coordinates for the robot. Defaults to (0,300,100).
+            host (str): IP address of Dobot
+            joint_limits (Sequence[Sequence[float]]|None, optional): joint limits of the robot. Defaults to None.
+            robot_position (Position, optional): current position of the robot. Defaults to Position().
+            home_waypoints (Sequence[Position], optional): home waypoints for the robot. Defaults to list().
+            home_position (Position, optional): home position of the robot in terms of robot coordinate system. Defaults to Position((0,300,0)).
+            tool_offset (Position, optional): tool offset from robot to end effector. Defaults to Position().
+            calibrated_offset (Position, optional): calibrated offset from robot to work position. Defaults to Position().
+            scale (float, optional): factor to scale the basis vectors by. Defaults to 1.0.
+            deck (Deck|None, optional): Deck object for workspace. Defaults to None.
+            safe_height (float|None, optional): safe height in terms of robot coordinate system. Defaults to 75.
+            saved_positions (dict, optional): dictionary of saved positions. Defaults to dict().
+            speed_max (float|None, optional): maximum speed of robot in mm/min. Defaults to None.
+            movement_buffer (int|None, optional): buffer time for movement. Defaults to None.
+            movement_timeout (int|None, optional): timeout for movement. Defaults to None.
+            verbose (bool, optional): whether to output logs. Defaults to False.
+            simulation (bool, optional): whether to simulate the robot. Defaults to False.
         """
         workspace = BoundingVolume(dict(volume=within_volume))
         super().__init__(
@@ -108,13 +201,13 @@ class MG400(Dobot):
     
     def retractArm(self, target:Sequence[float]|None = None) -> Position:
         """
-        Tuck in arm, rotate about base, then extend again
+        Retract arm, rotate about base, then extend again
 
         Args:
             target (tuple[float]|None, optional): x,y,z coordinates of destination. Defaults to None.
 
         Returns:
-            bool: whether movement is successful
+            Position: current position of the robot
         """
         safe_radius = 225
         x,y,_ = self.robot_position.coordinates
