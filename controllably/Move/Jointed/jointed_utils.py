@@ -231,7 +231,7 @@ class RobotArm(Mover):
         rotate_by = rotate_by               # not affected by robot or tool coordinates for rotation
         
         # Implementation of relative rotation
-        joint_position = [0,0,0,*rotate_by.as_euler('xyz', degrees=True)]
+        joint_position = [0,0,0,*rotate_by.as_euler('zyx', degrees=True)]
         self.jointMoveBy(joint_position, speed_factor=speed_factor, jog=jog, robot=True)
         
         # Update position
@@ -271,7 +271,7 @@ class RobotArm(Mover):
             rotate_to = self.tool_offset.invert().Rotation * self.calibrated_offset.invert().Rotation * rotate_to
         
         # Implementation of absolute rotation
-        joint_position = [0,0,0,*rotate_to.as_euler('xyz', degrees=True)]
+        joint_position = [0,0,0,*rotate_to.as_euler('zyx', degrees=True)]
         self.jointMoveTo(joint_position, speed_factor=speed_factor, jog=jog, robot=True)
         
         # Update position
@@ -292,12 +292,12 @@ class RobotArm(Mover):
                 assert len(by) == 6, f"Ensure `by` is a 6-element sequence for j1~j6"
                 self.joint_position += np.array(by)
             elif isinstance(by, Rotation):
-                self.joint_position += np.array([0,0,0,*by.as_euler('xyz', degrees=True)])
+                self.joint_position += np.array([0,0,0,*by.as_euler('zyx', degrees=True)])
         elif to is not None:
             if isinstance(to, (Sequence, np.ndarray)):
                 assert len(to) == 6, f"Ensure `to` is a 6-element sequence for j1~j6"
                 self.joint_position = np.array(to)
             elif isinstance(to, Rotation):
-                self.joint_position = np.array([*self.joint_position[:3],*to.as_euler('xyz', degrees=True)])
+                self.joint_position = np.array([*self.joint_position[:3],*to.as_euler('zyx', degrees=True)])
         return
     
