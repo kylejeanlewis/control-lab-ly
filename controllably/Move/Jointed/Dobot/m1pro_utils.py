@@ -58,12 +58,12 @@ class M1Pro(Dobot):
         `right_handed` (bool, optional): whether the robot is in right-handed mode (i.e elbow bends to the right). Defaults to True.
         `robot_position` (Position, optional): current position of the robot. Defaults to Position().
         `home_waypoints` (Sequence[Position], optional): home waypoints for the robot. Defaults to list().
-        `home_position` (Position, optional): home position of the robot in terms of robot coordinate system. Defaults to Position((0,300,100)).
+        `home_position` (Position, optional): home position of the robot in terms of robot coordinate system. Defaults to Position((300,0,240)).
         `tool_offset` (Position, optional): tool offset from robot to end effector. Defaults to Position().
         `calibrated_offset` (Position, optional): calibrated offset from robot to work position. Defaults to Position().
         `scale` (float, optional): factor to scale the basis vectors by. Defaults to 1.0.
         `deck` (Deck|None, optional): Deck object for workspace. Defaults to None.
-        `safe_height` (float|None, optional): safe height in terms of robot coordinate system. Defaults to 100.
+        `safe_height` (float|None, optional): safe height in terms of robot coordinate system. Defaults to 240.
         `saved_positions` (dict, optional): dictionary of saved positions. Defaults to dict().
         `speed_max` (float|None, optional): maximum speed of robot in mm/min. Defaults to None.
         `movement_buffer` (int|None, optional): buffer time for movement. Defaults to None.
@@ -145,7 +145,7 @@ class M1Pro(Dobot):
         `calibrate`: calibrate the internal and external coordinate systems
     """
     
-    _default_flags = SimpleNamespace(busy=False, connected=False, right_handed=False, stretched=False)
+    _default_flags = SimpleNamespace(busy=False, connected=False, right_handed=False)
     _default_speeds = DEFAULT_SPEEDS
     def __init__(self, 
         host: str,
@@ -154,12 +154,12 @@ class M1Pro(Dobot):
         *,
         robot_position: Position = Position(),
         home_waypoints: Sequence[Position] = list(),
-        home_position: Position = Position((0,300,100)),                # in terms of robot coordinate system
+        home_position: Position = Position((300,0,240)),                # in terms of robot coordinate system
         tool_offset: Position = Position(),
         calibrated_offset: Position = Position(),
         scale: float = 1.0,
         deck: Deck|None = None,
-        safe_height: float|None = 100,                                  # in terms of robot coordinate system
+        safe_height: float|None = 240,                                  # in terms of robot coordinate system
         saved_positions: dict = dict(),                                 # in terms of robot coordinate system
         speed_max: float|None = None,                                   # in mm/min
         movement_buffer: int|None = None,
@@ -177,12 +177,12 @@ class M1Pro(Dobot):
             right_handed (bool, optional): whether the robot is in right-handed mode (i.e elbow bends to the right). Defaults to True.
             robot_position (Position, optional): current position of the robot. Defaults to Position().
             home_waypoints (Sequence[Position], optional): home waypoints for the robot. Defaults to list().
-            home_position (Position, optional): home position of the robot in terms of robot coordinate system. Defaults to Position((0,300,100)).
+            home_position (Position, optional): home position of the robot in terms of robot coordinate system. Defaults to Position((300,0,240)).
             tool_offset (Position, optional): tool offset from robot to end effector. Defaults to Position().
             calibrated_offset (Position, optional): calibrated offset from robot to work position. Defaults to Position().
             scale (float, optional): factor to scale the basis vectors by. Defaults to 1.0.
             deck (Deck|None, optional): Deck object for workspace. Defaults to None.
-            safe_height (float|None, optional): safe height in terms of robot coordinate system. Defaults to 100.
+            safe_height (float|None, optional): safe height in terms of robot coordinate system. Defaults to 240.
             saved_positions (dict, optional): dictionary of saved positions. Defaults to dict().
             speed_max (float|None, optional): maximum speed of robot in mm/min. Defaults to None.
             movement_buffer (int|None, optional): buffer time for movement. Defaults to None.
@@ -190,7 +190,7 @@ class M1Pro(Dobot):
             verbose (bool, optional): whether to output logs. Defaults to False.
             simulation (bool, optional): whether to simulate the robot. Defaults to False.
         """
-        workspace = BoundingVolume(dict(volume=within_volume))
+        workspace = BoundingVolume(parametric_function=dict(volume=within_volume))
         super().__init__(
             host=host, joint_limits=joint_limits,
             robot_position=robot_position, home_waypoints=home_waypoints, home_position=home_position,
@@ -232,7 +232,8 @@ class M1Pro(Dobot):
         gradient_threshold = 0.25
         if grad > gradient_threshold or x < 0:
             right_handed = (y>0)
-            self.setHandedness(right_handed=right_handed, stretch=True) 
+            # stretch = (self.robot_position.y/y) > 0
+            self.setHandedness(right_handed=right_handed, stretch=False) 
         return feasible
 
     def setHandedness(self, right_handed:bool, stretch:bool = False) -> bool:
@@ -251,11 +252,9 @@ class M1Pro(Dobot):
         
         self.device.SetArmOrientation(right_handed)
         time.sleep(2)
-        self._move_time_buffer = 2/self.speed_factor + self._default_move_time_buffer
+        self.flags.right_handed = right_handed
         if stretch:
             self.stretchArm()
-            self._move_time_buffer = 1/self.speed_factor + self._default_move_time_buffer
-        self.flags.right_handed = right_handed
         return True
             
     def stretchArm(self) -> bool:
@@ -265,15 +264,12 @@ class M1Pro(Dobot):
         Returns:
             bool: whether movement is successful
         """
-        if self.flags.stretched:
-            return False
         x,y,z = self.robot_position.coordinates
         y_stretch = math.copysign(240, y)
         self.moveToSafeHeight()
         self.moveTo((320,y_stretch,self.safe_height))
         self.moveTo((x,y,self.safe_height))
         self.moveTo((x,y,z))
-        self.flags.stretched = True
         return True
    
     # Protected method(s)
