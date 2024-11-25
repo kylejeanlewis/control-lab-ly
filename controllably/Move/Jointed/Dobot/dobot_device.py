@@ -138,9 +138,14 @@ class DobotDevice:
             return
         # Check if machine is connected to the same network as device
         hostname = socket.getfqdn()
-        local_ip = socket.gethostbyname_ex(hostname)[2][0]
-        local_network = f"{'.'.join(local_ip.split('.')[:-1])}.0/24"
-        if ipaddress.ip_address(self.host) not in ipaddress.ip_network(local_network):
+        local_ips = socket.gethostbyname_ex(hostname)[2]
+        success = False
+        for local_ip in local_ips:
+            local_network = f"{'.'.join(local_ip.split('.')[:-1])}.0/24"
+            if ipaddress.ip_address(self.host) in ipaddress.ip_network(local_network):
+                success = True
+                break
+        if not success:
             print(f"Current IP Network: {local_network[:-3]}")
             print(f"Device  IP Address: {self.host}")
             raise ConnectionError("Ensure device is connected to the same network as the machine")
@@ -278,6 +283,14 @@ class DobotDevice:
         """Enable the robot"""
         self._logger.debug("EnableRobot")
         return self.dashboard_api.EnableRobot(*args) if isinstance(self.dashboard_api, DobotApiDashboard) else None
+    
+    def GetAngle(self):
+        self._logger.debug("GetAngle")
+        return self.dashboard_api.GetAngle()
+    
+    def GetPose(self):
+        self._logger.debug("GetPose")
+        return self.dashboard_api.GetPose()
     
     def ResetRobot(self):
         """Stop the robot"""
