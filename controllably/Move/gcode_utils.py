@@ -286,6 +286,7 @@ class GCode(Mover):
         
         # Implementation of relative movement
         mode = 'G0' if rapid else 'G1'
+        command = f'{mode} X{move_by.x:.2f} Y{move_by.y:.2f} Z{move_by.z:.2f}'
         command_xy = f'{mode} X{move_by.x:.2f} Y{move_by.y:.2f}'
         command_z = f'{mode} Z{move_by.z:.2f}'
         commands = (command_z, command_xy) if (move_by.z > 0) else (command_xy, command_z)
@@ -346,9 +347,10 @@ class GCode(Mover):
         
         # Implementation of absolute movement
         mode = 'G0' if rapid else 'G1'
+        command = f'{mode} X{move_to.x:.2f} Y{move_to.y:.2f} Z{move_to.z:.2f}'
         command_xy = f'{mode} X{move_to.x:.2f} Y{move_to.y:.2f}'
         command_z = f'{mode} Z{move_to.z:.2f}'
-        commands = (command_z, command_xy) if (self.position.z < move_to.z) else (command_xy, command_z)
+        commands = (command_z, command_xy) if (self.robot_position.z < move_to.z) else (command_xy, command_z)
         self.setSpeedFactor(speed_factor, persist=False)
         self.device.write('G90')
         for command in commands:
