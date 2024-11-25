@@ -320,14 +320,14 @@ class RobotArm(Mover):
             rotate_to = self.tool_offset.invert().Rotation * self.calibrated_offset.invert().Rotation * rotate_to
         
         # Implementation of absolute rotation
-        joint_position = [0,0,0,*rotate_to.as_euler('zyx', degrees=True)]
+        joint_position = [*self.joint_position[:3],*rotate_to.as_euler('zyx', degrees=True)]
         self.jointMoveTo(joint_position, speed_factor=speed_factor, jog=jog, robot=True)
         
         # Update position
         # self.updateJointPosition(to=joint_position)
         return self.robot_position.Rotation if robot else self.worktool_position.Rotation
 
-    def updateJointPosition(self, by: Sequence[float]|Rotation|np.ndarray|None = None, to: Sequence[float]|Rotation|np.ndarray|None = None) -> None:
+    def updateJointPosition(self, by: Sequence[float]|Rotation|np.ndarray|None = None, to: Sequence[float]|Rotation|np.ndarray|None = None):
         """
         Update the joint position based on relative or absolute movement
         
