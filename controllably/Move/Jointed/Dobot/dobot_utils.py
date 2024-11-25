@@ -20,6 +20,7 @@ from typing import Sequence
 
 # Third party imports
 import numpy as np
+from scipy.spatial.transform import Rotation
 
 # Local application imports
 from ....core.position import Position
@@ -29,7 +30,7 @@ from .dobot_device import DobotDevice
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
 
-MOVEMENT_BUFFER = 0.5
+MOVEMENT_BUFFER = 1
 MOVEMENT_TIMEOUT = 30
 
 class Dobot(RobotArm):
@@ -176,6 +177,11 @@ class Dobot(RobotArm):
         speed_j6 = self.settings.get('max_speed_j6', 0)
         return np.array([speed_j1, speed_j2, speed_j3, speed_j4, speed_j5, speed_j6])
     
+    def home(self, axis = None):
+        self.updateJointPosition()
+        self.updateRobotPosition()
+        return super().home(axis)
+    
     def moveBy(self,
         by: Sequence[float]|Position|np.ndarray,
         speed_factor: float|None = None,
@@ -218,7 +224,7 @@ class Dobot(RobotArm):
             return self.robot_position if robot else self.worktool_position
         
         # Implementation of relative movement
-        self.device.RelMovL(*move_by.coordinates, move_by.Rotation.as_euler('xyz', degrees=True)[-1])
+        self.device.RelMovL(*move_by.coordinates, move_by.Rotation.as_euler('zyx', degrees=True)[0])
         
         # Adding time delays to coincide with movement
         if not jog:
@@ -264,13 +270,13 @@ class Dobot(RobotArm):
         self._logger.info(f"Move To | {move_to} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
-        move_to = move_to if robot else self.transformToolToRobot(self.transformWorkToRobot(move_to))
+        move_to = move_to if robot else self.transformToolToRobot(self.transformWorkToRobot(move_to, self.calibrated_offset), self.tool_offset)
         if not self.isFeasible(move_to.coordinates, external=False, tool_offset=False):
             self._logger.warning(f"Target position {move_to} is not feasible")
             return self.robot_position if robot else self.worktool_position
         
         # Implementation of absolute movement
-        self.device.MovJ(*move_to.coordinates, move_to.Rotation.as_euler('xyz', degrees=True)[-1])
+        self.device.MovJ(*move_to.coordinates, move_to.Rotation.as_euler('zyx', degrees=True)[0])
         
         # Adding time delays to coincide with movement
         if not jog:
@@ -319,7 +325,7 @@ class Dobot(RobotArm):
             return self.joint_position
         
         # Implementation of relative movement
-        self.device.RelMovJ(*joint_move_by[:3], joint_move_by[-1])
+        self.device.RelMovJ(*joint_move_by[:4])
         
         # Adding time delays to coincide with movement
         if not jog:
@@ -368,7 +374,7 @@ class Dobot(RobotArm):
             return self.joint_position
         
         # Implementation of absolute movement
-        self.device.JointMovJ(*joint_move_to[:3], joint_move_to[-1])
+        self.device.JointMovJ(*joint_move_to[:4])
         
         # Adding time delays to coincide with movement
         if not jog:
@@ -385,7 +391,10 @@ class Dobot(RobotArm):
 
     def reset(self):
         """Reset the robot"""
-        return self.device.reset()
+        self.device.reset()
+        self.updateJointPosition()
+        self.updateRobotPosition()
+        return 
     
     def setSpeedFactor(self, speed_factor:float|None = None, *, persist:bool = True):
         """
@@ -403,11 +412,6 @@ class Dobot(RobotArm):
             self.speed_factor = speed_factor
         return
     
-    def halt(self):
-        """Halt robot movement"""
-        self.device.ResetRobot()
-        return
-    
     # Overwritten methods
     def connect(self):
         """Connect to the device"""
@@ -415,11 +419,37 @@ class Dobot(RobotArm):
         self.setSpeedFactor(1.0)
         return
     
+    def halt(self):
+        """Halt robot movement"""
+        self.device.ResetRobot()
+        return
+    
     def shutdown(self):
         """Shutdown procedure for tool"""
         self.device.ResetRobot()
         self.device.DisableRobot()
         return super().shutdown()
+    
+    def updateJointPosition(self, by: Sequence[float]|Rotation|np.ndarray|None = None, to: Sequence[float]|Rotation|np.ndarray|None = None):
+        try:
+            joint_position_str = self.device.GetAngle()
+            joint_position = [float(a) for a in joint_position_str[1:-1].split(',')]
+            assert len(joint_position) == 6, "Unable to read output from device properly"
+            return super().updateJointPosition(to=joint_position)
+        except ValueError:
+            pass
+        return super().updateJointPosition(by=by, to=to)
+    
+    def updateRobotPosition(self, by: Position|Rotation|None = None, to: Position|Rotation|None = None) -> Position:
+        try:
+            robot_position_str = self.device.GetPose()
+            robot_position = [float(a) for a in robot_position_str[1:-1].split(',')]
+            assert len(robot_position) == 6, "Unable to read output from device properly"
+            current_position = Position(robot_position[:3], Rotation.from_euler('zyx',robot_position[-3:], degrees=True))
+            return super().updateRobotPosition(to=current_position)
+        except ValueError:
+            pass
+        return super().updateRobotPosition(by=by, to=to)
     
     # Protected method(s)
     def _convert_cartesian_to_angles(self, src_point:np.ndarray, dst_point: np.ndarray) -> np.ndarray:
@@ -436,4 +466,11 @@ class Dobot(RobotArm):
         assert len(src_point) == 3 and len(dst_point) == 3, f"Ensure both points are 3D coordinates"
         assert isinstance(src_point, np.ndarray) and isinstance(dst_point, np.ndarray), f"Ensure both points are numpy arrays"
         raise NotImplementedError
+    
+    def _get_move_wait_time(self, distances, speeds, accels = None):
+        accels = np.zeros([None]*len(speeds)) if accels is None else accels
+        times = [self._calculate_travel_time(d,s,a,a) for d,s,a in zip(distances, speeds, accels)]
+        move_time = (sum(times[:2]) + times[2])*1.5
+        self._logger.debug(f'{move_time=} | {times=} | {distances=} | {speeds=} | {accels=}')
+        return move_time if (0<move_time<np.inf) else 0
     
