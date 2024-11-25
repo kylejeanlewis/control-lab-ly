@@ -35,10 +35,9 @@ class VacuumMixin:
         `toggleVacuum`: Toggle vacuum
     """
     
-    def __init__(self):
+    def __init__(self, *args, vacuum_on_delay:int|float = 3, vacuum_off_delay:int|float = 3, **kwargs):
         """Initialize VacuumMixin class"""
-        super().__init__()
-        self.vacuum_delays = dict(on=VACUUM_ON_DELAY, off=VACUUM_OFF_DELAY)
+        self.vacuum_delays = dict(on=vacuum_on_delay, off=vacuum_off_delay)
         return
     
     def evacuate(self, wait:float|None = None):
