@@ -35,10 +35,9 @@ class GripperMixin:
         `toggleGrip`: Toggle grip
     """
     
-    def __init__(self):
+    def __init__(self, *args, gripper_on_delay:int|float = 0, gripper_off_delay:int|float = 0, **kwargs):
         """Initialize GripperMixin class"""
-        super().__init__()
-        self.gripper_delays = dict(on=GRIPPER_ON_DELAY, off=GRIPPER_OFF_DELAY)
+        self.gripper_delays = dict(on=gripper_on_delay, off=gripper_off_delay)
         return
     
     def drop(self, wait:float|None = None):
