@@ -152,7 +152,7 @@ class DobotApi:
             if len(data) == 0:
                 data_str = data
             else:
-                data_str = str(data, encoding="utf-8")
+                data_str = str(data, encoding="utf-8", errors='replace')
                 self.log(f'Receive from {self.ip}:{self.port}: {data_str}')
             return data_str
 
