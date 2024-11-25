@@ -4,6 +4,10 @@ from controllably.Move.Jointed.Dobot import M1Pro
 from controllably.Control.GUI.Basic import MoverPanel
 from controllably import Helper, Factory
 
+# %%
+pro = M1Pro('192.109.209.21', verbose=True)
+# %%
+
 details = Factory.get_details(Helper.read_yaml(library['configs']['m1pro_B1']))
 details['mover']['settings']['ip_address'] = '192.109.209.21'
 me = M1Pro(**details['mover']['settings'])
