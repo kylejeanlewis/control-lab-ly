@@ -183,7 +183,7 @@ class MG400(Dobot):
             verbose (bool, optional): whether to output logs. Defaults to False.
             simulation (bool, optional): whether to simulate the robot. Defaults to False.
         """
-        workspace = BoundingVolume(dict(volume=within_volume))
+        workspace = BoundingVolume(parametric_function=dict(volume=within_volume))
         super().__init__(
             host=host, joint_limits=joint_limits,
             robot_position=robot_position, home_waypoints=home_waypoints, home_position=home_position,
