@@ -69,6 +69,9 @@ class DobotDevice:
         `ResetRobot`: stop the robot
         `SetArmOrientation`: set the handedness of the robot
         `SpeedFactor`: set the speed factor of the robot
+        `GetAngle`: get the angle of the robot
+        `GetPose`: get the pose of the robot
+        `DOExecute`: execute a digital output
         `JointMovJ`: move the robot to the specified joint coordinates
         `MovJ`: move the robot to the specified cartesian coordinates
         `RelMovJ`: move the robot by the specified joint offsets
@@ -284,14 +287,6 @@ class DobotDevice:
         self._logger.debug("EnableRobot")
         return self.dashboard_api.EnableRobot(*args) if isinstance(self.dashboard_api, DobotApiDashboard) else None
     
-    def GetAngle(self):
-        self._logger.debug("GetAngle")
-        return self.dashboard_api.GetAngle()
-    
-    def GetPose(self):
-        self._logger.debug("GetPose")
-        return self.dashboard_api.GetPose()
-    
     def ResetRobot(self):
         """Stop the robot"""
         self._logger.debug("ResetRobot")
@@ -316,6 +311,27 @@ class DobotDevice:
         """
         self._logger.debug(f"SpeedFactor | {speed_factor=}")
         return self.dashboard_api.SpeedFactor(speed_factor) if isinstance(self.dashboard_api, DobotApiDashboard) else None
+    
+    def GetAngle(self):
+        """Get the angle of the robot"""
+        self._logger.debug("GetAngle")
+        return self.dashboard_api.GetAngle() if isinstance(self.dashboard_api, DobotApiDashboard) else None
+    
+    def GetPose(self):
+        """Get the pose of the robot"""
+        self._logger.debug("GetPose")
+        return self.dashboard_api.GetPose() if isinstance(self.dashboard_api, DobotApiDashboard) else None
+    
+    def DOExecute(self, channel:int, on:int):
+        """
+        Execute a digital output
+        
+        Args:
+            channel (int): channel of the digital output
+            on (int): whether to enable the digital output (1 or 0)
+        """
+        self._logger.debug(f"DOExecute | {channel=}, {on=}")
+        return self.dashboard_api.DOExecute(channel, on) if isinstance(self.dashboard_api, DobotApiDashboard) else None
     
     # Move API
     def JointMovJ(self, j1:float, j2:float, j3:float, j4:float, *args):
