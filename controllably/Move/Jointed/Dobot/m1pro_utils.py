@@ -292,6 +292,8 @@ class M1Pro(Dobot):
         r1 = (x1**2 + y1**2)**0.5
         r2 = (x2**2 + y2**2)**0.5
         
+        assert r1<=400, f"Check values for {r1=}, {x1=}, {y1=}"
+        assert r2<=400, f"Check values for {r2=}, {x2=}, {y2=}"
         theta1 = math.degrees(math.atan2(y1, x1))
         theta2 = math.degrees(math.atan2(y2, x2))
         phi1 = math.degrees(math.acos(r1/400)) * (-right_handed)
