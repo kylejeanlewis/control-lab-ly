@@ -49,7 +49,7 @@ class GripperMixin:
         """
         super().__init__()
         self.gripper_delays = dict(on=gripper_on_delay, off=gripper_off_delay)
-        logger.debug("VacuumMixin initialized")
+        logger.debug("GripperMixin initialized")
         return
     
     def drop(self, wait:float|None = None):
