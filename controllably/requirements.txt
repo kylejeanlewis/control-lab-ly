@@ -1,4 +1,5 @@
 Markdown==3.3.4
+matplotlib==3.9.2
 numpy==1.19.5
 opencv_python==4.7.0.68
 pandas==1.2.4
@@ -8,4 +9,5 @@ PySimpleGUI==4.60.5
 PyVISA==1.12.0
 PyVISA-py==0.7.1
 PyYAML==6.0
+scipy==1.14.1
 tkhtmlview==0.2.0
