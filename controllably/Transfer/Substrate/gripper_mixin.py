@@ -26,6 +26,10 @@ class GripperMixin:
     """
     Mixin class for vacuum control
     
+    ### Constructor
+        `gripper_on_delay (int|float)`: delay for gripper on. Defaults to 0.
+        `gripper_off_delay (int|float)`: delay for gripper off. Defaults to 0.
+    
     ### Attributes
         `gripper_delays` (dict): delays for gripper control
     
@@ -35,9 +39,17 @@ class GripperMixin:
         `toggleGrip`: Toggle grip
     """
     
-    def __init__(self, *args, gripper_on_delay:int|float = 0, gripper_off_delay:int|float = 0, **kwargs):
-        """Initialize GripperMixin class"""
+    def __init__(self, *, gripper_on_delay:int|float = 0, gripper_off_delay:int|float = 0, **kwargs):
+        """
+        Initialize GripperMixin class
+        
+        Args:
+            gripper_on_delay (int|float): delay for gripper on. Defaults to 0.
+            gripper_off_delay (int|float): delay for gripper off. Defaults to 0.
+        """
+        super().__init__()
         self.gripper_delays = dict(on=gripper_on_delay, off=gripper_off_delay)
+        logger.debug("VacuumMixin initialized")
         return
     
     def drop(self, wait:float|None = None):
