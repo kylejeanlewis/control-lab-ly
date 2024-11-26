@@ -26,31 +26,11 @@ class VacuumMixin:
     """
     Mixin class for vacuum control
     
-    ### Constructor
-        `vacuum_on_delay (int|float)`: delay for vacuum on. Defaults to 3.
-        `vacuum_off_delay (int|float)`: delay for vacuum off. Defaults to 3.
-        
-    ### Attributes
-        `vacuum_delays` (dict): delays for vacuum control
-    
     ### Methods
         `evacuate`: Evacuate to create vacuum
         `vent`: Vent to release vacuum
         `toggleVacuum`: Toggle vacuum
     """
-    
-    def __init__(self, *, vacuum_on_delay:int|float = 3, vacuum_off_delay:int|float = 3, **kwargs):
-        """
-        Initialize VacuumMixin class
-        
-        Args:
-            vacuum_on_delay (int|float): delay for vacuum on. Defaults to 3.
-            vacuum_off_delay (int|float): delay for vacuum off. Defaults to 3.
-        """
-        super().__init__()
-        self.vacuum_delays = dict(on=vacuum_on_delay, off=vacuum_off_delay)
-        logger.debug("VacuumMixin initialized")
-        return
     
     def evacuate(self, wait:float|None = None):
         """
@@ -61,7 +41,7 @@ class VacuumMixin:
         """
         logger.warning("Pulling vacuum")
         self.toggleVacuum(True)
-        wait = self.vacuum_delays["on"] if wait is None else wait
+        wait = VACUUM_ON_DELAY if wait is None else wait
         time.sleep(wait)
         return
     
@@ -74,7 +54,7 @@ class VacuumMixin:
         """
         logger.warning("Venting vacuum")
         self.toggleVacuum(False)
-        wait = self.vacuum_delays["off"] if wait is None else wait
+        wait = VACUUM_OFF_DELAY if wait is None else wait
         time.sleep(wait)
         return
     
