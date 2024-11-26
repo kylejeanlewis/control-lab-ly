@@ -20,7 +20,7 @@ from scipy.spatial.transform import Rotation
 
 # Local application imports
 from ..core.connection import DeviceFactory, Device
-from ..core.position import Deck, Position, get_transform, BoundingVolume, convert_to_position
+from ..core.position import Deck, Labware, Position, BoundingVolume, get_transform, convert_to_position
 
 logger = logging.getLogger("controllably.Move")
 logger.setLevel(logging.DEBUG)
@@ -97,6 +97,7 @@ class Mover:
         `setSafeHeight`: set safe height for robot
         `setSpeedFactor`: set the speed factor of the robot
         `setToolOffset`: set the tool offset of the robot
+        `transferLabware`: transfer labware from one slot to another
         `updateRobotPosition`: update the robot position
         `transformRobotToTool`: transform robot coordinates to tool coordinates
         `transformRobotToWork`: transform robot coordinates to work coordinates
@@ -841,6 +842,50 @@ class Mover:
         old_tool_offset = self.tool_offset
         self._tool_offset = Position(offset) if not isinstance(offset, Position) else offset
         return old_tool_offset
+    
+    def transferLabware(self, 
+        from_slot: str, 
+        to_slot: str, 
+        src_offset: Sequence[float] | np.ndarray = (0,0,0),
+        dst_offset: Sequence[float] | np.ndarray = (0,0,0),
+        speed_factor: float|None = None
+    ):
+        """
+        Transfer labware from one slot to another
+        
+        Args:
+            from_slot (str): source slot name
+            to_slot (str): destination slot name
+            src_offset (Sequence[float] | np.ndarray, optional): offset from top of labware at source. Defaults to (0,0,0).
+            dst_offset (Sequence[float] | np.ndarray, optional): offset from center of destination slot. Defaults to (0,0,0).
+            speed_factor (float, optional): speed factor. Defaults to None.
+        """
+        src_zone_name, src_slot_name = from_slot.split('.') if '.' in from_slot else ('',from_slot)
+        dst_zone_name, dst_slot_name = to_slot.split('.') if '.' in to_slot else ('',to_slot)
+        
+        src_zone = self.deck.zones[src_zone_name] if src_zone_name else self.deck
+        dst_zone = self.deck.zones[dst_zone_name] if dst_zone_name else self.deck
+        
+        src_slot = src_zone.slots[src_slot_name]
+        dst_slot = dst_zone.slots[dst_slot_name]
+        assert isinstance(src_slot.loaded_labware, Labware), f"Ensure source slot contains labware"
+        assert src_slot.loaded_labware.slot_above is None or src_slot.loaded_labware.slot_above.loaded_labware is None, f"Ensure source slot is topmost of stack"
+        assert dst_slot.loaded_labware is None, f"Ensure destination slot is empty"
+        
+        # Pick up Labware from source
+        _ = self.enterZone(src_zone_name) if src_zone_name else None
+        self.safeMoveTo(src_slot.loaded_labware.fromTop(src_offset))
+        self.grab()
+        _ = self.exitZone(speed_factor=speed_factor) if src_zone_name else None
+        labware = self.deck.removeLabware(src_slot)
+        
+        # Drop labware at destination
+        _ = self.enterZone(dst_zone_name, speed_factor=speed_factor) if dst_zone_name else None
+        self.safeMoveTo(dst_slot.fromCenter(dst_offset), speed_factor_lateral=speed_factor)
+        self.drop()
+        _ = self.exitZone() if dst_zone_name else None
+        self.deck.loadLabware(dst_slot, labware)
+        return
     
     def updateRobotPosition(self, by: Position|Rotation|None = None, to: Position|Rotation|None = None) -> Position:
         """
