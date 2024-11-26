@@ -372,9 +372,13 @@ class Mover:
         within_range = True
         if isinstance(self.workspace, BoundingVolume):
             within_range = self.workspace.contains(in_pos.coordinates)
+            if not within_range:
+                self._logger.warning(f'Not within range | {in_pos=}')
         deck_safe = True
         if isinstance(self.deck, Deck):
             deck_safe = not self.deck.isExcluded(ex_pos.coordinates)
+            if not deck_safe:
+                self._logger.warning(f'Deck collision | {ex_pos=}')
         feasible = all([within_range, deck_safe])
         if not feasible:
             self._logger.error(f"Target position {position} is not feasible")
