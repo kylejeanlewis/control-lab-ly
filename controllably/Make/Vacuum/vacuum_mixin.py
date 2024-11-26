@@ -26,6 +26,10 @@ class VacuumMixin:
     """
     Mixin class for vacuum control
     
+    ### Constructor
+        `vacuum_on_delay (int|float)`: delay for vacuum on. Defaults to 3.
+        `vacuum_off_delay (int|float)`: delay for vacuum off. Defaults to 3.
+        
     ### Attributes
         `vacuum_delays` (dict): delays for vacuum control
     
@@ -35,9 +39,17 @@ class VacuumMixin:
         `toggleVacuum`: Toggle vacuum
     """
     
-    def __init__(self, *args, vacuum_on_delay:int|float = 3, vacuum_off_delay:int|float = 3, **kwargs):
-        """Initialize VacuumMixin class"""
+    def __init__(self, *, vacuum_on_delay:int|float = 3, vacuum_off_delay:int|float = 3, **kwargs):
+        """
+        Initialize VacuumMixin class
+        
+        Args:
+            vacuum_on_delay (int|float): delay for vacuum on. Defaults to 3.
+            vacuum_off_delay (int|float): delay for vacuum off. Defaults to 3.
+        """
+        super().__init__()
         self.vacuum_delays = dict(on=vacuum_on_delay, off=vacuum_off_delay)
+        logger.debug("VacuumMixin initialized")
         return
     
     def evacuate(self, wait:float|None = None):
