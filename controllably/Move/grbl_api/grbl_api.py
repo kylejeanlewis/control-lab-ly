@@ -387,7 +387,7 @@ class GRBL(SerialDevice):
         info = self.checkInfo()
         try:
             self._version = info[0].split(':')[1]
-        except:
+        except IndexError:
             self._version = '1.1'
             self._logger.error(f"GRBL version not found. Defaulting to {self._version}")
         parameters = self.checkParameters()
