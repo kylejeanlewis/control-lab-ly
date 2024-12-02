@@ -519,8 +519,7 @@ class Sartorius(LiquidHandler):
         self._status_code = status
         if status in [4,6,8]:
             self.setFlag(busy=True)
-            if self.verbose:
-                logger.info(lib.StatusCode(status).name)
+            logger.debug(lib.StatusCode(status).name)
         elif status == 0:
             self.setFlag(busy=False)
         return lib.StatusCode(self._status_code).name
@@ -750,8 +749,7 @@ class Sartorius(LiquidHandler):
             device = serial.Serial(port, baudrate, timeout=timeout)
         except Exception as e:
             logger.error(f"Could not connect to {port}")
-            if self.verbose:
-                logger.exception(e)
+            # logger.exception(e)
         else:
             time.sleep(2)   # Wait for grbl to initialize
             device.reset_input_buffer()
@@ -779,8 +777,7 @@ class Sartorius(LiquidHandler):
             return True
         if command_code in QUERIES and response[:2] == command_code.lower():
             reply_code, data = response[:2], response[2:]
-            if self.verbose:
-                logger.debug(f'[{reply_code}] {data}')
+            logger.debug(f'[{reply_code}] {data}')
             return True
         return False
 
@@ -853,11 +850,11 @@ class Sartorius(LiquidHandler):
             if len(response) == 0:
                 response = self.device.readline()
             response = response[2:-2].decode('utf-8','replace')
+            logger.debug(repr(response))
         except AttributeError:
             pass
         except Exception as e:
-            if self.verbose:
-                logger.exception(e)
+            logger.exception(e)
         if response in lib.ErrorCode._member_names_:
             logger.error(lib.ErrorCode[response].value)
         return response
@@ -891,16 +888,14 @@ class Sartorius(LiquidHandler):
         """
         fstring = f'{self.channel}{command}º\r' # command template: <PRE><ADR><CODE><DATA><LRC><POST>
         # bstring = bytearray.fromhex(fstring.encode('utf-8').hex())
-        if self.verbose:
-            logger.debug(fstring)
+        logger.debug(repr(fstring))
         try:
             # Typical timeout wait is 400ms
             self.device.write(fstring.encode('utf-8'))
         except AttributeError:
             pass
         except Exception as e:
-            if self.verbose:
-                logger.exception(e)
+            logger.exception(e)
             return False
         return True
     
