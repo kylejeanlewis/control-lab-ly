@@ -1,4 +1,4 @@
-# %% -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 This module holds the class for liquid mover setups.
 
@@ -495,6 +495,7 @@ class LiquidMover(Compound):
         `attachTipAt`: attach new pipette tip from specified location
         `ejectTip`: eject the pipette tip at the bin
         `ejectTipAt`: eject the pipette tip at the specified location
+        `resetTips`: reset (i.e. clear) all tip racks
         `returnTip`: return current tip to its original rack position
         `updateStartTip`: set the name of the first available pipette tip
     """
@@ -723,8 +724,13 @@ class LiquidMover(Compound):
         self.bin_slots[index] = labware
         return
     
-    def attachTip(self):
-        """Attach new pipette tip from next available rack position"""
+    def attachTip(self) -> np.ndarray:
+        """
+        Attach new pipette tip from next available rack position
+        
+        Returns:
+            np.ndarray: coordinates of attach tip location
+        """
         assert hasattr(self.liquid, 'eject'), "Tip not required."
         assert not self.liquid.isTipOn(), "A tip is already attached."
         
@@ -776,8 +782,13 @@ class LiquidMover(Compound):
         self.current_tip_detail['coordinates'] = coordinates
         return coordinates
     
-    def ejectTip(self):
-        """Eject the pipette tip at the bin"""
+    def ejectTip(self) -> np.ndarray:
+        """
+        Eject the pipette tip at the bin
+        
+        Returns:
+            np.ndarray: coordinates of eject tip location
+        """
         assert hasattr(self.liquid, 'eject'), "Ejection not required."
         assert self.liquid.isTipOn(), "No tip to eject."
         index = min(self.bin_slots.keys())
@@ -807,6 +818,12 @@ class LiquidMover(Compound):
         self.liquid.setFlag(tip_on=False)
         self._current_tip_origin = None
         return coordinates
+    
+    def resetTips(self):
+        """Reset (i.e. clear) all tip racks"""
+        self.tip_lists = {}
+        self.tip_racks = {}
+        return
     
     def returnTip(self, offset_from_top: Sequence[float]|np.ndarray = (0,0,-20)) -> np.ndarray:
         """
