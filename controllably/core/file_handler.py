@@ -153,6 +153,7 @@ def start_logging(log_dir:Path|str|None = None, log_file:Path|str|None = None, l
     handler = logging.FileHandler(log_path)
     handler.setLevel(logging.DEBUG)
     logging.basicConfig(handlers=[handler])
+    logger.debug(f"Current working directory: {Path.cwd()}")
     return
 
 def start_project_here(dst:Path|str|None = None):
