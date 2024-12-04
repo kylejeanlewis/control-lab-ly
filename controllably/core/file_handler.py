@@ -131,14 +131,17 @@ def resolve_repo_filepath(filepath:Path|str) -> Path:
     full_path = os.path.abspath(os.path.join(*parent[:parent.index(path[0])], *path))
     return Path(full_path)
 
-def start_logging(log_dir:Path|str|None = None, log_file:Path|str|None = None, logging_config:dict|None = None):
+def start_logging(log_dir:Path|str|None = None, log_file:Path|str|None = None, logging_config:dict|None = None) -> Path:
     """
-    Start logging to file
+    Start logging to file. Default logging behavior is to log to file in current working directory.
     
     Args:
         log_dir (Path|str|None, optional): log directory path. Defaults to None.
         log_file (Path|str|None, optional): log file path. Defaults to None.
         logging_config (dict|None, optional): logging configuration. Defaults to None.
+        
+    Returns:
+        Path: path to log file
     """
     if logging_config is not None and isinstance(logging_config, dict):
         logging.basicConfig(**logging_config)
@@ -154,7 +157,7 @@ def start_logging(log_dir:Path|str|None = None, log_file:Path|str|None = None, l
     handler.setLevel(logging.DEBUG)
     logging.basicConfig(handlers=[handler])
     logger.debug(f"Current working directory: {Path.cwd()}")
-    return
+    return log_path
 
 def start_project_here(dst:Path|str|None = None):
     """
