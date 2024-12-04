@@ -23,7 +23,6 @@ Attributes:
 # Standard library imports
 from __future__ import annotations
 from dataclasses import dataclass, field
-import inspect
 import itertools
 import json
 import logging
@@ -1080,7 +1079,7 @@ class Slot:
             list[matplotlib.patches.Patch]: list of matplotlib patches
         """
         patches = []
-        patch = plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, linestyle=":", **kwargs)
+        patch = plt.Rectangle(self.bottom_left_corner.coordinates, *self.dimensions[:2], fill=False, linestyle="--", **kwargs)
         # ax.add_patch(patch)
         patches.append(patch)
         
