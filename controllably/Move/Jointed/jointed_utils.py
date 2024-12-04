@@ -92,6 +92,7 @@ class RobotArm(Mover):
         `setSafeHeight`: set safe height for robot
         `setSpeedFactor`: set the speed factor of the robot
         `setToolOffset`: set the tool offset of the robot
+        `showWorkspace`: show the workspace of the robot
         `updateRobotPosition`: update the robot position
         `transformRobotToTool`: transform robot coordinates to tool coordinates
         `transformRobotToWork`: transform robot coordinates to work coordinates
