@@ -791,7 +791,7 @@ class Labware:
             self.parent._delete_slot_above()
         return slot_above
     
-    def show(self, zoom_out:bool = False) -> plt.Figure:
+    def show(self, zoom_out:bool = False) -> tuple[plt.Figure, plt.Axes]:
         """
         Show Labware on matplotlib axis
         
@@ -799,10 +799,11 @@ class Labware:
             zoom_out (bool, optional): whether to use zoomed out view. Defaults to False.
             
         Returns:
-            matplotlib.pyplot.Figure: matplotlib figure
+            tuple[matplotlib.pyplot.Figure, matplotlib.pyplot.Axes]: matplotlib figure, axes
         """
         fig, ax = plt.subplots()
-        self._draw(ax=ax, zoom_out=zoom_out)
+        patches = self._draw(ax=ax, zoom_out=zoom_out)
+        ax.add_collection(PatchCollection(patches, match_original=True))
         
         reference = self.bottom_left_corner.coordinates
         lower_buffer = self.dimensions if zoom_out else np.array((0,0,0))
@@ -816,7 +817,7 @@ class Labware:
         inches_per_line = max(x_inch/self.dimensions[0], y_inch/self.dimensions[1])
         new_size = tuple(abs(np.array(self.dimensions[:2]) * inches_per_line))
         fig.set_size_inches(new_size)
-        return fig
+        return fig,ax
         
     def _draw(self, ax:plt.Axes, zoom_out:bool = False, **kwargs) -> list[matplotlib.patches.Patch]:
         """
@@ -1395,7 +1396,7 @@ class Deck:
         dst_slot.loadLabware(labware=labware)
         return
     
-    def show(self, zoom_out:bool = False) -> plt.Figure:
+    def show(self, zoom_out:bool = False) -> tuple[plt.Figure, plt.Axes]:
         """
         Show Deck on matplotlib axis
         
@@ -1403,7 +1404,7 @@ class Deck:
             zoom_out (bool, optional): whether to use zoomed out view. Defaults to False.
             
         Returns:
-            matplotlib.pyplot.Figure: matplotlib figure
+            tuple[matplotlib.pyplot.Figure, matplotlib.pyplot.Axes]: matplotlib figure, axes
         """
         fig, ax = plt.subplots()
         color_map = {v:k for k,v in mcolors.get_named_colors_mapping().items()}
@@ -1424,7 +1425,7 @@ class Deck:
         inches_per_line = max(x_inch/self.dimensions[0], y_inch/self.dimensions[1])
         new_size = tuple(abs(np.array(self.dimensions[:2]) * inches_per_line))
         fig.set_size_inches(new_size)
-        return fig
+        return fig,ax
     
     def _draw(self, ax: plt.Axes, zoom_out:bool = False, *, color_iterator:Iterator|None = None, **kwargs) -> list[matplotlib.patches.Patch]:
         """
