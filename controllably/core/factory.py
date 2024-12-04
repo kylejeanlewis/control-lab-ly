@@ -195,12 +195,17 @@ def load_parts(configs:dict, **kwargs) -> dict:
     parts = {}
     configs.update(kwargs)
     for name, details in configs.items():
-        logger.info(f'\n{name.upper()}')
+        title = f'\n{name.upper()}'
+        settings = details.get('settings', {})
+        simulated = settings.get('simulation', False)
+        title = title + ' [simulated]' if simulated else title
+        logger.info(title)
+        
         logger.debug(f'{pprint.pformat(details, indent=1, depth=4, sort_dicts=False)}\n')
         module_name = details.get('module')
         class_name = details.get('class')
         _class = get_class(module_name, class_name)
-        settings = details.get('settings', {})
+        
         parent = _class.__mro__[1].__name__
         if parent in ('Compound','Combined'):
             parts[name] = _class.fromConfig(settings)
