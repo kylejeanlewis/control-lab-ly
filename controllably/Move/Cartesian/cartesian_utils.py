@@ -13,6 +13,8 @@ import logging
 from typing import final, Sequence
 
 # Third party imports
+import matplotlib.patches
+import matplotlib.pyplot as plt
 import numpy as np
 
 # Local application imports
@@ -105,6 +107,7 @@ class Gantry(GCode):
         `setSafeHeight`: set safe height for robot
         `setSpeedFactor`: set the speed factor of the robot
         `setToolOffset`: set the tool offset of the robot
+        `showWorkspace`: show the workspace of the robot
         `updateRobotPosition`: update the robot position
         `transformRobotToTool`: transform robot coordinates to tool coordinates
         `transformRobotToWork`: transform robot coordinates to work coordinates
@@ -179,7 +182,7 @@ class Gantry(GCode):
             device_limits = device_limits * (coordinates/abs(coordinates)) if any(coordinates) else device_limits
             limits = np.array([coordinates-self.device._home_offset,device_limits])
             limits = np.array([limits.min(axis=0),limits.max(axis=0)])
-            self.workspace = BoundingBox(buffer=limits)
+            self.workspace: BoundingBox = BoundingBox(buffer=limits)
         
         # Set maximum speed if none provided
         if speed_max is None:
@@ -191,3 +194,18 @@ class Gantry(GCode):
     def limits(self) -> np.ndarray:
         """Lower and upper limits of gantry"""
         return self.workspace.buffer
+    
+    def _draw_workspace(self, ax: plt.Axes, **kwargs) -> matplotlib.patches.Patch:
+        """
+        Draw the workspace of the robot
+        
+        Args:
+            ax (plt.Axes): matplotlib axis to draw on
+            
+        Returns:
+            matplotlib.patches.Patch: patch object of workspace
+        """
+        xy = self.calibrated_offset.coordinates[:2] + self.workspace.buffer[0][:2]
+        width, height = self.workspace.buffer[1][:2] - self.workspace.buffer[0][:2]
+        angle = self.calibrated_offset.Rotation.as_euler('zyx', degrees=True)[0]
+        return plt.Rectangle(xy, width, height, angle=angle, rotation_point=(0,0), fill=False, linestyle=":", **kwargs)
