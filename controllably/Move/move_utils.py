@@ -15,6 +15,8 @@ from types import SimpleNamespace
 from typing import Sequence, Any
 
 # Third party imports
+import matplotlib.patches
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.transform import Rotation
 
@@ -97,6 +99,7 @@ class Mover:
         `setSafeHeight`: set safe height for robot
         `setSpeedFactor`: set the speed factor of the robot
         `setToolOffset`: set the tool offset of the robot
+        `showWorkspace`: show the workspace of the robot
         `transferLabware`: transfer labware from one slot to another
         `updateRobotPosition`: update the robot position
         `transformRobotToTool`: transform robot coordinates to tool coordinates
@@ -847,6 +850,20 @@ class Mover:
         self._tool_offset = Position(offset) if not isinstance(offset, Position) else offset
         return old_tool_offset
     
+    def showWorkspace(self) -> tuple[plt.Figure, plt.Axes]:
+        """
+        Show the workspace of the robot
+        
+        Returns:
+            tuple[matplotlib.pyplot.Figure, matplotlib.pyplot.Axes]: matplotlib figure, axes
+        """
+        if not isinstance(self.workspace, BoundingVolume):
+            raise ValueError("Ensure workspace is defined")
+        fig, ax = self.deck.show() if isinstance(self.deck, Deck) else plt.subplots()
+        patch = self._draw_workspace(ax)
+        ax.add_patch(patch)
+        return fig, ax
+    
     def transferLabware(self, 
         from_slot: str, 
         to_slot: str, 
@@ -914,6 +931,18 @@ class Mover:
         else:
             raise ValueError(f"Ensure input is of type Position or Rotation")
         return self.robot_position
+    
+    def _draw_workspace(self, ax: plt.Axes, **kwargs) -> matplotlib.patches.Patch|None:
+        """
+        Draw the workspace of the robot
+        
+        Args:
+            ax (plt.Axes): matplotlib axis to draw on
+            
+        Returns:
+            matplotlib.patches.Patch: patch object of workspace
+        """
+        raise NotImplementedError
     
     def _get_move_wait_time(self, 
         distances: np.ndarray, 
