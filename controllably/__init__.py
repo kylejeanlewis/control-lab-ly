@@ -7,4 +7,4 @@ from .misc import *
 from .Control.GUI import guide_me
 
 import numpy as np
-np.set_printoptions(legacy='1.25')
+np.set_printoptions(legacy='1.21')
