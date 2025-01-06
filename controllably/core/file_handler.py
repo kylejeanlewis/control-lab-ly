@@ -2,6 +2,9 @@
 """ 
 This module contains functions to handle files and folders.
 
+Attributes:
+    TEMP_ZIP (Path): temporary zip file path
+
 ## Functions:
     `create_folder`: Check and create folder if it does not exist
     `init`: Add repository to `sys.path`, and get machine id and connected ports
@@ -10,8 +13,9 @@ This module contains functions to handle files and folders.
     `resolve_repo_filepath`: Resolve relative path to absolute path
     `start_logging`: Start logging to file
     `start_project_here`: Create new project in destination directory
+    `zip_files`: Zip files and return zip file path
 
-<i>Documentation last updated: 2024-11-15</i>
+<i>Documentation last updated: 2025-01-06</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -23,6 +27,8 @@ import os
 from pathlib import Path
 import shutil
 import sys
+from typing import Iterable
+from zipfile import ZipFile
 
 # Third party imports
 import yaml
@@ -38,6 +44,8 @@ logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
+
+TEMP_ZIP = Path('_temp.zip')
 
 def create_folder(base:Path|str = '', sub:Path|str = '') -> Path:
     """
@@ -183,3 +191,22 @@ def start_project_here(dst:Path|str|None = None):
     logger.info(f"Please update the configuration files in: {dst/'tools/registry.yaml'}")
     logger.info(f"Current machine id: {connection.get_node()}")
     return
+
+def zip_files(filepaths: Iterable[Path], zip_filepath: str|Path|None = None) -> Path:
+    """ 
+    Zip files and return zip file path
+    
+    Args:
+        filepaths (Iterable[Path]): list of file paths
+        zip_filepath (str|Path|None, optional): zip file path. Defaults to None.
+        
+    Returns:
+        Path: zip file path
+    """
+    filepaths = list(set(list(filepaths)))
+    zip_filepath = zip_filepath or TEMP_ZIP
+    zip_filepath = Path(zip_filepath)
+    with ZipFile(zip_filepath, 'w') as z:
+        for filepath in filepaths:
+            z.write(filepath, filepath.name)
+    return zip_filepath
