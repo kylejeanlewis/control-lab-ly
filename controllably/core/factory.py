@@ -3,6 +3,7 @@
 This module contains functions to create and manage objects.
 
 ## Functions:
+    `create`: Create object of class with arguments and keyword arguments
     `dict_to_named_tuple`: Creating named tuple from dictionary
     `dict_to_simple_namespace`: Convert dictionary to SimpleNamespace
     `get_class`: Retrieve the relevant class from the sub-package
@@ -26,7 +27,7 @@ from pathlib import Path
 import pprint
 import sys
 from types import SimpleNamespace
-from typing import Callable, Sequence, NamedTuple, Type, Any
+from typing import Callable, Sequence, NamedTuple, Type, Any, Iterable, Mapping
 
 # Third party imports
 import numpy as np
@@ -43,6 +44,26 @@ logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
+
+def create(obj:Callable, args:Iterable[Any] = tuple(), kwargs: Mapping[str,Any] = dict()) -> object:
+    """
+    Create object of class with arguments and keyword arguments
+
+    Args:
+        obj (Callable): target class
+        args (Iterable[Any], optional): arguments for class. Defaults to tuple().
+        kwargs (Mapping[str,Any], optional): keyword arguments for class. Defaults to dict().
+
+    Returns:
+        object: object of target class
+    """
+    assert inspect.isclass(obj), "Ensure object is a class"
+    parents = [parent.__name__ for parent in obj.__mro__]
+    if 'Compound' in parents or 'Combined' in parents:
+        return obj.fromConfig(kwargs)
+    elif 'Ensemble' in parents or 'Multichannel' in parents:
+        return obj.create(**kwargs)
+    return obj(*args, **kwargs)
 
 def dict_to_named_tuple(d:dict, tuple_name:str = 'Setup') -> tuple:
     """
@@ -206,13 +227,14 @@ def load_parts(configs:dict, **kwargs) -> dict:
         class_name = details.get('class')
         _class = get_class(module_name, class_name)
         
-        parent = _class.__mro__[1].__name__
-        if parent in ('Compound','Combined'):
-            parts[name] = _class.fromConfig(settings)
-        elif parent in ('Tool','Device'):
-            parts[name] = _class.create(**settings)
-        else:
-            parts[name] = _class(**settings)
+        parts[name] = create(_class, kwargs=settings)
+        # parent = _class.__mro__[1].__name__
+        # if parent in ('Compound','Combined'):
+        #     parts[name] = _class.fromConfig(settings)
+        # elif parent in ('Ensemble','Multichannel'):
+        #     parts[name] = _class.create(**settings)
+        # else:
+        #     parts[name] = _class(**settings)
     return parts
 
 def load_setup_from_files(
