@@ -27,13 +27,14 @@ from pathlib import Path
 import pprint
 import sys
 from types import SimpleNamespace
-from typing import Callable, Sequence, NamedTuple, Type, Any, Iterable, Mapping
+from typing import Callable, Sequence, NamedTuple, Type, Any
 
 # Third party imports
 import numpy as np
 
 # Local application imports
 from . import connection
+from . import device
 from . import file_handler
 
 _logger = logging.getLogger("controllably.core")
@@ -45,7 +46,7 @@ handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
 
-def create(obj:Callable, args:Iterable[Any] = tuple(), kwargs: Mapping[str,Any] = dict()) -> object:
+def create(obj:Callable, *args, **kwargs) -> object:
     """
     Create object of class with arguments and keyword arguments
 
@@ -64,6 +65,26 @@ def create(obj:Callable, args:Iterable[Any] = tuple(), kwargs: Mapping[str,Any] 
     elif 'Ensemble' in parents or 'Multichannel' in parents:
         return obj.create(**kwargs)
     return obj(*args, **kwargs)
+
+def create_from_config(config:dict) -> object:
+    """
+    Create object of class with dictionary
+
+    Args:
+        config (dict): dictionary of arguments
+
+    Returns:
+        object: object of target class
+    """
+    device_type = config.pop('device_type', None)
+    if device_type is not None:
+        assert inspect.isclass(device_type), "Ensure device_type is a callable class"
+        return create(device_type, **config)
+    if 'baudrate' in config:
+        device_type = connection.SerialDevice
+    elif 'host' in config:
+        device_type = connection.SocketDevice
+    return create(device_type, **config)
 
 def dict_to_named_tuple(d:dict, tuple_name:str = 'Setup') -> tuple:
     """
@@ -227,7 +248,7 @@ def load_parts(configs:dict, **kwargs) -> dict:
         class_name = details.get('class')
         _class = get_class(module_name, class_name)
         
-        parts[name] = create(_class, kwargs=settings)
+        parts[name] = create(_class, **settings)
         # parent = _class.__mro__[1].__name__
         # if parent in ('Compound','Combined'):
         #     parts[name] = _class.fromConfig(settings)
