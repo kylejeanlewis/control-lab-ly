@@ -85,9 +85,11 @@ class Client:
         self.conn.settimeout(0)
         self.conn.sendall(success_message.encode(ENCODER))
         time.sleep(1)
-        data = self.read()
+        data = ''
+        while '[CONNECTED]' not in data:
+            data += self.read()
         self.print_queue.put(f"[RECV] {data!r}")
-        self.address = data.split()[-1]
+        self.address = data.replace('[CONNECTED] ', '')
         
         if isinstance(self._printer_thread, threading.Thread) and self._printer_thread.is_alive():
             pass
