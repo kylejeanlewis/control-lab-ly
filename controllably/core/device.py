@@ -260,7 +260,11 @@ class BaseDevice:
         fields = set([field for _, field, _, _ in Formatter().parse(format) if field])
         assert set(data_type._fields) == fields, "Ensure data type fields match read format fields"
         
-        parsed = parse.parse(format, data).named
+        parse_out =parse.parse(format, data)
+        if parse_out is None:
+            self._logger.warning(f"Failed to parse data: {data!r}")
+            return data, timestamp
+        parsed = parse_out.named
         for key, value in data_type.__annotations__.items():
             if value == int and not parsed[key].isnumeric():
                 parsed[key] = float(parsed[key])
@@ -710,7 +714,7 @@ class SocketDevice(BaseDevice):
     
     def checkDeviceConnection(self):
         """Check the connection to the device"""
-        return (self.socket.fileno() == self._current_socket_ref)
+        return (self.socket.fileno() == self._current_socket_ref) and (self.socket.fileno() != -1)
     
     def clear(self):
         """Clear the input and output buffers"""
