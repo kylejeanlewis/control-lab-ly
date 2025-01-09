@@ -1,8 +1,84 @@
 # %%
-import test_init
-from tools.claw_machine import setup
+from collections import deque
+import socket
+import threading
+import time
+from typing import NamedTuple
 
-setup.claw_machine.move
+import pandas as pd
+
+import test_init
+from controllably.core.device import SocketDevice
+
+device = SocketDevice(
+    host=socket.gethostbyname(socket.gethostname()), port=12345, timeout=1,
+    data_type=NamedTuple("Data", [("d1", str),("d2", int),("d3", float)]),
+    read_format="{d1};{d2};{d3}\n", verbose=True
+)
+
+device.connect()
+device.write('Hello\nWorld!\n')
+device.clear()
+
+# %%
+device.query('1;2;3\n4;5;6\n7;8;9')
+
+# %%
+my_buffer = deque()
+device.clear()
+barrier = threading.Barrier(2, timeout=1)
+device.startStream(' ', buffer=my_buffer, show=False)
+time.sleep(2)
+device.showStream(True)
+time.sleep(2)
+device.stopStream()
+
+data,timestamps = list([x for x in zip(*my_buffer)])
+df = pd.DataFrame(data, index=timestamps).reset_index(names='timestamp')
+df
+
+# %%
+from random import random
+import threading
+import time
+from typing import NamedTuple
+from unittest import mock
+
+import pandas as pd
+
+import test_init
+from controllably.core.device import SerialDevice
+
+def readline():
+    time.sleep(0.01)
+    return f"{10*random():.3f};{10*random():.3f};{10*random():.3f}\n".encode()
+
+MockSerial = mock.Mock()
+MockSerial.port = 'COM1'
+MockSerial.baudrate = 9600
+MockSerial.timeout = 1
+MockSerial.is_open = True
+MockSerial.readline = readline
+MockSerial.write = mock.Mock()
+
+device = SerialDevice(
+    port='COM4', baudrate=9600, timeout=1,
+    data_type=NamedTuple("Data", [("d1", str),("d2", int),("d3", float)]),
+    read_format="{d1};{d2};{d3}\n",
+)
+device.connection = MockSerial
+
+device.clear()
+device.showStream(False)
+device.startStream()
+time.sleep(1)
+device.showStream(True)
+time.sleep(5)
+device.stopStream()
+
+data,timestamps = list([x for x in zip(*device.buffer)])
+df = pd.DataFrame(data,index=timestamps)
+df
 
 # %%
 import test_init
@@ -265,7 +341,7 @@ import inspect
 
 import test_init
 from controllably.core.compound import Ensemble
-from controllably.core.connection import SerialDevice
+from controllably.core.device import SerialDevice
 from controllably.Make.Heat import Peltier
 
 # %%
