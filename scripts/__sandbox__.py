@@ -8,8 +8,17 @@ from typing import NamedTuple
 import pandas as pd
 
 import test_init
+from controllably.core.connection import Server, Client
 from controllably.core.device import SocketDevice
 
+server = Server(host=socket.gethostbyname(socket.gethostname()), port=12345)
+server.start()
+
+# %%
+client = Client(host=socket.gethostbyname(socket.gethostname()), port=12345)
+client.connect()
+
+# %%
 device = SocketDevice(
     host=socket.gethostbyname(socket.gethostname()), port=12345, timeout=1,
     data_type=NamedTuple("Data", [("d1", str),("d2", int),("d3", float)]),
