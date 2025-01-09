@@ -14,14 +14,13 @@ Attributes:
 # Standard imports
 from __future__ import annotations
 from copy import deepcopy
-import ipaddress
 import logging
-import socket
 import time
 from types import SimpleNamespace
 from typing import Any
 
 # Local imports
+from ....core import connection
 from .dobot_api import DobotApiDashboard, DobotApiMove
 
 logger = logging.getLogger("controllably.Move")
@@ -47,7 +46,6 @@ class DobotDevice:
         `port` (int): device port
         `timeout` (int): device timeout
         `connection_details` (dict): connection details for the device
-        `socket` (socket.socket): socket object for the device
         `dashboard_api` (DobotApiDashboard): dashboard API for the device
         `move_api` (DobotApiMove): move API for the device
         `flags` (SimpleNamespace[str, bool]): flags for the device
@@ -91,12 +89,9 @@ class DobotDevice:
         self.host = host
         self.port = port
         self.timeout = timeout
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.dashboard_api: DobotApiDashboard|None = None
         self.move_api: DobotApiMove|None = None
         self.flags = deepcopy(self._default_flags)
-        
-        self.socket.settimeout(self.timeout)
         self.flags.simulation = simulation
         
         self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
@@ -139,17 +134,7 @@ class DobotDevice:
         """Connect to the device"""
         if self.is_connected:
             return
-        # Check if machine is connected to the same network as device
-        hostname = socket.getfqdn()
-        local_ips = socket.gethostbyname_ex(hostname)[2]
-        success = False
-        for local_ip in local_ips:
-            local_network = f"{'.'.join(local_ip.split('.')[:-1])}.0/24"
-            if ipaddress.ip_address(self.host) in ipaddress.ip_network(local_network):
-                success = True
-                break
-        if not success:
-            print(f"Current IP Network: {local_network[:-3]}")
+        if not connection.match_current_ip_address(self.host):
             print(f"Device  IP Address: {self.host}")
             raise ConnectionError("Ensure device is connected to the same network as the machine")
         
@@ -179,7 +164,7 @@ class DobotDevice:
             return
         try:
             self.close()
-        except socket.error as e:
+        except OSError as e:
             self._logger.error(f"Failed to disconnect from {self.host}")
             self._logger.debug(e)
         else:
@@ -197,12 +182,6 @@ class DobotDevice:
     def clear(self):                                                    # NOTE: not implemented
         """Clear the input and output buffers"""
         raise NotImplementedError
-        if self.flags.simulation:
-            return
-        self.socket.settimeout(0)
-        self.socket.recv(1024)
-        self.socket.settimeout(self.timeout)
-        return
     
     def query(self, data:Any, lines:bool = True) -> list[str]|None:     # NOTE: not implemented
         """
@@ -215,11 +194,6 @@ class DobotDevice:
             list[str]|None: data read from the device, if any
         """
         raise NotImplementedError
-        ret = self.write(str(data))
-        if ret:
-            response = self.read(lines=lines)
-            return response if isinstance(response, list) else [response]
-        return
 
     def read(self, lines:bool = False) -> str|list[str]:                # NOTE: not implemented
         """
@@ -232,13 +206,6 @@ class DobotDevice:
             str|list[str]: line(s) of data read from the device
         """
         raise NotImplementedError
-        data = []
-        try:
-            data = self.socket.recv(1024).decode("utf-8", "replace").strip().split('\n')
-            self._logger.debug(f"Received: {data!r}")
-        except socket.error as e:
-            self._logger.debug(f"Failed to receive data")
-        return data
 
     def write(self, data:str) -> bool:                                  # NOTE: not implemented
         """
@@ -251,13 +218,6 @@ class DobotDevice:
             bool: whether the write was successful
         """
         raise NotImplementedError
-        data = f"{data}\n" if not data.endswith('\n') else data
-        try:
-            self.socket.sendall(data.encode())
-            self._logger.debug(f"Sent: {data!r}")
-        except socket.error as e:
-            self._logger.debug(f"Failed to send: {data!r}")
-        return False
 
     # Dobot API
     def close(self):
