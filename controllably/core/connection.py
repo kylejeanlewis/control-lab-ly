@@ -21,6 +21,7 @@ Attributes:
 # Standard library imports
 from __future__ import annotations
 from copy import deepcopy
+import ipaddress
 import logging
 import socket
 import time
@@ -63,6 +64,18 @@ def get_addresses(registry:dict|None) -> dict|None:
         return None
     return addresses
 
+def get_host() -> str:
+    """
+    Get the host IP address for current machine
+
+    Returns:
+        str: machine host IP address
+    """
+    host = socket.gethostbyname(socket.gethostname())
+    host_out = f"Current machine host: {host}"
+    logger.info(host_out)
+    return host
+
 def get_node() -> str:
     """
     Get the unique identifier for current machine
@@ -90,6 +103,24 @@ def get_ports() -> list[str]:
     if len(ports) == 0:
         logger.warning("No ports detected!")
     return ports
+
+def match_current_ip_address(ip_address:str) -> bool:
+    """
+    Match the current IP address of the machine
+
+    Returns:
+        bool: whether the IP address matches the current machine
+    """
+    hostname = socket.gethostname()
+    logger.info(f"Current IP address: {hostname}")
+    local_ips = socket.gethostbyname_ex(hostname)[2]
+    success = False
+    for local_ip in local_ips:
+        local_network = f"{'.'.join(local_ip.split('.')[:-1])}.0/24"
+        if ipaddress.ip_address(ip_address) in ipaddress.ip_network(local_network):
+            success = True
+            break
+    return success
 
 class Device(Protocol):
     """Protocol for device connection classes"""
