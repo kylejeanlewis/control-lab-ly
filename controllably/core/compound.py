@@ -30,7 +30,7 @@ from types import SimpleNamespace
 from typing import Protocol, Callable, Sequence, Type
 
 # Local application imports
-from .connection import DeviceFactory, Device
+from .connection import Device
 from . import factory
 
 _logger = logging.getLogger("controllably.core")
@@ -394,7 +394,7 @@ class Combined:
             parts (dict[str,Part]): dictionary of parts
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
-        self.device: Device = kwargs.get('device', DeviceFactory.createDeviceFromDict(kwargs))
+        self.device: Device = kwargs.get('device', factory.create_from_config(kwargs))
         self._parts = parts
         self.flags = deepcopy(self._default_flags)
         
@@ -428,7 +428,7 @@ class Combined:
             Type[Combined]: instance of Combined (or its subclasses)
         """
         details = config.pop('details')
-        device = DeviceFactory.createDeviceFromDict(config)
+        device = factory.create_from_config(config)
         # parts = {name:factory.load_parts(settings, device=device) for name,settings in details.items()}
         for settings in details.values():
             settings['device'] = device
