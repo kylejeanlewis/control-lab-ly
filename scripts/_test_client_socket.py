@@ -1,44 +1,79 @@
 # %%
+from copy import deepcopy
 import queue
 import socket
 import threading
 import time
+from typing import Mapping
 
-HOST_IP = socket.gethostbyname(socket.gethostname())
-HOST_PORT = 12345
-ENCODER = 'utf-8'
 BYTESIZE = 1024
+ENCODER = 'utf-8'
+
+CONNECT_MESSAGE = '[CONNECTED]'
 DISCONNECT_MESSAGE = '!EXIT'
 SHUTDOWN_MESSAGE = '!SHUTDOWN'
 
-def printer(print_queue: queue.Queue, trigger: threading.Event):
-    while not trigger.is_set():
-        try:
-            print(print_queue.get())
-            print_queue.task_done()
-        except KeyboardInterrupt:
+def read_all(connection: socket.socket, *, bytesize: int = BYTESIZE, encoder: str = ENCODER) -> str:
+    data = ''
+    while True:
+        out = read(connection, bytesize=bytesize, encoder=encoder)
+        data += out
+        if not out or len(data) > bytesize:
             break
-    
-    time.sleep(1)
-    while print_queue.qsize() > 0:
-        try:
-            print(print_queue.get_nowait())
-            print_queue.task_done()
-        except queue.Empty:
-            pass
-        except KeyboardInterrupt:
-            break
-    print('[EXIT] Printer')
+    return data
+
+def read(connection: socket.socket, *, bytesize: int = BYTESIZE, encoder: str = ENCODER) -> str:
+    out = ''
+    try:
+        out = connection.recv(bytesize).decode(encoder, "replace")
+    except OSError as e:
+        pass
+    except TimeoutError:
+        pass
+    except (ConnectionResetError, ConnectionAbortedError):
+        pass
+    except KeyboardInterrupt:
+        pass
+    return out
+
+def write(data: str, connection: socket.socket, *, encoder: str = ENCODER, wait: bool = False):
+    try:
+        connection.sendall(data.encode(encoder))
+        if wait:
+            time.sleep(1)
+    except (ConnectionResetError, ConnectionAbortedError):
+        pass
+    except KeyboardInterrupt:
+        pass
     return
 
 class Client:
-    def __init__(self, host:str, port:int, trigger:threading.Event = threading.Event()):
+    
+    _default_keywords = dict(connect=CONNECT_MESSAGE, disconnect=DISCONNECT_MESSAGE, shutdown=SHUTDOWN_MESSAGE)
+    def __init__(self,
+        host: str, 
+        port: int, 
+        terminate: threading.Event = threading.Event(), 
+        print_queue: queue.Queue = queue.Queue(),
+        *,
+        bytesize: int = 1024,
+        encoder: str = 'utf-8',
+        keywords: Mapping[str, str]|None = None
+    ):
         self.conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.host = host
         self.port = port
         self.address = ''
-        self.trigger = trigger
-        self.print_queue = queue.Queue()
+        self._current_socket_ref = -1
+        
+        self.bytesize = bytesize
+        self.encoder = encoder
+        self.keywords = deepcopy(self._default_keywords) if keywords is None else keywords
+        
+        self.print_queue = print_queue
+        self.triggers = dict(
+            terminate = terminate,
+        )
         self._printer_thread = None
         return
     
@@ -46,9 +81,78 @@ class Client:
         self.disconnect()
         return
     
+    @property
+    def is_connected(self) -> bool:
+        return (self.conn.fileno() == self._current_socket_ref) and (self.conn.fileno() != -1)
+    
+    def connect(self):
+        if self.is_connected:
+            return
+        self.start_client(self.host, self.port)
+        return
+    
+    def disconnect(self):
+        if not self.is_connected:
+            return
+        self.query(self.keywords['disconnect'])
+        self.triggers['terminate'].set()
+        self.conn.close()
+        return
+    
+    def shutdown(self):
+        self.query(self.keywords['shutdown'])
+        return
+    
+    def start_client(self, host:str, port:int):
+        self.conn = socket.create_connection((host, port))
+        success_message = f'{self.keywords["connect"]} {host}:{port}'
+        self.print_queue.put(f'{self.keywords["connect"]} {host}:{port}')
+        self.conn.settimeout(0)
+        self.conn.sendall(success_message.encode(ENCODER))
+        time.sleep(1)
+        
+        data = ''
+        while self.keywords["connect"] not in data:
+            data += self.read()
+        self.print_queue.put(f"[RECV] {data!r}")
+        self.address = data.replace(f'{self.keywords["connect"]} ', '')
+        self._current_socket_ref = self.conn.fileno()
+        
+        if not (isinstance(self._printer_thread, threading.Thread) and self._printer_thread.is_alive()):
+            self._printer_thread = threading.Thread(target=self.printer, args=(self.print_queue, self.triggers['terminate']), daemon=True)
+            self._printer_thread.start()
+        return
+
+    def read(self) -> str:
+        return read(self.conn, bytesize=self.bytesize, encoder=self.encoder)
+
+    def read_all(self) -> str:
+        return read_all(self.conn, bytesize=self.bytesize, encoder=self.encoder)
+
+    def query(self, data: str, multi_line: bool = True) -> str|None:
+        assert isinstance(data, str), 'Data must be a string'
+        assert self.is_connected, 'Client is not connected'
+        
+        self.write(data)
+        self.print_queue.put(f'[SENT] {data!r}')
+        data = self.read().strip() if not multi_line else self.read_all().strip()
+        
+        if data == self.keywords['disconnect']:
+            self.print_queue.put(f'[EXIT] {self.host}:{self.port}')
+            self.disconnect()
+        elif data == self.keywords['shutdown']:
+            self.print_queue.put(f'[SHUTDOWN] {self.host}:{self.port}')
+            self.disconnect()
+        else:
+            self.print_queue.put(f"[RECV] {data!r}")
+        return data
+    
+    def write(self, data: str):
+        return write(data, self.conn, encoder=ENCODER)
+    
     @staticmethod
-    def printer(print_queue: queue.Queue, trigger: threading.Event):
-        while not trigger.is_set():
+    def printer(print_queue: queue.Queue, jam: threading.Event):
+        while not jam.is_set():
             try:
                 print(print_queue.get())
                 print_queue.task_done()
@@ -66,100 +170,21 @@ class Client:
         print('[EXIT] Printer')
         return
     
-    def connect(self):
-        self.start_client(self.host, self.port)
-        return
-    
-    def disconnect(self):
-        self.query(DISCONNECT_MESSAGE)
-        return
-    
-    def shutdown(self):
-        self.query(SHUTDOWN_MESSAGE)
-        return
-    
-    def start_client(self, host:str, port:int):
-        self.conn = socket.create_connection((host, port))
-        success_message = f'[CONNECTED] {host}:{port}'
-        self.print_queue.put(f'[CONNECTED] {host}:{port}')
-        self.conn.settimeout(0)
-        self.conn.sendall(success_message.encode(ENCODER))
-        time.sleep(1)
-        data = ''
-        while '[CONNECTED]' not in data:
-            data += self.read()
-        self.print_queue.put(f"[RECV] {data!r}")
-        self.address = data.replace('[CONNECTED] ', '')
-        
-        if isinstance(self._printer_thread, threading.Thread) and self._printer_thread.is_alive():
-            pass
-        else:
-            self._printer_thread = threading.Thread(target=printer, args=(self.print_queue, self.trigger), daemon=True)
-            self._printer_thread.start()
-        return
-
-    def read(self) -> str:
-        conn = self.conn
-        data = ''
-        flag = False
-        while True:
-            try:
-                out = conn.recv(BYTESIZE).decode("utf-8", "replace")
-            except OSError as e:
-                if flag:
-                    break
-                time.sleep(0.01)
-                flag = True
-                continue
-            except TimeoutError:
-                break
-            except (ConnectionResetError, ConnectionAbortedError):
-                break
-            except KeyboardInterrupt:
-                break
-            data += out
-            if not out or len(data)>BYTESIZE:
-                break
-        return data.strip()
-
-    def query(self, data: str) -> str|None:
-        assert isinstance(data, str), 'Data must be a string'
-        conn = self.conn
-        trigger = self.trigger
-        
-        try:
-            conn.sendall(data.encode(ENCODER))
-        except (ConnectionResetError, ConnectionAbortedError):
-            return
-        except KeyboardInterrupt:
-            return
-        self.print_queue.put(f'[SENT] {data!r}')
-        
-        time.sleep(1)
-        data = self.read()
-        
-        if data == DISCONNECT_MESSAGE:
-            conn.sendall(DISCONNECT_MESSAGE.encode(ENCODER))
-            self.print_queue.put(f'[EXIT] {HOST_IP}:{HOST_PORT}')
-            time.sleep(1)
-            trigger.set()
-        elif data == SHUTDOWN_MESSAGE:
-            conn.sendall(SHUTDOWN_MESSAGE.encode(ENCODER))
-            self.print_queue.put(f'[SHUTDOWN] {HOST_IP}:{HOST_PORT}')
-            time.sleep(1)
-            trigger.set()
-        else:
-            self.print_queue.put(f"[RECV] {data!r}")
-        return data
-    
 # %%
-client = Client(HOST_IP, HOST_PORT)
+import socket
+from _test_socket import Client
+
+host_ip = socket.gethostbyname(socket.gethostname())
+host_port = 12345
+
+# %%
+client = Client(host_ip, host_port)
 client.connect()
 
 # %%
-client1 = Client(HOST_IP, HOST_PORT)
+client1 = Client(host_ip, host_port)
 client1.connect()
-client2 = Client(HOST_IP, HOST_PORT)
+client2 = Client(host_ip, host_port)
 client2.connect()
 
 # %%
@@ -175,6 +200,8 @@ client.query(' ')
 # %%
 client.disconnect()
 # %%
-time.sleep(3)
-client1.shutdown()
+# time.sleep(3)
+client1.disconnect()
+client2.disconnect()
 # %%
+from _test_socket import Client
