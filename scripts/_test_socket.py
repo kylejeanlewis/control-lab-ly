@@ -18,9 +18,6 @@ CONNECT_MESSAGE = '[CONNECTED]'
 DISCONNECT_MESSAGE = '!EXIT'
 SHUTDOWN_MESSAGE = '!SHUTDOWN'
 
-host_ip = socket.gethostbyname(socket.gethostname())
-host_port = 12345
-
 def read_all(connection: socket.socket, *, bytesize: int = BYTESIZE, encoder: str = ENCODER) -> str:
     data = ''
     while True:
