@@ -681,6 +681,11 @@ class SocketDevice(BaseDevice):
     
     def checkDeviceConnection(self):
         """Check the connection to the device"""
+        try:
+            self.socket.sendall('\n'.encode())
+            self.socket.sendall('\n'.encode())
+        except OSError:
+            return False
         return (self.socket.fileno() == self._current_socket_ref) and (self.socket.fileno() != -1)
     
     def clear(self):
