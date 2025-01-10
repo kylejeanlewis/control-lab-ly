@@ -316,6 +316,10 @@ class GRBL(SerialDevice):
             assert axis.upper() in 'XYZ', "Ensure axis is X,Y,Z for GRBL"
         command = '$H' if axis is None else f'$H{axis.upper()}'
         self.clear()
+        try:
+            command = self.process_input(command)
+        except:
+            pass
         self.write(command)
         while True:
             time.sleep(LOOP_INTERVAL)
@@ -349,7 +353,13 @@ class GRBL(SerialDevice):
         assert isinstance(speed_factor, float), "Ensure speed factor is a float"
         assert (0.0 <= speed_factor <= 1.0), "Ensure speed factor is between 0.0 and 1.0"
         feed_rate = int(speed_factor * speed_max) * 60      # Convert to mm/min
-        self.write(f'G90 F{feed_rate}')
+        
+        data = f'G90 F{feed_rate}'
+        try:
+            data = self.process_input(data)
+        except:
+            pass
+        self.write(data)
         self.read(lines=True)
         return
     
@@ -418,10 +428,20 @@ class GRBL(SerialDevice):
             assert self.__version__().startswith("1.1"), "Ensure GRBL version is at least 1.1 to perform jog movements"
             data = data.replace('G0 ', '').replace('G1 ', '')
             data = f'$J={data}'
-            self.write(data)
+            _data = data
+            try:
+                _data = self.process_input(_data)
+            except:
+                pass
+            self.write(_data)
             return self.read(lines=False)
         if not wait:
-            self.write(data)
+            _data = data
+            try:
+                _data = self.process_input(_data)
+            except:
+                pass
+            self.write(_data)
             return self.read(lines=lines)
         
         # success = self._wait_for_status(('Idle',), timeout=timeout)
