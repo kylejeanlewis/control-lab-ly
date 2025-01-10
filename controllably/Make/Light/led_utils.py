@@ -284,6 +284,10 @@ class LEDArray(Maker):
         if not any([chn.update_power for chn in self.channels.values()]):
             return ''
         command = ';'.join([str(v) for v in self.getPower()])
+        try:
+            command = self.device.process_input(command)
+        except:
+            pass
         self.device.write(command)
         now = time.perf_counter()
         for chn in self.channels.values():
