@@ -312,6 +312,10 @@ class QInstrumentsDevice:
             str|float|None: response (string / float)
         """
         start_time = time.perf_counter()
+        try:
+            data = self.process_input(data)
+        except:
+            pass
         self.write(str(data))
         response = ''
         while not response:
