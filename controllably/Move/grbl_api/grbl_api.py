@@ -316,7 +316,7 @@ class GRBL(SerialDevice):
             assert axis.upper() in 'XYZ', "Ensure axis is X,Y,Z for GRBL"
         command = '$H' if axis is None else f'$H{axis.upper()}'
         self.clear()
-        try:
+        try:    # NOTE: temporary for transition to new SerialDevice
             command = self.process_input(command)
         except:
             pass
@@ -355,12 +355,15 @@ class GRBL(SerialDevice):
         feed_rate = int(speed_factor * speed_max) * 60      # Convert to mm/min
         
         data = f'G90 F{feed_rate}'
-        try:
+        try:    # NOTE: temporary for transition to new SerialDevice
             data = self.process_input(data)
         except:
             pass
         self.write(data)
-        self.read(lines=True)
+        try:    # NOTE: temporary for transition to new SerialDevice
+            self.readAll()
+        except:
+            self.read(lines=True)
         return
     
     def _wait_for_status(self, statuses:Sequence[str], timeout:int = MOVEMENT_TIMEOUT) -> bool:
@@ -392,7 +395,10 @@ class GRBL(SerialDevice):
         """Connect to the device"""
         super().connect()
         self.clear()
-        startup_lines = self.read(True)
+        try:    # NOTE: temporary for transition to new SerialDevice
+            startup_lines = self.readAll()
+        except:
+            startup_lines = self.read(True)
         self.clearAlarms()
         info = self.checkInfo()
         try:
@@ -429,20 +435,24 @@ class GRBL(SerialDevice):
             data = data.replace('G0 ', '').replace('G1 ', '')
             data = f'$J={data}'
             _data = data
-            try:
+            try:    # NOTE: temporary for transition to new SerialDevice
                 _data = self.process_input(_data)
             except:
                 pass
             self.write(_data)
-            return self.read(lines=False)
+            return self.read()
         if not wait:
             _data = data
-            try:
+            try:    # NOTE: temporary for transition to new SerialDevice
                 _data = self.process_input(_data)
             except:
                 pass
             self.write(_data)
-            return self.read(lines=lines)
+            try:    # NOTE: temporary for transition to new SerialDevice
+                out = self.readAll() if lines else self.read()
+            except:
+                out = self.read(lines=lines)
+            return out
         
         # success = self._wait_for_status(('Idle',), timeout=timeout)
         # if not success:
