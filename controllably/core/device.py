@@ -23,39 +23,6 @@ _logger.debug(f"Import: OK <{__name__}>")
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
-# handler.setLevel(logging.INFO)
-# handler.addFilter(logging.Filter(__name__+'.'))
-# logger.addHandler(handler)
-
-# def get_host() -> str:
-#     """
-#     Get the host IP address for current machine
-
-#     Returns:
-#         str: machine host IP address
-#     """
-#     host = socket.gethostbyname(socket.gethostname())
-#     host_out = f"Current machine host: {host}"
-#     logger.info(host_out)
-#     return host
-
-# def match_current_ip_address(ip_address:str) -> bool:
-#     """
-#     Match the current IP address of the machine
-
-#     Returns:
-#         bool: whether the IP address matches the current machine
-#     """
-#     hostname = socket.gethostname()
-#     logger.info(f"Current IP address: {hostname}")
-#     local_ips = socket.gethostbyname_ex(hostname)[2]
-#     success = False
-#     for local_ip in local_ips:
-#         local_network = f"{'.'.join(local_ip.split('.')[:-1])}.0/24"
-#         if ipaddress.ip_address(ip_address) in ipaddress.ip_network(local_network):
-#             success = True
-#             break
-#     return success
 
 class Device(Protocol):
     """Protocol for device connection classes"""
