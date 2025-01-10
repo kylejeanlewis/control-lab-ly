@@ -184,7 +184,13 @@ class Marlin(SerialDevice):
         #     self._logger.warning("Ignoring homing axis parameter for Marlin firmware")
         axis = '' if axis is None else f'{axis.upper()}'
         self.query('G90', lines=False)
-        self.write(f'G28 {axis}')
+        
+        data = f'G28 {axis}'
+        try:
+            data = self.process_input(data)
+        except:
+            pass
+        self.write(data)
         self.clear()
         while True:
             time.sleep(LOOP_INTERVAL)
@@ -211,9 +217,19 @@ class Marlin(SerialDevice):
         assert isinstance(speed_factor, float), "Ensure speed factor is a float"
         assert (0.0 <= speed_factor <= 1.0), "Ensure speed factor is between 0.0 and 1.0"
         # feed_rate = int(speed_factor * speed_max) * 60      # Convert to mm/min
-        # self.write(f'G90 F{feed_rate}')
+        # data = f'G90 F{feed_rate}'
+        # try:
+        #     data = self.process_input(data)
+        # except:
+        #     pass
+        # self.write(data)
         speed_percent = speed_factor*100
-        self.write(f'M220 S{int(speed_percent)}')
+        data = f'M220 S{int(speed_percent)}'
+        try:
+            data = self.process_input(data)
+        except:
+            pass
+        self.write(data)
         self.read()
         return
     
@@ -248,7 +264,12 @@ class Marlin(SerialDevice):
         if data.startswith('F'):
             data = f'G1 {data}'
         if not wait:
-            self.write(data)
+            _data = data
+            try:
+                _data = self.process_input(_data)
+            except:
+                pass
+            self.write(_data)
             return self.read(lines=lines)
         
         responses = super().query(data, lines=lines)
