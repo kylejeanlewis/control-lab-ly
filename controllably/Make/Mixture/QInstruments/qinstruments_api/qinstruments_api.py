@@ -312,7 +312,7 @@ class QInstrumentsDevice:
             str|float|None: response (string / float)
         """
         start_time = time.perf_counter()
-        try:
+        try:    # NOTE: temporary for transition to new SerialDevice
             data = self.process_input(data)
         except:
             pass
@@ -322,7 +322,10 @@ class QInstrumentsDevice:
             if time.perf_counter() - start_time > timeout_s:
                 break
             time.sleep(timeout_s + int(lines))
-            response = self.read(lines=lines)
+            try:    # NOTE: temporary for transition to new SerialDevice
+                response = self.readAll() if lines else self.read()
+            except:
+                response = self.read(lines=lines)
         if response.startswith('u ->'):
             error_message = f"{self.model} received an invalid command: {data!r}"
             self._logger.error(error_message)
