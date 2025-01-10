@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 """ 
 This module provides classes for handling connections to serial and socket devices.
-
-Attributes:
-    VALID_BAUDRATES (tuple[int]): valid baudrates for serial devices
     
 ## Classes:
     `Device`: Protocol for device connection classes
@@ -22,6 +19,7 @@ Attributes:
 from __future__ import annotations
 from collections import deque
 from copy import deepcopy
+from datetime import datetime
 import ipaddress
 import logging
 import queue
@@ -54,9 +52,6 @@ ENCODER = 'utf-8'
 CONNECT_MESSAGE = '[CONNECTED]'
 DISCONNECT_MESSAGE = '!EXIT'
 SHUTDOWN_MESSAGE = '!SHUTDOWN'
-
-VALID_BAUDRATES = (110, 300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200)
-"""Valid baudrates for serial devices"""
 
 def get_addresses(registry:dict|None) -> dict|None:
     """
@@ -134,12 +129,12 @@ def match_current_ip_address(ip_address:str) -> bool:
             break
     return success
 
-class _SocketUtils:
+class SocketUtils:
     def __init__(self):
         return
     
     @staticmethod
-    def read_all(connection: socket.socket, *, bytesize: int = BYTESIZE, encoder: str = ENCODER) -> str|None:
+    def readAll(connection: socket.socket, *, bytesize: int = BYTESIZE, encoder: str = ENCODER, ignore: bool = True) -> str|None:
         data = ''
         flag = False
         while True:
@@ -154,8 +149,9 @@ class _SocketUtils:
                 pass
             except TimeoutError:
                 pass
-            except (ConnectionResetError, ConnectionAbortedError):
-                pass
+            except (ConnectionError, ConnectionResetError, ConnectionAbortedError) as e:
+                if not ignore:
+                    raise e
             except KeyboardInterrupt:
                 pass
             data += out
@@ -164,7 +160,7 @@ class _SocketUtils:
         return data
 
     @staticmethod
-    def read(connection: socket.socket, *, bytesize: int = BYTESIZE, encoder: str = ENCODER) -> str|None:
+    def read(connection: socket.socket, *, bytesize: int = BYTESIZE, encoder: str = ENCODER, ignore: bool = True) -> str|None:
         out = ''
         try:
             out = connection.recv(bytesize).decode(encoder, "replace")
@@ -172,24 +168,49 @@ class _SocketUtils:
             return None
         except TimeoutError:
             pass
-        except (ConnectionResetError, ConnectionAbortedError):
-            pass
+        except (ConnectionError, ConnectionResetError, ConnectionAbortedError) as e:
+            if not ignore:
+                raise e
         except KeyboardInterrupt:
             pass
         return out
 
     @staticmethod
-    def write(data: str, connection: socket.socket, *, encoder: str = ENCODER, wait: bool = False):
+    def write(data: str, connection: socket.socket, *, encoder: str = ENCODER, wait: bool = False, ignore: bool = False):
         try:
             connection.sendall(data.encode(encoder))
             if wait:
                 time.sleep(0.1)
-        except (ConnectionResetError, ConnectionAbortedError):
-            pass
+        except OSError as e:
+            if not ignore:
+                raise e
+        except (ConnectionError, ConnectionResetError, ConnectionAbortedError) as e:
+            if not ignore:
+                raise e
         except KeyboardInterrupt:
             pass
         return
 
+    @staticmethod
+    def printer(print_queue: queue.Queue, jam: threading.Event):
+        while not jam.is_set():
+            try:
+                print(print_queue.get())
+                print_queue.task_done()
+            except KeyboardInterrupt:
+                break
+        time.sleep(1)
+        while print_queue.qsize() > 0:
+            try:
+                print(print_queue.get(timeout=1))
+                print_queue.task_done()
+            except queue.Empty:
+                break
+            except KeyboardInterrupt:
+                break
+        print('[EXIT] Printer')
+        jam.clear()
+        return
 
 class Server:
     
@@ -198,7 +219,7 @@ class Server:
         host: str, 
         port: int,
         terminate: threading.Event = threading.Event(), 
-        print_queue: queue.Queue = queue.Queue(),
+        print_queue: queue.Queue|None = None,
         *,
         bytesize: int = 1024,
         encoder: str = 'utf-8',
@@ -209,7 +230,8 @@ class Server:
         self.port = port
         self.address = f'{host}:{port}'
         
-        self.print_queue = print_queue
+        self.use_external_printer = isinstance(print_queue, queue.Queue)
+        self.print_queue = print_queue if self.use_external_printer else queue.Queue()
         self.connections = deque()
         self.removal_list = deque()
         self.triggers = dict(
@@ -233,24 +255,37 @@ class Server:
         return
     
     def start(self, blocking: bool = False):
+        """ 
+        Start the server
+        
+        Args:
+            blocking (bool, optional): whether to run the server in blocking mode. Defaults to False.
+        """
         if self.triggers['started'].is_set():
             return
-        self.start_server(
+        self.startServer(
             self.host, 
             self.port, 
             triggers = self.triggers['terminate'], 
             print_queue = self.print_queue,
-            blocking = blocking
+            blocking = False
         )
+        if blocking:
+            try:
+                while not (input('Kill server? [y/n]: ').strip().lower() == 'y'):
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                pass
+            self.stop()
         return
         
     def stop(self):
+        """Stop the server"""
         self.triggers['terminate'].set()
         self.triggers['started'].clear()
-        time.sleep(1)
         return
     
-    def start_server(self, 
+    def startServer(self, 
         host: str, 
         port: int, 
         client_handler: Callable|None = None,
@@ -260,7 +295,18 @@ class Server:
         blocking: bool = False,
         **kwargs
     ):
-        client_handler = self.handle_client if client_handler is None else client_handler
+        """
+        Start the server
+        
+        Args:
+            host (str): host for the server
+            port (int): port for the server
+            client_handler (Callable|None, optional): client handler function. Defaults to None.
+            terminate (threading.Event|None, optional): termination event. Defaults to None.
+            print_queue (queue.Queue|None, optional): print queue. Defaults to None.
+            blocking (bool, optional): whether to run the server in blocking mode. Defaults to False.
+        """
+        client_handler = self.handleClient if client_handler is None else client_handler
         self.triggers['terminate'] = self.triggers['terminate'] if terminate is None else terminate
         print_queue = self.print_queue if print_queue is None else print_queue
         
@@ -271,9 +317,8 @@ class Server:
         self.server.listen()
         print_queue.put('[START] Listening for incoming connections...')
         
-        if not (isinstance(self._printer_thread, threading.Thread) and self._printer_thread.is_alive()):
-            self._printer_thread = threading.Thread(target=self.printer, args=(print_queue, self.triggers['jam']), daemon=True)
-            self._printer_thread.start()
+        if not self.use_external_printer:
+            self.startPrinter()
         
         kwargs.update(
             triggers=self.triggers, print_queue=print_queue,
@@ -289,6 +334,13 @@ class Server:
                 kwargs=kwargs
             )
             self._listener_thread.start()
+        return
+    
+    def startPrinter(self):
+        """Start the printer thread"""
+        if not (isinstance(self._printer_thread, threading.Thread) and self._printer_thread.is_alive()):
+            self._printer_thread = threading.Thread(target=SocketUtils.printer, args=(self.print_queue, self.triggers['jam']), daemon=True)
+            self._printer_thread.start()
         return
     
     @staticmethod
@@ -359,28 +411,7 @@ class Server:
         return
     
     @staticmethod
-    def printer(print_queue: queue.Queue, jam: threading.Event):
-        while not jam.is_set():
-            try:
-                print(print_queue.get())
-                print_queue.task_done()
-            except KeyboardInterrupt:
-                break
-        time.sleep(1)
-        while print_queue.qsize() > 0:
-            try:
-                print(print_queue.get(timeout=1))
-                print_queue.task_done()
-            except queue.Empty:
-                break
-            except KeyboardInterrupt:
-                break
-        print('[EXIT] Printer')
-        jam.clear()
-        return
-    
-    @staticmethod
-    def handle_client(
+    def handleClient(
         conn: socket.socket, 
         addr: str, 
         *,
@@ -401,18 +432,19 @@ class Server:
         conn.setblocking(False)
         
         while not triggers['terminate'].is_set():
-            data = _SocketUtils.read(conn, bytesize=bytesize, encoder=encoder)
+            data = SocketUtils.read(conn, bytesize=bytesize, encoder=encoder)
             if not data:
                 time.sleep(0.01)
                 continue
             elif data.strip():
                 print_queue.put(f"[{addr}] {data}")
+            empty = (data == '\n') or (data == '\r\n')
             data = data.strip()
             
             if data == disconnect_message:
                 break
             elif data == shutdown_message:
-                _SocketUtils.write(shutdown_message, conn, encoder=encoder, wait=True)
+                SocketUtils.write(shutdown_message, conn, encoder=encoder, wait=True, ignore=True)
                 triggers['terminate'].set()
                 break
             elif data.startswith(connect_message):
@@ -420,12 +452,15 @@ class Server:
                 if addr in connections:
                     data = f'{connect_message} {addr}'
             
-            if not data:
+            if not data and not empty:
                 time.sleep(0.01)
                 data = f"{random()*10:.3f};{random()*10:.3f};{random()*10:.3f}\n"
-            _SocketUtils.write(data, conn, encoder=encoder)
-        
-        _SocketUtils.write(disconnect_message, conn, encoder=encoder, wait=True)
+            try:
+                SocketUtils.write(data, conn, encoder=encoder)
+            except (ConnectionError, ConnectionResetError, ConnectionAbortedError):
+                print_queue.put(f'[ERROR] Connection lost {addr}')
+                break
+        SocketUtils.write(disconnect_message, conn, encoder=encoder, wait=True, ignore=True)
         
         removal_list.append(addr)
         connections.remove(addr)
@@ -445,7 +480,7 @@ class Client:
         host: str, 
         port: int, 
         terminate: threading.Event = threading.Event(), 
-        print_queue: queue.Queue = queue.Queue(),
+        print_queue: queue.Queue|None = None,
         *,
         bytesize: int = 1024,
         encoder: str = 'utf-8',
@@ -461,11 +496,14 @@ class Client:
         self.encoder = encoder
         self.keywords = deepcopy(self._default_keywords) if keywords is None else keywords
         
-        self.print_queue = print_queue
+        self.use_external_printer = isinstance(print_queue, queue.Queue)
+        self.print_queue = print_queue if self.use_external_printer else queue.Queue()
         self.triggers = dict(
             terminate = terminate,
         )
+        
         self._printer_thread = None
+        self._listener_thread = None
         return
     
     def __del__(self):
@@ -474,32 +512,38 @@ class Client:
     
     @property
     def is_connected(self) -> bool:
+        self.write('\n')
+        if not self.write('\n'):
+            return False
         return (self.conn.fileno() == self._current_socket_ref) and (self.conn.fileno() != -1)
     
     def connect(self):
         if self.is_connected:
             return
-        self.start_client(self.host, self.port)
+        self.startClient(self.host, self.port)
         return
     
     def disconnect(self):
-        if not self.is_connected:
-            return
-        self.query(self.keywords['disconnect'])
+        SocketUtils.write(self.keywords['disconnect'], self.conn, encoder=self.encoder, wait=True, ignore=True)
         self.triggers['terminate'].set()
         self.conn.close()
+        self._current_socket_ref = -1
         return
     
     def shutdown(self):
         self.query(self.keywords['shutdown'])
         return
     
-    def start_client(self, host:str, port:int):
+    def startClient(self, host:str, port:int):
         self.conn = socket.create_connection((host, port))
         success_message = f'{self.keywords["connect"]} {host}:{port}'
         self.print_queue.put(f'{self.keywords["connect"]} {host}:{port}')
         self.conn.settimeout(0)
-        self.write(success_message)
+        try:
+            self.write(success_message)
+        except (ConnectionError, ConnectionResetError, ConnectionAbortedError):
+            self.print_queue.put(f'[ABORT] Unsuccessful connection to {host}:{port}')
+            return
         
         data = ''
         while self.keywords["connect"] not in data:
@@ -513,16 +557,21 @@ class Client:
         while self.read() is not None:
             pass
         
+        if not self.use_external_printer:
+            self.startPrinter()
+        return
+    
+    def startPrinter(self):
         if not (isinstance(self._printer_thread, threading.Thread) and self._printer_thread.is_alive()):
-            self._printer_thread = threading.Thread(target=self.printer, args=(self.print_queue, self.triggers['terminate']), daemon=True)
+            self._printer_thread = threading.Thread(target=SocketUtils.printer, args=(self.print_queue, self.triggers['terminate']), daemon=True)
             self._printer_thread.start()
         return
-
+    
     def read(self) -> str:
-        return _SocketUtils.read(self.conn, bytesize=self.bytesize, encoder=self.encoder)
+        return SocketUtils.read(self.conn, bytesize=self.bytesize, encoder=self.encoder)
 
-    def read_all(self) -> str:
-        return _SocketUtils.read_all(self.conn, bytesize=self.bytesize, encoder=self.encoder)
+    def readAll(self) -> str:
+        return SocketUtils.readAll(self.conn, bytesize=self.bytesize, encoder=self.encoder)
 
     def query(self, data: str, multi_line: bool = False) -> str|None:
         assert isinstance(data, str), 'Data must be a string'
@@ -530,7 +579,9 @@ class Client:
         
         self.write(data)
         self.print_queue.put(f'[SENT] {data!r}')
-        data = self.read().strip() if not multi_line else self.read_all().strip()
+        data = self.read()if not multi_line else self.readAll()
+        if data is not None:
+            data = data.strip()
         
         if data == self.keywords['disconnect']:
             self.print_queue.put(f'[EXIT] {self.host}:{self.port}')
@@ -542,29 +593,17 @@ class Client:
             self.print_queue.put(f"[RECV] {data!r}")
         return data
     
-    def write(self, data: str):
-        return _SocketUtils.write(data, self.conn, encoder=ENCODER, wait=True)
-    
-    @staticmethod
-    def printer(print_queue: queue.Queue, jam: threading.Event):
-        while not jam.is_set():
-            try:
-                print(print_queue.get())
-                print_queue.task_done()
-            except KeyboardInterrupt:
-                break
-        time.sleep(1)
-        while print_queue.qsize() > 0:
-            try:
-                print(print_queue.get(timeout=1))
-                print_queue.task_done()
-            except queue.Empty:
-                break
-            except KeyboardInterrupt:
-                break
-        print('[EXIT] Printer')
-        return
-  
+    def write(self, data: str) -> bool:
+        try:
+            SocketUtils.write(data, self.conn, encoder=self.encoder, wait=True)
+        except OSError:
+            return False
+        except (ConnectionError, ConnectionResetError, ConnectionAbortedError):
+            self.print_queue.put(f'[ERROR] Connection lost {self.host}:{self.port}')
+            self.disconnect()
+            return False
+        return True
+
 
 class Device(Protocol):
     """Protocol for device connection classes"""
@@ -694,7 +733,7 @@ class SerialDevice:
     @baudrate.setter
     def baudrate(self, value:int):
         assert isinstance(value, int), "Ensure baudrate is an integer"
-        assert value in VALID_BAUDRATES, f"Ensure baudrate is one of the standard values: {VALID_BAUDRATES}"
+        assert value in serial.Serial.BAUDRATES, f"Ensure baudrate is one of the standard values: {serial.Serial.BAUDRATES}"
         self._baudrate = value
         self.serial.baudrate = value
         return
