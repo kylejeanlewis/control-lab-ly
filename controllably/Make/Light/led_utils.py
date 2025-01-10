@@ -284,7 +284,7 @@ class LEDArray(Maker):
         if not any([chn.update_power for chn in self.channels.values()]):
             return ''
         command = ';'.join([str(v) for v in self.getPower()])
-        try:
+        try:    # NOTE: temporary for transition to new SerialDevice
             command = self.device.process_input(command)
         except:
             pass
