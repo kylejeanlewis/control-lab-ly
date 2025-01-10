@@ -274,6 +274,8 @@ class Server:
             try:
                 while not (input('Kill server? [y/n]: ').strip().lower() == 'y'):
                     time.sleep(1)
+                    if not self.triggers['started'].is_set():
+                        break
             except KeyboardInterrupt:
                 pass
             self.stop()
