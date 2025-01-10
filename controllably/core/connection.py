@@ -514,8 +514,10 @@ class Client:
     
     @property
     def is_connected(self) -> bool:
-        self.write('\n')
-        if not self.write('\n'):
+        try:
+            self.conn.sendall('\n'.encode())
+            self.conn.sendall('\n'.encode())
+        except OSError:
             return False
         return (self.conn.fileno() == self._current_socket_ref) and (self.conn.fileno() != -1)
     
