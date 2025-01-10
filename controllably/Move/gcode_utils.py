@@ -292,10 +292,20 @@ class GCode(Mover):
         command_z = f'{mode} Z{move_by.z:.2f}'
         commands = (command_z, command_xy) if (move_by.z > 0) else (command_xy, command_z)
         self.setSpeedFactor(speed_factor, persist=False)
-        self.device.write('G91')
+        data = 'G91'
+        try:
+            data = self.device.process_input(data)
+        except:
+            pass
+        self.device.write(data)
         for command in commands:
             self.query(command, jog=jog, wait=True)
-        self.device.write('G90')
+        data = 'G90'
+        try:
+            data = self.device.process_input(data)
+        except:
+            pass
+        self.device.write(data)
         self.setSpeedFactor(self.speed_factor, persist=False)
         self.device.clear()
         
@@ -353,7 +363,12 @@ class GCode(Mover):
         command_z = f'{mode} Z{move_to.z:.2f}'
         commands = (command_z, command_xy) if (self.robot_position.z < move_to.z) else (command_xy, command_z)
         self.setSpeedFactor(speed_factor, persist=False)
-        self.device.write('G90')
+        data = 'G90'
+        try:
+            data = self.device.process_input(data)
+        except:
+            pass
+        self.device.write(data)
         for command in commands:
             self.query(command, jog=jog, wait=True)
         self.setSpeedFactor(self.speed_factor, persist=False)
