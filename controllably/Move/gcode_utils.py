@@ -293,7 +293,7 @@ class GCode(Mover):
         commands = (command_z, command_xy) if (move_by.z > 0) else (command_xy, command_z)
         self.setSpeedFactor(speed_factor, persist=False)
         data = 'G91'
-        try:
+        try:    # NOTE: temporary for transition to new SerialDevice
             data = self.device.process_input(data)
         except:
             pass
@@ -301,7 +301,7 @@ class GCode(Mover):
         for command in commands:
             self.query(command, jog=jog, wait=True)
         data = 'G90'
-        try:
+        try:    # NOTE: temporary for transition to new SerialDevice
             data = self.device.process_input(data)
         except:
             pass
@@ -364,7 +364,7 @@ class GCode(Mover):
         commands = (command_z, command_xy) if (self.robot_position.z < move_to.z) else (command_xy, command_z)
         self.setSpeedFactor(speed_factor, persist=False)
         data = 'G90'
-        try:
+        try:    # NOTE: temporary for transition to new SerialDevice
             data = self.device.process_input(data)
         except:
             pass
