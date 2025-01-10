@@ -101,7 +101,10 @@ class Marlin(SerialDevice):
             return settings
         while len(responses) == 0 or 'fail' in responses[-1]:
             time.sleep(LOOP_INTERVAL)
-            responses = self.read(True)
+            try:    # NOTE: temporary for transition to new SerialDevice
+                responses = self.readAll()
+            except:
+                responses = self.read(True)
         for response in responses:
             response = response.replace('echo:','').split(';')[0].strip()
             if not len(response):
@@ -237,7 +240,10 @@ class Marlin(SerialDevice):
     def connect(self):
         """Connect to the device"""
         super().connect()
-        startup_lines = self.read(True)
+        try:    # NOTE: temporary for transition to new SerialDevice
+            startup_lines = self.readAll()
+        except:
+            startup_lines = self.read(True)
         for line in startup_lines:
             if line.startswith('Marlin'):
                 self._version = line.split(" ")[-1]
@@ -272,7 +278,10 @@ class Marlin(SerialDevice):
             self.write(_data)
             return self.read(lines=lines)
         
-        responses = super().query(data, lines=lines)
+        try:    # NOTE: temporary for transition to new SerialDevice
+            responses = self.readAll() if lines else self.read()
+        except:
+            responses = super().query(data, lines=lines)
         # success = self._wait_for_idle()
         # if not success:
         #     self._logger.error(f"Timeout: {data}")
