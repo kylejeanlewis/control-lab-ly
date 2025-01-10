@@ -41,7 +41,7 @@ class Device(Protocol):
         """Disconnect from the device"""
         raise NotImplementedError
 
-    def query(self, data:Any, multi_out:bool = True) -> Any:
+    def query(self, data:Any, multi_out:bool = True, **kwargs) -> Any|None:
         """Query the device"""
         raise NotImplementedError
 
@@ -182,6 +182,26 @@ class BaseDevice:
             self.disconnect()
         return data
     
+    def readAll(self) -> list[str]|None:
+        """Read all data from the device"""
+        delimiter = self.read_format.replace(self.read_format.rstrip(), '')
+        data = ''
+        try:
+            while True:
+                out = ... # Replace with specific implementation
+                data += out
+                if not out:
+                    break
+        except ... as e: # Replace with specific exception
+            self._logger.debug(f"Failed to receive data")
+            self._logger.debug(e)
+        except KeyboardInterrupt:
+            self._logger.debug("Received keyboard interrupt")
+            self.disconnect()
+        data = data.strip()
+        self._logger.debug(f"Received: {data!r}")
+        return data.split(delimiter)
+    
     def write(self, data:str) -> bool:
         """Write data to the device"""
         assert isinstance(data, str), "Ensure data is a string"
@@ -246,26 +266,34 @@ class BaseDevice:
     
     def query(self, 
         data: Any, 
-        multi_out: bool = True, 
+        multi_out: bool = True,
+        *, 
+        timeout: int|float = 1,
         format_in: str|None = None, 
         format_out: str|None = None,
-        data_type: NamedTuple|None = None
-    ) -> Any:
+        data_type: NamedTuple|None = None,
+        timestamp: bool = False
+    ) -> Any | None:
         """Query the device"""
         data_in = self.process_input(data, format_in)
         if not multi_out:
             raw_out = self.poll(data_in)
-            return self.process_output(raw_out, format_out, data_type)
+            out, now = self.process_output(raw_out, format_out, data_type)
+            return (out, now) if timestamp else out
         
         all_data = []
         ret = self.write(data_in)
         if not ret:
-            return
+            return None
+        start_time = time.perf_counter()
         while True:
+            if time.perf_counter() - start_time > timeout:
+                break
             raw_out = self.read()
             if raw_out is None or raw_out.strip() == '':
                 break
-            data_out = self.process_output(raw_out, format_out, data_type)
+            out, now = self.process_output(raw_out, format_out, data_type)
+            data_out = (out, now) if timestamp else out
             all_data.append(data_out)
             if not self.checkDeviceBuffer():
                 break
@@ -559,6 +587,26 @@ class SerialDevice(BaseDevice):
             self.disconnect()
         return data
     
+    def readAll(self) -> list[str]|None:
+        """Read all data from the device"""
+        delimiter = self.read_format.replace(self.read_format.rstrip(), '')
+        data = ''
+        try:
+            while True:
+                out = self.serial.read_all()().decode("utf-8", "replace").strip()
+                data += out
+                if not out:
+                    break
+        except serial.SerialException as e:
+            self._logger.debug(f"Failed to receive data")
+            self._logger.debug(e)
+        except KeyboardInterrupt:
+            self._logger.debug("Received keyboard interrupt")
+            self.disconnect()
+        data = data.strip()
+        self._logger.debug(f"Received: {data!r}")
+        return data.split(delimiter)
+    
     def write(self, data:str) -> bool:
         """Write data to the device"""
         assert isinstance(data, str), "Ensure data is a string"
@@ -755,7 +803,7 @@ class SocketDevice(BaseDevice):
         self._logger.debug(f"Received: {data!r}")
         return data
     
-    def read_all(self) -> list[str]|None:
+    def readAll(self) -> list[str]|None:
         """Read all data from the device"""
         delimiter = self.read_format.replace(self.read_format.rstrip(), '')
         data = self._stream_buffer
