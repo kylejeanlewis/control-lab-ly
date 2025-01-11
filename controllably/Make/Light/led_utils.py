@@ -285,7 +285,7 @@ class LEDArray(Maker):
             return ''
         command = ';'.join([str(v) for v in self.getPower()])
         try:    # NOTE: temporary for transition to new SerialDevice
-            command = self.device.process_input(command)
+            command = self.device.processInput(command)
         except:
             pass
         self.device.write(command)

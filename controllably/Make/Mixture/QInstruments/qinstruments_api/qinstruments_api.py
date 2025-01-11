@@ -313,7 +313,7 @@ class QInstrumentsDevice:
         """
         start_time = time.perf_counter()
         try:    # NOTE: temporary for transition to new SerialDevice
-            data = self.process_input(data)
+            data = self.processInput(data)
         except:
             pass
         self.write(str(data))

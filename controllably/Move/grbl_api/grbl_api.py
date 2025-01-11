@@ -317,7 +317,7 @@ class GRBL(SerialDevice):
         command = '$H' if axis is None else f'$H{axis.upper()}'
         self.clear()
         try:    # NOTE: temporary for transition to new SerialDevice
-            command = self.process_input(command)
+            command = self.processInput(command)
         except:
             pass
         self.write(command)
@@ -356,7 +356,7 @@ class GRBL(SerialDevice):
         
         data = f'G90 F{feed_rate}'
         try:    # NOTE: temporary for transition to new SerialDevice
-            data = self.process_input(data)
+            data = self.processInput(data)
         except:
             pass
         self.write(data)
@@ -436,7 +436,7 @@ class GRBL(SerialDevice):
             data = f'$J={data}'
             _data = data
             try:    # NOTE: temporary for transition to new SerialDevice
-                _data = self.process_input(_data)
+                _data = self.processInput(_data)
             except:
                 pass
             self.write(_data)
@@ -444,7 +444,7 @@ class GRBL(SerialDevice):
         if not wait:
             _data = data
             try:    # NOTE: temporary for transition to new SerialDevice
-                _data = self.process_input(_data)
+                _data = self.processInput(_data)
             except:
                 pass
             self.write(_data)

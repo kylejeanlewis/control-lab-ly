@@ -117,7 +117,6 @@ class BaseDevice:
         return
     
     # Connection methods
-    
     def checkDeviceConnection(self) -> bool:
         """Check the connection to the device"""
         ...
@@ -220,12 +219,14 @@ class BaseDevice:
             out: str = self.read()
         return out
     
-    def process_input(self, 
+    def processInput(self, 
         data: Any = None,
         format: str|None = None,
         **kwargs
-    ) -> str:
+    ) -> str|None:
         """Process the input"""
+        if data is None:
+            return None
         format = format or self.write_format
         assert isinstance(format, str), "Ensure format is a string"
         
@@ -233,7 +234,7 @@ class BaseDevice:
         processed_data = format.format(**kwargs)
         return processed_data
     
-    def process_output(self, 
+    def processOutput(self, 
         data: str, 
         format: str|None = None, 
         data_type: NamedTuple|None = None, 
@@ -275,10 +276,10 @@ class BaseDevice:
         timestamp: bool = False
     ) -> Any | None:
         """Query the device"""
-        data_in = self.process_input(data, format_in)
+        data_in = self.processInput(data, format_in)
         if not multi_out:
             raw_out = self.poll(data_in)
-            out, now = self.process_output(raw_out, format_out, data_type)
+            out, now = self.processOutput(raw_out, format_out, data_type)
             return (out, now) if timestamp else out
         
         all_data = []
@@ -292,7 +293,7 @@ class BaseDevice:
             raw_out = self.read()
             if raw_out is None or raw_out.strip() == '':
                 break
-            out, now = self.process_output(raw_out, format_out, data_type)
+            out, now = self.processOutput(raw_out, format_out, data_type)
             data_out = (out, now) if timestamp else out
             all_data.append(data_out)
             if not self.checkDeviceBuffer():
@@ -368,7 +369,7 @@ class BaseDevice:
         while self.stream_event.is_set():
             try:
                 out, now = self.data_queue.get()#(block=False)
-                out, now = self.process_output(out, format=format, data_type=data_type, timestamp=now)
+                out, now = self.processOutput(out, format=format, data_type=data_type, timestamp=now)
                 buffer.append((out, now))
                 self.data_queue.task_done()
             except queue.Empty:
@@ -382,7 +383,7 @@ class BaseDevice:
         while self.data_queue.qsize() > 0:
             try:
                 out, now = self.data_queue.get(timeout=1)
-                out, now = self.process_output(out, format=format, data_type=data_type, timestamp=now)
+                out, now = self.processOutput(out, format=format, data_type=data_type, timestamp=now)
                 buffer.append((out, now))
                 self.data_queue.task_done()
             except queue.Empty:

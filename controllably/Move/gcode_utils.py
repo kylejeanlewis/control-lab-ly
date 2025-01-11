@@ -294,7 +294,7 @@ class GCode(Mover):
         self.setSpeedFactor(speed_factor, persist=False)
         data = 'G91'
         try:    # NOTE: temporary for transition to new SerialDevice
-            data = self.device.process_input(data)
+            data = self.device.processInput(data)
         except:
             pass
         self.device.write(data)
@@ -302,7 +302,7 @@ class GCode(Mover):
             self.query(command, jog=jog, wait=True)
         data = 'G90'
         try:    # NOTE: temporary for transition to new SerialDevice
-            data = self.device.process_input(data)
+            data = self.device.processInput(data)
         except:
             pass
         self.device.write(data)
@@ -365,7 +365,7 @@ class GCode(Mover):
         self.setSpeedFactor(speed_factor, persist=False)
         data = 'G90'
         try:    # NOTE: temporary for transition to new SerialDevice
-            data = self.device.process_input(data)
+            data = self.device.processInput(data)
         except:
             pass
         self.device.write(data)

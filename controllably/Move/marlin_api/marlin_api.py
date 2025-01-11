@@ -190,7 +190,7 @@ class Marlin(SerialDevice):
         
         data = f'G28 {axis}'
         try:
-            data = self.process_input(data)
+            data = self.processInput(data)
         except:
             pass
         self.write(data)
@@ -222,14 +222,14 @@ class Marlin(SerialDevice):
         # feed_rate = int(speed_factor * speed_max) * 60      # Convert to mm/min
         # data = f'G90 F{feed_rate}'
         # try:
-        #     data = self.process_input(data)
+        #     data = self.processInput(data)
         # except:
         #     pass
         # self.write(data)
         speed_percent = speed_factor*100
         data = f'M220 S{int(speed_percent)}'
         try:
-            data = self.process_input(data)
+            data = self.processInput(data)
         except:
             pass
         self.write(data)
@@ -272,7 +272,7 @@ class Marlin(SerialDevice):
         if not wait:
             _data = data
             try:
-                _data = self.process_input(_data)
+                _data = self.processInput(_data)
             except:
                 pass
             self.write(_data)
