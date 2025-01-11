@@ -10,7 +10,7 @@ This module holds the base class for cartesian mover tools.
 # Standard library imports
 from __future__ import annotations
 import logging
-from typing import final, Sequence
+from typing import Sequence
 
 # Third party imports
 import matplotlib.patches
@@ -24,7 +24,6 @@ from ..gcode_utils import GCode
 logger = logging.getLogger("controllably.Move")
 logger.debug(f"Import: OK <{__name__}>")
 
-@final
 class Gantry(GCode):
     """
     Gantry provides controls for a general cartesian robot.
