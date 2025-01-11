@@ -54,6 +54,57 @@ class Device(Protocol):
         raise NotImplementedError
 
 
+class StreamingDevice(Protocol):
+    """Protocol for device connection classes"""
+    connection_details: dict
+    is_connected: bool
+    verbose: bool
+    buffer: deque
+    data_queue: queue.Queue
+    show_event: threading.Event
+    stream_event: threading.Event
+    threads: dict
+    def clear(self):
+        """Clear the input and output buffers"""
+        raise NotImplementedError
+
+    def connect(self):
+        """Connect to the device"""
+        raise NotImplementedError
+
+    def disconnect(self):
+        """Disconnect from the device"""
+        raise NotImplementedError
+
+    def query(self, data:Any, multi_out:bool = True, **kwargs) -> Any|None:
+        """Query the device"""
+        raise NotImplementedError
+
+    def read(self) -> str|None:
+        """Read data from the device"""
+        raise NotImplementedError
+
+    def write(self, data:str) -> bool:
+        """Write data to the device"""
+        raise NotImplementedError
+
+    def startStream(self, data:str|None = None, buffer:deque|None = None, **kwargs):
+        """Start the stream"""
+        raise NotImplementedError
+    
+    def stopStream(self):
+        """Stop the stream"""
+        raise NotImplementedError
+    
+    def stream(self, on:bool, data:str|None = None, buffer:deque|None = None, **kwargs):
+        """Toggle the stream"""
+        raise NotImplementedError
+    
+    def showStream(self, on:bool):
+        """Show the stream"""
+        raise NotImplementedError
+    
+
 class BaseDevice:
     
     _default_flags: SimpleNamespace = SimpleNamespace(verbose=False, connected=False, simulation=False)
