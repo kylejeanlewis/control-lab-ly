@@ -2,6 +2,7 @@
 from __future__ import annotations
 from collections import deque
 from datetime import datetime
+import threading
 import time
 from typing import NamedTuple
 
@@ -31,9 +32,17 @@ class Peltier(Maker, HeaterMixin):
         verbose: bool = False,
         **kwargs
     ):
-        super().__init__(port=port, baudrate=baudrate, verbose=verbose, **kwargs)
-        self.buffer: deque[tuple[TempData, datetime]] = deque(maxlen=MAX_LEN)
+        super().__init__(
+            port=port, baudrate=baudrate, verbose=verbose, 
+            read_format=READ_FORMAT, data_type=TempData, **kwargs
+        )
         
+        # Data logging attributes
+        self.buffer: deque[tuple[NamedTuple, datetime]] = deque(maxlen=MAX_LEN)
+        self.records: deque[tuple[NamedTuple, datetime]] = deque()
+        self.record_event = threading.Event()
+        
+        # Temperature control attributes
         self.tolerance = tolerance
         self.power_threshold = power_threshold
         self.stabilize_timeout = stabilize_timeout
@@ -42,27 +51,38 @@ class Peltier(Maker, HeaterMixin):
         self.connect()
         return
     
-    @property
-    def at_temperature(self) -> bool:
-        out: tuple[TempData, datetime] = self.buffer[-1] if self.device.stream_event.is_set() else self.device.query(None)
-        data, _ = out
-        return self.atTemperature(data.target)
-    
+    # Data logging properties
     @property
     def buffer_df(self) -> pd.DataFrame:
-        data,timestamps = list([x for x in zip(*self.buffer)])
+        try:
+            data,timestamps = list([x for x in zip(*self.buffer)])
+        except ValueError:
+            columns = ['timestamp']
+            columns.extend(self.device.data_type._fields)
+            return pd.DataFrame(columns=columns)
         return pd.DataFrame(data, index=timestamps).reset_index(names='timestamp')
     
-    def __del__(self):
-        return
+    @property
+    def records_df(self) -> pd.DataFrame:
+        try:
+            data,timestamps = list([x for x in zip(*self.records)])
+        except ValueError:
+            columns = ['timestamp']
+            columns.extend(self.device.data_type._fields)
+            return pd.DataFrame(columns=columns)
+        return pd.DataFrame(data, index=timestamps).reset_index(names='timestamp')
+    
+    # Temperature control properties
+    @property
+    def at_temperature(self) -> bool:
+        ret = self.atTemperature(None)
+        if ret is None:
+            return False
+        return ret
     
     def connect(self):
         super().connect()
         self._logger.info(f"Current temperature: {self.getTemperature()}°C")
-        return
-    
-    def clearCache(self):
-        self.buffer = deque(maxlen=MAX_LEN)
         return
     
     def reset(self):
@@ -70,50 +90,91 @@ class Peltier(Maker, HeaterMixin):
         self.setTemperature(25, blocking=False)
         return
     
-    def record(self, on: bool):
+    # Data logging methods
+    def clearCache(self):
+        self.buffer = deque(maxlen=MAX_LEN)
+        self.records = deque()
+        return
+    
+    def getData(self) -> TempData|None:
+        """
+        Get data from device
+        """
+        buffer = self.records if self.record_event.is_set() else self.buffer
+        data: NamedTuple|None = None
+        if self.device.stream_event.is_set():
+            out: tuple[NamedTuple, datetime] = buffer[-1] if len(buffer) else None
+            data,_ = out if out is not None else (None,None)
+        else:
+            out = self.device.query(None)
+            data = out[-1] if len(out) else None
+        return data
+    
+    def record(self, on: bool, show: bool = False, clear_cache: bool = False):
+        if clear_cache:
+            self.clearCache()
+        _ = self.record_event.set() if on else self.record_event.clear()
         self.device.stopStream()
         time.sleep(0.1)
         if on:
-            if self.buffer.maxlen is not None:
-                self.buffer = deque(self.buffer)
-            self.device.startStream(buffer=self.buffer)
+            self.device.startStream(buffer=self.records)
+            self.device.showStream(show)
         return
     
     def stream(self, on: bool, show: bool = False):
-        _ = self.device.startStream(buffer=self.buffer) if on else self.device.stopStream()
-        self.device.showStream(show)
+        if on:
+            self.device.startStream(buffer=self.buffer)
+            self.device.showStream(show)
+        else:
+            self.device.stopStream()
+            self.record_event.clear()
         return
     
-    def atTemperature(self, temperature: float, *, tolerance: float|None = None) -> bool:
-        out: tuple[TempData, datetime] = self.buffer[-1] if self.device.stream_event.is_set() else self.device.query(None)
-        data, _ = out
-        
+    # Temperature control methods
+    def atTemperature(self, 
+        temperature: float|None, 
+        *, 
+        tolerance: float|None = None,
+        power_threshold: float|None = None,
+        stabilize_timeout: float|None = None
+    ) -> bool:
+        data = self.getData()
+        if data is None:
+            return False
+        temperature = temperature if temperature is not None else data.target
         tolerance = tolerance or self.tolerance
-        if abs(data.temperature - temperature) <= tolerance:
-            return True
-        if data.power <= self.power_threshold:
-            return True
-        if time.perf_counter()-self._stabilize_start_time >= self.stabilize_timeout:
-            return True
-        return False
+        power_threshold = power_threshold or self.power_threshold
+        stabilize_timeout = stabilize_timeout if stabilize_timeout is not None else self.stabilize_timeout
+        if abs(data.temperature - temperature) > tolerance:
+            return False
+        if (time.perf_counter()-self._stabilize_start_time) < stabilize_timeout:
+            return False
+        if data.power > power_threshold:
+            return False
+        return True
     
-    def getTemperature(self) -> float:
+    def getTemperature(self) -> float|None:
         """
         Get temperature
         """
-        out: tuple[TempData, datetime] = self.buffer[-1] if self.device.stream_event.is_set() else self.device.query(None)
-        data, _ = out
+        data = self.getData()
+        if data is None:
+            return None
         return data.temperature
     
     def _set_temperature(self, temperature: float):
-        self.device.query(temperature)
+        buffer = self.records if self.record_event.is_set() else self.buffer
         if not self.device.stream_event.is_set():
-            self.device.startStream(buffer=self.buffer)
+            self.device.startStream(buffer=buffer)
+            time.sleep(0.1)
         while True:
-            out: tuple[TempData, datetime] = self.buffer[-1] if self.device.stream_event.is_set() else self.device.query(None)
-            data, _ = out
+            data = self.getData()
+            if data is None:
+                time.sleep(0.01)
+                continue
             if data.target == temperature:
                 break
             time.sleep(0.01)
+        self._stabilize_start_time = time.perf_counter()
         return
     
