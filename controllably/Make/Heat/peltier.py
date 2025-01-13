@@ -10,6 +10,7 @@ from typing import NamedTuple
 import pandas as pd
 
 # Local application imports
+from ...core.device import DataLoggerUtils
 from .. import Maker
 from .heater_mixin import HeaterMixin
 
@@ -54,23 +55,11 @@ class Peltier(Maker, HeaterMixin):
     # Data logging properties
     @property
     def buffer_df(self) -> pd.DataFrame:
-        try:
-            data,timestamps = list([x for x in zip(*self.buffer)])
-        except ValueError:
-            columns = ['timestamp']
-            columns.extend(self.device.data_type._fields)
-            return pd.DataFrame(columns=columns)
-        return pd.DataFrame(data, index=timestamps).reset_index(names='timestamp')
+        return DataLoggerUtils.getDataframe(data_store=self.buffer, fields=self.device.data_type._fields)
     
     @property
     def records_df(self) -> pd.DataFrame:
-        try:
-            data,timestamps = list([x for x in zip(*self.records)])
-        except ValueError:
-            columns = ['timestamp']
-            columns.extend(self.device.data_type._fields)
-            return pd.DataFrame(columns=columns)
-        return pd.DataFrame(data, index=timestamps).reset_index(names='timestamp')
+        return DataLoggerUtils.getDataframe(data_store=self.records, fields=self.device.data_type._fields)
     
     # Temperature control properties
     @property
@@ -100,35 +89,20 @@ class Peltier(Maker, HeaterMixin):
         """
         Get data from device
         """
-        buffer = self.records if self.record_event.is_set() else self.buffer
-        data: NamedTuple|None = None
-        if self.device.stream_event.is_set():
-            out: tuple[NamedTuple, datetime] = buffer[-1] if len(buffer) else None
-            data,_ = out if out is not None else (None,None)
-        else:
-            out = self.device.query(None)
-            data = out[-1] if len(out) else None
-        return data
+        data_store = self.records if self.record_event.is_set() else self.buffer
+        return DataLoggerUtils.getData(data_store=data_store, device=self.device)
     
     def record(self, on: bool, show: bool = False, clear_cache: bool = False):
-        if clear_cache:
-            self.clearCache()
-        _ = self.record_event.set() if on else self.record_event.clear()
-        self.device.stopStream()
-        time.sleep(0.1)
-        if on:
-            self.device.startStream(buffer=self.records)
-            self.device.showStream(show)
-        return
+        return DataLoggerUtils.record(
+            on=on, show=show, clear_cache=clear_cache, data_store=self.records, 
+            device=self.device, event=self.record_event
+        )
     
     def stream(self, on: bool, show: bool = False):
-        if on:
-            self.device.startStream(buffer=self.buffer)
-            self.device.showStream(show)
-        else:
-            self.device.stopStream()
-            self.record_event.clear()
-        return
+        return DataLoggerUtils.stream(
+            on=on, show=show, data_store=self.buffer, 
+            device=self.device, event=self.record_event
+        )
     
     # Temperature control methods
     def atTemperature(self, 

@@ -11,9 +11,10 @@ from string import Formatter
 import threading
 import time
 from types import SimpleNamespace
-from typing import Any, NamedTuple, Callable, Protocol
+from typing import Any, NamedTuple, Callable, Protocol, Iterable
 
 # Third party imports
+import pandas as pd
 import parse
 import serial
 
@@ -62,6 +63,7 @@ class StreamingDevice(Protocol):
     is_connected: bool
     verbose: bool
     buffer: deque
+    data_type: NamedTuple
     data_queue: queue.Queue
     show_event: threading.Event
     stream_event: threading.Event
@@ -106,6 +108,74 @@ class StreamingDevice(Protocol):
         """Show the stream"""
         raise NotImplementedError
     
+
+class DataLoggerUtils:
+    def __init__(self):
+        return
+    
+    @staticmethod
+    def getDataframe(data_store:Iterable[tuple[NamedTuple,datetime]], fields:Iterable[str]) -> pd.DataFrame:
+        try:
+            data,timestamps = list([x for x in zip(*data_store)])
+        except ValueError:
+            columns = ['timestamp']
+            columns.extend(fields)
+            return pd.DataFrame(columns=columns)
+        return pd.DataFrame(data, index=timestamps).reset_index(names='timestamp')
+
+    @staticmethod
+    def getData(data_store:Iterable[tuple[NamedTuple,datetime]], *, device:StreamingDevice) -> NamedTuple|None:
+        """
+        Get data from device
+        """
+        data: NamedTuple|None = None
+        if device.stream_event.is_set():
+            out: tuple[NamedTuple, datetime] = data_store[-1] if len(data_store) else None
+            data,_ = out if out is not None else (None,None)
+        else:
+            out = device.query(None)
+            data = out[-1] if len(out) else None
+        return data
+    
+    @staticmethod
+    def record( 
+        on: bool, 
+        show: bool = False, 
+        clear_cache: bool = False, 
+        *, 
+        data_store: deque, 
+        device: StreamingDevice, 
+        event: threading.Event|None = None
+    ):
+        if clear_cache:
+            data_store.clear()
+        if isinstance(event, threading.Event):
+            _ = event.set() if on else event.clear()
+        
+        device.stopStream()
+        time.sleep(0.1)
+        if on:
+            device.startStream(buffer=data_store)
+            device.showStream(show)
+        return
+    
+    @staticmethod
+    def stream( 
+        on: bool, 
+        show: bool = False, 
+        *, 
+        data_store: deque, 
+        device: StreamingDevice, 
+        event: threading.Event|None = None
+    ):
+        if on:
+            device.startStream(buffer=data_store)
+            device.showStream(show)
+        else:
+            device.stopStream()
+            event.clear()
+        return
+
 
 class BaseDevice:
     
