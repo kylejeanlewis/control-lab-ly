@@ -2,7 +2,7 @@
 from random import random
 import threading
 import time
-from typing import NamedTuple
+from typing import NamedTuple, Any
 from unittest import mock
 
 import matplotlib.pyplot as plt
@@ -48,37 +48,25 @@ timer_stop.start()
 
 # %%
 heater.clearCache()
-heater.stream(True,False)
-# heater.record(True, False, clear_cache=True)
+# heater.stream(True,False)
+heater.record(True, True, clear_cache=True)
 SET_TEMPERATURE = 45
+heater.setTemperature(SET_TEMPERATURE, blocking=True)
+heater.stream(False)
+
+# %%
 t,e = heater.setTemperature(SET_TEMPERATURE, blocking=False)
 
 # %%
-fig = plt.figure()
-ax = fig.add_subplot(1, 1, 1)
-timestamp = None
-while not e.is_set():
-    time.sleep(0.1)
-    df = heater.records_df if heater.record_event.is_set() else heater.buffer_df
-    if df['timestamp'].iloc[-1] != timestamp:
-        timestamp = df['timestamp'].iloc[-1]
-        ax.cla()
-        ax.plot(df['timestamp'], df['temperature'], label='Temperature')
-        ax.legend(loc='upper left')
-        plt.tight_layout()
-        display(fig)
-        clear_output(wait=True)
-heater.stream(False)
-print(f'At Temperature: {heater.getTemperature()}°C')
-
-# %%
-def monitor_plot(stop_trigger:threading.Event):
+def monitor_plot(obj: Peltier, stop_trigger:threading.Event|None = None):
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     timestamp = None
+    stop_trigger = stop_trigger if isinstance(stop_trigger, threading.Event) else threading.Event()
+    count = 0
     while not stop_trigger.is_set():
         time.sleep(0.1)
-        df = heater.records_df if heater.record_event.is_set() else heater.buffer_df
+        df = obj.records_df if obj.record_event.is_set() else obj.buffer_df
         if df['timestamp'].iloc[-1] != timestamp:
             ax.cla()
             ax.plot(df['timestamp'], df['temperature'], label='Temperature')
@@ -86,11 +74,20 @@ def monitor_plot(stop_trigger:threading.Event):
             plt.tight_layout()
             display(fig)
             clear_output(wait=True)
-    heater.stream(False)
-    print(f'At Temperature: {heater.getTemperature()}°C')
+        else:
+            count += 1
+        if count > 10:
+            break
+    return stop_trigger
 
+# %% Blocking
+monitor_plot(heater, e)
+heater.stream(False)
+print(f'At Temperature: {heater.getTemperature()}°C')
+
+# %% Non-blocking
 event = threading.Event()
-thread = threading.Thread(target=monitor_plot, args=(event,))
+thread = threading.Thread(target=monitor_plot, args=(heater, event))
 thread.start()
 
 # %%
