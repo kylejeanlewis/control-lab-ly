@@ -26,6 +26,7 @@ handler = logging.StreamHandler()
 
 class Device(Protocol):
     """Protocol for device connection classes"""
+    connection: Any|None
     connection_details: dict
     is_connected: bool
     verbose: bool
@@ -56,6 +57,7 @@ class Device(Protocol):
 
 class StreamingDevice(Protocol):
     """Protocol for device connection classes"""
+    connection: Any|None
     connection_details: dict
     is_connected: bool
     verbose: bool
@@ -334,7 +336,7 @@ class BaseDevice:
             return (out, now) if timestamp else out
         
         all_data = []
-        ret = self.write(data_in)
+        ret = self.write(data_in) if data_in is not None else True
         if not ret:
             return None
         start_time = time.perf_counter()
