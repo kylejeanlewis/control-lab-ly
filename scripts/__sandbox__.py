@@ -1,8 +1,9 @@
 # %%
+from datetime import datetime
 from random import random
 import threading
 import time
-from typing import NamedTuple, Any
+from typing import NamedTuple, Iterable
 from unittest import mock
 
 import matplotlib.pyplot as plt
@@ -10,7 +11,7 @@ from IPython.display import display, clear_output
 import pandas as pd
 
 import test_init
-from controllably.core.device import SerialDevice
+from controllably.core.device import SerialDevice, DataLoggerUtils
 from controllably.Make.Heat import Peltier
 
 heater = Peltier(port='COM1', baudrate=9600, timeout=1, verbose=True)
@@ -50,24 +51,31 @@ timer_stop.start()
 heater.clearCache()
 # heater.stream(True,False)
 heater.record(True, True, clear_cache=True)
-SET_TEMPERATURE = 45
+this_deque = heater.records if heater.record_event.is_set() else heater.buffer
+SET_TEMPERATURE = 25
+
+# %% Blocking
 heater.setTemperature(SET_TEMPERATURE, blocking=True)
 heater.stream(False)
 
-# %%
+# %% Non-blocking
 t,e = heater.setTemperature(SET_TEMPERATURE, blocking=False)
 
 # %%
-def monitor_plot(obj: Peltier, stop_trigger:threading.Event|None = None):
+def monitor_plot(data_store: Iterable[tuple[NamedTuple,datetime]], fields: Iterable[str], stop_trigger: threading.Event|None = None,):
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     timestamp = None
     stop_trigger = stop_trigger if isinstance(stop_trigger, threading.Event) else threading.Event()
     count = 0
-    while not stop_trigger.is_set():
+    while not stop_trigger.is_set() and count<10:
         time.sleep(0.1)
-        df = obj.records_df if obj.record_event.is_set() else obj.buffer_df
+        df = DataLoggerUtils.getDataframe(data_store=data_store, fields=fields)
+        if df.empty:
+            continue
         if df['timestamp'].iloc[-1] != timestamp:
+            count = 0
+            timestamp = df['timestamp'].iloc[-1]
             ax.cla()
             ax.plot(df['timestamp'], df['temperature'], label='Temperature')
             ax.legend(loc='upper left')
@@ -76,18 +84,17 @@ def monitor_plot(obj: Peltier, stop_trigger:threading.Event|None = None):
             clear_output(wait=True)
         else:
             count += 1
-        if count > 10:
-            break
+    display(fig)
     return stop_trigger
 
 # %% Blocking
-monitor_plot(heater, e)
+monitor_plot(this_deque, heater.device.data_type._fields, e)
 heater.stream(False)
 print(f'At Temperature: {heater.getTemperature()}°C')
 
 # %% Non-blocking
 event = threading.Event()
-thread = threading.Thread(target=monitor_plot, args=(heater, event))
+thread = threading.Thread(target=monitor_plot, args=(this_deque, heater.device.data_type._fields, event))
 thread.start()
 
 # %%
