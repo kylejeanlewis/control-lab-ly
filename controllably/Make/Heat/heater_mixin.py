@@ -20,7 +20,7 @@ class HeaterMixin:
         `setTemperature`: Set temperature
     """
     
-    def atTemperature(self, temperature: float, *, tolerance: float|None = None) -> bool:
+    def atTemperature(self, temperature: float, *, tolerance: float|None = None, **kwargs) -> bool:
         tolerance = tolerance or 0.1
         return (abs(self.getTemperature() - temperature) < tolerance)
         
