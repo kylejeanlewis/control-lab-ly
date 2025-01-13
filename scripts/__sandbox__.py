@@ -1,4 +1,99 @@
 # %%
+from random import random
+import threading
+import time
+from typing import NamedTuple
+from unittest import mock
+
+import matplotlib.pyplot as plt
+from IPython.display import display, clear_output
+import pandas as pd
+
+import test_init
+from controllably.core.device import SerialDevice
+from controllably.Make.Heat import Peltier
+
+heater = Peltier(port='COM1', baudrate=9600, timeout=1, verbose=True)
+
+MockSerial = mock.Mock()
+MockSerial.port = 'COM1'
+MockSerial.baudrate = 9600
+MockSerial.timeout = 1
+MockSerial.is_open = True
+MockSerial.write = mock.Mock()
+
+SET_TEMPERATURE = 25
+TEMPERATURE = SET_TEMPERATURE+random()*3
+def readline():
+    global TEMPERATURE, SET_TEMPERATURE
+    step = 0.1
+    delta = step*random() 
+    if abs(SET_TEMPERATURE - TEMPERATURE) <= step:
+        delta -= step/2
+    TEMPERATURE = TEMPERATURE + delta if SET_TEMPERATURE>TEMPERATURE else TEMPERATURE - delta
+    power = max(0, (SET_TEMPERATURE - TEMPERATURE)*20)
+    cold = 25 + step*random() - step/2
+    time.sleep(0.05)
+    return f"{SET_TEMPERATURE:.3f};{TEMPERATURE:.3f};{cold:.3f};{power:.3f}\n".encode()
+MockSerial.readline = readline
+heater.device.connection = MockSerial
+
+# %%
+heater.stream(True, True)
+timer_start = threading.Timer(5, heater.record, args=(True,))
+timer_start.start()
+
+timer_stop = threading.Timer(15, heater.record, args=(False,))
+timer_stop.start()
+
+# %%
+heater.clearCache()
+heater.stream(True,False)
+# heater.record(True, False, clear_cache=True)
+SET_TEMPERATURE = 45
+t,e = heater.setTemperature(SET_TEMPERATURE, blocking=False)
+
+# %%
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1)
+timestamp = None
+while not e.is_set():
+    time.sleep(0.1)
+    df = heater.records_df if heater.record_event.is_set() else heater.buffer_df
+    if df['timestamp'].iloc[-1] != timestamp:
+        timestamp = df['timestamp'].iloc[-1]
+        ax.cla()
+        ax.plot(df['timestamp'], df['temperature'], label='Temperature')
+        ax.legend(loc='upper left')
+        plt.tight_layout()
+        display(fig)
+        clear_output(wait=True)
+heater.stream(False)
+print(f'At Temperature: {heater.getTemperature()}°C')
+
+# %%
+def monitor_plot(stop_trigger:threading.Event):
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    timestamp = None
+    while not stop_trigger.is_set():
+        time.sleep(0.1)
+        df = heater.records_df if heater.record_event.is_set() else heater.buffer_df
+        if df['timestamp'].iloc[-1] != timestamp:
+            ax.cla()
+            ax.plot(df['timestamp'], df['temperature'], label='Temperature')
+            ax.legend(loc='upper left')
+            plt.tight_layout()
+            display(fig)
+            clear_output(wait=True)
+    heater.stream(False)
+    print(f'At Temperature: {heater.getTemperature()}°C')
+
+event = threading.Event()
+thread = threading.Thread(target=monitor_plot, args=(event,))
+thread.start()
+
+# %%
 from collections import deque
 import socket
 import threading
@@ -62,6 +157,7 @@ MockSerial.is_open = True
 MockSerial.readline = readline
 MockSerial.write = mock.Mock()
 
+# %%
 device = SerialDevice(
     port='COM4', baudrate=9600, timeout=1,
     data_type=NamedTuple("Data", [("d1", str),("d2", int),("d3", float)]),
