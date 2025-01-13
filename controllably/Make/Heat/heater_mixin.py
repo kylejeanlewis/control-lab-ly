@@ -20,6 +20,10 @@ class HeaterMixin:
         `setTemperature`: Set temperature
     """
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        pass
+    
     def atTemperature(self, temperature: float, *, tolerance: float|None = None, **kwargs) -> bool:
         tolerance = tolerance or 0.1
         return (abs(self.getTemperature() - temperature) < tolerance)

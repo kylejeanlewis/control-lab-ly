@@ -32,6 +32,10 @@ class GripperMixin:
         `toggleGrip`: Toggle grip
     """
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        pass
+    
     def drop(self, wait:float|None = None):
         """
         Drop to release object
