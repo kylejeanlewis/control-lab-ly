@@ -1,3 +1,3 @@
 # -*- coding: utf-8 -*-
 from .peltier_utils import Peltier
-from .heater import HeaterMixin
+from .heater_mixin import HeaterMixin

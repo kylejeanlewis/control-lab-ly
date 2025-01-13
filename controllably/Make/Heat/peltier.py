@@ -10,7 +10,7 @@ import pandas as pd
 
 # Local application imports
 from .. import Maker
-from .heater import HeaterMixin
+from .heater_mixin import HeaterMixin
 
 MAX_LEN = 100
 READ_FORMAT = "{target};{temperature};{cold};{power}\n"
