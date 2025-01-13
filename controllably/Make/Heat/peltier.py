@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Standard Library imports
 from __future__ import annotations
 from collections import deque
