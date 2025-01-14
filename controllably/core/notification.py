@@ -55,15 +55,14 @@ class Notifier:
         assert 'service' in configs, "Service details not found in configuration file"
         assert 'message' in configs, "Message details not found in configuration file"
         self.configs = configs
-        self._app_password: bytes|Path|None = None
+        self._app_password: Path|None = None
         pass
     
     def __enter__(self):
         keyfile: Path = self.configs['credentials']['keyfile']
-        if not keyfile.exists():
-            self._app_password = bytes(input(f"Enter password for {self.configs['credentials']['username']}: "))
-        else:
-            self._app_password = keyfile
+        while not keyfile.exists():
+            keyfile = Path(input(f"Enter valid path to keyfile for {self.configs['credentials']['username']}: "))
+        self._app_password = keyfile
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -98,7 +97,7 @@ class Notifier:
         Returns:
             `Any`: message to be sent
         """
-        ...
+        ... # Replace with implementation
         raise NotImplementedError
     
     def notify(self, placeholders: dict = dict(), **kwargs):
@@ -108,7 +107,7 @@ class Notifier:
         Args:
             `placeholders` (dict): placeholders for the message
         """
-        username = kwargs.get('username', self.configs['credentials']['username'])
+        username = self.configs['credentials']['username']
         message = self.writeMessage(self.configs['message'], placeholders=placeholders, **kwargs)
         self.sendMessage(self.configs['service'], username, message)
         return
@@ -127,8 +126,8 @@ class Notifier:
             assert isinstance(_app_password, (bytes,Path)), "App password not found"
         if isinstance(_app_password, Path):
             _app_password = self._app_password.read_bytes().strip()
-        ...
-        return
+        ... # Replace with implementation
+        raise NotImplementedError
 
 
 class EmailNotifier(Notifier):
