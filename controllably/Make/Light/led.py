@@ -56,7 +56,7 @@ class LED(Maker, TimedDeviceMixin):
             self._logger.info("[BUSY] LED is currently in use")
             return False
         self._logger.info(f"[LED] {power}")
-        self.device.query(power)
+        self.device.write(self.device.processInput(power))
         self.target_power = power
         if isinstance(event, threading.Event):
             _ = event.clear() if event.is_set() else event.set()

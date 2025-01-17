@@ -69,7 +69,7 @@ class Spinner(Maker, TimedDeviceMixin):
             self._logger.info("[BUSY] Spinner is currently in use")
             return False
         self._logger.info(f"[SPIN] {rpm}")
-        self.device.query(rpm)
+        self.device.write(self.device.processInput(rpm))
         self.target_rpm = rpm
         if isinstance(event, threading.Event):
             _ = event.clear() if event.is_set() else event.set()
