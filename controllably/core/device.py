@@ -418,6 +418,7 @@ class BaseDevice:
         format: str|None = None, 
         data_type: NamedTuple|None = None, 
         timestamp: datetime|None = None,
+        *,
         condition: Callable[[Any,datetime], bool]|None = None
     ) -> tuple[Any, datetime|None]:
         """Process the output"""
@@ -759,9 +760,9 @@ class SerialDevice(BaseDevice):
         try:
             data = self.serial.readline().decode("utf-8", "replace")
             data = data.strip()
-            self._logger.debug(f"Received: {data!r}")
+            self._logger.debug(f"[{self.port}] Received: {data!r}")
         except serial.SerialException as e:
-            self._logger.debug(f"Failed to receive data")
+            self._logger.debug(f"[{self.port}] Failed to receive data")
         except KeyboardInterrupt:
             self._logger.debug("Received keyboard interrupt")
             self.disconnect()
@@ -778,13 +779,13 @@ class SerialDevice(BaseDevice):
                 if not out:
                     break
         except serial.SerialException as e:
-            self._logger.debug(f"Failed to receive data")
+            self._logger.debug(f"[{self.port}] Failed to receive data")
             self._logger.debug(e)
         except KeyboardInterrupt:
             self._logger.debug("Received keyboard interrupt")
             self.disconnect()
         data = data.strip()
-        self._logger.debug(f"Received: {data!r}")
+        self._logger.debug(f"[{self.port}] Received: {data!r}")
         return data.split(delimiter)
     
     def write(self, data:str) -> bool:
@@ -792,9 +793,9 @@ class SerialDevice(BaseDevice):
         assert isinstance(data, str), "Ensure data is a string"
         try:
             self.serial.write(data.encode())
-            self._logger.debug(f"Sent: {data!r}")
+            self._logger.debug(f"[{self.port}] Sent: {data!r}")
         except serial.SerialException as e:
-            self._logger.debug(f"Failed to send: {data!r}")
+            self._logger.debug(f"[{self.port}] Failed to send: {data!r}")
             return False
         return True
 
@@ -972,7 +973,7 @@ class SocketDevice(BaseDevice):
             #     break
         except OSError as e:
             if not data:
-                self._logger.debug(f"Failed to receive data")
+                self._logger.debug(f"[{self.host}] Failed to receive data")
                 self._logger.debug(e)
         except KeyboardInterrupt:
             self._logger.debug("Received keyboard interrupt")
@@ -980,7 +981,7 @@ class SocketDevice(BaseDevice):
         if delimiter in data:
             data, self._stream_buffer = data.split(delimiter, 1)
         data = data.strip()
-        self._logger.debug(f"Received: {data!r}")
+        self._logger.debug(f"[{self.host}] Received: {data!r}")
         return data
     
     def readAll(self) -> list[str]|None:
@@ -995,13 +996,13 @@ class SocketDevice(BaseDevice):
                 if not out or len(data)>self.byte_size:
                     break
         except OSError as e:
-            self._logger.debug(f"Failed to receive data")
+            self._logger.debug(f"[{self.host}] Failed to receive data")
             self._logger.debug(e)
         except KeyboardInterrupt:
             self._logger.debug("Received keyboard interrupt")
             self.disconnect()
         data = data.strip()
-        self._logger.debug(f"Received: {data!r}")
+        self._logger.debug(f"[{self.host}] Received: {data!r}")
         return data.split(delimiter)
     
     def write(self, data:str) -> bool:
@@ -1009,9 +1010,9 @@ class SocketDevice(BaseDevice):
         assert isinstance(data, str), "Ensure data is a string"
         try:
             self.socket.sendall(data.encode())
-            self._logger.debug(f"Sent: {data!r}")
+            self._logger.debug(f"[{self.host}] Sent: {data!r}")
         except OSError as e:
-            self._logger.debug(f"Failed to send: {data!r}")
+            self._logger.debug(f"[{self.host}] Failed to send: {data!r}")
             self._logger.debug(e)
             return False
         return True
