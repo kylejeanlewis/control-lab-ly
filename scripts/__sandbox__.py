@@ -1,6 +1,16 @@
 # %%
 import test_init
-from controllably.Make.Light.leds import LED
+from controllably.core.device import SerialDevice
+from controllably.core.connection import get_ports
+from controllably.Make.Heat.peltier import Peltier
+
+get_ports()
+# ser = SerialDevice(port='COM32', baudrate=115200, timeout=1, verbose=True, simulation=False)
+pelt = Peltier(port='COM32')
+
+# %%
+import test_init
+from controllably.Make.Light.led import LED
 
 led = LED(port='COM1', baudrate=9600, timeout=1, verbose=True, simulation=True)
 
@@ -20,6 +30,7 @@ import test_init
 from controllably.core.device import SerialDevice, DataLoggerUtils
 from controllably.Make.Heat import Peltier
 
+# %%
 heater = Peltier(port='COM1', baudrate=9600, timeout=1, verbose=True)
 
 MockSerial = mock.Mock()
@@ -248,7 +259,8 @@ mover = Marlin('COM21')
 
 # %%
 import test_init
-from controllably.Make.ThinFilm import Multi_Spinner, Spinner
+# from controllably.Make.ThinFilm import Multi_Spinner, Spinner
+from controllably.Make.ThinFilm.spinner import Spinner, Multi_Spinner
 details = [
     dict(port='COM17', verbose=True),
     dict(port='COM18', verbose=True),
@@ -256,6 +268,7 @@ details = [
     dict(port='COM20', verbose=True),
 ]
 spinners = Multi_Spinner.create(channels=[1,2,3,4], details=details, verbose=True)
+spinners.connect()
 
 # %%
 spinners.spin(1000,5,blocking=True)
