@@ -177,6 +177,46 @@ class DataLoggerUtils:
         return
 
 
+class TimedDeviceMixin:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        return
+    
+    def onState(self, 
+        value: int, 
+        duration: int|float,
+        blocking: bool = True, 
+        *, 
+        event: threading.Event|None = None
+    ) -> threading.Timer|None:
+        assert duration >= 0, "Ensure duration is a non-negative number"
+        success = self.setValue(value)
+        if not success:
+            return
+        event.set()
+        if blocking:
+            time.sleep(duration)
+            self.stopTimer(event=event)
+            return
+        timer = threading.Timer(duration, self.setValue, args=(0,event))
+        timer.start()
+        return timer
+    
+    def stopTimer(self, timer: threading.Timer|None = None, *, event: threading.Event|None = None):
+        self.setValue(0)
+        if isinstance(timer, threading.Timer):
+            timer.cancel()
+        event.clear()
+        return
+        
+    def setValue(self, value: int, event: threading.Event|None = None) -> bool:
+        assert value >= 0, "Ensure value is a non-negative number"
+        ...
+        if isinstance(event, threading.Event):
+            _ = event.clear() if event.is_set() else event.set()
+        raise NotImplementedError
+    
+
 class BaseDevice:
     
     _default_flags: SimpleNamespace = SimpleNamespace(verbose=False, connected=False, simulation=False)
