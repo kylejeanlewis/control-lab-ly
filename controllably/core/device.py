@@ -42,6 +42,14 @@ class Device(Protocol):
     def disconnect(self):
         """Disconnect from the device"""
         raise NotImplementedError
+    
+    def processInput(self, data:Any, format:str, **kwargs) -> str|None:
+        """Process the input"""
+        raise NotImplementedError
+    
+    def processOutput(self, data:str, format:str, data_type:NamedTuple, timestamp: datetime|None, **kwargs) -> tuple[Any, datetime]:
+        """Process the output"""
+        raise NotImplementedError
 
     def query(self, data:Any, multi_out:bool = True, **kwargs) -> Any|None:
         """Query the device"""
@@ -78,6 +86,14 @@ class StreamingDevice(Protocol):
 
     def disconnect(self):
         """Disconnect from the device"""
+        raise NotImplementedError
+    
+    def processInput(self, data:Any, format:str, **kwargs) -> str|None:
+        """Process the input"""
+        raise NotImplementedError
+    
+    def processOutput(self, data:str, format:str, data_type:NamedTuple, timestamp: datetime|None, **kwargs) -> tuple[Any, datetime]:
+        """Process the output"""
         raise NotImplementedError
 
     def query(self, data:Any, multi_out:bool = True, **kwargs) -> Any|None:
