@@ -15,8 +15,8 @@ from types import SimpleNamespace
 
 # Local application imports
 from ..core import factory
-from ..core.connection import Device
-from ..core.device import StreamingDevice
+# from ..core.connection import Device
+from ..core.device import Device, StreamingDevice
 
 logger = logging.getLogger("controllably.Make")
 logger.debug(f"Import: OK <{__name__}>")
@@ -53,7 +53,7 @@ class Maker:
         Args:
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
-        self.device: StreamingDevice = kwargs.get('device', factory.create_from_config(kwargs))
+        self.device: Device|StreamingDevice = kwargs.get('device', factory.create_from_config(kwargs))
         self.flags: SimpleNamespace = deepcopy(self._default_flags)
         
         self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
