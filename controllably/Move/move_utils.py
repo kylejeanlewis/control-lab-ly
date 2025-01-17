@@ -121,7 +121,7 @@ class Mover:
         deck: Deck|None = None,
         workspace: BoundingVolume|None = None,
         safe_height: float|None = None,                     # in terms of robot coordinate system
-        saved_positions: dict = dict(),                     # in terms of robot coordinate system
+        saved_positions: dict|None = None,                     # in terms of robot coordinate system
         speed_max: float = 600,                             # in mm/min
         verbose:bool = False, 
         **kwargs
@@ -152,7 +152,7 @@ class Mover:
         self.deck = deck
         self.workspace: BoundingVolume = workspace
         self.safe_height: float = safe_height if safe_height is not None else home_position.z
-        self.saved_positions = saved_positions
+        self.saved_positions = saved_positions or dict()
         self.current_zone_waypoints: tuple[str, list[Position]]|None = None
         
         self._robot_position = robot_position if isinstance(robot_position, Position) else convert_to_position(robot_position)

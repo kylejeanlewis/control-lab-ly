@@ -238,7 +238,7 @@ class BaseDevice:
     _default_flags: SimpleNamespace = SimpleNamespace(verbose=False, connected=False, simulation=False)
     def __init__(self, 
         *, 
-        connection_details:dict = dict(), 
+        connection_details:dict|None = None, 
         init_timeout:int = 1, 
         data_type: NamedTuple = NamedTuple("Data", [("data", str)]),
         read_format:str = "{data}\n",
@@ -249,7 +249,7 @@ class BaseDevice:
     ):
         # Connection attributes
         self.connection: Any|None = None
-        self.connection_details = connection_details
+        self.connection_details = dict() if connection_details is None else connection_details
         self.flags = deepcopy(self._default_flags)
         self.init_timeout = init_timeout
         self.flags.simulation = simulation

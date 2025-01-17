@@ -126,7 +126,7 @@ class Gantry(GCode):
         scale: float = 1.0,
         deck: Deck|None = None,
         safe_height: float|None = None,                                 # in terms of robot coordinate system
-        saved_positions: dict = dict(),                                 # in terms of robot coordinate system
+        saved_positions: dict|None = None,                                 # in terms of robot coordinate system
         speed_max: float|None = None,                                   # in mm/min
         device_type_name: str = 'GRBL',
         baudrate: int = 115200, 
@@ -158,6 +158,7 @@ class Gantry(GCode):
             verbose (bool, optional): verbosity of class. Defaults to False.
             simulation (bool, optional): whether to simulate. Defaults to False.
         """
+        saved_positions = saved_positions or dict()
         workspace = BoundingBox(buffer=limits)
         _speed_max = speed_max if speed_max is not None else 600
         super().__init__(

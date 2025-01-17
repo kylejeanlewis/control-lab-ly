@@ -123,7 +123,7 @@ class Dobot(RobotArm):
         host: str,
         joint_limits: Sequence[Sequence[float]]|None = None,
         *,
-        home_waypoints: Sequence[Position] = list(),
+        home_waypoints: Sequence[Position]|None = None,
         movement_buffer: int|None = None,
         movement_timeout: int|None = None,
         verbose: bool = False, 
@@ -140,6 +140,7 @@ class Dobot(RobotArm):
             movement_timeout (Optional[int], optional): timeout for movement. Defaults to None.
             verbose (bool, optional): whether to output logs. Defaults to False.
         """
+        home_waypoints = list() if home_waypoints is None else home_waypoints
         super().__init__(
             device_type=DobotDevice, host=host, verbose=verbose, 
             home_waypoints=home_waypoints, joint_limits=joint_limits,

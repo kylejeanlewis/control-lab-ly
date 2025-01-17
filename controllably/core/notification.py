@@ -86,7 +86,7 @@ class Notifier:
         return cls(configs)
     
     @classmethod
-    def writeMessage(cls, message_config: dict, placeholders: dict = dict(), *args, **kwargs) -> Any:
+    def writeMessage(cls, message_config: dict, placeholders: dict|None = None, *args, **kwargs) -> Any:
         """ 
         Write a message
         
@@ -100,13 +100,14 @@ class Notifier:
         ... # Replace with implementation
         raise NotImplementedError
     
-    def notify(self, placeholders: dict = dict(), **kwargs):
+    def notify(self, placeholders: dict|None = None, **kwargs):
         """ 
         Write and send a message through chosen service
         
         Args:
             `placeholders` (dict): placeholders for the message
         """
+        placeholders = placeholders or dict()
         username = self.configs['credentials']['username']
         message = self.writeMessage(self.configs['message'], placeholders=placeholders, **kwargs)
         self.sendMessage(self.configs['service'], username, message)
@@ -156,7 +157,7 @@ class EmailNotifier(Notifier):
         pass
     
     @classmethod
-    def writeMessage(cls,message_config: dict, placeholders: dict = dict(), *args, **kwargs) -> EmailMessage:
+    def writeMessage(cls,message_config: dict, placeholders: dict|None = None, *args, **kwargs) -> EmailMessage:
         return cls.writeEmail(message_config, placeholders, *args, **kwargs)
     
     def sendMessage(self, service_config: dict, username: str, message: EmailMessage):
@@ -165,9 +166,9 @@ class EmailNotifier(Notifier):
     @classmethod
     def writeEmail(cls,
         message_config: dict, 
-        placeholders: dict = dict(),
+        placeholders: dict|None = None,
         *args,
-        attachments: Iterable[Path] = list(),
+        attachments: Iterable[Path]|None = None,
         save_zip: bool = False,
         time_format: str = '%Y-%m-%d %H:%M:%S',
         **kwargs
@@ -185,6 +186,8 @@ class EmailNotifier(Notifier):
         Returns:
             `EmailMessage`: email message to be sent
         """
+        placeholders = placeholders or dict()
+        attachments = attachments or list()
         if 'timestamp' not in placeholders:
             placeholders['timestamp'] = datetime.now()
         placeholders_text, placeholders_file = placeholders.copy(), placeholders.copy()

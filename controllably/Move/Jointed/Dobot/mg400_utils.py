@@ -148,14 +148,14 @@ class MG400(Dobot):
         joint_limits: Sequence[Sequence[float]]|None = None,
         *,
         robot_position: Position = Position(),
-        home_waypoints: Sequence[Position] = list(),
+        home_waypoints: Sequence[Position]|None = None,
         home_position: Position = Position((0,300,0)),                # in terms of robot coordinate system
         tool_offset: Position = Position(),
         calibrated_offset: Position = Position(),
         scale: float = 1.0,
         deck: Deck|None = None,
         safe_height: float|None = 75,                                  # in terms of robot coordinate system
-        saved_positions: dict = dict(),                                 # in terms of robot coordinate system
+        saved_positions: dict|None = None,                                 # in terms of robot coordinate system
         speed_max: float|None = None,                                   # in mm/min
         movement_buffer: int|None = None,
         movement_timeout: int|None = None,
@@ -184,6 +184,8 @@ class MG400(Dobot):
             verbose (bool, optional): whether to output logs. Defaults to False.
             simulation (bool, optional): whether to simulate the robot. Defaults to False.
         """
+        home_waypoints = list() if home_waypoints is None else home_waypoints
+        saved_positions = saved_positions or dict()
         workspace = BoundingVolume(parametric_function=dict(volume=within_volume))
         super().__init__(
             host=host, joint_limits=joint_limits,

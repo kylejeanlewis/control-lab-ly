@@ -103,7 +103,7 @@ class RobotArm(Mover):
     
     def __init__(self,
         *args,
-        home_waypoints: Sequence[Position] = list(),
+        home_waypoints: Sequence[Position]|None = None,
         joint_limits: Sequence[Sequence[float]]|None = None,
         **kwargs
     ):
@@ -114,6 +114,7 @@ class RobotArm(Mover):
             home_waypoints (Sequence[Position], optional): home waypoints for the robot. Defaults to list().
             joint_limits (Sequence[Sequence[float]], optional): joint limits for the robot. Defaults to None.
         """
+        home_waypoints = list() if home_waypoints is None else home_waypoints
         super().__init__(*args, **kwargs)
         self.joint_limits = np.array([[-180]*6, [180]*6]) if joint_limits is None else np.array(joint_limits)
         self._joint_position = np.zeros(6)

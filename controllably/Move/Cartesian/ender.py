@@ -28,7 +28,7 @@ class Ender(Gantry, HeaterMixin):
         scale: float = 1.0,
         deck: Deck|None = None,
         safe_height: float|None = None,                                 # in terms of robot coordinate system
-        saved_positions: dict = dict(),                                 # in terms of robot coordinate system
+        saved_positions: dict|None = None,                                 # in terms of robot coordinate system
         speed_max: float|None = None,                                   # in mm/min
         device_type_name: str = 'Marlin',
         baudrate: int = 115200, 
@@ -60,7 +60,7 @@ class Ender(Gantry, HeaterMixin):
             verbose (bool, optional): verbosity of class. Defaults to False.
             simulation (bool, optional): whether to simulate. Defaults to False.
         """
-        
+        saved_positions = saved_positions or dict()
         super().__init__(
             port=port, baudrate=baudrate, limits = limits,
             robot_position=robot_position, home_position=home_position,
