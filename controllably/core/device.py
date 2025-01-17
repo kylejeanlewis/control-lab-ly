@@ -434,9 +434,13 @@ class BaseDevice:
             return data, timestamp
         parsed = parse_out.named
         for key, value in data_type.__annotations__.items():
-            if value == int and not parsed[key].isnumeric():
-                parsed[key] = float(parsed[key])
-            parsed[key] = value(parsed[key])
+            try:
+                if value == int and not parsed[key].isnumeric():
+                    parsed[key] = float(parsed[key])
+                parsed[key] = value(parsed[key])
+            except ValueError:
+                self._logger.warning(f"Failed to convert {key}: {parsed[key]} to type {value}")
+                parsed[key] = None
         processed_data = data_type(**parsed) 
         
         if self.show_event.is_set():
