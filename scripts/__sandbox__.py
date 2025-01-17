@@ -1,4 +1,10 @@
 # %%
+import test_init
+from controllably.Make.Light.leds import LED
+
+led = LED(port='COM1', baudrate=9600, timeout=1, verbose=True, simulation=True)
+
+# %%
 from datetime import datetime
 from random import random
 import threading
