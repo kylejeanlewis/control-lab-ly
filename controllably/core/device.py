@@ -437,6 +437,8 @@ class BaseDevice:
             try:
                 if value == int and not parsed[key].isnumeric():
                     parsed[key] = float(parsed[key])
+                elif value == bool:
+                    parsed[key] = parsed[key].lower() in ['true', '1', 'yes']
                 parsed[key] = value(parsed[key])
             except ValueError:
                 self._logger.warning(f"Failed to convert {key}: {parsed[key]} to type {value}")
