@@ -140,7 +140,7 @@ class DataLoggerUtils:
         return pd.DataFrame(data, index=timestamps).reset_index(names='timestamp')
 
     @staticmethod
-    def getData(data_store:Iterable[tuple[NamedTuple,datetime]], *, device:StreamingDevice) -> NamedTuple|None:
+    def getData(data_store:Iterable[tuple[NamedTuple,datetime]], *, device:StreamingDevice, query: Any|None = None) -> NamedTuple|None:
         """
         Get data from device
         """
@@ -149,7 +149,7 @@ class DataLoggerUtils:
             out: tuple[NamedTuple, datetime] = data_store[-1] if len(data_store) else None
             data,_ = out if out is not None else (None,None)
         else:
-            out = device.query(None)
+            out = device.query(query)
             data = out[-1] if len(out) else None
         return data
     
