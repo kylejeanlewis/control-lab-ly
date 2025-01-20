@@ -63,12 +63,9 @@ class Peltier(Maker, HeaterMixin):
         return DataLoggerUtils.getDataframe(data_store=self.records, fields=self.device.data_type._fields)
     
     # Temperature control properties
-    @property
-    def at_temperature(self) -> bool:
-        ret = self.atTemperature(None)
-        if ret is None:
-            return False
-        return ret
+    # @property
+    # def at_temperature(self) -> bool:
+    #     return self.atTemperature(None)
     
     def connect(self):
         super().connect()
@@ -107,7 +104,7 @@ class Peltier(Maker, HeaterMixin):
     
     # Temperature control methods
     def atTemperature(self, 
-        temperature: float|None, 
+        temperature: float|None = None, 
         *, 
         tolerance: float|None = None,
         power_threshold: float|None = None,
@@ -138,6 +135,7 @@ class Peltier(Maker, HeaterMixin):
         return data.temperature
     
     def _set_temperature(self, temperature: float):
+        self.device.write(self.device.processInput(temperature))
         buffer = self.records if self.record_event.is_set() else self.buffer
         if not self.device.stream_event.is_set():
             self.device.startStream(buffer=buffer)
