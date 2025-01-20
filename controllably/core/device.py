@@ -428,7 +428,7 @@ class BaseDevice:
         fields = set([field for _, field, _, _ in Formatter().parse(format) if field])
         assert set(data_type._fields) == fields, "Ensure data type fields match read format fields"
         
-        parse_out =parse.parse(format, data)
+        parse_out = parse.parse(format, data)
         if parse_out is None:
             self._logger.warning(f"Failed to parse data: {data!r}")
             return data, timestamp
