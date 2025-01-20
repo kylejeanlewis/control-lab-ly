@@ -40,7 +40,7 @@ class HeaterMixin:
         tolerance: float|None = None, 
         release: threading.Event|None = None
     ) -> threading.Event|None:
-        def inner(temperature: float, duration: float, tolerance: float|None, release: threading.Event|None):
+        def inner(temperature: float, duration: float, tolerance: float|None, release: threading.Event|None = None):
             logger = logging.getLogger(f"{self.__class__}.{self.__class__.__name__}_{id(self)}")
             self.setTemperature(temperature, tolerance=tolerance)
             logger.info(f"Holding temperature at {temperature}°C for {duration} seconds")
