@@ -139,19 +139,19 @@ class DataLoggerUtils:
             return pd.DataFrame(columns=columns)
         return pd.DataFrame(data, index=timestamps).reset_index(names='timestamp')
 
-    @staticmethod
-    def getData(data_store:Iterable[tuple[NamedTuple,datetime]], *, device:StreamingDevice, query: Any|None = None) -> NamedTuple|None:
-        """
-        Get data from device
-        """
-        data: NamedTuple|None = None
-        if device.stream_event.is_set():
-            out: tuple[NamedTuple, datetime] = data_store[-1] if len(data_store) else None
-            data,_ = out if out is not None else (None,None)
-        else:
-            out = device.query(query)
-            data = out[-1] if len(out) else None
-        return data
+    # @staticmethod
+    # def getData(data_store:Iterable[tuple[NamedTuple,datetime]], *, device:StreamingDevice, query: Any|None = None) -> Any|None:
+    #     """
+    #     Get data from device
+    #     """
+    #     data: NamedTuple|None = None
+    #     # if device.stream_event.is_set():
+    #     out: tuple[NamedTuple, datetime] = data_store[-1] if len(data_store) else None
+    #     data,_ = out if out is not None else (None,None)
+    #     # else:
+    #     #     out = device.query(query)
+    #     #     data = out[-1] if (out is not None and len(out)) else None
+    #     return data
     
     @staticmethod
     def record( 
