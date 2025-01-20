@@ -5,7 +5,7 @@ from collections import deque
 from datetime import datetime
 import threading
 import time
-from typing import NamedTuple
+from typing import NamedTuple, Any
 
 # Third party imports
 import pandas as pd
@@ -83,12 +83,19 @@ class Peltier(Maker, HeaterMixin):
         self.records = deque()
         return
     
-    def getData(self) -> TempData|None:
+    def getData(self, *args, **kwargs) -> TempData|None:
         """
         Get data from device
         """
+        if not self.device.stream_event.is_set():
+            out = self.device.query(None, multi_out=False)
+            data = out[-1] if (out is not None and len(out)) else None
+            return data
+        
         data_store = self.records if self.record_event.is_set() else self.buffer
-        return DataLoggerUtils.getData(data_store=data_store, device=self.device)
+        out = data_store[-1] if len(data_store) else None
+        data,_ = out if out is not None else (None,None)
+        return data
     
     def record(self, on: bool, show: bool = False, clear_cache: bool = False):
         return DataLoggerUtils.record(
@@ -119,7 +126,7 @@ class Peltier(Maker, HeaterMixin):
         stabilize_timeout = stabilize_timeout if stabilize_timeout is not None else self.stabilize_timeout
         if abs(data.temperature - temperature) > tolerance:
             return False
-        if (time.perf_counter()-self._stabilize_start_time) < stabilize_timeout:
+        if self._stabilize_start_time is not None and ((time.perf_counter()-self._stabilize_start_time) < stabilize_timeout):
             return False
         if data.power > power_threshold:
             return False
