@@ -29,6 +29,9 @@ logger.debug(f"Import: OK <{__name__}>")
 READ_FORMAT = "{data}\r\n"
 WRITE_FORMAT = "{data}\r"
 Data = NamedTuple("Data", [("data", str)])
+BoolData = NamedTuple("BoolData", [("data", bool)])
+FloatData = NamedTuple("FloatData", [("data", float)])
+IntData = NamedTuple("IntData", [("data", int)])
 
 class _QInstrumentsDevice(SerialDevice):
     """
@@ -151,10 +154,12 @@ class _QInstrumentsDevice(SerialDevice):
         baudrate: int = 9600, 
         timeout: int = 1, 
         *,
-        init_timeout: int = 5,
-        message_end: str = '\r',
-        simulation: bool = False,
-        verbose: bool = False,
+        init_timeout:int = 5, 
+        data_type: NamedTuple = NamedTuple("Data", [("data", str)]),
+        read_format:str = "{data}\r\n",
+        write_format:str = "{data}\r",
+        simulation:bool = False, 
+        verbose:bool = False,
         **kwargs
     ):
         """
@@ -169,28 +174,26 @@ class _QInstrumentsDevice(SerialDevice):
             simulation (bool, optional): whether to simulate the device. Defaults to False.
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
-        self._port = ''
-        self._baudrate = 0
-        self._timeout = 0
-        self.init_timeout = init_timeout
-        self.message_end = message_end
-        self.flags = deepcopy(self._default_flags)
-        
-        self.serial = serial.Serial()
-        self.port = port
-        self.baudrate = baudrate
-        self.timeout = timeout
-        
-        self.flags.simulation = simulation
-        
+        super().__init__(
+            port=port, baudrate=baudrate, timeout=timeout,
+            init_timeout=init_timeout, simulation=simulation, verbose=verbose, 
+            data_type=data_type, read_format=read_format, write_format=write_format, **kwargs
+        )
         self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
         self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         
         self.model = ''
+        self.serial_number = ''
         return
     
     # General methods
+    def connect(self):
+        super().connect()
+        self.model = self.getDescription()
+        self.serial_number = self.getSerial()
+        return
+    
     def query(self, 
             data: Any, 
             multi_out: bool = True,
@@ -266,11 +269,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             bool|None: whether the LED is enabled
         """
-        response = self.query("getCLED", numeric=True)
-        if response is None or response == '':
-            return None
-        state = bool(int(response)%2)
-        return state
+        out: BoolData = self.query("getCLED", data_type=BoolData)
+        return out.data
         
     def getDescription(self) -> str:
         """
@@ -279,7 +279,7 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             str: model type
         """
-        return self.query("getDescription", lines=True)
+        return self.query("getDescription", multi_out=True)
         
     def getErrorList(self) -> list[str]:
         """
@@ -288,7 +288,7 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             list[str]: list of errors and warnings
         """
-        response = self.query("getErrorList", lines=True)
+        response = self.query("getErrorList", multi_out=True)
         error_list = response[1:-1].split("; ")
         return error_list
         
@@ -299,7 +299,7 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             str: device serial number
         """
-        return self.query("getSerial", lines=True)
+        return self.query("getSerial", multi_out=True)
         
     def getVersion(self) -> str:
         """
@@ -308,11 +308,11 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             str: firmware version number
         """
-        return self.query("getVersion", lines=True)
+        return self.query("getVersion", multi_out=True)
         
     def info(self):
         """Retrieve the boot screen text"""
-        return self.query("info", lines=True)
+        return self.query("info", multi_out=True)
         
     def resetDevice(self, timeout:int = 30):
         """
@@ -352,7 +352,7 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             str: model type and firmware version number
         """
-        return self.query("version", lines=True)
+        return self.query("version", multi_out=True)
     
     # ECO methods
     def leaveEcoMode(self, timeout:int = 5):
@@ -380,12 +380,7 @@ class _QInstrumentsDevice(SerialDevice):
         Args:
             timeout (int, optional): number of seconds to wait before aborting. Defaults to 5.
         """
-        response = self.query("setEcoMode")
-        start_time = time.perf_counter()
-        while not response:
-            if time.perf_counter() - start_time > timeout:
-                break
-            response = self.read()#[0]
+        self.query("setEcoMode", timeout=timeout)
         return
         
     # Shaking methods
@@ -396,10 +391,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: acceleration/deceleration value
         """
-        response = self.query("getShakeAcceleration", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getShakeAcceleration", data_type=FloatData)
+        return out.data
         
     def getShakeAccelerationMax(self) -> float|None:
         """
@@ -408,10 +401,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: acceleration/deceleration time in seconds
         """
-        response = self.query("getShakeAccelerationMax", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getShakeAccelerationMax", data_type=FloatData)
+        return out.data
     
     def getShakeAccelerationMin(self) -> float|None:
         """
@@ -420,10 +411,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: acceleration/deceleration time in seconds
         """
-        response = self.query("getShakeAccelerationMin", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getShakeAccelerationMin", data_type=FloatData)
+        return out.data
     
     def getShakeActualSpeed(self) -> float|None:
         """
@@ -432,10 +421,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: current mixing speed
         """
-        response = self.query("getShakeActualSpeed", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getShakeActualSpeed", data_type=FloatData)
+        return out.data
     
     def getShakeDefaultDirection(self) -> bool|None:
         """
@@ -444,11 +431,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             bool|None: whether mixing direction is counterclockwise
         """
-        response = self.query("getShakeDefaultDirection", numeric=True)
-        if response is None or response == '':
-            return None
-        state = bool(int(response)%2)
-        return state
+        out: BoolData = self.query("getShakeDefaultDirection", data_type=BoolData)
+        return out.data
         
     def getShakeDirection(self) -> bool|None:
         """
@@ -457,11 +441,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             bool|None: whether mixing direction is counterclockwise
         """
-        response = self.query("getShakeDirection", numeric=True)
-        if response is None or response == '':
-            return None
-        state = bool(int(response)%2)
-        return state
+        out: BoolData = self.query("getShakeDirection", data_type=BoolData)
+        return out.data
         
     def getShakeMaxRpm(self) -> float|None:
         """
@@ -470,10 +451,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: maximum target shake speed
         """
-        response = self.query("getShakeMaxRpm", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getShakeMaxRpm", data_type=FloatData)
+        return out.data
     
     def getShakeMinRpm(self) -> float|None:
         """
@@ -482,10 +461,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: minimum target shake speed
         """
-        response = self.query("getShakeMinRpm", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getShakeMinRpm", data_type=FloatData)
+        return out.data
     
     def getShakeRemainingTime(self) -> float|None:
         """
@@ -494,10 +471,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: minimum target shake speed
         """
-        response = self.query("getShakeRemainingTime", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getShakeRemainingTime", data_type=FloatData)
+        return out.data
     
     def getShakeSpeedLimitMax(self) -> float|None:
         """
@@ -506,10 +481,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: upper limit for the target speed
         """
-        response = self.query("getShakeSpeedLimitMax", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getShakeSpeedLimitMax", data_type=FloatData)
+        return out.data
     
     def getShakeSpeedLimitMin(self) -> float|None:
         """
@@ -518,10 +491,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: lower limit for the target speed
         """
-        response = self.query("getShakeSpeedLimitMin", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getShakeSpeedLimitMin", data_type=FloatData)
+        return out.data
     
     def getShakeState(self) -> int|None:
         """
@@ -530,13 +501,11 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             int|None: shaker state as integer
         """
-        response = self.query("getShakeState", numeric=True)
-        if response is None or response == '':
-            return None
-        code = f"ss{int(response)}"
+        out: IntData = self.query("getShakeState", data_type=IntData)
+        code = f"ss{out.data}"
         if code in ShakeStateCode._member_names_:
             self._logger.info(ShakeStateCode[code].value)
-        return int(response)
+        return out.data
         
     def getShakeStateAsString(self) -> str|None:
         """
@@ -545,11 +514,11 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             str|None: shaker state as string
         """
-        response = self.query("getShakeStateAsString")
-        code = response.replace("+","t").replace("-","_")
+        out: Data = self.query("getShakeStateAsString")
+        code = out.data.replace("+","t").replace("-","_")
         if code in ShakeStateString._member_names_:
             self._logger.info(ShakeStateString[code].value)
-        return response
+        return out.data
         
     def getShakeTargetSpeed(self) -> float|None:
         """
@@ -558,10 +527,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: target mixing speed
         """
-        response = self.query("getShakeTargetSpeed", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getShakeTargetSpeed", data_type=FloatData)
+        return out.data
     
     def setShakeAcceleration(self, acceleration:int):
         """
@@ -691,10 +658,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: offset value at the 40°C calibration point
         """
-        response = self.query("getTemp40Calibr", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getTemp40Calibr", data_type=FloatData)
+        return out.data
     
     def getTemp90Calibr(self) -> float|None:
         """
@@ -703,10 +668,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: offset value at the 90°C calibration point
         """
-        response = self.query("getTemp90Calibr", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getTemp90Calibr", data_type=FloatData)
+        return out.data
     
     def getTempActual(self) -> float|None:
         """
@@ -715,10 +678,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: current temperature in celsius
         """
-        response = self.query("getTempActual", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getTempActual", data_type=FloatData)
+        return out.data
         
     def getTempLimiterMax(self) -> float|None:
         """
@@ -727,10 +688,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: upper limit for the target temperature in celsius
         """
-        response = self.query("getTempLimiterMax", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getTempLimiterMax", data_type=FloatData)
+        return out.data
     
     def getTempLimiterMin(self) -> float|None:
         """
@@ -739,10 +698,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: lower limit for the target temperature in celsius
         """
-        response = self.query("getTempLimiterMin", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getTempLimiterMin", data_type=FloatData)
+        return out.data
     
     def getTempMax(self) -> float|None:
         """
@@ -751,10 +708,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: device specific maximum target temperature in celsius
         """
-        response = self.query("getTempMax", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getTempMax", data_type=FloatData)
+        return out.data
     
     def getTempMin(self) -> float|None:
         """
@@ -763,10 +718,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: device specific minimum target temperature in celsius
         """
-        response = self.query("getTempMin", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getTempMin", data_type=FloatData)
+        return out.data
     
     def getTempState(self) -> bool:
         """
@@ -775,11 +728,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             bool: whether temperature control is enabled
         """
-        response = self.query("getTempState", numeric=True)
-        if response is None or response == '':
-            return None
-        state = bool(int(response)%2)
-        return state
+        out: BoolData = self.query("getTempState", data_type=BoolData)
+        return out.data
     
     def getTempTarget(self) -> float|None:
         """
@@ -788,10 +738,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             float|None: target temperature
         """
-        response = self.query("getTempTarget", numeric=True)
-        if response is None or response == '':
-            return None
-        return response
+        out: FloatData = self.query("getTempTarget", data_type=FloatData)
+        return out.data
         
     def setTemp40Calibr(self, temperature_calibration_40:float):
         """
@@ -866,11 +814,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             bool: whether ELM self-test is enabled at device startup
         """
-        response = self.query("getElmSelftest", numeric=True)
-        if response is None or response == '':
-            return None
-        state = bool(int(response)%2)
-        return state
+        out: BoolData = self.query("getElmSelftest", data_type=BoolData)
+        return out.data
         
     def getElmStartupPosition(self) -> bool:
         """
@@ -879,11 +824,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             bool: whether ELM is unlocked after device startup
         """
-        response = self.query("getElmStartupPosition", numeric=True)
-        if response is None or response == '':
-            return None
-        state = bool(int(response)%2)
-        return state
+        out: BoolData = self.query("getElmStartupPosition", data_type=BoolData)
+        return out.data
     
     def getElmState(self) -> int|None:
         """
@@ -892,13 +834,11 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             int|None: ELM status as integer
         """
-        response = self.query("getElmState", numeric=True)
-        if response is None or response == '':
-            return None
-        code = f"es{int(response)}"
+        out: IntData = self.query("getElmState", data_type=IntData)
+        code = f"es{out.data}"
         if code in ELMStateCode._member_names_:
             self._logger.info(ELMStateCode[code].value)
-        return int(response)
+        return out.data
     
     def getElmStateAsString(self) -> str|None:
         """
@@ -907,10 +847,10 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             str|None: ELM status as string
         """
-        response = self.query("getElmStateAsString")
-        if response in ELMStateString._member_names_:
-            self._logger.info(ELMStateString[response].value)
-        return response
+        out: Data = self.query("getElmStateAsString")
+        if out.data in ELMStateString._member_names_:
+            self._logger.info(ELMStateString[out.data].value)
+        return out.data
     
     def setElmLockPos(self, timeout:int = 5):
         """
@@ -919,12 +859,7 @@ class _QInstrumentsDevice(SerialDevice):
         Args:
             timeout (int, optional): number of seconds to wait before aborting. Defaults to 5.
         """
-        response = self.query("setElmLockPos")
-        start_time = time.perf_counter()
-        while not response:
-            if time.perf_counter() - start_time > timeout:
-                break
-            response = self.read()#[0]
+        self.query("setElmLockPos", timeout=timeout)
         return
     
     def setElmSelftest(self, enable:bool):
@@ -956,12 +891,7 @@ class _QInstrumentsDevice(SerialDevice):
         Args:
             timeout (int, optional): number of seconds to wait before aborting. Defaults to 5.
         """
-        response = self.query("setElmUnlockPos")
-        start_time = time.perf_counter()
-        while not response:
-            if time.perf_counter() - start_time > timeout:
-                break
-            response = self.read()#[0]
+        self.query("setElmUnlockPos", timeout=timeout)
         return
  
 
