@@ -21,7 +21,7 @@ import threading
 from threading import Thread
 import time
 from types import SimpleNamespace
-from typing import NamedTuple
+from typing import NamedTuple, Any
 
 # Third party imports
 import pandas as pd
@@ -31,7 +31,7 @@ from ....core.device import DataLoggerUtils
 from ... import Maker
 from ...Heat.heater_mixin import HeaterMixin
 from .qinstruments_api import QInstrumentsDevice
-from .qinstruments_api.qinstruments_api import _QInstrumentsDevice
+from .qinstruments_api.qinstruments_api import _QInstrumentsDevice, FloatData
 
 logger = logging.getLogger("controllably.Make")
 logger.debug(f"Import: OK <{__name__}>")
@@ -119,7 +119,16 @@ class _BioShake(Maker, HeaterMixin):
     _default_speed: int = 500
     _default_temperature: float = 25
     _default_flags = FLAGS
-    def __init__(self, port: str, *, verbose: bool = False, simulation:bool = False, **kwargs):
+    def __init__(self, 
+        port: str, 
+        *, 
+        speed_tolerance: float = 10,
+        temp_tolerance: float = 1.5,
+        stabilize_timeout: float = 10,
+        verbose: bool = False, 
+        simulation:bool = False, 
+        **kwargs
+    ):
         """
         Instantiate the class
 
@@ -132,12 +141,6 @@ class _BioShake(Maker, HeaterMixin):
         assert isinstance(self.device, _QInstrumentsDevice), "Ensure device is of type `QInstrumentsDevice`"
         self.device: _QInstrumentsDevice = self.device
         
-        self.set_speed = self._default_speed
-        self.speed = self._default_speed
-        
-        self.shake_time_left = None
-        self.tolerance = 0.05
-        
         self.limits = {
             'acceleration': (0,9999),
             'speed': (0,9999),
@@ -147,8 +150,6 @@ class _BioShake(Maker, HeaterMixin):
             'speed': (0,9999),
             'temperature': (0,9999)
         }
-        self._acceleration = self._default_acceleration
-        self._columns = list(COLUMNS)
         self._threads = {}
         
         # Data logging attributes
@@ -160,6 +161,7 @@ class _BioShake(Maker, HeaterMixin):
         self.set_speed = self._default_speed
         self.speed = self._default_speed
         self.speed_tolerance = speed_tolerance
+        self.shake_time_left = None
         self.acceleration = self._default_acceleration
         
         # Temperature control attributes
@@ -246,6 +248,7 @@ class _BioShake(Maker, HeaterMixin):
         
         # holdTemperature
         if temperature is not None and duration:
+            self.holdTemperature(temperature=temperature, duration=duration)
             self._logger.info(f"Holding at {self.set_temperature}°C for {duration} seconds")
             time.sleep(duration)
             self._logger.info(f"End of temperature hold")
@@ -284,12 +287,16 @@ class _BioShake(Maker, HeaterMixin):
         self.records = deque()
         return
     
-    def getData(self, query:NamedTuple) -> TempData|None:
+    def getData(self, query:str, *args, **kwargs) -> FloatData|None:
         """
         Get data from device
         """
+        if not self.device.stream_event.is_set():
+            return self.device.query(query, multi_out=False, data_type=FloatData)
+        
         data_store = self.records if self.record_event.is_set() else self.buffer
-        data = DataLoggerUtils.getData(data_store=data_store, device=self.device, query=query)
+        out = data_store[-1] if len(data_store) else None
+        data,_ = out if out is not None else (None,None)
         return data
     
     def record(self, on: bool, show: bool = False, clear_cache: bool = False):
@@ -399,7 +406,7 @@ class _BioShake(Maker, HeaterMixin):
                 shake_time = time.perf_counter() - start_time
                 if shake_time > self.acceleration:
                     break
-                time.sleep(1)
+                time.sleep(0.1)
             time.sleep(abs(duration - shake_time))
             logger.info("End of shake")
             
@@ -422,13 +429,13 @@ class _BioShake(Maker, HeaterMixin):
         *, 
         tolerance: float|None = None
     ) -> bool:
-        data = self.getSpeed()
+        data: FloatData|None = self.getData(data='getShakeActualSpeed')
         if data is None:
             return False
         speed = speed if speed is not None else self.getTargetSpeed()
         tolerance = tolerance or self.speed_tolerance
         
-        at_speed = (abs(data - speed) <= tolerance) 
+        at_speed = (abs(data.data - speed) <= tolerance) 
         self.flags.at_speed = at_speed
         return at_speed
     
@@ -563,14 +570,13 @@ class _BioShake(Maker, HeaterMixin):
             duration (int|None, optional): shake runtime. Defaults to None.
             home (bool, optional): whether to return to home when shaking stops. Defaults to True.
         """
-        if on:
-            if duration is None:
-                self.device.shakeOn()
-            elif duration > 0:
-                self.device.shakeOnWithRuntime(duration=duration)
-            self._logger.debug(f"Speed: {self.set_speed} | Time : {duration} | Accel: {self.acceleration}")
+        if not on:
+            return self.device.shakeOff() if home else self.device.shakeOffNonZeroPos()
+        if duration > 0:
+            self.device.shakeOnWithRuntime(duration=duration)
         else:
-            _ = self.device.shakeOff() if home else self.device.shakeOffNonZeroPos()
+            self.device.shakeOn()
+        self._logger.debug(f"Speed: {self.set_speed} | Time : {duration} | Accel: {self.acceleration}")
         return
     
     # Temperature methods
@@ -589,17 +595,17 @@ class _BioShake(Maker, HeaterMixin):
         tolerance: float|None = None,
         stabilize_timeout: float|None = None
     ) -> bool:
-        data = self.getTemperature()
+        data: FloatData|None = self.getData(data='getTempActual')
         if data is None:
             return False
         temperature = temperature if temperature is not None else self.getTargetTemp()
         tolerance = tolerance or self.temp_tolerance
         stabilize_timeout = stabilize_timeout if stabilize_timeout is not None else self.stabilize_timeout
         
-        if abs(data - temperature) > tolerance:
+        if abs(data.data - temperature) > tolerance:
             self.flags.at_temperature = False
             return False
-        if (time.perf_counter()-self._stabilize_start_time) < stabilize_timeout:
+        if self._stabilize_start_time is not None and ((time.perf_counter()-self._stabilize_start_time) < stabilize_timeout):
             self.flags.at_temperature = False
             return False
         self.flags.at_temperature = True
@@ -620,6 +626,11 @@ class _BioShake(Maker, HeaterMixin):
         """
         return self.device.getTempActual() 
     
+    def setTemperature(self, temperature, blocking = True, *, tolerance = None, release = None):
+        thread, event = super().setTemperature(temperature, blocking, tolerance=tolerance, release=release)
+        self._threads['temperature'] = thread
+        return thread, event
+    
     def _set_temperature(self, temperature: float):
         limits = self.ranges.get('temperature', (0,99))
         lower_limit, upper_limit = limits
@@ -629,7 +640,10 @@ class _BioShake(Maker, HeaterMixin):
         
         buffer = self.records if self.record_event.is_set() else self.buffer
         if not self.device.stream_event.is_set():
-            self.device.startStream(buffer=buffer)
+            self.device.startStream(
+                data=self.device.processInput('getTempActual'), 
+                buffer=buffer, data_type=FloatData
+            )
             time.sleep(0.1)
         
         while self.device.getTempTarget() != temperature:
