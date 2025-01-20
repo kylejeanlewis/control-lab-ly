@@ -30,7 +30,7 @@ READ_FORMAT = "{data}\r\n"
 WRITE_FORMAT = "{data}\r"
 Data = NamedTuple("Data", [("data", str)])
 
-class QInstrumentsDevice(SerialDevice):
+class _QInstrumentsDevice(SerialDevice):
     """
     QInstrumentsDevice provides an interface for available actions to control devices from QInstruments, including orbital shakers,
     heat plates, and cold plates.
@@ -965,7 +965,7 @@ class QInstrumentsDevice(SerialDevice):
         return
  
 
-class _QInstrumentsDevice:
+class QInstrumentsDevice:
     """
     QInstrumentsDevice provides an interface for available actions to control devices from QInstruments, including orbital shakers,
     heat plates, and cold plates.
