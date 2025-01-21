@@ -88,9 +88,7 @@ class Peltier(Maker, HeaterMixin):
         Get data from device
         """
         if not self.device.stream_event.is_set():
-            out = self.device.query(None, multi_out=False)
-            data = out[-1] if (out is not None and len(out)) else None
-            return data
+            return self.device.query(None, multi_out=False)
         
         data_store = self.records if self.record_event.is_set() else self.buffer
         out = data_store[-1] if len(data_store) else None
@@ -125,8 +123,10 @@ class Peltier(Maker, HeaterMixin):
         power_threshold = power_threshold or self.power_threshold
         stabilize_timeout = stabilize_timeout if stabilize_timeout is not None else self.stabilize_timeout
         if abs(data.temperature - temperature) > tolerance:
+            self._stabilize_start_time = None
             return False
-        if self._stabilize_start_time is not None and ((time.perf_counter()-self._stabilize_start_time) < stabilize_timeout):
+        self._stabilize_start_time = self._stabilize_start_time or time.perf_counter()
+        if ((time.perf_counter()-self._stabilize_start_time) < stabilize_timeout):
             return False
         if data.power > power_threshold:
             return False
@@ -155,6 +155,5 @@ class Peltier(Maker, HeaterMixin):
             if data.target == temperature:
                 break
             time.sleep(0.01)
-        self._stabilize_start_time = time.perf_counter()
         return
     
