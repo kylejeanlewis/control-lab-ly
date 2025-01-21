@@ -14,7 +14,7 @@ from types import SimpleNamespace
 from typing import Any, NamedTuple
 
 # Local application imports
-from .. import factory
+from ..core import factory
 from ..core.device import StreamingDevice, DataLoggerUtils
 
 _logger = logging.getLogger("controllably.Measure")
@@ -64,7 +64,7 @@ class ProgramDetails:
         return text
 
 
-class _Program:
+class Program:
     """
     Base Program template
 
@@ -104,7 +104,7 @@ class _Program:
         return DataLoggerUtils.getDataframe(data_store=self.data, fields=self.device.data_type._fields)
     
     @staticmethod
-    def parseDocstring(program_class: _Program, verbose:bool = False) -> ProgramDetails:
+    def parseDocstring(program_class: Program, verbose:bool = False) -> ProgramDetails:
         """
         Get the input fields and defaults
         
@@ -163,7 +163,7 @@ class _Program:
         return
 
 
-class _Measurer:
+class Measurer:
     """
     Base class for maker tools.
     
@@ -209,7 +209,7 @@ class _Measurer:
         self.record_event = threading.Event()
         
         # Measurer specific attributes
-        self.program: _Program|None = None
+        self.program: Program|None = None
         self.runs = dict()
         self.n_runs = 0
         self._threads = dict()
@@ -286,7 +286,7 @@ class _Measurer:
 
     # Category specific properties and methods
     def measure(self, *args, parameters: dict|None = None, blocking:bool = True, **kwargs) -> pd.DataFrame|None:
-        assert issubclass(self.program, _Program), "Ensure program type is a subclass of _Program"
+        assert issubclass(self.program, Program), "No Program loaded"
         new_run = self.program(
             device = self.device, 
             parameters = parameters,
@@ -304,8 +304,8 @@ class _Measurer:
         new_run.run(*args, **kwargs)
         return new_run.data_df
         
-    def loadProgram(self, program:_Program):
-        assert issubclass(program, _Program), "Ensure program type is a subclass of _Program"
+    def loadProgram(self, program:Program):
+        assert issubclass(program, Program), "Ensure program type is a subclass of Program"
         self.program = program
         self.measure.__func__.__doc__ = program.parseDocstring(program, verbose=self.verbose)
         return
@@ -316,11 +316,9 @@ class _Measurer:
         self.n_runs = 0
         return
         
-    def getData(self, *args, **kwargs) -> Any|None:
+    def getData(self, query:Any|None = None, *args, **kwargs) -> Any|None:
         if not self.device.stream_event.is_set():
-            out = self.device.query(None, multi_out=False)
-            data = out[-1] if (out is not None and len(out)) else None
-            return data
+            return self.device.query(query, multi_out=False)
         
         data_store = self.records if self.record_event.is_set() else self.buffer
         out = data_store[-1] if len(data_store) else None
@@ -328,10 +326,10 @@ class _Measurer:
         return data
     
     def saveData(self, filepath:str|Path):
-        if len(self.records):
-            self.records_df.to_csv(filepath)
-            return
-        raise IndexError("No data available to be saved.")
+        if not len(self.records):
+            raise
+        self.records_df.to_csv(filepath)
+        return
     
     def record(self, on: bool, show: bool = False, clear_cache: bool = False):
         return DataLoggerUtils.record(
