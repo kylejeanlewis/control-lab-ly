@@ -1,4 +1,46 @@
 # %%
+from datetime import datetime
+from random import random
+import time
+from unittest import mock
+
+import test_init
+from controllably.Measure.Chemical.Sentron.sentron_api import SI600
+
+probe = SI600(port='COM1', baudrate=9600, verbose=True)
+
+MockSerial = mock.Mock()
+MockSerial.port = 'COM1'
+MockSerial.baudrate = 9600
+MockSerial.timeout = 1
+MockSerial.is_open = True
+MockSerial.write = mock.Mock()
+
+SET_TEMPERATURE = 25
+TEMPERATURE = SET_TEMPERATURE+random()*3
+SET_PH = 7
+PH = SET_PH+random()*3
+def readline():
+    global TEMPERATURE, SET_TEMPERATURE, SET_PH, PH
+    step = 0.1
+    delta = step*random() 
+    if abs(SET_TEMPERATURE - TEMPERATURE) <= step:
+        delta -= step/2
+    TEMPERATURE = TEMPERATURE + delta if SET_TEMPERATURE>TEMPERATURE else TEMPERATURE - delta
+    
+    if abs(SET_PH - PH) <= step:
+        delta -= step/2
+    PH = PH + delta if SET_PH>PH else PH - delta
+    time.sleep(0.05)
+    yyyymmdd, hhmmss = datetime.now().strftime("%Y-%m-%d %H:%M:%S").split(' ')
+    return f"{yyyymmdd} {hhmmss} {PH:06.3f} {TEMPERATURE:04.1f}\n".encode()
+MockSerial.readline = readline
+probe.device.connection = MockSerial
+
+# %%
+_Program.parseDocstring(_Program, verbose=True)
+
+# %%
 import test_init
 from controllably.core.device import SerialDevice
 from controllably.core.connection import get_ports
