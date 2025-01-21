@@ -5,6 +5,4 @@ Classes:
     pHMeter (Measurer)
 """
 from .phmeter_utils import SentronProbe
-
-from controllably import include_this_module
-include_this_module(get_local_only=False)
+from .sentron import SI600
