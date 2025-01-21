@@ -402,7 +402,7 @@ class _BioShake(Maker, HeaterMixin):
             
             start_time = time.perf_counter()
             shake_time = time.perf_counter() - start_time
-            while not self.atSpeed():
+            while not self.atSpeed(speed):
                 shake_time = time.perf_counter() - start_time
                 if shake_time > self.acceleration:
                     break
