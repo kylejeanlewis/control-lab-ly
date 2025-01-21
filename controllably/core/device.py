@@ -159,6 +159,7 @@ class DataLoggerUtils:
         show: bool = False, 
         clear_cache: bool = False, 
         *, 
+        query: Any|None = None,
         data_store: deque, 
         device: StreamingDevice, 
         event: threading.Event|None = None
@@ -171,7 +172,7 @@ class DataLoggerUtils:
         device.stopStream()
         time.sleep(0.1)
         if on:
-            device.startStream(buffer=data_store)
+            device.startStream(data=device.processInput(query), buffer=data_store)
             device.showStream(show)
         return
     
@@ -180,12 +181,13 @@ class DataLoggerUtils:
         on: bool, 
         show: bool = False, 
         *, 
+        query: Any|None = None,
         data_store: deque, 
         device: StreamingDevice, 
         event: threading.Event|None = None
     ):
         if on:
-            device.startStream(buffer=data_store)
+            device.startStream(data=device.processInput(query), buffer=data_store)
             device.showStream(show)
         else:
             device.stopStream()
