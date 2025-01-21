@@ -9,12 +9,20 @@ Classes:
 # Standard library imports
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from collections import deque
+from copy import deepcopy
+from datetime import datetime
 import logging
 import pandas as pd
-from typing import Callable, Protocol
+from pathlib import Path
+import threading
+from types import SimpleNamespace
+from typing import Callable, Protocol, NamedTuple, Any
 
 # Local application imports
-from .program_utils import ProgramDetails, get_program_details
+from ..core import factory
+from ..core.device import StreamingDevice, DataLoggerUtils
+from .program_utils import ProgramDetails, get_program_details, _Program
 
 _logger = logging.getLogger("controllably.Measure")
 _logger.debug(f"Import: OK <{__name__}>")
@@ -24,6 +32,8 @@ logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
+
+MAX_LEN = 100
 
 class Data(Protocol):
     def plot(self, *args, **kwargs):
@@ -204,6 +214,188 @@ class Measurer(ABC):
         self.disconnect()
         return
 
+
+class _Measurer:
+    """
+    Base class for maker tools.
+    
+    ### Constructor
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+    
+    ### Attributes and properties
+        `connection_details` (dict): connection details for the device
+        `device` (Device): device object that communicates with physical tool
+        `flags` (SimpleNamespace[str, bool]): flags for the class
+        `is_busy` (bool): whether the device is busy
+        `is_connected` (bool): whether the device is connected
+        `verbose` (bool): verbosity of class
+    
+    ### Methods
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `execute`: execute task
+        `resetFlags`: reset all flags to class attribute `_default_flags`
+        `run`: alias for `execute()`
+        `shutdown`: shutdown procedure for tool
+    """
+    
+    _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, verbose=False)
+    def __init__(self, *, verbose:bool = False, **kwargs):
+        """
+        Instantiate the class
+
+        Args:
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
+        self.device: StreamingDevice = kwargs.get('device', factory.create_from_config(kwargs))
+        self.flags: SimpleNamespace = deepcopy(self._default_flags)
+        
+        self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
+        self._logger.addHandler(logging.StreamHandler())
+        self.verbose = verbose
+        
+        # Category specific attributes
+        # Data logging attributes
+        self.buffer: deque[tuple[NamedTuple, datetime]] = deque(maxlen=MAX_LEN)
+        self.records: deque[tuple[NamedTuple, datetime]] = deque()
+        self.record_event = threading.Event()
+        
+        # Measurer specific attributes
+        self.program: _Program|None = None
+        self.runs = dict()
+        self.n_runs = 0
+        self._threads = dict()
+        return
+    
+    def __del__(self):
+        self.shutdown()
+        return
+    
+    @property
+    def connection_details(self) -> dict:
+        """Connection details for the device"""
+        return self.device.connection_details
+    
+    @property
+    def is_busy(self) -> bool:
+        """Whether the device is busy"""
+        return self.flags.busy
+    
+    @property
+    def is_connected(self) -> bool:
+        """Whether the device is connected"""
+        return self.device.is_connected
+    
+    @property
+    def verbose(self) -> bool:
+        """Verbosity of class"""
+        return self.flags.verbose
+    @verbose.setter
+    def verbose(self, value:bool):
+        assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
+        self.flags.verbose = value
+        level = logging.DEBUG if value else logging.INFO
+        for handler in self._logger.handlers:
+            if not isinstance(handler, logging.StreamHandler):
+                continue
+            handler.setLevel(level)
+        return
+    
+    # Data logging properties
+    @property
+    def buffer_df(self) -> pd.DataFrame:
+        return DataLoggerUtils.getDataframe(data_store=self.buffer, fields=self.device.data_type._fields)
+    
+    @property
+    def records_df(self) -> pd.DataFrame:
+        return DataLoggerUtils.getDataframe(data_store=self.records, fields=self.device.data_type._fields)
+    
+    def connect(self):
+        """Connect to the device"""
+        self.device.connect()
+        return
+    
+    def disconnect(self):
+        """Disconnect from the device"""
+        self.device.disconnect()
+        return
+    
+    def reset(self):
+        self.clearCache()
+        self.program = None
+        return
+    
+    def resetFlags(self):
+        """Reset all flags to class attribute `_default_flags`"""
+        self.flags = deepcopy(self._default_flags)
+        return
+    
+    def shutdown(self):
+        """Shutdown procedure for tool"""
+        self.disconnect()
+        self.resetFlags()
+        return
+
+    # Category specific properties and methods
+    def measure(self, *args, parameters: dict|None = None, blocking:bool = True, **kwargs) -> pd.DataFrame|None:
+        assert issubclass(self.program, _Program), "Ensure program type is a subclass of _Program"
+        new_run = self.program(
+            device = self.device, 
+            parameters = parameters,
+            verbose = self.verbose
+        )
+        kwargs.update(new_run.parameters)
+        
+        self.n_runs += 1
+        self.runs[self.n_runs] = new_run
+        if not blocking:
+            thread = threading.Thread(target=new_run.run, args=args, kwargs=kwargs)
+            thread.start()
+            self._threads['measure'] = thread
+            return
+        new_run.run(*args, **kwargs)
+        return new_run.data_df
+        
+    def loadProgram(self, program:_Program):
+        assert issubclass(program, _Program), "Ensure program type is a subclass of _Program"
+        self.program = program
+        self.measure.__func__.__doc__ = program.parseDocstring(program, verbose=self.verbose)
+        return
+        
+    def clearCache(self):
+        self.buffer = deque(maxlen=MAX_LEN)
+        self.records = deque()
+        self.n_runs = 0
+        return
+        
+    def getData(self, *args, **kwargs) -> Any|None:
+        if not self.device.stream_event.is_set():
+            out = self.device.query(None, multi_out=False)
+            data = out[-1] if (out is not None and len(out)) else None
+            return data
+        
+        data_store = self.records if self.record_event.is_set() else self.buffer
+        out = data_store[-1] if len(data_store) else None
+        data,_ = out if out is not None else (None,None)
+        return data
+    
+    def saveData(self, filepath:str|Path):
+        if len(self.records):
+            self.records_df.to_csv(filepath)
+            return
+        raise IndexError("No data available to be saved.")
+    
+    def record(self, on: bool, show: bool = False, clear_cache: bool = False):
+        return DataLoggerUtils.record(
+            on=on, show=show, clear_cache=clear_cache, data_store=self.records, 
+            device=self.device, event=self.record_event
+        )
+    
+    def stream(self, on: bool, show: bool = False):
+        return DataLoggerUtils.stream(
+            on=on, show=show, data_store=self.buffer, 
+            device=self.device, event=self.record_event
+        )
 
 class Programmable(Measurer):
     """
