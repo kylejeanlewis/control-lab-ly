@@ -5,7 +5,7 @@ import time
 from unittest import mock
 
 import test_init
-from controllably.Measure.Chemical.Sentron.sentron_api import SI600
+from controllably.Measure.Chemical.Sentron.sentron import SI600
 
 probe = SI600(port='COM1', baudrate=9600, verbose=True)
 
