@@ -47,8 +47,8 @@ FLAGS = SimpleNamespace(
 )
 """Default flags for BioShake"""
 _FLAGS = SimpleNamespace(
-    busy=False, at_speed=False, at_temperature=False, elm_locked=True,
-    counterclockwise=True, verbose=False
+    busy=False, #at_speed=False, at_temperature=False, 
+    elm_locked=True, counterclockwise=True, verbose=False
 )
 
 class _BioShake(Maker, HeaterMixin):
@@ -118,7 +118,7 @@ class _BioShake(Maker, HeaterMixin):
     _default_acceleration: int = 5
     _default_speed: int = 500
     _default_temperature: float = 25
-    _default_flags = FLAGS
+    _default_flags = _FLAGS
     def __init__(self, 
         port: str, 
         *, 
@@ -287,7 +287,7 @@ class _BioShake(Maker, HeaterMixin):
         self.records = deque()
         return
     
-    def getData(self, query:str, *args, **kwargs) -> FloatData|None:
+    def getData(self, query:Any|None = None, *args, **kwargs) -> FloatData|None:
         """
         Get data from device
         """
@@ -435,9 +435,7 @@ class _BioShake(Maker, HeaterMixin):
         speed = speed if speed is not None else self.getTargetSpeed()
         tolerance = tolerance or self.speed_tolerance
         
-        at_speed = (abs(data.data - speed) <= tolerance) 
-        self.flags.at_speed = at_speed
-        return at_speed
+        return (abs(data.data - speed) <= tolerance) 
     
     def getTargetSpeed(self) -> float|None:
         """
@@ -603,12 +601,11 @@ class _BioShake(Maker, HeaterMixin):
         stabilize_timeout = stabilize_timeout if stabilize_timeout is not None else self.stabilize_timeout
         
         if abs(data.data - temperature) > tolerance:
-            self.flags.at_temperature = False
+            self._stabilize_start_time = None
             return False
-        if self._stabilize_start_time is not None and ((time.perf_counter()-self._stabilize_start_time) < stabilize_timeout):
-            self.flags.at_temperature = False
+        self._stabilize_start_time = self._stabilize_start_time or time.perf_counter()
+        if ((time.perf_counter()-self._stabilize_start_time) < stabilize_timeout):
             return False
-        self.flags.at_temperature = True
         return True
     
     def getTargetTemp(self) -> float|None:
@@ -648,7 +645,6 @@ class _BioShake(Maker, HeaterMixin):
         
         while self.device.getTempTarget() != temperature:
             time.sleep(0.1)
-        self._stabilize_start_time = time.perf_counter()
         return
     
     # ELM (i.e. grip) methods
