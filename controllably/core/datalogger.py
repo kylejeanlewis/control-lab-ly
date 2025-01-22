@@ -3,10 +3,12 @@
 from __future__ import annotations
 from collections import deque
 from datetime import datetime
+import functools
 import logging
+import sys
 import threading
 import time
-from typing import NamedTuple, Any, Iterable
+from typing import NamedTuple, Any, Iterable, Callable
 
 # Third party imports
 import matplotlib.pyplot as plt
@@ -66,29 +68,41 @@ def stream(
         event.clear()
     return
 
-def monitor_plot(data_store: Iterable[tuple[NamedTuple,datetime]], y: str, x: str = 'timestamp', stop_trigger: threading.Event|None = None):
-    assert hasattr(__builtins__,'__IPYTHON__'), "This function is intended for use in Jupyter notebooks / IPython sessions"
+def monitor_plot(
+    data_store: Iterable[tuple[NamedTuple,datetime]], 
+    y: str, 
+    x: str = 'timestamp', 
+    stop_trigger: threading.Event|None = None,
+    dataframe_maker: Callable|None = None
+):
+    assert hasattr(sys,'ps1'), "This function is intended for use in Python interactive sessions"
     from IPython.display import display, clear_output
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1)
-    timestamp = None
     stop_trigger = stop_trigger if isinstance(stop_trigger, threading.Event) else threading.Event()
-    count = 0
-    while not stop_trigger.is_set() and count<10:
-        time.sleep(0.1)
-        if not len(data_store):
-            continue
-        if data_store[-1][1] != timestamp:
+    dataframe_maker = dataframe_maker if callable(dataframe_maker) else functools.partial(get_dataframe, fields=(x,y))
+    def inner():
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        timestamp = None
+        count = 0
+        initial_state = stop_trigger.is_set()
+        while (stop_trigger.is_set() == initial_state) and count<10:
+            time.sleep(0.1)
+            if not len(data_store):
+                continue
+            if data_store[-1][1] == timestamp:
+                count += 1
+                continue
             count = 0
             timestamp = data_store[-1][1]
-            df = get_dataframe(data_store=data_store, fields=(x,y))
+            df = dataframe_maker(data_store=data_store)
             ax.cla()
             ax.plot(df[x], df[y], label=y.title())
             ax.legend(loc='upper left')
             plt.tight_layout()
             display(fig)
             clear_output(wait=True)
-        else:
-            count += 1
-    # display(fig)
+        display(fig)
+        return
+    thread = threading.Thread(target=inner)
+    thread.start()
     return stop_trigger
