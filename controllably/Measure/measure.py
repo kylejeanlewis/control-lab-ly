@@ -311,8 +311,8 @@ class Measurer:
         return
         
     def clearCache(self):
-        self.buffer = deque(maxlen=MAX_LEN)
-        self.records = deque()
+        self.buffer.clear()
+        self.records.clear()
         self.n_runs = 0
         return
         

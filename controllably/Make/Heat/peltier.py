@@ -79,8 +79,8 @@ class Peltier(Maker, HeaterMixin):
     
     # Data logging methods
     def clearCache(self):
-        self.buffer = deque(maxlen=MAX_LEN)
-        self.records = deque()
+        self.buffer.clear()
+        self.records.clear()
         return
     
     def getData(self, *args, **kwargs) -> TempData|None:

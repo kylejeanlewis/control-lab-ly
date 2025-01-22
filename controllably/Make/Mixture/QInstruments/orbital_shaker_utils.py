@@ -283,8 +283,8 @@ class _BioShake(Maker, HeaterMixin):
     # Data logging methods
     def clearCache(self):
         """Clears and remove data in buffer"""
-        self.buffer = deque(maxlen=MAX_LEN)
-        self.records = deque()
+        self.buffer.clear()
+        self.records.clear()
         return
     
     def getData(self, query:Any|None = None, *args, **kwargs) -> FloatData|None:
