@@ -1,9 +1,36 @@
 # %%
 import test_init
 from controllably.core.connection import get_ports
+from controllably.Measure.Physical.balance import Balance
+from controllably.core import datalogger
+
+# get_ports()
+# %%
+bal = Balance(port='COM21', baudrate=115200, timeout=1, verbose=True, simulation=True)
+bal.connect()
+bal.getMass()
+
+# %%
+bal.zero()
+
+# %%
+bal.stream(True, False)
+datalogger.monitor_plot(
+    bal.buffer, 'force', 
+    stop_trigger=bal.device.stream_event,
+    dataframe_maker=bal._get_dataframe
+)
+
+# %%
+bal.stream(False)
+
+# %%
+import test_init
+from controllably.core.connection import get_ports
 from controllably.Make.Mixture.QInstruments.orbital_shaker_utils import _BioShake
 from controllably.Make.Mixture.QInstruments.qinstruments_api.qinstruments_api import _QInstrumentsDevice
 get_ports()
+bio = _BioShake('COM34', temp_tolerance=1.0)
 # %%
 qin = _QInstrumentsDevice('COM34')
 qin.connect()
