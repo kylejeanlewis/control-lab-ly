@@ -32,7 +32,10 @@ class LoadCell(Measurer):
         verbose: bool = False, 
         **kwargs
     ):
-        super().__init__(port=port, baudrate=baudrate, verbose=verbose, **kwargs)
+        super().__init__(
+            port=port, baudrate=baudrate, init_timeout=3, 
+            data_type=ValueData, read_format=READ_FORMAT, verbose=verbose, **kwargs
+        )
         
         self.force_tolerance = force_tolerance
         self.stabilize_timeout = stabilize_timeout
@@ -45,17 +48,11 @@ class LoadCell(Measurer):
     
     @property
     def buffer_df(self) -> pd.DataFrame:
-        df = datalogger.getDataframe(data_store=self.buffer, fields=self.device.data_type._fields)
-        df['corrected_value'] = df['value'].apply(self._correct_value)
-        df['force'] = df['corrected_value'].apply(self._calculate_force)
-        return df
+        return self._get_dataframe(self.buffer)
     
     @property
     def records_df(self) -> pd.DataFrame:
-        df = datalogger.getDataframe(data_store=self.records, fields=self.device.data_type._fields)
-        df['corrected_value'] = df['value'].apply(self._correct_value)
-        df['force'] = df['corrected_value'].apply(self._calculate_force)
-        return df
+        return self._get_dataframe(self.records)
     
     @property
     def _parameters(self) -> dict:
@@ -66,6 +63,16 @@ class LoadCell(Measurer):
             'tolerance': self.force_tolerance,
             'stabilize_timeout': self.stabilize_timeout
         }
+        
+    def connect(self):
+        super().connect()
+        while True:
+            time.sleep(0.1)
+            if self.device.read() == '':
+                continue
+            if ' ' not in self.device.read():
+                break
+        return
     
     def getData(self, *args, **kwargs) -> ValueData|None:
         """
@@ -125,7 +132,9 @@ class LoadCell(Measurer):
         while not len(self.buffer) == 100:
             time.sleep(0.1)
         time.sleep(wait)
-        self.baseline = sum([d[0] for d in self.buffer])/len(self.buffer)
+        self.baseline = sum([d[0] for d,_ in self.buffer])/len(self.buffer)
+        self.device.stopStream()
+        self.buffer.clear()
         return
     
     def _calculate_force(self, value: float) -> float:
@@ -133,4 +142,10 @@ class LoadCell(Measurer):
     
     def _correct_value(self, value: float) -> float:
         return sum([param * (value**i) for i,param in enumerate(self.correction_parameters[::-1])])
+    
+    def _get_dataframe(self, data_store: list[ValueData]) -> pd.DataFrame:
+        df = datalogger.get_dataframe(data_store=data_store, fields=self.device.data_type._fields)
+        df['corrected_value'] = df['value'].apply(self._correct_value)
+        df['force'] = df['corrected_value'].apply(self._calculate_force)
+        return df
     
