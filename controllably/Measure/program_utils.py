@@ -22,7 +22,7 @@ from typing import Callable, Optional, Protocol, Any
 
 # Local application imports
 from ..core import datalogger
-from ..core.device import StreamingDevice, datalogging
+from ..core.device import StreamingDevice
 
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
