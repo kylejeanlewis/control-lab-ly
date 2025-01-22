@@ -156,7 +156,7 @@ class _QInstrumentsDevice(SerialDevice):
         *,
         init_timeout:int = 5, 
         data_type: NamedTuple = NamedTuple("Data", [("data", str)]),
-        read_format:str = "{data}\r\n",
+        read_format:str = "{data}\r",
         write_format:str = "{data}\r",
         simulation:bool = False, 
         verbose:bool = False,
@@ -233,6 +233,7 @@ class _QInstrumentsDevice(SerialDevice):
             else:
                 out = response
             out: Data|None = out
+            # print(f"{data}:{out}")
             if out is None:
                 all_output.append(None)
                 continue
@@ -419,7 +420,7 @@ class _QInstrumentsDevice(SerialDevice):
             float|None: acceleration/deceleration time in seconds
         """
         out: FloatData = self.query("getShakeAccelerationMax", data_type=FloatData)
-        return out.data
+        return out.data if out.data > 0 else 999999
     
     def getShakeAccelerationMin(self) -> float|None:
         """
