@@ -66,7 +66,8 @@ from IPython.display import display, clear_output
 import pandas as pd
 
 import test_init
-from controllably.core.device import SerialDevice, DataLoggerUtils
+from controllably.core import datalogger
+from controllably.core.device import SerialDevice
 from controllably.Make.Heat import Peltier
 
 # %%
@@ -126,7 +127,7 @@ def monitor_plot(data_store: Iterable[tuple[NamedTuple,datetime]], fields: Itera
     count = 0
     while not stop_trigger.is_set() and count<10:
         time.sleep(0.1)
-        df = DataLoggerUtils.getDataframe(data_store=data_store, fields=fields)
+        df = datalogger.get_dataframe(data_store=data_store, fields=fields)
         if df.empty:
             continue
         if df['timestamp'].iloc[-1] != timestamp:

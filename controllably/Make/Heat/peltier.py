@@ -11,7 +11,7 @@ from typing import NamedTuple, Any
 import pandas as pd
 
 # Local application imports
-from ...core.device import DataLoggerUtils
+from ...core import datalogger
 from .. import Maker
 from .heater_mixin import HeaterMixin
 
@@ -56,11 +56,11 @@ class Peltier(Maker, HeaterMixin):
     # Data logging properties
     @property
     def buffer_df(self) -> pd.DataFrame:
-        return DataLoggerUtils.getDataframe(data_store=self.buffer, fields=self.device.data_type._fields)
+        return datalogger.get_dataframe(data_store=self.buffer, fields=self.device.data_type._fields)
     
     @property
     def records_df(self) -> pd.DataFrame:
-        return DataLoggerUtils.getDataframe(data_store=self.records, fields=self.device.data_type._fields)
+        return datalogger.get_dataframe(data_store=self.records, fields=self.device.data_type._fields)
     
     # Temperature control properties
     # @property
@@ -96,13 +96,13 @@ class Peltier(Maker, HeaterMixin):
         return data
     
     def record(self, on: bool, show: bool = False, clear_cache: bool = False):
-        return DataLoggerUtils.record(
+        return datalogger.record(
             on=on, show=show, clear_cache=clear_cache, data_store=self.records, 
             device=self.device, event=self.record_event
         )
     
     def stream(self, on: bool, show: bool = False):
-        return DataLoggerUtils.stream(
+        return datalogger.stream(
             on=on, show=show, data_store=self.buffer, 
             device=self.device, event=self.record_event
         )

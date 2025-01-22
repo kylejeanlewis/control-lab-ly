@@ -21,7 +21,8 @@ from pathlib import Path
 from typing import Callable, Optional, Protocol, Any
 
 # Local application imports
-from ..core.device import StreamingDevice, DataLoggerUtils
+from ..core import datalogger
+from ..core.device import StreamingDevice, datalogging
 
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
@@ -222,7 +223,7 @@ class _Program:
     
     @property
     def data_df(self) -> pd.DataFrame:
-        return DataLoggerUtils.getDataframe(data_store=self.data, fields=self.device.data_type._fields)
+        return datalogger.get_dataframe(data_store=self.data, fields=self.device.data_type._fields)
     
     @staticmethod
     def parseDocstring(program_class: _Program, verbose:bool = False) -> ProgramDetails:

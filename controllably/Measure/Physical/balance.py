@@ -7,7 +7,7 @@ import logging
 import pandas as pd
 
 # Local application 
-from ...core.device import DataLoggerUtils
+from ...core import datalogger
 from ..Mechanical.load_cell import LoadCell
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ class Balance(LoadCell):
     
     @property
     def buffer_df(self) -> pd.DataFrame:
-        df = DataLoggerUtils.getDataframe(data_store=self.buffer, fields=self.device.data_type._fields)
+        df = datalogger.get_dataframe(data_store=self.buffer, fields=self.device.data_type._fields)
         df['corrected_value'] = df['value'].apply(self._correct_value)
         df['force'] = df['corrected_value'].apply(self._calculate_force)
         df['mass'] = df['corrected_value'].apply(self._calculate_mass)
@@ -48,7 +48,7 @@ class Balance(LoadCell):
     
     @property
     def records_df(self) -> pd.DataFrame:
-        df = DataLoggerUtils.getDataframe(data_store=self.records, fields=self.device.data_type._fields)
+        df = datalogger.get_dataframe(data_store=self.records, fields=self.device.data_type._fields)
         df['corrected_value'] = df['value'].apply(self._correct_value)
         df['force'] = df['corrected_value'].apply(self._calculate_force)
         df['mass'] = df['corrected_value'].apply(self._calculate_mass)
