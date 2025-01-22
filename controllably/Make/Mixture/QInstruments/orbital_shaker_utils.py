@@ -215,8 +215,9 @@ class _BioShake(Maker, HeaterMixin):
     def connect(self):
         """Connect to the device"""
         self.device.connect()
-        self.getDefaults()
-        self.getUserLimits()
+        if self.is_connected:
+            self.getDefaults()
+            self.getUserLimits()
         return
     
     def execute(self, 
@@ -465,7 +466,7 @@ class _BioShake(Maker, HeaterMixin):
             speed (int): target mixing speed
             default (bool, optional): whether to change the default speed. Defaults to False.
         """
-        limits = self.ranges.get('speed', (200,201))
+        limits = self.ranges.get('speed', self.limits['speed'])
         lower_limit, upper_limit = limits
         assert speed >= 200, "Speed values below 200 RPM are not recommended."
         if lower_limit <= speed <= upper_limit:
@@ -629,7 +630,7 @@ class _BioShake(Maker, HeaterMixin):
         return thread, event
     
     def _set_temperature(self, temperature: float):
-        limits = self.ranges.get('temperature', (0,99))
+        limits = self.ranges.get('temperature', self.limits['temperature'])
         lower_limit, upper_limit = limits
         assert lower_limit <= temperature <= upper_limit, f"Temperature out of range {limits}: {temperature}"
         self.controlTemp(on=True)
