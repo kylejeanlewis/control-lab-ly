@@ -393,7 +393,8 @@ class BaseDevice:
             return False
         return True
     
-    def poll(self, data:str|None = None) -> str:
+    def poll(self, data:str|None = None) -> str|None:
+        out = None
         if data is not None:
             ret = self.write(data)
         if data is None or ret:
@@ -467,6 +468,8 @@ class BaseDevice:
         data_in = self.processInput(data, format_in)
         if not multi_out:
             raw_out = self.poll(data_in)
+            if raw_out is None:
+                return None
             out, now = self.processOutput(raw_out, format_out, data_type)
             return (out, now) if timestamp else out
         
@@ -480,7 +483,8 @@ class BaseDevice:
                 break
             raw_out = self.read()
             if raw_out is None or raw_out.strip() == '':
-                break
+                continue
+            start_time = time.perf_counter()
             out, now = self.processOutput(raw_out, format_out, data_type)
             data_out = (out, now) if timestamp else out
             all_data.append(data_out)
@@ -720,7 +724,7 @@ class SerialDevice(BaseDevice):
     
     def checkDeviceBuffer(self) -> bool:
         """Check the connection buffer"""
-        return self.serial.out_waiting
+        return self.serial.in_waiting
     
     def checkDeviceConnection(self):
         """Check the connection to the device"""
