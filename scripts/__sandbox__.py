@@ -1,4 +1,53 @@
 # %%
+import test_init
+from controllably.core.connection import get_ports
+from controllably.Make.Mixture.QInstruments.orbital_shaker_utils import _BioShake
+from controllably.Make.Mixture.QInstruments.qinstruments_api.qinstruments_api import _QInstrumentsDevice
+get_ports()
+# %%
+qin = _QInstrumentsDevice('COM34')
+qin.connect()
+print(qin.getSerial())
+print(qin.getDescription())
+print(qin.getErrorList())
+print(qin.getVersion())
+print(qin.info())
+print(qin.version())
+
+# %%
+print(qin.getShakeAcceleration())
+print(qin.getShakeAccelerationMax())
+print(qin.getShakeAccelerationMin())
+print('\n')
+print(qin.getShakeMaxRpm())
+print(qin.getShakeMinRpm())
+print(qin.getShakeTargetSpeed())
+print(qin.getShakeActualSpeed())
+print('\n')
+print(qin.getShakeDirection())
+print(qin.getShakeRemainingTime())
+print('\n')
+print(qin.getShakeState())
+print(qin.getShakeStateAsString())
+
+# %%
+print(qin.getTemp40Calibr())
+print(qin.getTemp90Calibr())
+print(qin.getTempActual())
+print(qin.getTempTarget())
+print('\n')
+print(qin.getTempMax())
+print(qin.getTempMin())
+print(qin.getTempState())
+print('\n')
+print(qin.getElmState())
+print(qin.getElmStateAsString())
+
+# %%
+bio = _BioShake('COM34', temp_tolerance=0.1)
+
+
+# %%
 from datetime import datetime
 from random import random
 import time
