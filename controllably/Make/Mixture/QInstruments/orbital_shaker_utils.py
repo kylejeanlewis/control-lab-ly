@@ -293,6 +293,7 @@ class _BioShake(Maker, HeaterMixin):
         Get data from device
         """
         if not self.device.stream_event.is_set():
+            print(query)
             return self.device.query(query, multi_out=False, data_type=FloatData)
         
         data_store = self.records if self.record_event.is_set() else self.buffer
@@ -401,14 +402,12 @@ class _BioShake(Maker, HeaterMixin):
             self.toggleShake(on=True, duration=duration)
             logger.info(f"Shaking at {speed}rpm for {duration} seconds")
             
-            start_time = time.perf_counter()
-            shake_time = time.perf_counter() - start_time
-            while not self.atSpeed(speed):
-                shake_time = time.perf_counter() - start_time
-                if shake_time > self.acceleration:
-                    break
+            while self.device.getShakeState() == 5:
                 time.sleep(0.1)
-            time.sleep(abs(duration - shake_time))
+            if duration:
+                time.sleep(duration)
+                while self.device.getShakeState() == 7:
+                    time.sleep(0.1)
             logger.info("End of shake")
             
             if isinstance(release, threading.Event):
@@ -430,7 +429,7 @@ class _BioShake(Maker, HeaterMixin):
         *, 
         tolerance: float|None = None
     ) -> bool:
-        data: FloatData|None = self.getData(data='getShakeActualSpeed')
+        data: FloatData|None = self.getData(query='getShakeActualSpeed')
         if data is None:
             return False
         speed = speed if speed is not None else self.getTargetSpeed()
@@ -594,7 +593,7 @@ class _BioShake(Maker, HeaterMixin):
         tolerance: float|None = None,
         stabilize_timeout: float|None = None
     ) -> bool:
-        data: FloatData|None = self.getData(data='getTempActual')
+        data: FloatData|None = self.getData(query='getTempActual')
         if data is None:
             return False
         temperature = temperature if temperature is not None else self.getTargetTemp()
@@ -624,8 +623,17 @@ class _BioShake(Maker, HeaterMixin):
         """
         return self.device.getTempActual() 
     
-    def setTemperature(self, temperature, blocking = True, *, tolerance = None, release = None):
-        thread, event = super().setTemperature(temperature, blocking, tolerance=tolerance, release=release)
+    def setTemperature(self, 
+        temperature: float, 
+        blocking: bool = True, 
+        *, 
+        tolerance: float = None, 
+        release: threading.Event = None
+    ) -> tuple[threading.Thread, threading.Event]|None:
+        ret = super().setTemperature(temperature, blocking, tolerance=tolerance, release=release)
+        if not blocking:
+            return
+        thread, event = ret
         self._threads['temperature'] = thread
         return thread, event
     
@@ -635,17 +643,6 @@ class _BioShake(Maker, HeaterMixin):
         assert lower_limit <= temperature <= upper_limit, f"Temperature out of range {limits}: {temperature}"
         self.controlTemp(on=True)
         self.device.setTempTarget(temperature=temperature)
-        
-        buffer = self.records if self.record_event.is_set() else self.buffer
-        if not self.device.stream_event.is_set():
-            self.device.startStream(
-                data=self.device.processInput('getTempActual'), 
-                buffer=buffer, data_type=FloatData
-            )
-            time.sleep(0.1)
-        
-        while self.device.getTempTarget() != temperature:
-            time.sleep(0.1)
         return
     
     # ELM (i.e. grip) methods
