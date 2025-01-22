@@ -190,20 +190,21 @@ class _QInstrumentsDevice(SerialDevice):
     # General methods
     def connect(self):
         super().connect()
-        self.model = self.getDescription()
-        self.serial_number = self.getSerial()
+        if self.checkDeviceConnection():
+            self.model = self.getDescription()
+            self.serial_number = self.getSerial()
         return
     
     def query(self, 
-            data: Any, 
-            multi_out: bool = True,
-            *,
-            timeout: int|float = 0.3,
-            format_in: str|None = None, 
-            format_out: str|None = None,
-            data_type: NamedTuple|None = None,
-            timestamp: bool = False
-        ) -> Any:
+        data: Any, 
+        multi_out: bool = False,
+        *,
+        timeout: int|float = 0.3,
+        format_in: str|None = None, 
+        format_out: str|None = None,
+        data_type: NamedTuple|None = None,
+        timestamp: bool = False
+    ) -> Any:
         """
         Query the device (i.e. write and read data)
 
@@ -217,24 +218,37 @@ class _QInstrumentsDevice(SerialDevice):
             str|float|None: response (string / float)
         """
         data_type: NamedTuple = data_type or Data
-        out = super().query(
+        responses = super().query(
             data, multi_out=multi_out, timeout=timeout,
             format_in=format_in, timestamp=timestamp
         )
-        if timestamp:
-            out,now = out
-        out: Data|None = out
-        response = out.data
-        if response.startswith('u ->'):
-            error_message = f"{self.model} received an invalid command: {data!r}"
-            self._logger.error(error_message)
-            raise AttributeError(error_message)
+        if multi_out and not len(responses):
+            return None
+        responses = responses if multi_out else [responses]
         
-        if self.flags.simulation:
-            data_out = data_type('') if data_type.__annotations__['data'] == str else data_type(0)
-        else:
-            data_out = self.processOutput(out.data, format=format_out, data_type=data_type)
-        return (data_out, now) if timestamp else data_out
+        all_output = []
+        for response in responses:
+            if timestamp:
+                out,now = response
+            else:
+                out = response
+            out: Data|None = out
+            if out is None:
+                all_output.append(None)
+                continue
+            if isinstance(out.data, str) and out.data.startswith('u ->'):
+                error_message = f"{self.model} received an invalid command: {data!r}"
+                self._logger.error(error_message)
+                self.clear()
+                raise AttributeError(error_message)
+            
+            if self.flags.simulation:
+                data_out = data_type('') if data_type.__annotations__['data'] == str else data_type(0)
+            else:
+                data_out = self.processOutput(out.data, format=format_out, data_type=data_type)
+                data_out = data_out if timestamp else data_out[0]
+            all_output.append((data_out, now) if timestamp else data_out)
+        return all_output if multi_out else all_output[0]
 
     # Initialization methods
     def disableBootScreen(self):
@@ -279,7 +293,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             str: model type
         """
-        return self.query("getDescription", multi_out=True)
+        data: Data = self.query("getDescription")
+        return data.data
         
     def getErrorList(self) -> list[str]:
         """
@@ -289,7 +304,7 @@ class _QInstrumentsDevice(SerialDevice):
             list[str]: list of errors and warnings
         """
         response = self.query("getErrorList", multi_out=True)
-        error_list = response[1:-1].split("; ")
+        error_list = response#[1:-1].split("; ")
         return error_list
         
     def getSerial(self) -> str:
@@ -299,7 +314,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             str: device serial number
         """
-        return self.query("getSerial", multi_out=True)
+        data: Data = self.query("getSerial")
+        return data.data
         
     def getVersion(self) -> str:
         """
@@ -308,11 +324,13 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             str: firmware version number
         """
-        return self.query("getVersion", multi_out=True)
+        data: Data = self.query("getVersion")
+        return data.data
         
     def info(self):
         """Retrieve the boot screen text"""
-        return self.query("info", multi_out=True)
+        data: list[Data] = self.query("info", multi_out=True, timeout=5)
+        return '\n'.join([d.data for d in data])
         
     def resetDevice(self, timeout:int = 30):
         """
@@ -339,10 +357,8 @@ class _QInstrumentsDevice(SerialDevice):
         Args:
             duration (int): duration in milliseconds, from 50 to 999
         """
-        if 50 <= duration <= 999:
-            self.query(f"setBuzzer{int(duration)}")
-        else:
-            self._logger.warning("Please input duration of between 50 and 999 milliseconds.")
+        assert 50 <= duration <= 999, "Please input duration of between 50 and 999 milliseconds."
+        self.query(f"setBuzzer{int(duration)}")
         return
         
     def version(self) -> str:
@@ -352,7 +368,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             str: model type and firmware version number
         """
-        return self.query("version", multi_out=True)
+        data: list[Data] = self.query("version", multi_out=True, timeout=5)
+        return '\n'.join([d.data for d in data])
     
     # ECO methods
     def leaveEcoMode(self, timeout:int = 5):
@@ -599,7 +616,7 @@ class _QInstrumentsDevice(SerialDevice):
         self.query("shakeEmergencyOff")
         return
         
-    def shakeGoHome(self, timeout:int = 5):
+    def shakeGoHome(self):
         """
         Move shaker to the home position and locks in place
         
@@ -612,14 +629,15 @@ class _QInstrumentsDevice(SerialDevice):
         start_time = time.perf_counter()
         while self.getShakeState() != 3:
             time.sleep(0.1)
-            if time.perf_counter() - start_time > timeout:
-                break
         self.getShakeState()
         return
         
     def shakeOff(self):
         """Stops shaking within the defined deceleration time, go to the home position and locks in place"""
         self.query("shakeOff")
+        while self.getShakeState() != 3:
+            time.sleep(0.1)
+        self.getShakeState()
         return
         
     def shakeOffNonZeroPos(self):
