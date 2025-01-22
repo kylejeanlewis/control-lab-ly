@@ -38,9 +38,6 @@ MockSerial.readline = readline
 probe.device.connection = MockSerial
 
 # %%
-_Program.parseDocstring(_Program, verbose=True)
-
-# %%
 import test_init
 from controllably.core.device import SerialDevice
 from controllably.core.connection import get_ports
