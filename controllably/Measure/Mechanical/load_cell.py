@@ -9,7 +9,7 @@ from typing import NamedTuple
 import pandas as pd
 
 # Local application imports
-from ...core import datalogging
+from ...core import datalogger
 from ..measure import Measurer
 
 logger = logging.getLogger(__name__)
@@ -45,14 +45,14 @@ class LoadCell(Measurer):
     
     @property
     def buffer_df(self) -> pd.DataFrame:
-        df = datalogging.getDataframe(data_store=self.buffer, fields=self.device.data_type._fields)
+        df = datalogger.getDataframe(data_store=self.buffer, fields=self.device.data_type._fields)
         df['corrected_value'] = df['value'].apply(self._correct_value)
         df['force'] = df['corrected_value'].apply(self._calculate_force)
         return df
     
     @property
     def records_df(self) -> pd.DataFrame:
-        df = datalogging.getDataframe(data_store=self.records, fields=self.device.data_type._fields)
+        df = datalogger.getDataframe(data_store=self.records, fields=self.device.data_type._fields)
         df['corrected_value'] = df['value'].apply(self._correct_value)
         df['force'] = df['corrected_value'].apply(self._calculate_force)
         return df
