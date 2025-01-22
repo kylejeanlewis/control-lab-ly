@@ -8,7 +8,7 @@ import pandas as pd
 
 # Local application 
 from ...core import datalogger
-from ..Mechanical.load_cell import LoadCell
+from ..Mechanical.load_cell import LoadCell, ValueData
 
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
@@ -40,28 +40,20 @@ class Balance(LoadCell):
     
     @property
     def buffer_df(self) -> pd.DataFrame:
-        df = datalogger.get_dataframe(data_store=self.buffer, fields=self.device.data_type._fields)
-        df['corrected_value'] = df['value'].apply(self._correct_value)
-        df['force'] = df['corrected_value'].apply(self._calculate_force)
-        df['mass'] = df['corrected_value'].apply(self._calculate_mass)
-        return df
+        return self._get_dataframe(self.buffer)
     
     @property
     def records_df(self) -> pd.DataFrame:
-        df = datalogger.get_dataframe(data_store=self.records, fields=self.device.data_type._fields)
-        df['corrected_value'] = df['value'].apply(self._correct_value)
-        df['force'] = df['corrected_value'].apply(self._calculate_force)
-        df['mass'] = df['corrected_value'].apply(self._calculate_mass)
-        return df
+        return self._get_dataframe(self.records)
     
     def atMass(self, mass: float) -> float:
         return self.atForce(mass*G, tolerance=self.mass_tolerance*G)
     
-    def getMass(self, value: float) -> float:
+    def getMass(self) -> float:
         data = self.getForce()
         if data is None:
             return None
-        return self._calculate_mass(value)
+        return self._calculate_mass(data)
     
     def tare(self, wait: float = 5.0):
         return self.zero(wait=wait)
@@ -74,4 +66,11 @@ class Balance(LoadCell):
     
     def _correct_value(self, value: float) -> float:
         return sum([param * (value**i) for i,param in enumerate(self.correction_parameters[::-1])])
+    
+    def _get_dataframe(self, data_store: list[ValueData]) -> pd.DataFrame:
+        df = datalogger.get_dataframe(data_store=data_store, fields=self.device.data_type._fields)
+        df['corrected_value'] = df['value'].apply(self._correct_value)
+        df['force'] = df['corrected_value'].apply(self._calculate_force)
+        df['mass'] = df['corrected_value'].apply(self._calculate_mass)
+        return df
     
