@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
 from __future__ import annotations
+from datetime import datetime
 import logging
 import time
-from typing import NamedTuple
+from typing import NamedTuple, Iterable
 
 # Third party imports
 import pandas as pd
@@ -15,16 +16,15 @@ from ..measure import Measurer
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
 
-MAX_LEN = 100
-READ_FORMAT = "{value}\r\n"
-ValueData = NamedTuple('ValueData', [('value', float)])
+READ_FORMAT = "{value}\n"
+ValueData = NamedTuple('ValueData', [('value', int)])
 
 class LoadCell(Measurer):
     
     def __init__(self,
         port: str,
-        stabilize_timeout: float = 10, 
-        force_tolerance: float = 1.5, 
+        stabilize_timeout: float = 1, 
+        force_tolerance: float = 0.01, 
         *, 
         calibration_factor: float = 1.0,
         correction_parameters: tuple[float] = (1.0,0.0),
@@ -45,14 +45,6 @@ class LoadCell(Measurer):
         self.calibration_factor = calibration_factor        # counts per unit force
         self.correction_parameters = correction_parameters  # polynomial correction parameters, starting with highest order
         return
-    
-    @property
-    def buffer_df(self) -> pd.DataFrame:
-        return self._get_dataframe(self.buffer)
-    
-    @property
-    def records_df(self) -> pd.DataFrame:
-        return self._get_dataframe(self.records)
     
     @property
     def _parameters(self) -> dict:
@@ -79,6 +71,12 @@ class LoadCell(Measurer):
         Get data from device
         """
         return super().getData(*args, **kwargs)
+    
+    def getDataframe(self, data_store: Iterable[NamedTuple, datetime]) -> pd.DataFrame:
+        df = datalogger.get_dataframe(data_store=data_store, fields=self.device.data_type._fields)
+        df['corrected_value'] = df['value'].apply(self._correct_value)
+        df['force'] = df['corrected_value'].apply(self._calculate_force)
+        return df
     
     def atForce(self, 
         force: float, 
@@ -121,6 +119,11 @@ class LoadCell(Measurer):
             return None
         return self._correct_value(data.value)
     
+    def reset(self):
+        super().reset()
+        self.baseline = 0
+        return
+    
     def zero(self, wait: float = 5.0):
         """
         Set current reading as baseline
@@ -142,10 +145,4 @@ class LoadCell(Measurer):
     
     def _correct_value(self, value: float) -> float:
         return sum([param * (value**i) for i,param in enumerate(self.correction_parameters[::-1])])
-    
-    def _get_dataframe(self, data_store: list[ValueData]) -> pd.DataFrame:
-        df = datalogger.get_dataframe(data_store=data_store, fields=self.device.data_type._fields)
-        df['corrected_value'] = df['value'].apply(self._correct_value)
-        df['force'] = df['corrected_value'].apply(self._calculate_force)
-        return df
     
