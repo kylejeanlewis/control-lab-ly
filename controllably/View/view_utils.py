@@ -16,7 +16,6 @@ from datetime import datetime
 import logging
 import numpy as np
 import pandas as pd
-import pkgutil
 from threading import Thread
 from typing import Optional, Protocol, Callable
 
@@ -476,7 +475,8 @@ class Camera(ABC):
         """
         frame = None
         if not len(filename) and img_bytes is None:
-            img_bytes = pkgutil.get_data(self._package, self._placeholder_filename)
+            # img_bytes = pkgutil.get_data(self._package, self._placeholder_filename)
+            img_bytes = Image.PLACEHOLDER
         if len(filename):
             frame = self.loadImage(filename)
         elif type(img_bytes) == bytes:
