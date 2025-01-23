@@ -72,10 +72,12 @@ def monitor_plot(
     data_store: Iterable[tuple[NamedTuple,datetime]], 
     y: str, 
     x: str = 'timestamp', 
+    kind: str = 'line',
     stop_trigger: threading.Event|None = None,
     dataframe_maker: Callable|None = None
 ):
     assert hasattr(sys,'ps1'), "This function is intended for use in Python interactive sessions"
+    assert kind in ('line','scatter'), "kind must be either 'line' or 'scatter'"
     from IPython.display import display, clear_output
     stop_trigger = stop_trigger if isinstance(stop_trigger, threading.Event) else threading.Event()
     dataframe_maker = dataframe_maker if callable(dataframe_maker) else functools.partial(get_dataframe, fields=(x,y))
@@ -96,7 +98,10 @@ def monitor_plot(
             timestamp = data_store[-1][1]
             df = dataframe_maker(data_store=data_store)
             ax.cla()
-            ax.plot(df[x], df[y], label=y.title())
+            if kind == 'line':
+                ax.plot(df[x], df[y], label=y.title())
+            else:
+                ax.scatter(df[x], df[y], label=y.title())
             ax.legend(loc='upper left')
             plt.tight_layout()
             display(fig)
