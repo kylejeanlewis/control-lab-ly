@@ -1,6 +1,30 @@
 # %%
 import test_init
 from controllably.core.connection import get_ports
+from controllably.core.device import SerialDevice
+from controllably.core import datalogger
+from controllably.Measure.Chemical.Sentron.sentron import SI600
+
+# get_ports()
+# %%
+probe = SI600(port='COM36', baudrate=9600, verbose=True)
+probe.connect()
+
+# %%
+probe.stream(True, False)
+# %%
+event = datalogger.monitor_plot(
+    probe.buffer, 'temperature', x='timestamp', kind='scatter',
+    stop_trigger=probe.device.stream_event,
+    dataframe_maker=probe.getDataframe
+)
+
+# %%
+probe.stream(False)
+
+# %%
+import test_init
+from controllably.core.connection import get_ports
 from controllably.Measure.Physical.balance import Balance
 from controllably.core import datalogger
 
