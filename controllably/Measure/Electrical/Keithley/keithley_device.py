@@ -12,7 +12,7 @@ import logging
 import numpy as np
 import pandas as pd
 import socket
-from typing import Iterable, Optional, Union
+from typing import Iterable
 
 # Third party imports
 import pyvisa as visa # pip install -U pyvisa; pip install -U pyvisa-py
@@ -134,12 +134,12 @@ class KeithleyDevice(Instrument):
             duration = 1
         return self._query(f'SYSTem:BEEPer {frequency},{duration}')
     
-    def clearBuffer(self, name:Optional[str] = None):
+    def clearBuffer(self, name:str|None = None):
         """
         Clear the buffer on the device
 
         Args:
-            name (Optional[str] , optional): name of buffer to clear. Defaults to None.
+            name (str|None , optional): name of buffer to clear. Defaults to None.
         """
         name = self.active_buffer if name is None else name
         return self._query(f'TRACe:CLEar "{name}"')
@@ -150,7 +150,7 @@ class KeithleyDevice(Instrument):
     
     def configureSense(self, 
         func: str, 
-        limit: Union[str, float, None] = 'DEFault',
+        limit: Iterable|None = 'DEFault',
         four_point: bool = True,
         count: int = 1
     ):
@@ -159,7 +159,7 @@ class KeithleyDevice(Instrument):
 
         Args:
             func (str): name of function, choice from current, resistance, and voltage
-            limit (Union[str, float, None], optional): sensing range. Defaults to 'DEFault'.
+            limit (str|float|None, optional): sensing range. Defaults to 'DEFault'.
             four_point (bool, optional): whether to use four-point probe measurement. Defaults to True.
             count (int, optional): number of readings to measure for each condition. Defaults to 1.
         """
@@ -170,16 +170,16 @@ class KeithleyDevice(Instrument):
     
     def configureSource(self, 
         func: str, 
-        limit: Union[str, float, None] = None,
-        measure_limit: Union[str, float, None] = 'DEFault'
+        limit: str|float|None = None,
+        measure_limit: str|float|None = 'DEFault'
     ):
         """
         Configure the source terminal
 
         Args:
             func (str): name of function, choice from current and voltage
-            limit (Union[str, float, None], optional): sourcing range. Defaults to None.
-            measure_limit (Union[str, float, None], optional): limit imposed on the measurement range. Defaults to 'DEFault'.
+            limit (str|float|None, optional): sourcing range. Defaults to None.
+            measure_limit (str|float|None, optional): limit imposed on the measurement range. Defaults to 'DEFault'.
         """
         self.source = SourceDetails(func, limit, measure_limit)
         self.setFunction(self.source.function_type, sense=False)
@@ -196,12 +196,12 @@ class KeithleyDevice(Instrument):
         self.setFlag(connected=False)
         return
     
-    def getBufferIndices(self, name:Optional[str] = None) -> tuple[int]:
+    def getBufferIndices(self, name:str|None = None) -> tuple[int]:
         """
         Get the buffer indices where the the data start and end
 
         Args:
-            name (Optional[str], optional): name of buffer. Defaults to None.
+            name (str|None, optional): name of buffer. Defaults to None.
 
         Returns:
             tuple[int]: start and end buffer indices
@@ -251,12 +251,12 @@ class KeithleyDevice(Instrument):
         """
         return self._query('TRIGger:STATe?')
     
-    def makeBuffer(self, name:Optional[str] = None, buffer_size:int = 100000):
+    def makeBuffer(self, name:str|None = None, buffer_size:int = 100000):
         """
         Create a new buffer on the device
 
         Args:
-            name (Optional[str] , optional): buffer name. Defaults to None.
+            name (str|None , optional): buffer name. Defaults to None.
             buffer_size (int, optional): buffer size. Defaults to 100000.
         """
         name = self.buffer_name if name is None else name
@@ -266,7 +266,7 @@ class KeithleyDevice(Instrument):
         return self._query(f'TRACe:MAKE "{name}",{buffer_size}')
     
     def read(self,  # TODO: improve compatibility of read functions with other standards
-        name: Optional[str] = None, 
+        name: str|None = None, 
         fields: tuple[str] = ('SOURce','READing', 'SEConds'), 
         average: bool = True,
         quick: bool = False
@@ -275,7 +275,7 @@ class KeithleyDevice(Instrument):
         Read the latest data fom buffer
 
         Args:
-            name (Optional[str], optional): buffer name. Defaults to None.
+            name (str|None, optional): buffer name. Defaults to None.
             fields (tuple[str], optional): fields of interest. Defaults to ('SOURce','READing', 'SEConds').
             average (bool, optional): whether to average the data of multiple readings. Defaults to True.
             quick (bool, optional): whether to take a quick reading using existing Sense function and settings. Defaults to False.
@@ -286,7 +286,7 @@ class KeithleyDevice(Instrument):
         return self._read(bulk=False, name=name, fields=fields, average=average, quick=quick)
         
     def readAll(self, 
-        name: Optional[str] = None, 
+        name: str|None = None, 
         fields: tuple[str] = ('SOURce','READing', 'SEConds'), 
         average: bool = True
     ) -> pd.DataFrame:
@@ -294,7 +294,7 @@ class KeithleyDevice(Instrument):
         Read the data from buffer after a series of measurements
 
         Args:
-            name (Optional[str], optional): buffer name. Defaults to None.
+            name (str|None, optional): buffer name. Defaults to None.
             fields (tuple[str], optional): fields of interest. Defaults to ('SOURce','READing', 'SEConds').
             average (bool, optional): whether to average the data of multiple readings. Defaults to True.
 
@@ -473,7 +473,7 @@ class KeithleyDevice(Instrument):
         self.device = device
         return
 
-    def _parse(self, reply:str) -> Union[float, str, tuple[Union[float, str]]]:
+    def _parse(self, reply:str) -> str|float|tuple[str|float]:
         """
         Parse the response from device
 
@@ -481,7 +481,7 @@ class KeithleyDevice(Instrument):
             reply (str): raw response string from device
 
         Returns:
-            Union[float, str, tuple[Union[float, str]]]: variable output including floats, strings, and tuples
+            str|float|tuple[str|float]: variable output including floats, strings, and tuples
         """
         if ',' not in reply and ';' not in reply:
             try:
@@ -544,7 +544,7 @@ class KeithleyDevice(Instrument):
     
     def _read(self, 
         bulk: bool,
-        name: Optional[str] = None, 
+        name: str|None = None, 
         fields: tuple[str] = ('SOURce','READing','SEConds'), 
         average: bool = True,
         quick: bool = False
@@ -554,7 +554,7 @@ class KeithleyDevice(Instrument):
 
         Args:
             bulk (bool): whether to read data after a series of measurements
-            name (Optional[str], optional): buffer name. Defaults to None.
+            name (str|None, optional): buffer name. Defaults to None.
             fields (tuple[str], optional): fields of interest. Defaults to ('SOURce','READing', 'SEConds').
             average (bool, optional): whether to average the data of multiple readings. Defaults to True.
             quick (bool, optional): whether to take a quick reading using existing Sense function and settings. Defaults to False.
@@ -618,13 +618,13 @@ class DAQ6510(KeithleyDevice):
     def __init__(self, ip_address: str, name: str = 'def', **kwargs):
         super().__init__(ip_address, name, **kwargs)
     
-    def createScanList(self, channel_count:Optional[int] = None, channels:Optional[Iterable] = None):
+    def createScanList(self, channel_count:int|None = None, channels:Iterable|None = None):
         """
         Deletes existing scan list and creates a new list of channles to scan
 
         Args:
-            channel_count (Optional[int], optional): number of channels. Defaults to None.
-            channels (Optional[Iterable], optional): array of channel ids. Defaults to None.
+            channel_count (int|None, optional): number of channels. Defaults to None.
+            channels (Iterable|None, optional): array of channel ids. Defaults to None.
         """
         channel_text = f'(@101:{100+channel_count})' if channel_count else ''
         channel_text = f'(@{",".join(channels)})' if channels and not channel_text else channel_text
