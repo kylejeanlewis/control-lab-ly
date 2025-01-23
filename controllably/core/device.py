@@ -445,7 +445,8 @@ class BaseDevice:
                 parsed[key] = value(parsed[key])
             except ValueError:
                 self._logger.warning(f"Failed to convert {key}: {parsed[key]} to type {value}")
-                parsed[key] = None
+                # parsed[key] = None
+                return None ,timestamp
         processed_data = data_type(**parsed) 
         
         if self.show_event.is_set():
