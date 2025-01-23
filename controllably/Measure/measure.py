@@ -28,141 +28,6 @@ logger.addHandler(handler)
 
 MAX_LEN = 100
 
-@dataclass
-class ProgramDetails:
-    """
-    ProgramDetails dataclass represents the set of inputs, default values, truncated docstring and tooltip of a program class
-    
-    ### Constructor
-    Args:
-        `inputs` (list[str]): list of input field names
-        `defaults` (dict[str, Any]): dictionary of kwargs and default values
-        `short_doc` (str): truncated docstring of the program
-        `tooltip` (str): descriptions of input fields
-    """
-    
-    signature: inspect.Signature
-    description: str = ''
-    parameter_descriptions: dict[str, str] = field(default_factory=dict)
-    return_descriptions: dict[tuple[str], str] = field(default_factory=dict)
-    
-    def __str__(self):
-        text = str(self.signature)
-        text += f"\n\n{self.description}"
-        if len(self.parameter_descriptions):
-            text += f"\n\nArgs:"
-            for k,v in self.parameter_descriptions.items():
-                parameter = self.signature.parameters[k]
-                text += f"\n    {parameter.name} ({parameter.annotation}): {v}."
-                if parameter.default != inspect.Parameter.empty:
-                    text += f" Defaults to {parameter.default}."
-        if len(self.return_descriptions):
-            text += f"\n\nReturns:"
-            for k,v in self.return_descriptions.items():
-                key = ', '.join(k) if isinstance(k,tuple) else k
-                text += f"\n    {key}: {v}"
-        return text
-
-
-class Program:
-    """
-    Base Program template
-
-    ### Constructor
-    Args:
-        `device` (Device): device object
-        `parameters` (Optional[dict], optional): dictionary of kwargs. Defaults to None.
-        `verbose` (bool, optional): verbosity of class. Defaults to False.
-        
-    ### Attributes and properties
-    - `data_df` (pd.DataFrame): data collected from device when running the program
-    - `device` (Device): device object
-    - `parameters` (dict[str, ...]): parameters
-    - `verbose` (bool): verbosity of class
-
-    ==========
-    """
-    def __init__(self, 
-        device: StreamingDevice|None = None, 
-        parameters: dict|None = None,
-        verbose: bool = False, 
-        **kwargs
-    ):
-        self.data = deque()
-        self.device = device
-        self.parameters = parameters or dict()
-        self.verbose = verbose
-        
-        self.__doc__ = getattr(self,'run').__doc__
-        return
-    
-    def __call__(self, *args, **kwargs):
-        return self.run(*args, **kwargs)
-    
-    @property
-    def data_df(self) -> pd.DataFrame:
-        return datalogger.get_dataframe(data_store=self.data, fields=self.device.data_type._fields)
-    
-    @staticmethod
-    def parseDocstring(program_class: Program, verbose:bool = False) -> ProgramDetails:
-        """
-        Get the input fields and defaults
-        
-        Args:
-            program_class (Callable): program class of interest
-            verbose: whether to print out truncated docstring. Defaults to False.
-
-        Returns:
-            ProgramDetails: details of program class
-        """
-        method = getattr(program_class, 'run')
-        doc = inspect.getdoc(method)
-        
-        description = ''
-        args_dict = dict()
-        ret_dict = dict()
-        if doc is not None:
-            description = doc.split('Args:')[0].split('Returns:')[0]
-            description = ' '.join([l.strip() for l in description.split('\n') if len(l.strip())])
-            
-            if 'Args:' in doc:
-                args = doc.split('Args:',1)[1].split('Returns:')[0]
-                args = [l.split('Defaults',1)[0].strip() for l in args.split('\n') if len(l.strip())]
-                args_dict = {a.split(' ')[0]: a.split(':',1)[1].strip() for a in args}
-            
-            if 'Returns:' in doc:
-                ret = doc.split('Returns:',1)[1]
-                ret = [l.strip() for l in ret.split('\n') if len(l.strip())]
-                return_types, return_descriptions = [s for s in zip(*[r.split(':',1) for r in ret])]
-                ret_keys = [tuple([s.strip() for s in r.split(',')]) for r in return_types]
-                ret_keys = [r if len(r) > 1 else r[0] for r in ret_keys]
-                ret_dict = {k: v.strip() for k,v in zip(ret_keys, return_descriptions)}
-
-        details = ProgramDetails(
-            signature=inspect.signature(method),
-            description=description,
-            parameter_descriptions=args_dict,
-            return_descriptions=ret_dict
-        )
-        if verbose:
-            print(details)
-        return details
-    
-    def run(self, *args, **kwargs) -> pd.DataFrame:
-        """
-        Measurement program to run
-
-        Returns:
-            pd.DataFrame: Dataframe of data collected
-        """
-        assert isinstance(self.device, StreamingDevice), "Ensure device is a StreamingDevice"
-        return self.data_df
-    
-    def saveData(self, filepath: str|Path):
-        self.data_df.to_csv(filepath)
-        return
-
-
 class Measurer:
     """
     Base class for maker tools.
@@ -288,7 +153,7 @@ class Measurer:
     def measure(self, *args, parameters: dict|None = None, blocking:bool = True, **kwargs) -> pd.DataFrame|None:
         assert issubclass(self.program, Program), "No Program loaded"
         new_run = self.program(
-            device = self.device, 
+            instrument = self, 
             parameters = parameters,
             verbose = self.verbose
         )
@@ -304,7 +169,7 @@ class Measurer:
         new_run.run(*args, **kwargs)
         return new_run.data_df
         
-    def loadProgram(self, program:Program):
+    def loadProgram(self, program: Program):
         assert issubclass(program, Program), "Ensure program type is a subclass of Program"
         self.program = program
         self.measure.__func__.__doc__ = program.parseDocstring(program, verbose=self.verbose)
@@ -345,3 +210,143 @@ class Measurer:
             on=on, show=show, data_store=self.buffer, 
             device=self.device, event=self.record_event
         )
+
+
+class Program:
+    """
+    Base Program template
+
+    ### Constructor
+    Args:
+        `device` (Device): device object
+        `parameters` (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+        
+    ### Attributes and properties
+    - `data_df` (pd.DataFrame): data collected from device when running the program
+    - `device` (Device): device object
+    - `parameters` (dict[str, ...]): parameters
+    - `verbose` (bool): verbosity of class
+
+    ==========
+    """
+    def __init__(self, 
+        instrument: Measurer|None = None, 
+        parameters: dict|None = None,
+        verbose: bool = False, 
+        **kwargs
+    ):
+        self.data = deque()
+        self.instrument = instrument
+        self.parameters = parameters or dict()
+        self.verbose = verbose
+        
+        self.__doc__ = getattr(self,'run').__doc__
+        return
+    
+    def __call__(self, *args, **kwargs):
+        return self.run(*args, **kwargs)
+    
+    @property
+    def data_df(self) -> pd.DataFrame:
+        return self.getDataframe(self.data)
+    
+    @staticmethod
+    def parseDocstring(program_class: Program, verbose:bool = False) -> ProgramDetails:
+        """
+        Get the input fields and defaults
+        
+        Args:
+            program_class (Callable): program class of interest
+            verbose: whether to print out truncated docstring. Defaults to False.
+
+        Returns:
+            ProgramDetails: details of program class
+        """
+        method = getattr(program_class, 'run')
+        doc = inspect.getdoc(method)
+        
+        description = ''
+        args_dict = dict()
+        ret_dict = dict()
+        if doc is not None:
+            description = doc.split('Args:')[0].split('Returns:')[0]
+            description = ' '.join([l.strip() for l in description.split('\n') if len(l.strip())])
+            
+            if 'Args:' in doc:
+                args = doc.split('Args:',1)[1].split('Returns:')[0]
+                args = [l.split('Defaults',1)[0].strip() for l in args.split('\n') if len(l.strip())]
+                args_dict = {a.split(' ')[0]: a.split(':',1)[1].strip() for a in args}
+            
+            if 'Returns:' in doc:
+                ret = doc.split('Returns:',1)[1]
+                ret = [l.strip() for l in ret.split('\n') if len(l.strip())]
+                return_types, return_descriptions = [s for s in zip(*[r.split(':',1) for r in ret])]
+                ret_keys = [tuple([s.strip() for s in r.split(',')]) for r in return_types]
+                ret_keys = [r if len(r) > 1 else r[0] for r in ret_keys]
+                ret_dict = {k: v.strip() for k,v in zip(ret_keys, return_descriptions)}
+
+        details = ProgramDetails(
+            signature=inspect.signature(method),
+            description=description,
+            parameter_descriptions=args_dict,
+            return_descriptions=ret_dict
+        )
+        if verbose:
+            print(details)
+        return details
+    
+    def getDataframe(self, data_store: Iterable[NamedTuple, datetime]) -> pd.DataFrame:
+        assert issubclass(self.instrument, Measurer), "Ensure instrument is a (subclass of) Measurer"
+        return self.instrument.getDataframe(data_store=data_store)
+    
+    def run(self, *args, **kwargs) -> pd.DataFrame:
+        """
+        Measurement program to run
+
+        Returns:
+            pd.DataFrame: Dataframe of data collected
+        """
+        assert issubclass(self.instrument, Measurer), "Ensure instrument is a (subclass of) Measurer"
+        return self.data_df
+    
+    def saveData(self, filepath: str|Path):
+        self.data_df.to_csv(filepath)
+        return
+
+
+@dataclass
+class ProgramDetails:
+    """
+    ProgramDetails dataclass represents the set of inputs, default values, truncated docstring and tooltip of a program class
+    
+    ### Constructor
+    Args:
+        `inputs` (list[str]): list of input field names
+        `defaults` (dict[str, Any]): dictionary of kwargs and default values
+        `short_doc` (str): truncated docstring of the program
+        `tooltip` (str): descriptions of input fields
+    """
+    
+    signature: inspect.Signature
+    description: str = ''
+    parameter_descriptions: dict[str, str] = field(default_factory=dict)
+    return_descriptions: dict[tuple[str], str] = field(default_factory=dict)
+    
+    def __str__(self):
+        text = str(self.signature)
+        text += f"\n\n{self.description}"
+        if len(self.parameter_descriptions):
+            text += f"\n\nArgs:"
+            for k,v in self.parameter_descriptions.items():
+                parameter = self.signature.parameters[k]
+                text += f"\n    {parameter.name} ({parameter.annotation}): {v}."
+                if parameter.default != inspect.Parameter.empty:
+                    text += f" Defaults to {parameter.default}."
+        if len(self.return_descriptions):
+            text += f"\n\nReturns:"
+            for k,v in self.return_descriptions.items():
+                key = ', '.join(k) if isinstance(k,tuple) else k
+                text += f"\n    {key}: {v}"
+        return text
+    
