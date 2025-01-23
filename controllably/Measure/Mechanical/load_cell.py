@@ -58,11 +58,13 @@ class LoadCell(Measurer):
         
     def connect(self):
         super().connect()
+        if not self.is_connected:
+            return
+        self.device.clear()
         while True:
             time.sleep(0.1)
-            if self.device.read() == '':
-                continue
-            if ' ' not in self.device.read():
+            out = self.device.query(None,multi_out=False)
+            if out is not None:
                 break
         return
     
