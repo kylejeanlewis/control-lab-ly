@@ -434,7 +434,7 @@ class BaseDevice:
         parse_out = parse.parse(format, data)
         if parse_out is None:
             self._logger.warning(f"Failed to parse data: {data!r}")
-            return None
+            return None, timestamp
         parsed = parse_out.named
         for key, value in data_type.__annotations__.items():
             try:
