@@ -11,7 +11,7 @@ import pandas as pd
 import threading
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, Iterable
 
 # Local application imports
 from ..core import datalogger, factory
@@ -252,11 +252,11 @@ class Measurer:
     # Data logging properties
     @property
     def buffer_df(self) -> pd.DataFrame:
-        return datalogger.get_dataframe(data_store=self.buffer, fields=self.device.data_type._fields)
+        return self.getDataframe(data_store=self.buffer)
     
     @property
     def records_df(self) -> pd.DataFrame:
-        return datalogger.get_dataframe(data_store=self.records, fields=self.device.data_type._fields)
+        return self.getDataframe(data_store=self.records)
     
     def connect(self):
         """Connect to the device"""
@@ -324,6 +324,9 @@ class Measurer:
         out = data_store[-1] if len(data_store) else None
         data,_ = out if out is not None else (None,None)
         return data
+    
+    def getDataframe(self, data_store: Iterable[NamedTuple, datetime]) -> pd.DataFrame:
+        return datalogger.get_dataframe(data_store=data_store, fields=self.device.data_type._fields)
     
     def saveData(self, filepath:str|Path):
         if not len(self.records):
