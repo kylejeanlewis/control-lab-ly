@@ -6,14 +6,15 @@ import time
 from typing import NamedTuple
 
 # Local application imports
+from ....core import datalogger
 from ...measure import Measurer
 
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
 
 MAX_LEN = 100
-READ_FORMAT = "{yyyymmdd} {hhmmss} {pH} {temperature}\r\n"
-pHData = NamedTuple('pHData', [('yyyymmdd',str),('hhmmss',str),('pH',float),('temperature',float)])
+READ_FORMAT = "{yymmdd} {hhmmss} {sample}  {pH}  {temperature}\n"
+pHData = NamedTuple('pHData', [('yymmdd',str),('hhmmss',str),('pH',float),('temperature',float), ('sample',str)])
 
 class SI600(Measurer):
     
@@ -108,3 +109,16 @@ class SI600(Measurer):
             return None
         return data.temperature
     
+    def record(self, on: bool, show: bool = False, clear_cache: bool = False):
+        return datalogger.record(
+            on=on, show=show, clear_cache=clear_cache, 
+            query='ACT', data_store=self.records, 
+            device=self.device, event=self.record_event
+        )
+    
+    def stream(self, on: bool, show: bool = False):
+        return datalogger.stream(
+            on=on, show=show, data_store=self.buffer, query='ACT',
+            device=self.device, event=self.record_event
+        )
+        
