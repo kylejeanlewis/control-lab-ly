@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
 from __future__ import annotations
+from datetime import datetime
 import logging
+from typing import NamedTuple, Iterable
 
 # Third party imports
 import pandas as pd
@@ -38,13 +40,12 @@ class Balance(LoadCell):
         self.mass_tolerance = mass_tolerance
         return
     
-    @property
-    def buffer_df(self) -> pd.DataFrame:
-        return self._get_dataframe(self.buffer)
-    
-    @property
-    def records_df(self) -> pd.DataFrame:
-        return self._get_dataframe(self.records)
+    def getDataframe(self, data_store: Iterable[NamedTuple, datetime]) -> pd.DataFrame:
+        df = datalogger.get_dataframe(data_store=data_store, fields=self.device.data_type._fields)
+        df['corrected_value'] = df['value'].apply(self._correct_value)
+        df['force'] = df['corrected_value'].apply(self._calculate_force)
+        df['mass'] = df['corrected_value'].apply(self._calculate_mass)
+        return df
     
     def atMass(self, mass: float) -> float:
         return self.atForce(mass*G, tolerance=self.mass_tolerance*G)
@@ -66,11 +67,4 @@ class Balance(LoadCell):
     
     def _correct_value(self, value: float) -> float:
         return sum([param * (value**i) for i,param in enumerate(self.correction_parameters[::-1])])
-    
-    def _get_dataframe(self, data_store: list[ValueData]) -> pd.DataFrame:
-        df = datalogger.get_dataframe(data_store=data_store, fields=self.device.data_type._fields)
-        df['corrected_value'] = df['value'].apply(self._correct_value)
-        df['force'] = df['corrected_value'].apply(self._calculate_force)
-        df['mass'] = df['corrected_value'].apply(self._calculate_mass)
-        return df
     
