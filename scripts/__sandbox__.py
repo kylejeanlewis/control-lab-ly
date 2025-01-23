@@ -18,7 +18,7 @@ bal.stream(True, False)
 datalogger.monitor_plot(
     bal.buffer, 'force', 
     stop_trigger=bal.device.stream_event,
-    dataframe_maker=bal._get_dataframe
+    dataframe_maker=bal.getDataframe
 )
 
 # %%
