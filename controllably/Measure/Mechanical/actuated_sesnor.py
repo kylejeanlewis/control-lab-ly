@@ -11,7 +11,7 @@ import pandas as pd
 
 # Local application imports
 from ...core import datalogger
-from ..measure import Measurer
+from ..measure import Program
 from .load_cell import LoadCell
 
 logger = logging.getLogger(__name__)
@@ -52,6 +52,8 @@ class ActuatedSensor(LoadCell):
         self.limits = (min(limits), max(limits))
         self.max_speed = max_speed
         self._steps_per_second = steps_per_second
+        
+        self.program = ForceDisplacement
         return
     
     def connect(self):
@@ -180,14 +182,68 @@ class ActuatedSensor(LoadCell):
         self.displacement = self.getDisplacement()
         return success
     
-    def touch(self, force: float = 0.1, speed: float|None = None, from_top: bool = True) -> bool:
+    def touch(self, 
+        force_threshold: float = 0.1, 
+        displacement_threshold: float|None = None, 
+        speed: float|None = None, 
+        from_top: bool = True
+    ) -> bool:
         """
         Apply the target force
         """
         initial_force_threshold = self.force_threshold
-        self.force_threshold = force
+        self.force_threshold = force_threshold
         to = self.limits[0] if from_top else self.limits[1]
-        success = self.moveTo(to, speed=speed)
+        displacement_threshold = displacement_threshold or to
+        success = self.moveTo(displacement_threshold, speed=speed)
         self.force_threshold = initial_force_threshold
         return not success
     
+
+class ForceDisplacement(Program):
+    """
+    Stress-Strain program
+    """
+    def __init__(self, instrument: ActuatedSensor|None = None, parameters: dict|None = None, verbose: bool = False):
+        super().__init__(instrument=instrument, parameters=parameters, verbose=verbose)
+        return
+    
+    def run(self,
+        force_threshold: float = 10,
+        displacement_threshold: float = -20,
+        speed: float|None = None,
+        stepped: bool = False,
+        *,
+        step_size: float = 0.1,
+        step_interval: float = -5,
+        pullback: float = 0,
+        clear_cache: bool = True,
+    ):
+        """
+        Run the program
+        """
+        assert isinstance(self.instrument, ActuatedSensor), "Ensure instrument is a (subclass of) StreamingDevice"
+        self.instrument.device.stopStream()
+        self.zero()
+        if clear_cache:
+            self.data.clear()
+        self.instrument.device.startStream(buffer=self.data)
+        if not stepped:
+            self.instrument.touch(
+                force_threshold=force_threshold, 
+                displacement_threshold=displacement_threshold, 
+                speed=speed
+            )
+        else:
+            while not self.instrument.atDisplacement(displacement_threshold):
+                self.instrument.moveBy(step_size, speed=speed)
+                time.sleep(step_interval)
+                data = self.instrument.getData()
+                force = self._calculate_force(data.value)
+                if force >= self.instrument.force_threshold:
+                    self.instrument._logger.info(f"[{data.displacement}] Force threshold reached: {force}")
+                    break
+        self.instrument.device.stopStream()
+        if pullback:
+            self.instrument.moveBy(pullback, speed=speed)
+        return self.data_df
