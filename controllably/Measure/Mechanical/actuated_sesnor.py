@@ -180,7 +180,7 @@ class ActuatedSensor(LoadCell):
         self.displacement = self.getDisplacement()
         return success
     
-    def touch(self, force: float, speed: float|None = None, from_top: bool = True) -> bool:
+    def touch(self, force: float = 0.1, speed: float|None = None, from_top: bool = True) -> bool:
         """
         Apply the target force
         """
