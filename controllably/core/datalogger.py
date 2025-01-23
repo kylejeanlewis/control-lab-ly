@@ -72,7 +72,9 @@ def monitor_plot(
     data_store: Iterable[tuple[NamedTuple,datetime]], 
     y: str, 
     x: str = 'timestamp', 
+    *,
     kind: str = 'line',
+    lapsed_counts: int = 100,
     stop_trigger: threading.Event|None = None,
     dataframe_maker: Callable|None = None
 ):
@@ -87,7 +89,7 @@ def monitor_plot(
         timestamp = None
         count = 0
         initial_state = stop_trigger.is_set()
-        while (stop_trigger.is_set() == initial_state) and count<10:
+        while (stop_trigger.is_set() == initial_state) and count<lapsed_counts:
             time.sleep(0.1)
             if not len(data_store):
                 continue
