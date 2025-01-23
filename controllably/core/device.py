@@ -441,7 +441,7 @@ class BaseDevice:
                 if value == int and not parsed[key].isnumeric():
                     parsed[key] = float(parsed[key])
                 elif value == bool:
-                    parsed[key] = parsed[key].lower() in ['true', '1', 'yes']
+                    parsed[key] = parsed[key].lower() not in ['false', '0', 'no']
                 parsed[key] = value(parsed[key])
             except ValueError:
                 self._logger.warning(f"Failed to convert {key}: {parsed[key]} to type {value}")
@@ -562,7 +562,8 @@ class BaseDevice:
             try:
                 out, now = self.data_queue.get()#(block=False)
                 out, now = self.processOutput(out, format=format, data_type=data_type, timestamp=now)
-                buffer.append((out, now))
+                if out is not None:
+                    buffer.append((out, now))
                 self.data_queue.task_done()
             except queue.Empty:
                 time.sleep(0.01)
@@ -576,7 +577,8 @@ class BaseDevice:
             try:
                 out, now = self.data_queue.get(timeout=1)
                 out, now = self.processOutput(out, format=format, data_type=data_type, timestamp=now)
-                buffer.append((out, now))
+                if out is not None:
+                    buffer.append((out, now))
                 self.data_queue.task_done()
             except queue.Empty:
                 break
