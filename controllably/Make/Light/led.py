@@ -10,7 +10,7 @@ from ...core.device import TimedDeviceMixin
 from .. import Maker
 
 class LED(Maker, TimedDeviceMixin):
-    def __init__(self, port: str, *, baudrate: int = 9600, verbose = False, **kwargs):
+    def __init__(self, port: str = 'COM0', *, baudrate: int = 9600, verbose = False, **kwargs):
         super().__init__(port=port, baudrate=baudrate, verbose=verbose, **kwargs)
         
         self.target_power = 0
