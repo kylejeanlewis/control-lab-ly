@@ -149,9 +149,12 @@ pelt = Peltier(port='COM32')
 
 # %%
 import test_init
-from controllably.Make.Light.led import LED
+from controllably.core.device import SerialDevice
+from controllably.Make.Light.led import LED, Multi_LED
 
+device = SerialDevice(port='COM1', baudrate=9600, timeout=1, verbose=True, simulation=True)
 led = LED(port='COM1', baudrate=9600, timeout=1, verbose=True, simulation=True)
+mled = Multi_LED.create(channels=[1,2,3,4], details=[dict(device=device)]*4)
 
 # %%
 from datetime import datetime
