@@ -46,16 +46,6 @@ class LoadCell(Measurer):
         self.correction_parameters = correction_parameters  # polynomial correction parameters, starting with highest order
         return
     
-    @property
-    def _parameters(self) -> dict:
-        return {
-            'correction_parameters': self.correction_parameters,
-            'baseline': self.baseline,
-            'calibration_factor': self.calibration_factor,
-            'tolerance': self.force_tolerance,
-            'stabilize_timeout': self.stabilize_timeout
-        }
-        
     def connect(self):
         super().connect()
         if not self.is_connected:
@@ -67,6 +57,10 @@ class LoadCell(Measurer):
             if out is not None:
                 break
         return
+    
+    def getAttributes(self) -> dict:
+        relevant = ['correction_parameters', 'baseline', 'calibration_factor', 'force_tolerance', 'stabilize_timeout']
+        return {key: getattr(self, key) for key in relevant}
     
     def getData(self, *args, **kwargs) -> ValueData|None:
         """
