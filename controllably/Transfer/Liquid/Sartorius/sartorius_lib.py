@@ -59,10 +59,10 @@ class ErrorCode(Enum):
     er4 = 'The drive is on and the command or query cannot be answered'
     
 class Model(Enum):
-    BRL0        = ModelInfoInfo('BRL0',0,30,443,-40,0.5,(60,106,164,260,378,448))
-    BRL200      = ModelInfoInfo('BRL200',200,30,443,-40,0.5,(31,52,80,115,150,190))
-    BRL1000     = ModelInfoInfo('BRL1000',1000,30,443,-40,2.5,(150,265,410,650,945,1120))
-    BRL5000     = ModelInfoInfo('BRL5000',5000,30,580,-55,10,(550,1000,1500,2500,3650,4350))
+    BRL0        = ModelInfo('BRL0',0,30,443,-40,0.5,(60,106,164,260,378,448))
+    BRL200      = ModelInfo('BRL200',200,30,443,-40,0.5,(31,52,80,115,150,190))
+    BRL1000     = ModelInfo('BRL1000',1000,30,443,-40,2.5,(150,265,410,650,945,1120))
+    BRL5000     = ModelInfo('BRL5000',5000,30,580,-55,10,(550,1000,1500,2500,3650,4350))
 
 class StatusCode(Enum):
     Normal          = 0
