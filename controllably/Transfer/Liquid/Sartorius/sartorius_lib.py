@@ -85,3 +85,6 @@ class StatusQueryCode(Enum):
     DE  = 'Errors'
     DP  = 'Position'
     DN  = 'Liquid Sensor'
+
+QUERIES = StatusQueryCode._member_names_ + StaticQueryCode._member_names_
+"""List of all query codes"""
