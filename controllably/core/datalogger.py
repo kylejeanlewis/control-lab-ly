@@ -78,7 +78,9 @@ def monitor_plot(
     stop_trigger: threading.Event|None = None,
     dataframe_maker: Callable|None = None
 ):
-    assert hasattr(sys,'ps1'), "This function is intended for use in Python interactive sessions"
+    if not hasattr(sys,'ps1'):
+        logger.warning("`monitor_plot` is intended for use in Python interactive sessions only.")
+        return
     assert kind in ('line','scatter'), "kind must be either 'line' or 'scatter'"
     from IPython.display import display, clear_output
     stop_trigger = stop_trigger if isinstance(stop_trigger, threading.Event) else threading.Event()
