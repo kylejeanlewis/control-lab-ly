@@ -32,7 +32,6 @@ logger.addHandler(handler)
 READ_FORMAT = "{data}\r"
 WRITE_FORMAT = '{channel}{data}º\r'        # command template: <PRE><ADR><CODE><DATA><LRC><POST> # Typical timeout wait is 400ms
 Data = NamedTuple("Data", [("data", str)])
-BoolData = NamedTuple("BoolData", [("data", bool)])
 FloatData = NamedTuple("FloatData", [("data", float)])
 IntData = NamedTuple("IntData", [("data", int)])
 
@@ -110,11 +109,9 @@ class SartoriusDevice(SerialDevice):
         timeout: int = 2,
         *,
         channel: int = 1, 
-        offset: tuple[float] = (0,0,0),
         response_time: float = RESPONSE_TIME,
         tip_inset_mm: int = 12,
         tip_capacitance: int = 276,
-        
         init_timeout:int = 2, 
         data_type: NamedTuple = Data,
         read_format: str = READ_FORMAT,
@@ -148,7 +145,7 @@ class SartoriusDevice(SerialDevice):
         self.model = 'BRL0'
         self.version = ''
         self.total_cycles = 0
-        self.resolution = 1
+        self.volume_resolution = 1
         
         self.capacitance = 0
         self.position = 0
@@ -157,7 +154,6 @@ class SartoriusDevice(SerialDevice):
         self.status = 0
         
         self.channel = channel
-        self.offset = offset
         self.response_time = response_time
         self.tip_capacitance = tip_capacitance
         self.tip_inset_mm = tip_inset_mm
@@ -291,15 +287,15 @@ class SartoriusDevice(SerialDevice):
             return
         self.model = self.getModel()
         self.version = self.getVersion()
-        self.resolution = self.getVolumeResolution()
+        self.volume_resolution = self.getVolumeResolution()
         self.speed_code_in = self.getInSpeedCode()
         self.speed_code_out = self.getOutSpeedCode()
         
         model_name = model or self.model
         model_info = lib.Model[model_name.split('-')[0]].value
         self.info = model_info
-        if self.resolution != model_info.resolution:
-            logger.warning(f"Resolution mismatch: {self.resolution=} | {model_info.resolution=}")
+        if self.volume_resolution != model_info.resolution:
+            logger.warning(f"Resolution mismatch: {self.volume_resolution=} | {model_info.resolution=}")
             logger.warning("Check library values.")
         return model_info
     
