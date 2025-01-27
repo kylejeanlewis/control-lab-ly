@@ -21,7 +21,7 @@ import serial # pip install pyserial
 
 # Local application imports
 from ..liquid_utils import LiquidHandler, Speed
-from . import sartorius_lib as lib
+from .sartorius_api import sartorius_lib as lib
 
 _logger = logging.getLogger("controllably.Transfer")
 _logger.debug(f"Import: OK <{__name__}>")
