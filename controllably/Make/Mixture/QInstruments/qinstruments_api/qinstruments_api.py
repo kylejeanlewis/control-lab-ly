@@ -26,7 +26,7 @@ from .qinstruments_lib import ELMStateCode, ELMStateString, ShakeStateCode, Shak
 logger = logging.getLogger("controllably.Make")
 logger.debug(f"Import: OK <{__name__}>")
 
-READ_FORMAT = "{data}\r\n"
+READ_FORMAT = "{data}\r"
 WRITE_FORMAT = "{data}\r"
 Data = NamedTuple("Data", [("data", str)])
 BoolData = NamedTuple("BoolData", [("data", bool)])
@@ -154,12 +154,12 @@ class _QInstrumentsDevice(SerialDevice):
         baudrate: int = 9600, 
         timeout: int = 1, 
         *,
-        init_timeout:int = 5, 
-        data_type: NamedTuple = NamedTuple("Data", [("data", str)]),
-        read_format:str = "{data}\r",
-        write_format:str = "{data}\r",
-        simulation:bool = False, 
-        verbose:bool = False,
+        init_timeout: int = 5, 
+        data_type: NamedTuple = Data,
+        read_format: str = READ_FORMAT,
+        write_format: str = WRITE_FORMAT,
+        simulation: bool = False, 
+        verbose: bool = False,
         **kwargs
     ):
         """
@@ -233,7 +233,6 @@ class _QInstrumentsDevice(SerialDevice):
             else:
                 out = response
             out: Data|None = out
-            # print(f"{data}:{out}")
             if out is None:
                 all_output.append(None)
                 continue
