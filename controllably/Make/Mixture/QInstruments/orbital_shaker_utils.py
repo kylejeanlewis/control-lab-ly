@@ -30,8 +30,7 @@ import pandas as pd
 from ....core import datalogger
 from ... import Maker
 from ...Heat.heater_mixin import HeaterMixin
-from .qinstruments_api import QInstrumentsDevice
-from .qinstruments_api.qinstruments_api import _QInstrumentsDevice, FloatData
+from .qinstruments_api import QInstrumentsDevice, _QInstrumentsDevice, FloatData
 
 logger = logging.getLogger("controllably.Make")
 logger.debug(f"Import: OK <{__name__}>")
@@ -762,7 +761,7 @@ class BioShake(Maker):
     _default_speed: int = 500
     _default_temperature: float = 25
     _default_flags = FLAGS
-    def __init__(self, port: str, *, verbose: bool = False, simulation:bool = False, **kwargs):
+    def __init__(self, port: str, *, verbose: bool = False, simulation: bool = False, **kwargs):
         """
         Instantiate the class
 
