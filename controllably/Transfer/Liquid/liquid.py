@@ -31,9 +31,9 @@ def interpolate_speed(
     speed:int, 
     *,
     speed_presets: tuple[int|float],
-    volume_resolution: float,
-    step_resolution: int,
-    time_resolution: float
+    volume_resolution: float,           # uL per step
+    step_resolution: int,               # minimum number of steps
+    time_resolution: float              # minimum communication / time delay
 ) -> dict[str, int|float]|None:
     """
     Calculates the best parameters for volume and speed
