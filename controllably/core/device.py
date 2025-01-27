@@ -123,76 +123,6 @@ class StreamingDevice(Protocol):
     def showStream(self, on:bool):
         """Show the stream"""
         raise NotImplementedError
-    
-
-# class datalogging:
-#     def __init__(self):
-#         return
-    
-#     @staticmethod
-#     def get_dataframe(data_store:Iterable[tuple[NamedTuple,datetime]], fields:Iterable[str]) -> pd.DataFrame:
-#         try:
-#             data,timestamps = list([x for x in zip(*data_store)])
-#         except ValueError:
-#             columns = ['timestamp']
-#             columns.extend(fields)
-#             return pd.DataFrame(columns=columns)
-#         return pd.DataFrame(data, index=timestamps).reset_index(names='timestamp')
-
-#     # @staticmethod
-#     # def getData(data_store:Iterable[tuple[NamedTuple,datetime]], *, device:StreamingDevice, query: Any|None = None) -> Any|None:
-#     #     """
-#     #     Get data from device
-#     #     """
-#     #     data: NamedTuple|None = None
-#     #     # if device.stream_event.is_set():
-#     #     out: tuple[NamedTuple, datetime] = data_store[-1] if len(data_store) else None
-#     #     data,_ = out if out is not None else (None,None)
-#     #     # else:
-#     #     #     out = device.query(query)
-#     #     #     data = out[-1] if (out is not None and len(out)) else None
-#     #     return data
-    
-#     @staticmethod
-#     def record( 
-#         on: bool, 
-#         show: bool = False, 
-#         clear_cache: bool = False, 
-#         *, 
-#         query: Any|None = None,
-#         data_store: deque, 
-#         device: StreamingDevice, 
-#         event: threading.Event|None = None
-#     ):
-#         if clear_cache:
-#             data_store.clear()
-#         if isinstance(event, threading.Event):
-#             _ = event.set() if on else event.clear()
-        
-#         device.stopStream()
-#         time.sleep(0.1)
-#         if on:
-#             device.startStream(data=device.processInput(query), buffer=data_store)
-#             device.showStream(show)
-#         return
-    
-#     @staticmethod
-#     def stream( 
-#         on: bool, 
-#         show: bool = False, 
-#         *, 
-#         query: Any|None = None,
-#         data_store: deque, 
-#         device: StreamingDevice, 
-#         event: threading.Event|None = None
-#     ):
-#         if on:
-#             device.startStream(data=device.processInput(query), buffer=data_store)
-#             device.showStream(show)
-#         else:
-#             device.stopStream()
-#             event.clear()
-#         return
 
 
 class TimedDeviceMixin:
@@ -463,10 +393,11 @@ class BaseDevice:
         format_in: str|None = None, 
         format_out: str|None = None,
         data_type: NamedTuple|None = None,
-        timestamp: bool = False
+        timestamp: bool = False,
+        **kwargs
     ) -> Any | None:
         """Query the device"""
-        data_in = self.processInput(data, format_in)
+        data_in = self.processInput(data, format_in, **kwargs)
         if not multi_out:
             raw_out = self.poll(data_in)
             if raw_out is None:
