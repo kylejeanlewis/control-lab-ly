@@ -133,7 +133,7 @@ class Sartorius(LiquidHandler):
         self.tip_threshold = tip_threshold
         self.tip_inset_mm = tip_inset_mm
         
-        self.model_info: lib.Model = None
+        self.model_info: lib.ModelInfo = None
         self.limits = (0,0)
         self.position = 0
         self.speed_code = Speed(3,3)
@@ -476,12 +476,12 @@ class Sartorius(LiquidHandler):
     def getInfo(self, model: Optional[str] = None):
         """Get details of the Sartorius pipette model"""
         model = str(self.__model__()).split('-')[0] if model is None else model
-        if model not in lib.ModelInfo._member_names_:
+        if model not in lib.Model._member_names_:
             logger.warning(f'Received: {model}')
             model = 'BRL0'
             logger.warning(f"Defaulting to: {'BRL0'}")
-            logger.warning(f"Valid models are: {', '.join(lib.ModelInfo._member_names_)}")
-        info: lib.Model = lib.ModelInfo[model].value
+            logger.warning(f"Valid models are: {', '.join(lib.Model._member_names_)}")
+        info: lib.ModelInfo = lib.Model[model].value
         logger.info(info)
         self.model_info = info
         self.capacity = info.capacity
