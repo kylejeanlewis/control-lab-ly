@@ -17,7 +17,7 @@ from types import SimpleNamespace
 from typing import NamedTuple, Any
 
 # Local application imports
-from ....core.device import SerialDevice
+from .....core.device import SerialDevice
 from . import sartorius_lib as lib
 
 _logger = logging.getLogger("controllably.Transfer")
