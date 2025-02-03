@@ -39,6 +39,64 @@ STEP_RESOLUTION = 10
 """Minimum number of steps to have tolerable errors in volume"""
 RESPONSE_TIME = 1.03
 
+def interpolate_speed(
+    volume:int, 
+    speed:int, 
+    *,
+    speed_presets: tuple[int|float],
+    volume_resolution: float,           # uL per step
+    step_resolution: int,               # minimum number of steps
+    time_resolution: float              # minimum communication / time delay
+) -> dict[str, int|float]|None:
+    """
+    Calculates the best parameters for volume and speed
+
+    Args:
+        volume (int): volume to be transferred
+        speed (int): speed at which liquid is transferred
+
+    Returns:
+        dict: dictionary of best parameters
+    """
+    total_steps = volume/volume_resolution
+    if total_steps < step_resolution:
+        # target volume is smaller than the resolution of the pipette
+        logger.error("Volume is too small.")
+        return
+    
+    if speed in speed_presets:
+        # speed is a preset, no interpolation needed
+        return dict(preset_speed=speed, n_intervals=1, step_size=total_steps, delay=0)
+    
+    interpolation_deviations = {}
+    for preset in speed_presets:
+        if preset < speed:
+            # preset is slower than target speed, it will never hit target speed
+            continue
+        total_delay = volume*(1/speed - 1/preset)
+        if total_delay < time_resolution:
+            # required delay is shorter than the communication delay
+            continue
+        n_intervals = int(max(1,min(total_steps/step_resolution, total_delay/time_resolution)))
+        # if n_intervals == 1 and speed != preset:
+        #     # only one interval is needed, but the speed is not the same as the preset
+        #     # this means no interpolation is done, only the preset is used with a suitable delay
+        #     continue
+        steps_per_interval = int(total_steps/n_intervals)
+        delay_per_interval = total_delay/n_intervals
+        area = 0.5 * (volume**2) * (1/volume_resolution) * (1/n_intervals) * (1/speed - 1/preset)
+        interpolation_deviations[area] = dict(
+            preset_speed=preset, n_intervals=n_intervals, 
+            step_size=steps_per_interval, delay=delay_per_interval
+        )
+    if len(interpolation_deviations) == 0:
+        logger.error("No feasible speed parameters.")
+        return
+    best_parameters = interpolation_deviations[min(interpolation_deviations)]
+    logger.info(f'Best parameters: {best_parameters}')
+    return best_parameters
+
+
 class SartoriusDevice(SerialDevice):
     """
     Sartorius object
@@ -381,6 +439,7 @@ class SartoriusDevice(SerialDevice):
         time.sleep(1)
         if home:
             self.position = position
+        self.flags.tip_on = False
         return out.data
     
     def home(self) -> str:
