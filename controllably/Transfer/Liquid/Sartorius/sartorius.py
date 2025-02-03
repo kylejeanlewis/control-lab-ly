@@ -207,7 +207,7 @@ class Sartorius(LiquidHandler):
             input("Press 'Enter' to proceed.")
         return True
         
-    def blowout(self, home:bool = True) -> bool:
+    def blowout(self, home:bool = True, **kwargs) -> bool:
         """
         Blow out the liquid from the pipette tool.
         """
@@ -215,7 +215,7 @@ class Sartorius(LiquidHandler):
         out = self.device.blowout(home=home)
         return out == 'ok'
     
-    def pullback(self) -> bool:
+    def pullback(self, **kwargs) -> bool:
         out = self.device.move(self.pullback_steps)
         return out == 'ok'
     
