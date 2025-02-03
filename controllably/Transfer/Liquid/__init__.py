@@ -7,7 +7,7 @@ Classes:
     SyringeAssembly (LiquidHandler)
 """
 from .liquid_utils import LiquidHandler
-from .syringe_utils import SyringeAssembly
+# from .liquid import LiquidHandler
 
 from controllably import include_this_module
 include_this_module(get_local_only=False)
