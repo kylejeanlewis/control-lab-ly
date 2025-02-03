@@ -11,10 +11,11 @@ Other constants and variables:
 # Standard library imports
 from __future__ import annotations
 import logging
+import time
 
 # Local application imports
 from ..liquid import LiquidHandler
-from .sartorius_api import SartoriusDevice
+from .sartorius_api import SartoriusDevice, interpolate_speed
 
 _logger = logging.getLogger("controllably.Transfer")
 _logger.debug(f"Import: OK <{__name__}>")
@@ -64,38 +65,147 @@ class Sartorius(LiquidHandler):
         self.device: SartoriusDevice = self.device
         
         # Category specific attributes
-        self.speed_in = self.device.preset_speeds[self.device.speed_code_in-1]
-        self.speed_out = self.device.preset_speeds[self.device.speed_code_out-1]
+        self.speed_in: int|float = self.device.preset_speeds[self.device.speed_code_in-1]
+        self.speed_out: int|float = self.device.preset_speeds[self.device.speed_code_out-1]
         self.capacity = self.device.capacity
         self.channel = self.device.channel
         self.volume_resolution = self.device.volume_resolution
         
         self.pullback_steps = 10
+        self.speed_interpolation = {speed: interpolate_speed(speed) for speed in self.device.preset_speeds}
         return
 
-    def aspirate(self, volume: float, speed: float) -> bool:
+    def aspirate(self, 
+        volume: float, 
+        speed: float|None = None, 
+        reagent: str|None = None,
+        *,
+        pullback: bool = False,
+        delay: int = 0, 
+        pause: bool = False, 
+        **kwargs
+    ) -> bool:
         """
-        Aspirate a certain volume of liquid.
+        Aspirate desired volume of reagent
 
         Args:
-            volume (float): The volume of liquid to aspirate.
-            speed (float): The speed at which to aspirate the liquid.
-        """
-        logger.debug(f"Aspirating {volume} uL at {speed} uL/s")
-        self.device.aspirate(volume, speed)
-        return
+            volume (float): target volume
+            speed (float|None, optional): speed to aspirate at. Defaults to None.
+            delay (int, optional): time delay after aspirate. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            reagent (str|None, optional): name of reagent. Defaults to None.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
 
-    def dispense(self, volume: float, speed: float) -> bool:
+        Returns:
+            bool: whether the action is successful
         """
-        Dispense a certain volume of liquid.
+        if (reagent and self.reagent) and reagent != self.reagent:
+            self._logger.warning(f"Reagent {reagent} does not match current reagent {self.reagent}.")
+            return False
+        if not self.isTipOn():
+            self._logger.warning("Ensure tip is attached.")
+            return False
+        if volume > (self.capacity - self.volume):
+            volume = self.capacity - self.volume
+            self._logger.warning("Volume exceeds capacity. Aspirating up to capacity.")
+        if volume < self.volume_resolution:
+            self._logger.warning("Volume is too small. Ensure volume is greater than resolution.")
+            return False
+        volume = round(volume/self.volume_resolution)*self.volume_resolution
+        speed = speed or self.speed_in
+        
+        # Implement actual aspirate function
+        parameters = self.speed_interpolation.get(speed, interpolate_speed(speed))
+        if speed not in self.speed_interpolation:
+            self.speed_interpolation[speed] = parameters
+        if self.speed_in != parameters['preset_speed']:
+            self.setSpeed(parameters['preset_speed'])
+        
+        remaining_steps = round(volume/self.volume_resolution)
+        for i in range(parameters['n_intervals']):
+            start_time = time.perf_counter()
+            step = parameters['step_size'] if (i+1 != parameters['n_intervals']) else remaining_steps
+            move_time = step*self.volume_resolution / parameters['preset_speed']
+            out = self.device.aspirate(step)
+            if out != 'ok':
+                return False
+            remaining_steps -= step
+            sleep_time = max(move_time + delay - (time.perf_counter()-start_time), 0)
+            time.sleep(sleep_time)
+        
+        # Update values
+        time.sleep(delay)
+        self.volume = min(self.volume + volume, self.capacity)
+        if pullback and self.volume < self.capacity:
+            self.pullback(**kwargs)
+        if pause:
+            input("Press 'Enter' to proceed.")
+        return True
+
+    def dispense(self, 
+        volume: float, 
+        speed: float|None = None, 
+        *,
+        blowout: bool = False,
+        delay: int = 0, 
+        pause: bool = False, 
+        ignore: bool = False,
+        **kwargs
+    ) -> bool:
+        """
+        Dispense desired volume of reagent
 
         Args:
-            volume (float): The volume of liquid to dispense.
-            speed (float): The speed at which to dispense the liquid.
+            volume (float): target volume
+            speed (float|None, optional): speed to dispense at. Defaults to None.
+            delay (int, optional): time delay after dispense. Defaults to 0.
+            pause (bool, optional): whether to pause for user intervention. Defaults to False.
+            blowout (bool, optional): whether perform blowout. Defaults to False.
+            ignore (bool, optional): whether to dispense reagent regardless. Defaults to False.
+            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+
+        Returns:
+            bool: whether the action is successful
         """
-        logger.debug(f"Dispensing {volume} uL at {speed} uL/s")
-        self.device.dispense(volume, speed)
-        return
+        if not self.isTipOn():
+            self._logger.warning("Ensure tip is attached.")
+            return False
+        if volume > self.volume and not ignore:
+            volume = self.volume
+            self._logger.warning("Volume exceeds available volume. Dispensing up to available volume.")
+        if volume < self.volume_resolution and not ignore:
+            self._logger.warning("Volume is too small. Ensure volume is greater than resolution.")
+            return False
+        volume = round(volume/self.volume_resolution)*self.volume_resolution
+        speed = speed or self.speed_out
+        
+        # Implement actual dispense function
+        parameters = self.speed_interpolation.get(speed, interpolate_speed(speed))
+        if speed not in self.speed_interpolation:
+            self.speed_interpolation[speed] = parameters
+        if self.speed_out != parameters['preset_speed']:
+            self.setSpeed(-1 * parameters['preset_speed'])
+        
+        remaining_steps = round(volume/self.volume_resolution)
+        for i in range(parameters['n_intervals']):
+            start_time = time.perf_counter()
+            step = parameters['step_size'] if (i+1 != parameters['n_intervals']) else remaining_steps
+            move_time = step*self.volume_resolution / parameters['preset_speed']
+            out = self.device.dispense(step)
+            if out != 'ok':
+                return False
+            remaining_steps -= step
+            sleep_time = max(move_time + delay - (time.perf_counter()-start_time), 0)
+            time.sleep(sleep_time)
+        
+        # Update values
+        time.sleep(delay)
+        self.volume = max(self.volume - volume, 0)
+        if blowout and self.volume == 0:
+            self.blowout(**kwargs)
+        if pause:
+            input("Press 'Enter' to proceed.")
+        return True
         
     def blowout(self, home:bool = True) -> bool:
         """
@@ -110,6 +220,7 @@ class Sartorius(LiquidHandler):
         return out == 'ok'
     
     def addAirGap(self, steps: int = 10) -> bool:
+        assert steps > 0, "Steps must be greater than 0"
         out = self.device.move(steps)
         return out == 'ok'
     
@@ -138,12 +249,9 @@ class Sartorius(LiquidHandler):
         """
         assert abs(speed) in self.device.preset_speeds, f"Speed must be one of {self.device.preset_speeds}"
         logger.debug(f"Setting speed to {speed} uL/s")
-        speed_code = self.device.preset_speeds.index(abs(speed))+1
-        if speed > 0:
-            self.device.setSpeedIn(speed_code)
-        else:
-            self.device.setSpeedOut(speed_code)
-        return
+        speed_code = self.device.info.preset_speeds.index(abs(speed))+1
+        out = self.device.setInSpeedCode(speed_code) if speed > 0 else self.device.setOutSpeedCode(speed_code)
+        return out == 'ok'
     
     def isTipOn(self) -> bool:
         """
