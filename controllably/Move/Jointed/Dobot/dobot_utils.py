@@ -340,6 +340,7 @@ class Dobot(RobotArm):
         
         # Update position
         self.updateJointPosition(by=joint_move_by)
+        self.updateRobotPosition()
         return self.joint_position
 
     def jointMoveTo(self,
@@ -389,7 +390,52 @@ class Dobot(RobotArm):
         
         # Update position
         self.updateJointPosition(to=joint_move_to)
+        self.updateRobotPosition()
         return self.joint_position
+    
+    def rotateTo(self,
+        to: Sequence[float]|Rotation|np.ndarray,
+        speed_factor: float|None = None,
+        *,
+        jog: bool = False,
+        robot: bool = False
+    ) -> Rotation:
+        """
+        Rotate the robot to target orientation
+        
+        Args:
+            to (Sequence[float] | Rotation | np.ndarray): target orientation
+            speed_factor (float, optional): fraction of maximum speed to rotate at. Defaults to None.
+            jog (bool, optional): whether to jog the robot. Defaults to False.
+            robot (bool, optional): whether to rotate the robot. Defaults to False.
+            
+        Returns:
+            Rotation: new tool/robot orientation
+        """
+        assert isinstance(to, (Sequence, Rotation, np.ndarray)), f"Ensure `to` is a Sequence or Rotation or np.ndarray object"
+        if isinstance(to, (Sequence, np.ndarray)):
+            assert len(to) == 3, f"Ensure `to` is a 3-element sequence for c,b,a"
+        rotate_to = to if isinstance(to, Rotation) else Rotation.from_euler('zyx', to, degrees=True)
+        speed_factor = self.speed_factor if speed_factor is None else speed_factor
+        self._logger.info(f"Rotate To | {rotate_to} at speed factor {speed_factor}")
+        
+        # Convert to robot coordinates
+        if robot:
+            rotate_to = rotate_to
+        else:
+            rotate_to = self.tool_offset.invert().Rotation * self.calibrated_offset.invert().Rotation * rotate_to
+        
+        # Implementation of absolute rotation
+        # joint_position = [*self.joint_position[:3],*rotate_to.as_euler('zyx', degrees=True)]
+        # self.jointMoveTo(joint_position, speed_factor=speed_factor, jog=jog, robot=True)
+        self.device.MovJ(*self.robot_position.coordinates, rotate_to.as_euler('zyx', degrees=True)[0])
+        # rotate_by = rotate_to * self.robot_position.Rotation.inv()
+        # self.rotateBy(rotate_by, speed_factor=speed_factor, jog=jog, robot=True)
+
+        # Update position
+        # self.updateJointPosition(to=joint_position)
+        self.updateRobotPosition(Position(self.robot_position.coordinates, rotate_to))
+        return self.robot_position.Rotation if robot else self.worktool_position.Rotation
 
     def reset(self):
         """Reset the robot"""
