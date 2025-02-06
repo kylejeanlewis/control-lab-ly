@@ -208,6 +208,7 @@ class RobotArm(Mover):
         
         # Update position
         self.updateJointPosition(by=joint_move_by)
+        self.updateRobotPosition()
         raise NotImplementedError
         return self.joint_position
 
@@ -249,6 +250,7 @@ class RobotArm(Mover):
         
         # Update position
         self.updateJointPosition(to=joint_move_to)
+        self.updateRobotPosition()
         raise NotImplementedError
         return self.joint_position
     
@@ -351,4 +353,8 @@ class RobotArm(Mover):
             elif isinstance(to, Rotation):
                 self.joint_position = np.array([*self.joint_position[:3],*to.as_euler('zyx', degrees=True)])
         return
+    
+    def updateRobotPosition(self, by = None, to = None):
+        self.updateJointPosition()
+        return super().updateRobotPosition(by, to)
     
