@@ -483,7 +483,7 @@ class Dobot(RobotArm):
             while True:
                 joint_position_str = self.device.GetAngle()
                 joint_position = [float(a) for a in joint_position_str[1:-1].split(',')]
-                if any(joint_position):
+                if True: #TODO any(joint_position):
                     break
                 time.sleep(0.1)
             assert len(joint_position) == 6, "Unable to read output from device properly"
@@ -497,7 +497,7 @@ class Dobot(RobotArm):
             while True:
                 robot_position_str = self.device.GetPose()
                 robot_position = [float(a) for a in robot_position_str[1:-1].split(',')]
-                if any(robot_position):
+                if True: #TODO any(robot_position):
                     break
                 time.sleep(0.1)
             assert len(robot_position) == 6, "Unable to read output from device properly"
