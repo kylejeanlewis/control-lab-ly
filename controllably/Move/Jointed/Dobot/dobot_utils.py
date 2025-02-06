@@ -481,11 +481,11 @@ class Dobot(RobotArm):
     def updateJointPosition(self, by: Sequence[float]|Rotation|np.ndarray|None = None, to: Sequence[float]|Rotation|np.ndarray|None = None):
         try:
             while True:
+                time.sleep(0.1)
                 joint_position_str = self.device.GetAngle()
                 joint_position = [float(a) for a in joint_position_str[1:-1].split(',')]
                 if True: #TODO any(joint_position):
                     break
-                time.sleep(0.1)
             assert len(joint_position) == 6, "Unable to read output from device properly"
             return super().updateJointPosition(to=joint_position)
         except ValueError:
@@ -495,11 +495,11 @@ class Dobot(RobotArm):
     def updateRobotPosition(self, by: Position|Rotation|None = None, to: Position|Rotation|None = None) -> Position:
         try:
             while True:
+                time.sleep(0.1)
                 robot_position_str = self.device.GetPose()
                 robot_position = [float(a) for a in robot_position_str[1:-1].split(',')]
                 if True: #TODO any(robot_position):
                     break
-                time.sleep(0.1)
             assert len(robot_position) == 6, "Unable to read output from device properly"
             current_position = Position(robot_position[:3], Rotation.from_euler('zyx',robot_position[-3:], degrees=True))
             return super().updateRobotPosition(to=current_position)
