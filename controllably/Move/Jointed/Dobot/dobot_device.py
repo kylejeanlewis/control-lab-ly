@@ -163,6 +163,8 @@ class DobotDevice:
         if not self.is_connected:
             return
         try:
+            self.ResetRobot()
+            self.DisableRobot()
             self.close()
         except OSError as e:
             self._logger.error(f"Failed to disconnect from {self.host}")
