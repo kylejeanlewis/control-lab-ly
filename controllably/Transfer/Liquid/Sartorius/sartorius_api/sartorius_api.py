@@ -29,11 +29,10 @@ handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
 
-READ_FORMAT = "{data}\r"
-WRITE_FORMAT = '{channel}{data}º\r'        # command template: <PRE><ADR><CODE><DATA><LRC><POST> # Typical timeout wait is 400ms
-Data = NamedTuple("Data", [("data", str)])
-FloatData = NamedTuple("FloatData", [("data", float)])
-IntData = NamedTuple("IntData", [("data", int)])
+READ_FORMAT = "{channel:1}{data}�\r"      # command template: <PRE><ADR><CODE><DATA><LRC><POST>
+WRITE_FORMAT = '{channel}{data}º\r'       # command template: <PRE><ADR><CODE><DATA><LRC><POST> # Typical timeout wait is 400ms
+Data = NamedTuple("Data", [("data", str), ("channel", int)])
+IntData = NamedTuple("IntData", [("data", int), ("channel", int)])
 
 STEP_RESOLUTION = 10
 """Minimum number of steps to have tolerable errors in volume"""
@@ -110,6 +109,7 @@ class SartoriusDevice(SerialDevice):
         timeout: int = 2,
         *,
         channel: int = 1, 
+        step_resolution: int = STEP_RESOLUTION,
         response_time: float = RESPONSE_TIME,
         tip_inset_mm: int = 12,
         tip_capacitance: int = 276,
@@ -147,6 +147,7 @@ class SartoriusDevice(SerialDevice):
         self.version = ''
         self.total_cycles = 0
         self.volume_resolution = 1
+        self.step_resolution = step_resolution
         
         self.capacitance = 0
         self.position = 0
@@ -160,8 +161,9 @@ class SartoriusDevice(SerialDevice):
         self.tip_inset_mm = tip_inset_mm
         self.tip_length = 0
         
+        self._repeat_query = True
         logger.warning("Any attached pipette tip may drop during initialisation.")
-        self._connect(port)
+        self.connect()
         return
     
     # Properties
@@ -198,7 +200,7 @@ class SartoriusDevice(SerialDevice):
             self.reset()
         return
     
-    def query(self, 
+    def query(self,
         data: Any, 
         multi_out: bool = False, 
         *, 
@@ -209,6 +211,7 @@ class SartoriusDevice(SerialDevice):
         timestamp: bool = False
     ):
         data_type: NamedTuple = data_type or Data
+        format_out = format_out or self.read_format
         responses = super().query(
             data, multi_out, timeout=timeout, 
             format_in=format_in, timestamp=timestamp,
@@ -227,27 +230,42 @@ class SartoriusDevice(SerialDevice):
             if out is None or len(out.data) == 0:
                 all_output.append(None)
                 continue
-            out: Data = Data(out.data[2:-1])
-            if isinstance(out.data, str) and out.data.startswith('er'):
-                error_message = f"{self.model}-{self.channel} received an error from command: {data!r}"
-                self._logger.error(error_message)
-                self._logger.error(lib.ErrorCode[out.data].value)
+            out: Data = out
+            if out.channel != self.channel:
+                self._logger.warning(f"Channel mismatch: self={self.channel} | response={out.channel}")
+                continue
+            if out.data[:2] == 'er':
+                error_code = out.data
+                error_details = lib.ErrorCode[error_code].value
+                self._logger.error(f"{self.model}-{self.channel} received an error from command: {error_code}")
+                self._logger.error(error_details)
                 self.clear()
-                raise AttributeError(error_message)
-            
-            if isinstance(out.data, str) and out.data != 'ok':
-                command_code,reply = out.data[:2],out.data[2:]
-                command_code = command_code.upper()
-                assert command_code in lib.QUERIES, f"Unrecognized command: {command_code=}"
-                assert command_code == data[:2], f"Command mismatch: in={data[:2]} | out={command_code}"
-                out: Data = Data(reply)
+                if error_code != 'er4' or not self._repeat_query:
+                    self._repeat_query = True
+                    raise RuntimeError(error_details)
+                else:   # repeat query once if drive was previously busy
+                    time.sleep(timeout)
+                    self.query(
+                        data, multi_out, timeout=timeout, 
+                        format_in=format_in, format_out=format_out, 
+                        data_type=data_type, timestamp=timestamp
+                    )
+                    self._repeat_query = False
+            elif data.startswith('D') and (data[:2] != out.data[:2].upper()):
+                self._logger.warning(f"Command mismatch: sent={data[:2]} | response={out.data[:2]}")
+                continue
             
             if self.flags.simulation:
-                data_out = data_type('') if data_type.__annotations__['data'] == str else data_type(0)
+                # data_out = data_type('') if data_type.__annotations__['data'] == str else data_type(0)
+                pass
             else:
-                data_out = self.processOutput(out.data, format=format_out, data_type=data_type)
+                data_dict = out._asdict()
+                if out.data != 'ok':
+                    data_dict.update(dict(data=out.data[2:]))
+                data_out = self.processOutput(format_out.format(**data_dict).strip(), format=format_out, data_type=data_type)
                 data_out = data_out if timestamp else data_out[0]
             all_output.append((data_out, now) if timestamp else data_out)
+            self._repeat_query = True
         return all_output if multi_out else all_output[0]
     
     # Status query methods
@@ -257,7 +275,7 @@ class SartoriusDevice(SerialDevice):
         return out.data
     
     def getErrors(self) -> str:
-        out: Data = self.query('DE', data_type=Data)
+        out: Data = self.query('DE')
         return out.data
     
     def getPosition(self) -> int:
@@ -301,7 +319,7 @@ class SartoriusDevice(SerialDevice):
         return model_info
     
     def getModel(self) -> str:
-        out: Data = self.query('DM', data_type=Data)
+        out: Data = self.query('DM')
         model_name = out.data.split('-')[0]
         if model_name not in lib.Model._member_names_:
             logger.warning(f'Received: {model_name}')
@@ -310,8 +328,8 @@ class SartoriusDevice(SerialDevice):
         return out.data
     
     def getVolumeResolution(self) -> float:
-        out: FloatData = self.query('DR', data_type=FloatData)
-        return out.data
+        out: IntData = self.query('DR', data_type=IntData)
+        return out.data / 1000
     
     def getInSpeedCode(self) -> int:
         out: IntData = self.query('DI', data_type=IntData)
@@ -322,7 +340,7 @@ class SartoriusDevice(SerialDevice):
         return out.data
     
     def getVersion(self) -> str:
-        out: Data = self.query('DV', data_type=Data)
+        out: Data = self.query('DV')
         return out.data
     
     def getLifetimeCycles(self) -> int:
@@ -331,20 +349,20 @@ class SartoriusDevice(SerialDevice):
     
     # Setter methods
     def setInSpeedCode(self, value:int) -> str:
-        out: Data = self.query(f'SI{value}', data_type=Data)
+        out: Data = self.query(f'SI{value}')
         if out.data == 'ok':
             self.speed_code_in = value
         return out.data
     
     def setOutSpeedCode(self, value:int) -> str:
-        out: Data = self.query(f'SO{value}', data_type=Data)
+        out: Data = self.query(f'SO{value}')
         if out.data == 'ok':
             self.speed_code_out = value
         return out.data
     
     def setChannelID(self, channel:int) -> str:
         assert 1 <= channel <= 9, "Channel ID must be between 1 and 9!"
-        out: Data = self.query(f'*A{channel}', data_type=Data)
+        out: Data = self.query(f'*A{channel}')
         if out.data == 'ok':
             self.channel = channel
         return out.data
@@ -361,7 +379,7 @@ class SartoriusDevice(SerialDevice):
         position = self.home_position if position is None else position
         position = round(position)
         data = f'RB{position}' if home else 'RB'
-        out: Data = self.query(data, data_type=Data)
+        out: Data = self.query(data)
         time.sleep(1)
         if home:
             self.position = position
@@ -378,7 +396,7 @@ class SartoriusDevice(SerialDevice):
         position = self.home_position if position is None else position
         position = round(position)
         data = f'RE{position}' if home else 'RE'
-        out: Data = self.query(data, data_type=Data)
+        out: Data = self.query(data)
         time.sleep(1)
         if home:
             self.position = position
@@ -395,24 +413,28 @@ class SartoriusDevice(SerialDevice):
         steps = round(steps)
         assert (min(self.limits) <= (self.position+steps) <= max(self.limits)), "Range limits reached!"
         data = f'RI{steps}' if steps >= 0 else f'RO{abs(steps)}'
-        out: Data = self.query(data, data_type=Data)
-        while self.getPosition() != self.position+steps:
-            time.sleep(0.01)
+        out: Data = self.query(data)
+        while self.flags.busy:
+            self.getStatus()
+            time.sleep(0.3)
         self.position += steps
+        # self.getPosition()
         return out.data
     
     def moveTo(self, position:int) -> str:
         position = round(position)
         assert (min(self.limits) <= position <= max(self.limits)), "Range limits reached!"
-        out: Data = self.query(f'RP{position}', data_type=Data)
-        while self.getPosition() != position:
-            time.sleep(0.01)
+        out: Data = self.query(f'RP{position}')
+        while self.flags.busy:
+            self.getStatus()
+            time.sleep(0.3)
         self.position = position
+        # self.getPosition()
         return out.data
     
     def zero(self) -> str:
         self.eject()
-        out: Data = self.query('RZ', data_type=Data)
+        out: Data = self.query('RZ')
         self.position = 0
         time.sleep(2)
         return out.data
@@ -427,9 +449,9 @@ def interpolate_speed(
     speed:int, 
     *,
     speed_presets: tuple[int|float],
-    volume_resolution: float,           # uL per step
-    step_resolution: int,               # minimum number of steps
-    time_resolution: float              # minimum communication / time delay
+    volume_resolution: float,               # uL per step
+    step_resolution: int = STEP_RESOLUTION, # minimum number of steps
+    time_resolution: float = RESPONSE_TIME  # minimum communication / time delay
 ) -> dict[str, int|float]|None:
     """
     Calculates the best parameters for volume and speed
@@ -445,7 +467,7 @@ def interpolate_speed(
     if total_steps < step_resolution:
         # target volume is smaller than the resolution of the pipette
         logger.error("Volume is too small.")
-        return dict(preset_speed=speed_presets[0], n_intervals=1, step_size=0, delay=0)
+        return dict(preset_speed=speed_presets[0], n_intervals=0, step_size=0, delay=0)
     
     if speed in speed_presets:
         # speed is a preset, no interpolation needed
@@ -474,7 +496,7 @@ def interpolate_speed(
         )
     if len(interpolation_deviations) == 0:
         logger.error("No feasible speed parameters.")
-        return dict(preset_speed=speed_presets[0], n_intervals=1, step_size=0, delay=0)
+        return dict(preset_speed=speed_presets[0], n_intervals=0, step_size=0, delay=0)
     best_parameters = interpolation_deviations[min(interpolation_deviations)]
     logger.info(f'Best parameters: {best_parameters}')
     return best_parameters
