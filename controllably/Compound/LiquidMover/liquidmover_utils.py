@@ -9,7 +9,7 @@ Classes:
 from __future__ import annotations
 import logging
 from types import SimpleNamespace
-from typing import Sequence, Optional, Protocol
+from typing import Sequence, Protocol
 
 # Third party imports
 import numpy as np
@@ -33,6 +33,8 @@ class Liquid(Protocol):
     def dispense(self, *args, **kwargs):
         ...
     def setFlag(self, *args, **kwargs):
+        ...
+    def attach(self, *args, **kwargs):      # For liquid handlers with replaceable tips
         ...
     def eject(self, *args, **kwargs):       # For liquid handlers with replaceable tips
         ...
@@ -772,6 +774,7 @@ class LiquidMover(Compound):
         
         self.mover.move('z', self.tip_approach_distance+tip_length-tip_inset, self.speed_factor_up)
         self.liquid.setFlag(tip_on=True)
+        # self.liquid.attach(tip_length=tip_length)
         
         if not self.liquid.isTipOn():
             self.mover.tool_offset.translate((0,0,tip_length))
