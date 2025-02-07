@@ -63,7 +63,7 @@ class GCodeDevice(Protocol):
         """Write data to the device"""
         raise NotImplementedError
 
-    def checkSettings(self) -> dict[str, int|float|str]:
+    def getSettings(self) -> dict[str, int|float|str]:
         """Check the settings of the device"""
         raise NotImplementedError
     
@@ -445,5 +445,5 @@ class GCode(Mover):
         """Connect to the device"""
         self.device.connect()
         self.setSpeedFactor(1.0)
-        self.settings = self.device.checkSettings()
+        self.settings = self.device.getSettings()
         return

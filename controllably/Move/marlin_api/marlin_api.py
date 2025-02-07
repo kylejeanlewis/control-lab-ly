@@ -63,7 +63,7 @@ class Marlin(SerialDevice):
     def __version__(self) -> str:
         return self._version
     
-    def checkInfo(self) -> dict[str, str]:
+    def getInfo(self) -> dict[str, str]:
         """
         Query device information
         
@@ -87,7 +87,7 @@ class Marlin(SerialDevice):
             info[parts[0]] = ' '.join(parts[1:])
         return info
     
-    def checkSettings(self) -> dict[str, int|float|str]:
+    def getSettings(self) -> dict[str, int|float|str]:
         """
         Query device settings
         
@@ -140,7 +140,7 @@ class Marlin(SerialDevice):
         settings['home_offset_z'] = settings['M206']['Z']
         return settings
     
-    def checkStatus(self) -> tuple[str, np.ndarray[float], np.ndarray[float]]:  # TODO: Implement status check
+    def getStatus(self) -> tuple[str, np.ndarray[float], np.ndarray[float]]:  # TODO: Implement status check
         """
         Query device status
         
@@ -170,7 +170,7 @@ class Marlin(SerialDevice):
     def halt(self) -> Position:         # TODO: Check if this is the correct implementation
         """Halt the device"""
         self.query('M410')
-        _,coordinates,_home_offset = self.checkStatus()
+        _,coordinates,_home_offset = self.getStatus()
         return Position(coordinates-_home_offset)
     
     def home(self, axis: str|None = None, **kwargs) -> bool:        # TODO: Test if single axis homing works
@@ -248,7 +248,7 @@ class Marlin(SerialDevice):
             if line.startswith('Marlin'):
                 self._version = line.split(" ")[-1]
                 break
-        settings = self.checkSettings()
+        settings = self.getSettings()
         self._home_offset = np.array([settings.get('home_offset_x',0),settings.get('home_offset_y',0),settings.get('home_offset_z',0)])
         
         self._logger.info(startup_lines)
