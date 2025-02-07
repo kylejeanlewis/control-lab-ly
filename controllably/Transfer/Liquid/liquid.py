@@ -136,6 +136,7 @@ class LiquidHandler:
         pullback: bool = False,
         delay: int = 0, 
         pause: bool = False, 
+        ignore: bool = False,
         **kwargs
     ) -> bool:
         """
@@ -155,10 +156,13 @@ class LiquidHandler:
         if (reagent and self.reagent) and reagent != self.reagent:
             self._logger.warning(f"Reagent {reagent} does not match current reagent {self.reagent}.")
             return False
-        if volume > (self.capacity - self.volume):
+        if volume > (self.capacity - self.volume) and ignore:
             volume = self.capacity - self.volume
             self._logger.warning("Volume exceeds capacity. Aspirating up to capacity.")
-        if volume < self.volume_resolution:
+        elif volume > (self.capacity - self.volume):
+            self._logger.warning("Volume exceeds capacity.")
+            return False
+        if volume < self.volume_resolution and not ignore:
             self._logger.warning("Volume is too small. Ensure volume is greater than resolution.")
             return False
         volume = round(volume/self.volume_resolution)*self.volume_resolution
@@ -214,9 +218,12 @@ class LiquidHandler:
         Returns:
             bool: whether the action is successful
         """
-        if volume > self.volume and not ignore:
+        if volume > self.volume and ignore:
             volume = self.volume
             self._logger.warning("Volume exceeds available volume. Dispensing up to available volume.")
+        elif volume > self.volume:
+            self._logger.warning("Volume exceeds available volume.")
+            return False
         if volume < self.volume_resolution and not ignore:
             self._logger.warning("Volume is too small. Ensure volume is greater than resolution.")
             return False
@@ -326,7 +333,7 @@ class LiquidHandler:
             bool: whether the action is successful
         """
         ret1 = self.rinse(speed, reagent, cycles, delay=delay, **kwargs) if cycles > 0 else True
-        ret2 = self.aspirate(self.capacity, speed, reagent, pullback=pullback, delay=delay, pause=pause, **kwargs)
+        ret2 = self.aspirate(self.capacity, speed, reagent, pullback=pullback, delay=delay, pause=pause, ignore=True, **kwargs)
         return all([ret1,ret2])
 
     def rinse(self, 
