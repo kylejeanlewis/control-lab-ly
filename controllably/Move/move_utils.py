@@ -309,7 +309,7 @@ class Mover:
         logging.info(f"Entering zone: {zone}")
         self.moveToSafeHeight(speed_factor=speed_factor)
         for waypoint in waypoints:
-            self.moveTo(waypoint, speed_factor=speed_factor)
+            self.moveTo(waypoint, speed_factor=speed_factor)        # TODO: add rotation
         try:
             self.rotateTo(new_zone.bottom_left_corner.Rotation, speed_factor=speed_factor)
         except NotImplementedError:
