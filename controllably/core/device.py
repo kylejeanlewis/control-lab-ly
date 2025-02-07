@@ -190,7 +190,7 @@ class BaseDevice:
         self.data_type = data_type
         self.read_format = read_format
         self.write_format = write_format
-        fields = set([field for _, field, _, _ in Formatter().parse(read_format) if field])
+        fields = set([field for _, field, _, _ in Formatter().parse(read_format) if field and not field.startswith('_')])
         assert set(data_type._fields) == fields, "Ensure data type fields match read format fields"
         
         # Streaming attributes
@@ -358,14 +358,14 @@ class BaseDevice:
         format = format or self.read_format
         format = format.strip()
         data_type = data_type or self.data_type
-        fields = set([field for _, field, _, _ in Formatter().parse(format) if field])
+        fields = set([field for _, field, _, _ in Formatter().parse(format) if field and not field.startswith('_')])
         assert set(data_type._fields) == fields, "Ensure data type fields match read format fields"
         
         parse_out = parse.parse(format, data)
         if parse_out is None:
             self._logger.warning(f"Failed to parse data: {data!r}")
             return None, timestamp
-        parsed = parse_out.named
+        parsed = {k:v for k,v in parse_out.named.items() if not k.startswith('_')}
         for key, value in data_type.__annotations__.items():
             try:
                 if value == int and not parsed[key].isnumeric():
