@@ -164,7 +164,7 @@ class Controller:
         if key in self.tool_methods:
             logger.warning(f"{tool.__class__}_{key} already registered.")
             return False
-        self.tool_methods[key] = self.exposeMethods(tool)
+        self.tool_methods[key] = self.extractMethods(tool)
         return
     
     def unregister(self, tool: Callable) -> bool:
@@ -179,7 +179,7 @@ class Controller:
         return success
     
     @staticmethod
-    def exposeMethods(tool: Callable) -> ClassMethods:
+    def extractMethods(tool: Callable) -> ClassMethods:
         methods = {}
         for method in dir(tool):
             if method.startswith('_'):
@@ -220,7 +220,11 @@ class Controller:
             name = tool.__class__.__name__,
             methods = methods
         )
-        
+    
+    def exposeMethods(self):
+        assert self.role == 'model', "Only the model can expose methods"
+        return {k:v.__dict__ for k,v in self.tool_methods.items()}
+    
     def start(self):
         assert self.role == 'model', "Only the model can start execution loop"
         self.execution_event.set()
@@ -240,8 +244,12 @@ class Controller:
     def executeCommand(command: Mapping[str, Any]):
         logger.error("executeCommand not implemented")
         
+        # Insert case for getting and exposing methods
+        ...
+        
         # Implement the command execution logic here
         data = command
+        
         return data
     
     def _loop_execution(self):
@@ -287,6 +295,11 @@ class Controller:
         assert self.role == 'view', "Only the view can receive data"
         data = self.interpreter.decodeData(package)
         return data
+    
+    def getMethods(self):
+        assert self.role == 'view', "Only the view can get methods"
+        command = dict(...)
+        return self.transmitRequest(command)
     
     # Controller side
     def relay(self, message: Message, callback_type:str):
