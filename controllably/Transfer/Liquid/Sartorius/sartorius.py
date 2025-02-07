@@ -46,6 +46,8 @@ class Sartorius(LiquidHandler):
         channel: int = 1,
         verbose: bool = False,
         simulation: bool = False,
+        tip_inset_mm: int = 12,
+        tip_capacitance: int = 276,
         **kwargs
     ):
         """
@@ -59,6 +61,7 @@ class Sartorius(LiquidHandler):
         """
         super().__init__(
             device_type=SartoriusDevice, port=port, channel=channel, 
+            tip_inset_mm=tip_inset_mm, tip_capacitance=tip_capacitance,
             verbose=verbose, simulation=simulation, **kwargs
         )
         assert isinstance(self.device, SartoriusDevice), "Ensure device is of type `SartoriusDevice`"
@@ -70,10 +73,20 @@ class Sartorius(LiquidHandler):
         self.capacity = self.device.capacity
         self.channel = self.device.channel
         self.volume_resolution = self.device.volume_resolution
-        
+        self.tip_length = 0
         self.pullback_steps = 10
-        self.speed_interpolation = {speed: interpolate_speed(speed) for speed in self.device.preset_speeds}
+        
+        constraints = dict(
+            speed_presets=self.device.preset_speeds, volume_resolution=self.volume_resolution,
+            step_resolution=self.device.step_resolution, time_resolution=self.device.response_time
+        )
+        self.speed_interpolation = {(self.capacity,speed): interpolate_speed(self.capacity,speed,**constraints) for speed in self.device.preset_speeds}
         return
+    
+    # Properties
+    @property
+    def tip_inset_mm(self) -> float:
+        return self.device.tip_inset_mm
 
     def aspirate(self, 
         volume: float, 
@@ -82,7 +95,8 @@ class Sartorius(LiquidHandler):
         *,
         pullback: bool = False,
         delay: int = 0, 
-        pause: bool = False, 
+        pause: bool = False,
+        ignore: bool = False, 
         **kwargs
     ) -> bool:
         """
@@ -105,21 +119,30 @@ class Sartorius(LiquidHandler):
         if not self.isTipOn():
             self._logger.warning("Ensure tip is attached.")
             return False
-        if volume > (self.capacity - self.volume):
+        if volume > (self.capacity - self.volume) and ignore:
             volume = self.capacity - self.volume
             self._logger.warning("Volume exceeds capacity. Aspirating up to capacity.")
-        if volume < self.volume_resolution:
+        elif volume > (self.capacity - self.volume):
+            self._logger.warning("Volume exceeds capacity.")
+            return False
+        if volume < self.volume_resolution and not ignore:
             self._logger.warning("Volume is too small. Ensure volume is greater than resolution.")
             return False
         volume = round(volume/self.volume_resolution)*self.volume_resolution
         speed = speed or self.speed_in
         
         # Implement actual aspirate function
-        parameters = self.speed_interpolation.get(speed, interpolate_speed(speed))
-        if speed not in self.speed_interpolation:
-            self.speed_interpolation[speed] = parameters
+        constraints = dict(
+            speed_presets=self.device.preset_speeds, volume_resolution=self.volume_resolution,
+            step_resolution=self.device.step_resolution, time_resolution=self.device.response_time
+        )
+        parameters = self.speed_interpolation.get((volume,speed), interpolate_speed(volume,speed,**constraints))
+        if (volume,speed) not in self.speed_interpolation:
+            self.speed_interpolation[(volume,speed)] = parameters
+        if parameters['n_intervals'] == 0:
+            return False
         if self.speed_in != parameters['preset_speed']:
-            self.setSpeed(parameters['preset_speed'])
+            self.setSpeed(parameters['preset_speed'], as_default=False)
         
         remaining_steps = round(volume/self.volume_resolution)
         for i in range(parameters['n_intervals']):
@@ -140,6 +163,7 @@ class Sartorius(LiquidHandler):
             self.pullback(**kwargs)
         if pause:
             input("Press 'Enter' to proceed.")
+        self.setSpeed(self.speed_in)
         return True
 
     def dispense(self, 
@@ -170,9 +194,12 @@ class Sartorius(LiquidHandler):
         if not self.isTipOn():
             self._logger.warning("Ensure tip is attached.")
             return False
-        if volume > self.volume and not ignore:
+        if volume > self.volume and ignore:
             volume = self.volume
             self._logger.warning("Volume exceeds available volume. Dispensing up to available volume.")
+        elif volume > self.volume:
+            self._logger.warning("Volume exceeds available volume.")
+            return False
         if volume < self.volume_resolution and not ignore:
             self._logger.warning("Volume is too small. Ensure volume is greater than resolution.")
             return False
@@ -180,11 +207,17 @@ class Sartorius(LiquidHandler):
         speed = speed or self.speed_out
         
         # Implement actual dispense function
-        parameters = self.speed_interpolation.get(speed, interpolate_speed(speed))
-        if speed not in self.speed_interpolation:
-            self.speed_interpolation[speed] = parameters
+        constraints = dict(
+            speed_presets=self.device.preset_speeds, volume_resolution=self.volume_resolution,
+            step_resolution=self.device.step_resolution, time_resolution=self.device.response_time
+        )
+        parameters = self.speed_interpolation.get((volume,speed), interpolate_speed(volume,speed,**constraints))
+        if (volume,speed) not in self.speed_interpolation:
+            self.speed_interpolation[(volume,speed)] = parameters
+        if parameters['n_intervals'] == 0:
+            return False
         if self.speed_out != parameters['preset_speed']:
-            self.setSpeed(-1 * parameters['preset_speed'])
+            self.setSpeed(-1 * parameters['preset_speed'], as_default=False)
         
         remaining_steps = round(volume/self.volume_resolution)
         for i in range(parameters['n_intervals']):
@@ -205,6 +238,7 @@ class Sartorius(LiquidHandler):
             self.blowout(**kwargs)
         if pause:
             input("Press 'Enter' to proceed.")
+        self.setSpeed(self.speed_out)
         return True
         
     def blowout(self, home:bool = True, **kwargs) -> bool:
@@ -224,13 +258,28 @@ class Sartorius(LiquidHandler):
         out = self.device.move(steps)
         return out == 'ok'
     
+    def attach(self, tip_length: int|float) -> bool:
+        """
+        Attach the tip to the pipette tool.
+        """
+        logger.debug("Attaching tip")
+        self.device.flags.tip_on = True
+        self.device.flags.tip_on = self.device.isTipOn()
+        if self.device.flags.tip_on:
+            self.tip_length = tip_length
+        return self.device.flags.tip_on
+    
     def eject(self) -> bool:
         """
         Eject the tip from the pipette tool.
         """
         logger.debug("Ejecting tip")
         out = self.device.eject()
-        return out == 'ok'
+        success = (out == 'ok')
+        if success:
+            self.device.flags.tip_on = False
+            self.tip_length = 0
+        return success
         
     def home(self) -> bool:
         """
@@ -240,7 +289,7 @@ class Sartorius(LiquidHandler):
         out = self.device.home()
         return out == 'ok'
         
-    def setSpeed(self, speed: int|float):
+    def setSpeed(self, speed: int|float, as_default:bool = True) -> bool:
         """
         Set the speed of the pipette tool.
 
@@ -251,6 +300,11 @@ class Sartorius(LiquidHandler):
         logger.debug(f"Setting speed to {speed} uL/s")
         speed_code = self.device.info.preset_speeds.index(abs(speed))+1
         out = self.device.setInSpeedCode(speed_code) if speed > 0 else self.device.setOutSpeedCode(speed_code)
+        if as_default:
+            if speed > 0:
+                self.speed_in = speed
+            else:
+                self.speed_out = speed
         return out == 'ok'
     
     def isTipOn(self) -> bool:
