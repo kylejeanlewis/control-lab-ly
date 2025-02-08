@@ -492,7 +492,7 @@ class BaseDevice:
         
         while self.stream_event.is_set():
             try:
-                out, now = self.data_queue.get()#(block=False)
+                out, now = self.data_queue.get(timeout=5)
                 out, now = self.processOutput(out, format=format, data_type=data_type, timestamp=now)
                 if out is not None:
                     buffer.append((out, now))
