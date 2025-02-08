@@ -4,11 +4,12 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass
 import inspect
+import json
 import logging
 import queue
 import threading
 import time
-from typing import Callable, Protocol, Mapping, Any
+from typing import Callable, Protocol, Mapping, Any, Iterable
 
 # Third-party imports
 import requests
@@ -130,30 +131,57 @@ class Interpreter:
         data = package
         return data
     
+    
+class JSONInterpreter(Interpreter):
+    def __init__(self):
+        return
+    
+    @staticmethod
+    def decodeRequest(request: Message|str) -> dict[str, Any]:
+        return json.loads(request)
+    
+    @staticmethod
+    def encodeData(data: Any) -> Message|str:
+        return json.dumps(data)
+    
+    @staticmethod
+    def encodeRequest(command: Mapping[str, Any]) -> Message|str:
+        request = json.dumps(command)
+        return request
+    
+    @staticmethod
+    def decodeData(package: Message|str) -> Any:
+        data = json.loads(package)
+        return data
+    
 
 class Controller:
     def __init__(self, role: str, interpreter: Interpreter):
-        assert role in ('model', 'view', 'both'), f"Invalid role: {role}"
+        assert role in ('model', 'view', 'both', 'relay'), f"Invalid role: {role}"
         assert isinstance(interpreter, Interpreter), f"Invalid interpreter: {interpreter}"
         self.role = role
         self.interpreter = interpreter
         
-        self.callbacks: dict[str, list[Callable]] = dict(request=[], data=[])
+        self.relays = []
+        self.callbacks: dict[str, dict[str,Callable]] = dict(request={}, data={})
         self.command_queue = TwoTierQueue()
         self.data_buffer = deque()
-        self.object_methods: dict[str, ClassMethods] = dict()
+        self.subjects = {}
+        self.subject_methods: dict[str, ClassMethods] = dict()
         
-        # self.receiver_event = threading.Event()
         self.execution_event = threading.Event()
         self.threads = {}
+        
+        if self.role in ('model', 'both'):
+            self.register(self)
         pass
     
     # Model side
     def receiveRequest(self, request: Message):
         assert self.role in ('model', 'both'), "Only the model can receive requests"
         command = self.interpreter.decodeRequest(request)
-        priority = command.pop("priority", False)
-        rank = command.pop("rank", None)
+        priority = command.get("priority", False)
+        rank = command.get("rank", None)
         self.command_queue.put(command, priority=priority, rank=rank)
         return
     
@@ -163,44 +191,45 @@ class Controller:
         self.relayData(package)
         return
     
-    def register(self, tool: Callable):
-        assert self.role in ('model', 'both'), "Only the model can register tools"
-        key = id(tool)
-        if key in self.object_methods:
-            logger.warning(f"{tool.__class__}_{key} already registered.")
+    def register(self, subject: Callable):
+        assert self.role in ('model', 'both'), "Only the model can register subject"
+        key = id(subject)
+        if key in self.subject_methods:
+            logger.warning(f"{subject.__class__}_{key} already registered.")
             return False
-        self.object_methods[key] = self.extractMethods(tool)
+        self.subject_methods[key] = self.extractMethods(subject)
+        self.subjects[key] = subject
         return
     
-    def unregister(self, tool: Callable) -> bool:
-        assert self.role in ('model', 'both'), "Only the model can unregister tools"
-        key = id(tool)
+    def unregister(self, subject: Callable) -> bool:
+        assert self.role in ('model', 'both'), "Only the model can unregister subject"
+        key = id(subject)
         success = False
         try:
-            self.object_methods.pop(key)
+            self.subject_methods.pop(key)
             success = True
         except KeyError:
-            logger.warning(f"{tool.__class__}_{key} was not registered.")
+            logger.warning(f"{subject.__class__}_{key} was not registered.")
         return success
     
     @staticmethod
-    def extractMethods(tool: Callable) -> ClassMethods:
+    def extractMethods(subject: Callable) -> ClassMethods:
         methods = {}
-        for method in dir(tool):
+        for method in dir(subject):
             if method.startswith('_'):
                 continue
             is_method = False
-            if inspect.ismethod(getattr(tool, method)):
+            if inspect.ismethod(getattr(subject, method)):
                 is_method = True
-            elif isinstance(inspect.getattr_static(tool, method), staticmethod):
+            elif isinstance(inspect.getattr_static(subject, method), staticmethod):
                 is_method = True
-            elif isinstance(inspect.getattr_static(tool, method), classmethod):
+            elif isinstance(inspect.getattr_static(subject, method), classmethod):
                 is_method = True
             if not is_method:
                 continue
             
             methods[method] = dict()
-            signature = inspect.signature(getattr(tool, method))
+            signature = inspect.signature(getattr(subject, method))
             parameters = dict()
             for name, param in signature.parameters.items():
                 if name == 'self':
@@ -222,13 +251,13 @@ class Controller:
                 methods[method]['returns'] = returns
         
         return ClassMethods(
-            name = tool.__class__.__name__,
+            name = subject.__class__.__name__,
             methods = methods
         )
     
     def exposeMethods(self):
         assert self.role in ('model', 'both'), "Only the model can expose methods"
-        return {k:v.__dict__ for k,v in self.object_methods.items()}
+        return {k:v.__dict__ for k,v in self.subject_methods.items()}
     
     def start(self):
         assert self.role in ('model', 'both'), "Only the model can start execution loop"
@@ -246,22 +275,49 @@ class Controller:
         for thread in self.threads.values():
             thread.join()
         return
-    
-    # @staticmethod
+   
     def executeCommand(self, command: Mapping[str, Any]) -> Any:
-        logger.error("executeCommand not implemented")
+        address = command.get('address', dict(sender=[], target=[]))
+        target = address.get('sender', [])
+        target.extend(self.relays)
+        sender = [id(self)]
         
         # Insert case for getting and exposing methods
-        if command.get('class') == 'Controller' and command.get('method') == 'exposeMethods':
-            return self.exposeMethods()
+        if command.get('subject_id') is None and command.get('method') == 'exposeMethods':
+            return dict(
+                address = dict(sender=sender, target=target),
+                priority = command.get('priority', False),
+                rank = command.get('rank', None),
+                data = self.exposeMethods()
+            )
         
         # Implement the command execution logic here
+        
+        subject_id = command.get('subject_id', 0)
+        if subject_id not in self.subjects:
+            logger.error(f"Subject not found: {subject_id}")
+            return {}
+        
+        subject = self.subjects[subject_id]
+        method_name = command.get('method', '')
+        try:
+            method: Callable = getattr(subject, method_name)
+        except AttributeError:
+            logger.error(f"Method not found: {method_name}")
+            return {}
+        
         logger.info(f"Executing command: {command}")
-        time.sleep(5)
-        data = command
+        args = command.get('args', [])
+        kwargs = command.get('kwargs', {})
+        out = method(*args, **kwargs)
         logger.info(f"Completed command: {command}")
         
-        return data
+        return dict(
+            address = dict(sender=sender, target=target),
+            priority = command.get('priority', False),
+            rank = command.get('rank', None),
+            data = out
+        )
     
     def _loop_execution(self):
         assert self.role in ('model', 'both'), "Only the model can execute commands"
@@ -295,8 +351,19 @@ class Controller:
         return
     
     # View side
-    def transmitRequest(self, command: Mapping[str, Any], *, priority: bool = False, rank: int = None):
+    def transmitRequest(self, 
+        command: Mapping[str, Any], 
+        target: Iterable[int]|None = None, 
+        *, 
+        private:bool = True, 
+        priority: bool = False, 
+        rank: int = None
+    ):
         assert self.role in ('view', 'both'), "Only the view can transmit requests"
+        sender = [id(self)] if private else []
+        target = target if target is not None else []
+        target.extend(self.relays)
+        command['address'] = dict(sender=sender, target=target)
         command['priority'] = priority
         command['rank'] = rank
         request = self.interpreter.encodeRequest(command)
@@ -309,32 +376,61 @@ class Controller:
         self.data_buffer.append(data)
         return
     
-    def getMethods(self):
+    def getMethods(self, target: Iterable[int]|None = None, *, private: bool = True):
         assert self.role in ('view', 'both'), "Only the view can get methods"
-        command = {'class':'Controller', 'method':'exposeMethods'}
-        return self.transmitRequest(command)
+        command = dict(method='exposeMethods')
+        return self.transmitRequest(command, target, private=private)
     
     # Controller side
-    def relay(self, message: Message, callback_type:str):
+    def relay(self, message: Message, callback_type:str, addresses: Iterable[int]|None = None):
         assert callback_type in self.callbacks, f"Invalid callback type: {callback_type}"
-        for callback in self.callbacks[callback_type]:
+        if id(self) in addresses and self.role == 'relay':
+            addresses.remove(id(self))
+        addresses = addresses or self.callbacks[callback_type].keys()
+        for address in addresses:
+            if address not in self.callbacks[callback_type]:
+                logger.warning(f"Callback not found for address: {address}")
+                continue
+            callback = self.callbacks[callback_type][address]
             callback(message)
+        time.sleep(1)
         return
     
     def relayRequest(self, request: Message):
-        return self.relay(request, 'request')
+        content = self.interpreter.decodeRequest(request)
+        addresses = content.get('address', dict(sender=[], target=[])).get('target', [])
+        # addresses.append(id(self))
+        return self.relay(request, 'request', addresses=addresses)
     
     def relayData(self, package: Message):
-        return self.relay(package, 'data')
+        content = self.interpreter.decodeData(package)
+        addresses = content.get('address', dict(sender=[], target=[])).get('target', [])
+        # addresses.append(id(self))
+        return self.relay(package, 'data', addresses=addresses)
     
     def subscribe(self, callback: Callable, callback_type: str):
         assert callback_type in self.callbacks, f"Invalid callback type: {callback_type}"
         assert isinstance(callback, Callable), f"Invalid callback: {callback}"
-        self.callbacks[callback_type].append(callback)
+        key = id(callback)
+        if '__self__' in dir(callback):
+            key = id(callback.__self__)
+            if isinstance(callback.__self__, Controller) and callback.__self__.role == 'relay':
+                self.relays.append(key)
+        if key in self.callbacks[callback_type]:
+            logger.warning(f"{callback} already subscribed to {callback_type}")
+            return
+        self.callbacks[callback_type][key] = callback
         return
     
     def unsubscribe(self, callback: Callable, callback_type: str):
-        if callback in self.callbacks[callback_type]:
-            self.callbacks[callback_type].remove(callback)
+        assert callback_type in self.callbacks, f"Invalid callback type: {callback_type}"
+        assert isinstance(callback, Callable), f"Invalid callback: {callback}"
+        key = id(callback.__self__) if '__self__' in dir(callback) else id(callback)
+        _callback = self.callbacks[callback_type].pop(key, None)
+        if _callback is None:
+            logger.warning(f"{callback} was not subscribed to {callback_type}")
+            return
+        if key in self.relays:
+            self.relays.remove(key)
         return
     
