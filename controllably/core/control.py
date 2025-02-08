@@ -173,21 +173,34 @@ class Controller:
         self.threads = {}
         
         if self.role in ('model', 'both'):
-            self.register(self)
-        pass
+            # self.register(self)
+            pass
+        return
     
     # Model side
     def receiveRequest(self, request: Message):
         assert self.role in ('model', 'both'), "Only the model can receive requests"
         command = self.interpreter.decodeRequest(request)
+        sender = command.get('address', {}).get('sender', [])
+        if len(sender):
+            logger.info(f"[{id(self)}] Received request from {sender}")
         priority = command.get("priority", False)
         rank = command.get("rank", None)
         self.command_queue.put(command, priority=priority, rank=rank)
         return
     
-    def transmitData(self, data: Any):
+    def transmitData(self, 
+        data: Any, 
+        *, 
+        metadata: Mapping[str, Any]|None = None, 
+        status: Mapping[str, Any]|None = None
+    ):
         assert self.role in ('model', 'both'), "Only the model can transmit data"
-        package = self.interpreter.encodeData(data)
+        response = metadata or {}
+        status = status or dict(status='completed')
+        response.update(status)
+        response.update(dict(data=data))
+        package = self.interpreter.encodeData(response)
         self.relayData(package)
         return
     
@@ -255,6 +268,16 @@ class Controller:
             methods = methods
         )
     
+    def extractMetadata(self, command: Mapping[str, Any]) -> Mapping[str, Any]:
+        target = command.get('address', {}).get('sender', [])
+        target.extend(self.relays)
+        sender = [id(self)]
+        return dict(
+            address = dict(sender=sender, target=target),
+            priority = command.get('priority', False),
+            rank = command.get('rank', None)
+        )
+    
     def exposeMethods(self):
         assert self.role in ('model', 'both'), "Only the model can expose methods"
         return {k:v.__dict__ for k,v in self.subject_methods.items()}
@@ -276,27 +299,17 @@ class Controller:
             thread.join()
         return
    
-    def executeCommand(self, command: Mapping[str, Any]) -> Any:
-        address = command.get('address', dict(sender=[], target=[]))
-        target = address.get('sender', [])
-        target.extend(self.relays)
-        sender = [id(self)]
-        
+    def executeCommand(self, command: Mapping[str, Any]) -> tuple[Any, dict[str, Any]]:
+        assert self.role in ('model', 'both'), "Only the model can execute commands"
         # Insert case for getting and exposing methods
         if command.get('subject_id') is None and command.get('method') == 'exposeMethods':
-            return dict(
-                address = dict(sender=sender, target=target),
-                priority = command.get('priority', False),
-                rank = command.get('rank', None),
-                data = self.exposeMethods()
-            )
+            return self.exposeMethods(), dict(status='completed')
         
         # Implement the command execution logic here
-        
         subject_id = command.get('subject_id', 0)
         if subject_id not in self.subjects:
             logger.error(f"Subject not found: {subject_id}")
-            return {}
+            return None, dict(status='error', message='Subject not found')
         
         subject = self.subjects[subject_id]
         method_name = command.get('method', '')
@@ -304,20 +317,14 @@ class Controller:
             method: Callable = getattr(subject, method_name)
         except AttributeError:
             logger.error(f"Method not found: {method_name}")
-            return {}
+            return None, dict(status='error', message='Method not found')
         
         logger.info(f"Executing command: {command}")
         args = command.get('args', [])
         kwargs = command.get('kwargs', {})
         out = method(*args, **kwargs)
         logger.info(f"Completed command: {command}")
-        
-        return dict(
-            address = dict(sender=sender, target=target),
-            priority = command.get('priority', False),
-            rank = command.get('rank', None),
-            data = out
-        )
+        return out, dict(status='completed')
     
     def _loop_execution(self):
         assert self.role in ('model', 'both'), "Only the model can execute commands"
@@ -325,8 +332,9 @@ class Controller:
             try:
                 command = self.command_queue.get(timeout=5)
                 if command is not None:
-                    data = self.executeCommand(command)
-                    self.transmitData(data)
+                    metadata = self.extractMetadata(command)
+                    data,status = self.executeCommand(command)
+                    self.transmitData(data, metadata=metadata, status=status)
                     self.command_queue.task_done()
             except queue.Empty:
                 time.sleep(0.1)
@@ -340,8 +348,9 @@ class Controller:
             try:
                 command = self.command_queue.get(timeout=1)
                 if command is not None:
-                    data = self.executeCommand(command)
-                    self.transmitData(data)
+                    metadata = self.extractMetadata(command)
+                    data,status = self.executeCommand(command)
+                    self.transmitData(data, metadata=metadata, status=status)
                     self.command_queue.task_done()
             except queue.Empty:
                 break
@@ -373,6 +382,9 @@ class Controller:
     def receiveData(self, package: Message):
         assert self.role in ('view', 'both'), "Only the view can receive data"
         data = self.interpreter.decodeData(package)
+        sender = data.get('address', {}).get('sender', [])
+        if len(sender):
+            logger.info(f"[{id(self)}] Received data from {sender}")
         self.data_buffer.append(data)
         return
     
@@ -389,7 +401,7 @@ class Controller:
         addresses = addresses or self.callbacks[callback_type].keys()
         for address in addresses:
             if address not in self.callbacks[callback_type]:
-                logger.warning(f"Callback not found for address: {address}")
+                logger.debug(f"Callback not found for address: {address}")
                 continue
             callback = self.callbacks[callback_type][address]
             callback(message)
@@ -398,14 +410,13 @@ class Controller:
     
     def relayRequest(self, request: Message):
         content = self.interpreter.decodeRequest(request)
-        addresses = content.get('address', dict(sender=[], target=[])).get('target', [])
+        addresses = content.get('address', {}).get('target', [])
         # addresses.append(id(self))
         return self.relay(request, 'request', addresses=addresses)
     
     def relayData(self, package: Message):
         content = self.interpreter.decodeData(package)
-        addresses = content.get('address', dict(sender=[], target=[])).get('target', [])
-        # addresses.append(id(self))
+        addresses = content.get('address', {}).get('target', [])
         return self.relay(package, 'data', addresses=addresses)
     
     def subscribe(self, callback: Callable, callback_type: str):
