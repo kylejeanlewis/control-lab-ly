@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
 from __future__ import annotations
+from collections import deque
 from dataclasses import dataclass
 import inspect
 import logging
@@ -13,6 +14,9 @@ from typing import Callable, Protocol, Mapping, Any
 import requests
 
 logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
 
 class Message(Protocol):
     ...
@@ -112,7 +116,7 @@ class Interpreter:
     @staticmethod
     def encodeData(data: Any) -> Message:
         logger.error("encodeData not implemented")
-        raise data
+        return data
     
     @staticmethod
     def encodeRequest(command: Mapping[str, Any]) -> Message:
@@ -129,14 +133,15 @@ class Interpreter:
 
 class Controller:
     def __init__(self, role: str, interpreter: Interpreter):
-        assert role in ['model', 'view', 'controller'], f"Invalid role: {role}"
+        assert role in ('model', 'view', 'both'), f"Invalid role: {role}"
         assert isinstance(interpreter, Interpreter), f"Invalid interpreter: {interpreter}"
         self.role = role
         self.interpreter = interpreter
         
         self.callbacks: dict[str, list[Callable]] = dict(request=[], data=[])
         self.command_queue = TwoTierQueue()
-        self.tool_methods: dict = {}
+        self.data_buffer = deque()
+        self.object_methods: dict[str, ClassMethods] = dict()
         
         # self.receiver_event = threading.Event()
         self.execution_event = threading.Event()
@@ -145,7 +150,7 @@ class Controller:
     
     # Model side
     def receiveRequest(self, request: Message):
-        assert self.role == 'model', "Only the model can receive requests"
+        assert self.role in ('model', 'both'), "Only the model can receive requests"
         command = self.interpreter.decodeRequest(request)
         priority = command.pop("priority", False)
         rank = command.pop("rank", None)
@@ -153,26 +158,26 @@ class Controller:
         return
     
     def transmitData(self, data: Any):
-        assert self.role == 'model', "Only the model can transmit data"
+        assert self.role in ('model', 'both'), "Only the model can transmit data"
         package = self.interpreter.encodeData(data)
         self.relayData(package)
         return
     
     def register(self, tool: Callable):
-        assert self.role == 'model', "Only the model can register tools"
+        assert self.role in ('model', 'both'), "Only the model can register tools"
         key = id(tool)
-        if key in self.tool_methods:
+        if key in self.object_methods:
             logger.warning(f"{tool.__class__}_{key} already registered.")
             return False
-        self.tool_methods[key] = self.extractMethods(tool)
+        self.object_methods[key] = self.extractMethods(tool)
         return
     
     def unregister(self, tool: Callable) -> bool:
-        assert self.role == 'model', "Only the model can unregister tools"
+        assert self.role in ('model', 'both'), "Only the model can unregister tools"
         key = id(tool)
         success = False
         try:
-            self.tool_methods.pop(key)
+            self.object_methods.pop(key)
             success = True
         except KeyError:
             logger.warning(f"{tool.__class__}_{key} was not registered.")
@@ -222,45 +227,51 @@ class Controller:
         )
     
     def exposeMethods(self):
-        assert self.role == 'model', "Only the model can expose methods"
-        return {k:v.__dict__ for k,v in self.tool_methods.items()}
+        assert self.role in ('model', 'both'), "Only the model can expose methods"
+        return {k:v.__dict__ for k,v in self.object_methods.items()}
     
     def start(self):
-        assert self.role == 'model', "Only the model can start execution loop"
+        assert self.role in ('model', 'both'), "Only the model can start execution loop"
         self.execution_event.set()
         self.threads['execution'] = threading.Thread(target=self._loop_execution, daemon=True)
-        for thread in self.threads:
+        logger.info("Starting execution loop")
+        for thread in self.threads.values():
             thread.start()
         return
     
     def stop(self):
-        assert self.role == 'model', "Only the model can stop execution loop"
+        assert self.role in ('model', 'both'), "Only the model can stop execution loop"
         self.execution_event.clear()
-        for thread in self.threads:
+        logger.info("Stopping execution loop")
+        for thread in self.threads.values():
             thread.join()
         return
     
-    @staticmethod
-    def executeCommand(command: Mapping[str, Any]):
+    # @staticmethod
+    def executeCommand(self, command: Mapping[str, Any]) -> Any:
         logger.error("executeCommand not implemented")
         
         # Insert case for getting and exposing methods
-        ...
+        if command.get('class') == 'Controller' and command.get('method') == 'exposeMethods':
+            return self.exposeMethods()
         
         # Implement the command execution logic here
+        logger.info(f"Executing command: {command}")
+        time.sleep(5)
         data = command
+        logger.info(f"Completed command: {command}")
         
         return data
     
     def _loop_execution(self):
-        assert self.role == 'model', "Only the model can execute commands"
+        assert self.role in ('model', 'both'), "Only the model can execute commands"
         while self.execution_event.is_set():
             try:
-                command = self.command_queue.get()
+                command = self.command_queue.get(timeout=5)
                 if command is not None:
                     data = self.executeCommand(command)
                     self.transmitData(data)
-                self.command_queue.task_done()
+                    self.command_queue.task_done()
             except queue.Empty:
                 time.sleep(0.1)
                 pass
@@ -273,8 +284,9 @@ class Controller:
             try:
                 command = self.command_queue.get(timeout=1)
                 if command is not None:
-                    self.executeCommand(command)
-                self.command_queue.task_done()
+                    data = self.executeCommand(command)
+                    self.transmitData(data)
+                    self.command_queue.task_done()
             except queue.Empty:
                 break
             except KeyboardInterrupt:
@@ -284,21 +296,22 @@ class Controller:
     
     # View side
     def transmitRequest(self, command: Mapping[str, Any], *, priority: bool = False, rank: int = None):
-        assert self.role == 'view', "Only the view can transmit requests"
+        assert self.role in ('view', 'both'), "Only the view can transmit requests"
         command['priority'] = priority
         command['rank'] = rank
         request = self.interpreter.encodeRequest(command)
         self.relayRequest(request)
         return
     
-    def receiveData(self, package: Message) -> Any:
-        assert self.role == 'view', "Only the view can receive data"
+    def receiveData(self, package: Message):
+        assert self.role in ('view', 'both'), "Only the view can receive data"
         data = self.interpreter.decodeData(package)
-        return data
+        self.data_buffer.append(data)
+        return
     
     def getMethods(self):
-        assert self.role == 'view', "Only the view can get methods"
-        command = dict(...)
+        assert self.role in ('view', 'both'), "Only the view can get methods"
+        command = {'class':'Controller', 'method':'exposeMethods'}
         return self.transmitRequest(command)
     
     # Controller side
