@@ -1,4 +1,43 @@
 # %%
+import time
+
+import test_init
+from controllably.core.control import Controller, TwoTierQueue, JSONInterpreter, Interpreter
+
+worker = Controller('model', JSONInterpreter())
+ui = Controller('view', JSONInterpreter())
+hub = Controller('relay', JSONInterpreter())
+q = TwoTierQueue()
+worker.register(q)
+worker.start()
+
+# %% Server-client version
+worker.subscribe(ui.receiveData,'data')
+ui.subscribe(worker.receiveRequest,'request')
+
+# %% Hub-spoke version
+worker.subscribe(hub.relayData,'data', relay=True)
+hub.subscribe(ui.receiveData,'data')
+
+ui.subscribe(hub.relayRequest,'request', relay=True)
+hub.subscribe(worker.receiveRequest,'request')
+
+# %%
+ui.getMethods([id(worker)], private=True)
+
+# %%
+ui.getMethods(private=False)
+
+# %%
+command = dict(
+    subject_id = id(q),
+    method = 'qsize'
+)
+ui.transmitRequest(command)
+time.sleep(1)
+ui.data_buffer
+
+# %%
 import test_init
 from controllably.core.connection import get_ports
 from controllably.core.device import SerialDevice
