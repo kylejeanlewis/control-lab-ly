@@ -7,6 +7,7 @@ import inspect
 import json
 import logging
 import queue
+import socket
 import threading
 import time
 from typing import Callable, Protocol, Mapping, Any, Iterable
@@ -111,23 +112,23 @@ class Interpreter:
     
     @staticmethod
     def decodeRequest(request: Message) -> dict[str, Any]:
-        logger.error("decodeRequest not implemented")
+        # logger.error("decodeRequest not implemented")
         return request
     
     @staticmethod
     def encodeData(data: Any) -> Message:
-        logger.error("encodeData not implemented")
+        # logger.error("encodeData not implemented")
         return data
     
     @staticmethod
     def encodeRequest(command: Mapping[str, Any]) -> Message:
-        logger.error("encodeRequest not implemented")
+        # logger.error("encodeRequest not implemented")
         request = command
         return request
     
     @staticmethod
     def decodeData(package: Message) -> Any:
-        logger.error("decodeData not implemented")
+        # logger.error("decodeData not implemented")
         data = package
         return data
     
@@ -137,20 +138,20 @@ class JSONInterpreter(Interpreter):
         return
     
     @staticmethod
-    def decodeRequest(request: Message|str) -> dict[str, Any]:
+    def decodeRequest(request: Message|str|bytes) -> dict[str, Any]:
         return json.loads(request)
     
     @staticmethod
-    def encodeData(data: Any) -> Message|str:
-        return json.dumps(data)
+    def encodeData(data: Any) -> Message|str|bytes:
+        return json.dumps(data).encode('utf-8')
     
     @staticmethod
-    def encodeRequest(command: Mapping[str, Any]) -> Message|str:
-        request = json.dumps(command)
+    def encodeRequest(command: Mapping[str, Any]) -> Message|str|bytes:
+        request = json.dumps(command).encode('utf-8')
         return request
     
     @staticmethod
-    def decodeData(package: Message|str) -> Any:
+    def decodeData(package: Message|str|bytes) -> Any:
         data = json.loads(package)
         return data
     
@@ -161,6 +162,7 @@ class Controller:
         assert isinstance(interpreter, Interpreter), f"Invalid interpreter: {interpreter}"
         self.role = role
         self.interpreter = interpreter
+        self.address = None
         
         self.relays = []
         self.callbacks: dict[str, dict[str,Callable]] = dict(request={}, data={})
@@ -183,10 +185,11 @@ class Controller:
         command = self.interpreter.decodeRequest(request)
         sender = command.get('address', {}).get('sender', [])
         if len(sender):
-            logger.info(f"[{id(self)}] Received request from {sender}")
+            logger.info(f"[{self.address or id(self)}] Received request from {sender}")
         priority = command.get("priority", False)
         rank = command.get("rank", None)
         self.command_queue.put(command, priority=priority, rank=rank)
+        logger.debug('Received request')
         return
     
     def transmitData(self, 
@@ -201,12 +204,13 @@ class Controller:
         response.update(status)
         response.update(dict(data=data))
         package = self.interpreter.encodeData(response)
+        logger.debug('Transmitted data')
         self.relayData(package)
         return
     
     def register(self, subject: Callable):
         assert self.role in ('model', 'both'), "Only the model can register subject"
-        key = id(subject)
+        key = str(id(subject))
         if key in self.subject_methods:
             logger.warning(f"{subject.__class__}_{key} already registered.")
             return False
@@ -271,7 +275,7 @@ class Controller:
     def extractMetadata(self, command: Mapping[str, Any]) -> Mapping[str, Any]:
         target = command.get('address', {}).get('sender', [])
         target.extend(self.relays)
-        sender = [id(self)]
+        sender = [self.address or id(self)]
         return dict(
             address = dict(sender=sender, target=target),
             priority = command.get('priority', False),
@@ -322,7 +326,11 @@ class Controller:
         logger.info(f"Executing command: {command}")
         args = command.get('args', [])
         kwargs = command.get('kwargs', {})
-        out = method(*args, **kwargs)
+        try:
+            out = method(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error executing command: {e}")
+            return None, dict(status='error', message=str(e))
         logger.info(f"Completed command: {command}")
         return out, dict(status='completed')
     
@@ -334,6 +342,7 @@ class Controller:
                 if command is not None:
                     metadata = self.extractMetadata(command)
                     data,status = self.executeCommand(command)
+                    logger.debug(status)
                     self.transmitData(data, metadata=metadata, status=status)
                     self.command_queue.task_done()
             except queue.Empty:
@@ -369,13 +378,14 @@ class Controller:
         rank: int = None
     ):
         assert self.role in ('view', 'both'), "Only the view can transmit requests"
-        sender = [id(self)] if private else []
+        sender = [self.address or id(self)] if private else []
         target = target if target is not None else []
         target.extend(self.relays)
         command['address'] = dict(sender=sender, target=target)
         command['priority'] = priority
         command['rank'] = rank
         request = self.interpreter.encodeRequest(command)
+        logger.debug('Transmitted request')
         self.relayRequest(request)
         return
     
@@ -384,24 +394,34 @@ class Controller:
         data = self.interpreter.decodeData(package)
         sender = data.get('address', {}).get('sender', [])
         if len(sender):
-            logger.info(f"[{id(self)}] Received data from {sender}")
+            logger.info(f"[{self.address or id(self)}] Received data from {sender}")
         self.data_buffer.append(data)
+        logger.debug('Received data')
         return
     
     def getMethods(self, target: Iterable[int]|None = None, *, private: bool = True):
         assert self.role in ('view', 'both'), "Only the view can get methods"
         command = dict(method='exposeMethods')
-        return self.transmitRequest(command, target, private=private)
+        buffer_length = len(self.data_buffer)
+        self.transmitRequest(command, target, private=private)
+        while len(self.data_buffer) == buffer_length:
+            time.sleep(0.1)
+            pass
+        response = self.data_buffer.pop()
+        methods = response.get('data', {})
+        return methods
     
     # Controller side
     def relay(self, message: Message, callback_type:str, addresses: Iterable[int]|None = None):
         assert callback_type in self.callbacks, f"Invalid callback type: {callback_type}"
-        if id(self) in addresses and self.role == 'relay':
-            addresses.remove(id(self))
+        self_address = self.address or id(self)
+        if self_address in addresses and self.role == 'relay':
+            addresses.remove(self_address)
         addresses = addresses or self.callbacks[callback_type].keys()
         for address in addresses:
             if address not in self.callbacks[callback_type]:
-                logger.debug(f"Callback not found for address: {address}")
+                if len(self.relays) == 0:
+                    logger.warning(f"Callback not found for address: {address}")
                 continue
             callback = self.callbacks[callback_type][address]
             callback(message)
@@ -411,22 +431,35 @@ class Controller:
     def relayRequest(self, request: Message):
         content = self.interpreter.decodeRequest(request)
         addresses = content.get('address', {}).get('target', [])
-        # addresses.append(id(self))
-        return self.relay(request, 'request', addresses=addresses)
+        self.relay(request, 'request', addresses=addresses)
+        if self.role == 'relay':
+            logger.debug('Relayed request')
+        return
     
     def relayData(self, package: Message):
         content = self.interpreter.decodeData(package)
         addresses = content.get('address', {}).get('target', [])
-        return self.relay(package, 'data', addresses=addresses)
+        self.relay(package, 'data', addresses=addresses)
+        if self.role == 'relay':
+            logger.debug('Relayed data')
+        return
     
-    def subscribe(self, callback: Callable, callback_type: str):
+    def subscribe(self, 
+        callback: Callable, 
+        callback_type: str, 
+        address: int|str|None = None, 
+        *, 
+        relay: bool = False
+    ):
         assert callback_type in self.callbacks, f"Invalid callback type: {callback_type}"
         assert isinstance(callback, Callable), f"Invalid callback: {callback}"
-        key = id(callback)
-        if '__self__' in dir(callback):
-            key = id(callback.__self__)
-            if isinstance(callback.__self__, Controller) and callback.__self__.role == 'relay':
-                self.relays.append(key)
+        key = address
+        if key is None:
+            key = id(callback)
+            if '__self__' in dir(callback):
+                key = id(callback.__self__)
+        if relay:
+            self.relays.append(key)
         if key in self.callbacks[callback_type]:
             logger.warning(f"{callback} already subscribed to {callback_type}")
             return
@@ -445,3 +478,123 @@ class Controller:
             self.relays.remove(key)
         return
     
+    def setAddress(self, address: int|str):
+        assert isinstance(address, (int,str)), f"Invalid address: {address}"
+        self.address = address
+        return
+
+
+# --- Socket Communication Implementation ---
+
+def handle_client(client_socket: socket.socket, client_addr:str, controller: Controller, client_role:str|None = None):
+    """Handles communication with a single client."""
+    relay = (controller.role == 'relay')
+    receive_method = controller.receiveRequest
+    if relay:
+        match client_role:
+            case 'model':  # (i.e. client is a model)
+                receive_method = controller.relayData
+            case 'view':
+                receive_method = controller.relayRequest
+            case _:
+                raise ValueError(f"Invalid role: {client_role}")
+    while True:
+        try:
+            data = client_socket.recv(4096).decode("utf-8")  # Receive data (adjust buffer size if needed)
+            if not data:  # Client disconnected
+                time.sleep(1)
+                continue
+            if data == '[EXIT]':
+                break
+            # print(f"Received from client: {data}")
+            print(data)
+            data = data.encode("utf-8") if relay else data
+            receive_method(data)
+                
+        except Exception as e:
+            print(f"Error handling client: {e}")
+            break
+
+    print(f"Client [{client_addr}] disconnected.")
+    client_socket.close()
+    return
+
+
+def start_server(host:str, port:int, controller: Controller):
+    """Starts the server."""
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((host, port))
+    server_socket.listen(5)  # Listen for up to 5 connections
+
+    print(f"Server listening on {host}:{port}")
+    controller.setAddress(f"{host}:{port}")
+
+    while True:
+        client_socket, addr = server_socket.accept()  # Accept a connection
+        print(f"Client connected from {addr}")
+        client_addr = f"{addr[0]}:{addr[1]}"
+        client_socket.sendall(f"[CONNECTED] {client_addr}".encode("utf-8"))
+        handshake = client_socket.recv(1024).decode("utf-8")  # Receive response" ")[1]
+        print(handshake)
+        if not handshake.startswith("[CONNECTED] "):
+            raise ConnectionError(f"Invalid handshake: {handshake}")
+        client_role = handshake.replace('[CONNECTED] ','')
+        match client_role:
+            case 'model':
+                callback_type = 'request'
+            case 'view':
+                callback_type = 'data'
+            case _:
+                raise ValueError(f"Invalid role: {client_role}")
+        controller.subscribe(client_socket.sendall, callback_type, client_addr)
+
+        # Handle each client in a separate thread
+        client_thread = threading.Thread(target=handle_client, args=(client_socket,client_addr,controller,client_role))
+        client_thread.start()
+    return
+
+
+def start_client(host:str, port:int, controller: Controller, relay:bool = False):
+    """Starts the client."""
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    match controller.role:
+        case 'model':
+            callback_type = 'data'
+            receive_method = controller.receiveRequest
+        case 'view':
+            callback_type = 'request'
+            receive_method = controller.receiveData
+        case _:
+            raise ValueError(f"Invalid role: {controller.role}")
+
+    try:
+        client_socket.connect((host, port))  # Connect to the server
+        print(f"Connected to server at {host}:{port}")
+        time.sleep(1)
+        handshake = client_socket.recv(1024).decode("utf-8")  # Receive response" ")[1]
+        print(handshake)
+        if not handshake.startswith("[CONNECTED] "):
+            raise ConnectionError(f"Invalid handshake: {handshake}")
+        controller.setAddress(handshake.replace('[CONNECTED] ',''))
+        client_socket.sendall(f"[CONNECTED] {controller.role}".encode("utf-8"))
+        controller.subscribe(client_socket.sendall, callback_type, f"{host}:{port}", relay=relay)
+        
+        while True:
+            try:
+                data = client_socket.recv(4096).decode("utf-8")  # Receive data (adjust buffer size if needed)
+                if not data:  # Client disconnected
+                    time.sleep(1)
+                    continue
+                if data == '[EXIT]':
+                    break
+                # print(f"Received from server: {data}")
+                print(data)
+                receive_method(data)
+
+            except Exception as e:
+                print(f"Error listening server: {e}")
+                break
+
+    except Exception as e:
+        print(f"Error connecting to server: {e}")
+    return
