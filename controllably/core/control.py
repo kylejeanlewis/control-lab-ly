@@ -112,23 +112,21 @@ class Interpreter:
     
     @staticmethod
     def decodeRequest(request: Message) -> dict[str, Any]:
-        # logger.error("decodeRequest not implemented")
-        return request
+        command = request
+        return command
     
     @staticmethod
     def encodeData(data: Any) -> Message:
-        # logger.error("encodeData not implemented")
-        return data
+        package = data
+        return package
     
     @staticmethod
     def encodeRequest(command: Mapping[str, Any]) -> Message:
-        # logger.error("encodeRequest not implemented")
         request = command
         return request
     
     @staticmethod
     def decodeData(package: Message) -> Any:
-        # logger.error("decodeData not implemented")
         data = package
         return data
     
@@ -139,11 +137,17 @@ class JSONInterpreter(Interpreter):
     
     @staticmethod
     def decodeRequest(request: Message|str|bytes) -> dict[str, Any]:
-        return json.loads(request)
+        command = json.loads(request)
+        return command
     
     @staticmethod
     def encodeData(data: Any) -> Message|str|bytes:
-        return json.dumps(data).encode('utf-8')
+        try:
+            package = json.dumps(data).encode('utf-8')
+        except TypeError:
+            data.update(dict(data=f"{data['data'].__class__.__name__}[{data['data']!r}]"))
+            package = json.dumps(data).encode('utf-8')
+        return package
     
     @staticmethod
     def encodeRequest(command: Mapping[str, Any]) -> Message|str|bytes:
@@ -185,7 +189,7 @@ class Controller:
         command = self.interpreter.decodeRequest(request)
         sender = command.get('address', {}).get('sender', [])
         if len(sender):
-            logger.info(f"[{self.address or id(self)}] Received request from {sender}")
+            logger.info(f"[{self.address or str(id(self))}] Received request from {sender}")
         priority = command.get("priority", False)
         rank = command.get("rank", None)
         self.command_queue.put(command, priority=priority, rank=rank)
@@ -220,7 +224,7 @@ class Controller:
     
     def unregister(self, subject: Callable) -> bool:
         assert self.role in ('model', 'both'), "Only the model can unregister subject"
-        key = id(subject)
+        key = str(id(subject))
         success = False
         try:
             self.subject_methods.pop(key)
@@ -275,7 +279,7 @@ class Controller:
     def extractMetadata(self, command: Mapping[str, Any]) -> Mapping[str, Any]:
         target = command.get('address', {}).get('sender', [])
         target.extend(self.relays)
-        sender = [self.address or id(self)]
+        sender = [self.address or str(id(self))]
         return dict(
             address = dict(sender=sender, target=target),
             priority = command.get('priority', False),
@@ -378,7 +382,7 @@ class Controller:
         rank: int = None
     ):
         assert self.role in ('view', 'both'), "Only the view can transmit requests"
-        sender = [self.address or id(self)] if private else []
+        sender = [self.address or str(id(self))] if private else []
         target = target if target is not None else []
         target.extend(self.relays)
         command['address'] = dict(sender=sender, target=target)
@@ -394,7 +398,7 @@ class Controller:
         data = self.interpreter.decodeData(package)
         sender = data.get('address', {}).get('sender', [])
         if len(sender):
-            logger.info(f"[{self.address or id(self)}] Received data from {sender}")
+            logger.info(f"[{self.address or str(id(self))}] Received data from {sender}")
         self.data_buffer.append(data)
         logger.debug('Received data')
         return
@@ -414,7 +418,7 @@ class Controller:
     # Controller side
     def relay(self, message: Message, callback_type:str, addresses: Iterable[int]|None = None):
         assert callback_type in self.callbacks, f"Invalid callback type: {callback_type}"
-        self_address = self.address or id(self)
+        self_address = self.address or str(id(self))
         if self_address in addresses and self.role == 'relay':
             addresses.remove(self_address)
         addresses = addresses or self.callbacks[callback_type].keys()
@@ -458,6 +462,7 @@ class Controller:
             key = id(callback)
             if '__self__' in dir(callback):
                 key = id(callback.__self__)
+        key = str(key)
         if relay:
             self.relays.append(key)
         if key in self.callbacks[callback_type]:
@@ -470,6 +475,7 @@ class Controller:
         assert callback_type in self.callbacks, f"Invalid callback type: {callback_type}"
         assert isinstance(callback, Callable), f"Invalid callback: {callback}"
         key = id(callback.__self__) if '__self__' in dir(callback) else id(callback)
+        key = str(key)
         _callback = self.callbacks[callback_type].pop(key, None)
         if _callback is None:
             logger.warning(f"{callback} was not subscribed to {callback_type}")
