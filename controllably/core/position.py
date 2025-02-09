@@ -161,8 +161,11 @@ class Position:
         self._coordinates = tuple(self._coordinates)
         return
     
-    def __repr__(self):
+    def __str__(self):
         return f"Position {self._coordinates} with ({self.rotation_type}) rotation {self.rotation}"
+    
+    def __repr__(self):
+        return f"{self.coordinates}|{self.rotation}"
     
     @property
     def coordinates(self) -> np.ndarray[float]:
