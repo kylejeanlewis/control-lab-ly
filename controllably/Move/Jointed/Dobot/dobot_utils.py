@@ -226,7 +226,9 @@ class Dobot(RobotArm):
             return self.robot_position if robot else self.worktool_position
         
         # Implementation of relative movement
-        self.device.RelMovL(*move_by.coordinates, move_by.Rotation.as_euler('zyx', degrees=True)[0])
+        current_position = deepcopy(self.robot_position) if robot else self.worktool_position
+        return self.moveTo(current_position.apply(move_by), speed_factor=speed_factor, jog=jog, rapid=rapid, robot=robot)
+        self.device.RelMovL(*move_by.coordinates, move_by.Rotation.as_euler('zyx', degrees=True)[0]) #BUG
         
         # Adding time delays to coincide with movement
         if not jog:
@@ -293,6 +295,26 @@ class Dobot(RobotArm):
         # Update position
         self.updateRobotPosition(to=move_to)
         return self.robot_position if robot else self.worktool_position
+    
+    def isFeasibleJoint(self, joint_position: Sequence[float]|np.ndarray) -> bool:
+        """
+        Checks and returns whether the target joint angles are feasible
+        
+        Args:
+            joint_position (Sequence[float]|np.ndarray): target joint angles
+            
+        Returns:
+            bool: whether the target coordinates are feasible
+        """
+        assert isinstance(joint_position, (Sequence, np.ndarray)), "Ensure `joint_position` is a Sequence or np.ndarray object"
+        assert len(joint_position) == 6, "Ensure `joint_position` is a 6-element sequence for j1~j6"
+        
+        feasible = all([(self.joint_limits[0][i] <= angle <= self.joint_limits[1][i]) for i, angle in enumerate(joint_position)])
+        return True #BUG
+        if not feasible:
+            self._logger.error(f"Target set of joints {joint_position} is not feasible")
+            raise RuntimeError(f"Target set of joints {joint_position} is not feasible")
+        return feasible
     
     def jointMoveBy(self, 
         by: Sequence[float]|np.ndarray, 
