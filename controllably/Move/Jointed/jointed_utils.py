@@ -165,7 +165,6 @@ class RobotArm(Mover):
         assert len(joint_position) == 6, "Ensure `joint_position` is a 6-element sequence for j1~j6"
         
         feasible = all([(self.joint_limits[0][i] <= angle <= self.joint_limits[1][i]) for i, angle in enumerate(joint_position)])
-        # return True #BUG
         if not feasible:
             self._logger.error(f"Target set of joints {joint_position} is not feasible")
             raise RuntimeError(f"Target set of joints {joint_position} is not feasible")
