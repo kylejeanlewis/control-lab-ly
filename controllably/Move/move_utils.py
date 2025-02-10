@@ -11,6 +11,7 @@ This module provides the base class for mover tools.
 from __future__ import annotations
 from copy import deepcopy
 import logging
+import time
 from types import SimpleNamespace
 from typing import Sequence, Any
 
@@ -309,10 +310,13 @@ class Mover:
         logging.info(f"Entering zone: {zone}")
         self.moveToSafeHeight(speed_factor=speed_factor)
         for waypoint in waypoints:
-            self.moveTo(waypoint, speed_factor=speed_factor)        # TODO: add rotation
-        self.updateRobotPosition(to=waypoint)
+            self.moveTo(waypoint, speed_factor=speed_factor)
+        time.sleep(1)
+        self.updateRobotPosition()
         try:
             self.rotateTo(new_zone.bottom_left_corner.Rotation, speed_factor=speed_factor)
+            time.sleep(1)
+            self.updateRobotPosition()
         except NotImplementedError:
             pass
         self.current_zone_waypoints = (zone, waypoints)
@@ -333,6 +337,8 @@ class Mover:
         self.moveToSafeHeight(speed_factor=speed_factor)
         for waypoint in reversed(waypoints):
             self.moveTo(waypoint, speed_factor=speed_factor)
+        time.sleep(1)
+        self.updateRobotPosition()
         self.current_zone_waypoints = None
         return
     
@@ -489,8 +495,8 @@ class Mover:
         else:
             inv_tool_offset = self.tool_offset.invert()
             inv_calibrated_offset = self.calibrated_offset.invert()
-            by_coordinates = inv_tool_offset.Rotation.apply(inv_calibrated_offset.Rotation.apply(move_by.coordinates))
-            by_rotation = inv_tool_offset.Rotation * inv_calibrated_offset.Rotation * move_by.Rotation
+            by_coordinates = inv_calibrated_offset.Rotation.apply(move_by.coordinates)
+            by_rotation = move_by.Rotation
             move_by = Position(by_coordinates, by_rotation)
         if not self.isFeasible(self.robot_position.coordinates + move_by.coordinates, external=False, tool_offset=False):
             self._logger.warning(f"Target movement {move_by} is not feasible")

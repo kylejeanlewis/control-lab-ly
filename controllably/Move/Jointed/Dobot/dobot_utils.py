@@ -218,16 +218,17 @@ class Dobot(RobotArm):
         else:
             inv_tool_offset = self.tool_offset.invert()
             inv_calibrated_offset = self.calibrated_offset.invert()
-            by_coordinates = inv_tool_offset.Rotation.apply(inv_calibrated_offset.Rotation.apply(move_by.coordinates))
-            by_rotation = inv_tool_offset.Rotation * inv_calibrated_offset.Rotation * move_by.Rotation
+            by_coordinates = inv_calibrated_offset.Rotation.apply(move_by.coordinates)
+            by_rotation = move_by.Rotation
             move_by = Position(by_coordinates, by_rotation)
         if not self.isFeasible(self.robot_position.coordinates + move_by.coordinates, external=False, tool_offset=False):
             self._logger.warning(f"Target movement {move_by} is not feasible")
             return self.robot_position if robot else self.worktool_position
         
-        # Implementation of relative movement
-        current_position = deepcopy(self.robot_position) if robot else self.worktool_position
-        return self.moveTo(current_position.apply(move_by), speed_factor=speed_factor, jog=jog, rapid=rapid, robot=robot)
+        # Implementation of relative movement   
+        current_position = deepcopy(self.robot_position)
+        move_to = move_by.apply(current_position)
+        return self.moveTo(move_to, speed_factor=speed_factor, jog=jog, rapid=rapid, robot=True)
         self.device.RelMovL(*move_by.coordinates, move_by.Rotation.as_euler('zyx', degrees=True)[0]) #BUG
         
         # Adding time delays to coincide with movement
@@ -457,7 +458,7 @@ class Dobot(RobotArm):
 
         # Update position
         # self.updateJointPosition(to=joint_position)
-        self.updateRobotPosition(Position(self.robot_position.coordinates, rotate_to))
+        self.updateRobotPosition(to=rotate_to)
         return self.robot_position.Rotation if robot else self.worktool_position.Rotation
 
     def reset(self):
