@@ -2,7 +2,8 @@
 import threading
 
 import test_init
-from controllably.core.control import Controller, JSONInterpreter, TwoTierQueue, start_server, start_client
+from controllably.core.control import Controller, TwoTierQueue, start_server, start_client
+from controllably.core.interpreter import JSONInterpreter
 
 # %% Client-server version
 if __name__ == "__main__":
