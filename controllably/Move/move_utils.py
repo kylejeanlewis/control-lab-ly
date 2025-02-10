@@ -11,6 +11,7 @@ This module provides the base class for mover tools.
 from __future__ import annotations
 from copy import deepcopy
 import logging
+import time
 from types import SimpleNamespace
 from typing import Sequence, Any
 
@@ -309,10 +310,13 @@ class Mover:
         logging.info(f"Entering zone: {zone}")
         self.moveToSafeHeight(speed_factor=speed_factor)
         for waypoint in waypoints:
-            self.moveTo(waypoint, speed_factor=speed_factor)        # TODO: add rotation
-        self.updateRobotPosition(to=waypoint)
+            self.moveTo(waypoint, speed_factor=speed_factor)
+        time.sleep(1)
+        self.updateRobotPosition()
         try:
             self.rotateTo(new_zone.bottom_left_corner.Rotation, speed_factor=speed_factor)
+            time.sleep(1)
+            self.updateRobotPosition()
         except NotImplementedError:
             pass
         self.current_zone_waypoints = (zone, waypoints)
@@ -333,6 +337,8 @@ class Mover:
         self.moveToSafeHeight(speed_factor=speed_factor)
         for waypoint in reversed(waypoints):
             self.moveTo(waypoint, speed_factor=speed_factor)
+        time.sleep(1)
+        self.updateRobotPosition()
         self.current_zone_waypoints = None
         return
     
