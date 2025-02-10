@@ -205,8 +205,8 @@ class Controller:
         assert self.role in ('model', 'both'), "Only the model can transmit data"
         response = dict()
         status = status or dict(status='completed')
-        response.update(status)
         response.update(dict(data=data))
+        response.update(status)
         response.update(metadata)
         package = self.interpreter.encodeData(response)
         logger.debug('Transmitted data')
@@ -315,18 +315,42 @@ class Controller:
    
     def executeCommand(self, command: Mapping[str, Any]) -> tuple[Any, dict[str, Any]]:
         assert self.role in ('model', 'both'), "Only the model can execute commands"
-        # Insert case for getting and exposing methods
-        if command.get('object_id') is None and command.get('method') == 'exposeMethods':
-            return self.exposeMethods(), dict(status='completed')
+        object_id = command.get('object_id', '')
+        method_name = command.get('method', '')
         
         # Implement the command execution logic here
-        object_id = command.get('object_id', 0)
         if object_id not in self.objects:
-            logger.error(f"Object not found: {object_id}")
-            return None, dict(status='error', message='Object not found')
+            if method_name in ('exposeMethods',):
+                return self.exposeMethods(), dict(status='completed')
+            elif method_name in ('getattr', 'setattr', 'delattr'):
+                args = command.get('args', [])
+                kwargs = command.get('kwargs', {})
+                object_id = args[0] if len(args) else kwargs.get('object_id', '')
+                name = args[1] if len(args) > 1 else kwargs.get('name', '')
+                this_object = self.objects.get(object_id)
+                
+                if this_object is None:
+                    logger.error(f"Object not found: {object_id}")
+                    return None, dict(status='error', message='Object not found')
+                try:
+                    attr = getattr(this_object, name)
+                except AttributeError:
+                    logger.error(f"Attribute not found: {name}")
+                    return None, dict(status='error', message='Attribute not found')
+                
+                if method_name == 'getattr':
+                    return attr, dict(status='completed')
+                elif method_name == 'setattr':
+                    setattr(this_object, name, args[2]), dict(status='completed')
+                    return None, dict(status='completed')
+                elif method_name == 'delattr':
+                    delattr(this_object, name)
+                    return None, dict(status='completed')
+            else:
+                logger.error(f"Object not found: {object_id}")
+                return None, dict(status='error', message='Object not found')
         
         this_object = self.objects[object_id]
-        method_name = command.get('method', '')
         try:
             method: Callable = getattr(this_object, method_name)
         except AttributeError:
