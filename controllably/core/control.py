@@ -542,7 +542,7 @@ def handle_client(client_socket: socket.socket, client_addr:str, controller: Con
                 continue
             if data == '[EXIT]':
                 break
-            # print(f"Received from client: {data}")
+            logger.debug(f"Received from client: {data}")
             print(data)
             data = data.encode("utf-8") if relay else data
             receive_method(data)
@@ -623,7 +623,7 @@ def start_client(host:str, port:int, controller: Controller, relay:bool = False)
                     continue
                 if data == '[EXIT]':
                     break
-                # print(f"Received from server: {data}")
+                logger.debug(f"Received from server: {data}")
                 print(data)
                 receive_method(data)
 
