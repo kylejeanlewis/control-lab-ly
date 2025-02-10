@@ -354,7 +354,7 @@ class RobotArm(Mover):
                 self.joint_position = np.array([*self.joint_position[:3],*to.as_euler('zyx', degrees=True)])
         return
     
-    def updateRobotPosition(self, by = None, to = None):
+    def updateRobotPosition(self, by: Position|Rotation|None = None, to: Position|Rotation|None = None):
         self.updateJointPosition()
-        return super().updateRobotPosition(by, to)
+        return super().updateRobotPosition(by=by, to=to)
     
