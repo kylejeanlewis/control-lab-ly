@@ -507,7 +507,7 @@ class Dobot(RobotArm):
                 time.sleep(0.1)
                 joint_position_str = self.device.GetAngle()
                 joint_position = [float(a) for a in joint_position_str[1:-1].split(',')]
-                if True: #TODO any(joint_position):
+                if any(joint_position) or True:
                     break
             assert len(joint_position) == 6, "Unable to read output from device properly"
             return super().updateJointPosition(to=joint_position)
@@ -521,7 +521,7 @@ class Dobot(RobotArm):
                 time.sleep(0.1)
                 robot_position_str = self.device.GetPose()
                 robot_position = [float(a) for a in robot_position_str[1:-1].split(',')]
-                if True: #TODO any(robot_position):
+                if any(robot_position) or True:
                     break
             assert len(robot_position) == 6, "Unable to read output from device properly"
             current_position = Position(robot_position[:3], Rotation.from_euler('zyx',robot_position[-3:], degrees=True))
