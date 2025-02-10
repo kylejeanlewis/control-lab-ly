@@ -41,7 +41,7 @@ from controllably.Move.Cartesian import Gantry
 mover = Gantry('COM0',[[100,100,100],[-100,-100,-100]], simulation=True)
 
 # %%
-worker.register(mover)
-worker.subject_methods
+worker.register(mover, 'MOVER')
+worker.object_methods
 
 # %%
