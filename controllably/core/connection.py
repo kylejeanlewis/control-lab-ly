@@ -19,7 +19,6 @@ This module provides classes for handling connections to serial and socket devic
 from __future__ import annotations
 from collections import deque
 from copy import deepcopy
-from datetime import datetime
 import ipaddress
 import logging
 import queue
@@ -29,7 +28,7 @@ import socket
 import threading
 import time
 from types import SimpleNamespace
-from typing import Protocol, Any, Callable, Mapping
+from typing import Callable, Mapping, Protocol, Any
 import uuid
 
 # Third party imports
@@ -211,6 +210,7 @@ class SocketUtils:
         print('[EXIT] Printer')
         jam.clear()
         return
+
 
 class Server:
     
@@ -609,6 +609,10 @@ class Client:
         return True
 
 
+
+
+
+# Deprecated
 class Device(Protocol):
     """Protocol for device connection classes"""
     connection_details: dict
