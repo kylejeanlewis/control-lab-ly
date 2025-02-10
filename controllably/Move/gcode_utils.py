@@ -346,7 +346,8 @@ class GCode(Mover):
         assert isinstance(to, (Sequence, Position, np.ndarray)), f"Ensure `to` is a Sequence or Position or np.ndarray object"
         if isinstance(to, (Sequence, np.ndarray)):
             assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
-        move_to = to if isinstance(to, Position) else Position(to)
+        current_orientation = self.robot_position.Rotation if robot else self.worktool_position.Rotation
+        move_to = to if isinstance(to, Position) else Position(to, current_orientation)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
         self._logger.info(f"Move To | {move_to} at speed factor {speed_factor}")
         
