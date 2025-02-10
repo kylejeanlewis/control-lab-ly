@@ -172,8 +172,8 @@ class Controller:
         self.callbacks: dict[str, dict[str,Callable]] = dict(request={}, data={})
         self.command_queue = TwoTierQueue()
         self.data_buffer = deque()
-        self.subjects = {}
-        self.subject_methods: dict[str, ClassMethods] = dict()
+        self.objects = {}
+        self.object_methods: dict[str, ClassMethods] = dict()
         
         self.execution_event = threading.Event()
         self.threads = {}
@@ -203,54 +203,60 @@ class Controller:
         status: Mapping[str, Any]|None = None
     ):
         assert self.role in ('model', 'both'), "Only the model can transmit data"
-        response = metadata or {}
+        response = dict()
         status = status or dict(status='completed')
         response.update(status)
         response.update(dict(data=data))
+        response.update(metadata)
         package = self.interpreter.encodeData(response)
         logger.debug('Transmitted data')
         self.relayData(package)
         return
     
-    def register(self, subject: Callable):
-        assert self.role in ('model', 'both'), "Only the model can register subject"
-        key = str(id(subject))
-        if key in self.subject_methods:
-            logger.warning(f"{subject.__class__}_{key} already registered.")
+    def register(self, new_object: Callable, object_id: str|None = None):
+        assert self.role in ('model', 'both'), "Only the model can register object"
+        key =  str(id(new_object)) if object_id is None else object_id
+        if key in self.object_methods:
+            logger.warning(f"{new_object.__class__}_{key} already registered.")
             return False
-        self.subject_methods[key] = self.extractMethods(subject)
-        self.subjects[key] = subject
+        self.object_methods[key] = self.extractMethods(new_object)
+        self.objects[key] = new_object
         return
     
-    def unregister(self, subject: Callable) -> bool:
-        assert self.role in ('model', 'both'), "Only the model can unregister subject"
-        key = str(id(subject))
+    def unregister(self, object_id:str|None = None, old_object: Callable|None = None) -> bool:
+        assert self.role in ('model', 'both'), "Only the model can unregister object"
+        assert (object_id is None) != (old_object is None), "Either object_id or object must be provided"
+        key = str(id(old_object)) if object_id is None else object_id
         success = False
         try:
-            self.subject_methods.pop(key)
+            self.object_methods.pop(key) 
+            self.objects.pop(key)
             success = True
         except KeyError:
-            logger.warning(f"{subject.__class__}_{key} was not registered.")
+            if old_object is not None:
+                logger.warning(f"Object not found: {old_object.__class__} [{key}]")
+            else:
+                logger.warning(f"Object not found: {key}")
         return success
     
     @staticmethod
-    def extractMethods(subject: Callable) -> ClassMethods:
+    def extractMethods(new_object: Callable) -> ClassMethods:
         methods = {}
-        for method in dir(subject):
+        for method in dir(new_object):
             if method.startswith('_'):
                 continue
             is_method = False
-            if inspect.ismethod(getattr(subject, method)):
+            if inspect.ismethod(getattr(new_object, method)):
                 is_method = True
-            elif isinstance(inspect.getattr_static(subject, method), staticmethod):
+            elif isinstance(inspect.getattr_static(new_object, method), staticmethod):
                 is_method = True
-            elif isinstance(inspect.getattr_static(subject, method), classmethod):
+            elif isinstance(inspect.getattr_static(new_object, method), classmethod):
                 is_method = True
             if not is_method:
                 continue
             
             methods[method] = dict()
-            signature = inspect.signature(getattr(subject, method))
+            signature = inspect.signature(getattr(new_object, method))
             parameters = dict()
             for name, param in signature.parameters.items():
                 if name == 'self':
@@ -272,7 +278,7 @@ class Controller:
                 methods[method]['returns'] = returns
         
         return ClassMethods(
-            name = subject.__class__.__name__,
+            name = new_object.__class__.__name__,
             methods = methods
         )
     
@@ -288,7 +294,7 @@ class Controller:
     
     def exposeMethods(self):
         assert self.role in ('model', 'both'), "Only the model can expose methods"
-        return {k:v.__dict__ for k,v in self.subject_methods.items()}
+        return {k:v.__dict__ for k,v in self.object_methods.items()}
     
     def start(self):
         assert self.role in ('model', 'both'), "Only the model can start execution loop"
@@ -310,19 +316,19 @@ class Controller:
     def executeCommand(self, command: Mapping[str, Any]) -> tuple[Any, dict[str, Any]]:
         assert self.role in ('model', 'both'), "Only the model can execute commands"
         # Insert case for getting and exposing methods
-        if command.get('subject_id') is None and command.get('method') == 'exposeMethods':
+        if command.get('object_id') is None and command.get('method') == 'exposeMethods':
             return self.exposeMethods(), dict(status='completed')
         
         # Implement the command execution logic here
-        subject_id = command.get('subject_id', 0)
-        if subject_id not in self.subjects:
-            logger.error(f"Subject not found: {subject_id}")
-            return None, dict(status='error', message='Subject not found')
+        object_id = command.get('object_id', 0)
+        if object_id not in self.objects:
+            logger.error(f"Object not found: {object_id}")
+            return None, dict(status='error', message='Object not found')
         
-        subject = self.subjects[subject_id]
+        this_object = self.objects[object_id]
         method_name = command.get('method', '')
         try:
-            method: Callable = getattr(subject, method_name)
+            method: Callable = getattr(this_object, method_name)
         except AttributeError:
             logger.error(f"Method not found: {method_name}")
             return None, dict(status='error', message='Method not found')
