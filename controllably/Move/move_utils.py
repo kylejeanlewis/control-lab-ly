@@ -489,8 +489,8 @@ class Mover:
         else:
             inv_tool_offset = self.tool_offset.invert()
             inv_calibrated_offset = self.calibrated_offset.invert()
-            by_coordinates = inv_tool_offset.Rotation.apply(inv_calibrated_offset.Rotation.apply(move_by.coordinates))
-            by_rotation = inv_tool_offset.Rotation * inv_calibrated_offset.Rotation * move_by.Rotation
+            by_coordinates = inv_calibrated_offset.Rotation.apply(move_by.coordinates)
+            by_rotation = move_by.Rotation
             move_by = Position(by_coordinates, by_rotation)
         if not self.isFeasible(self.robot_position.coordinates + move_by.coordinates, external=False, tool_offset=False):
             self._logger.warning(f"Target movement {move_by} is not feasible")
