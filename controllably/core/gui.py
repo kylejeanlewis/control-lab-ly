@@ -1,11 +1,7 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
-import inspect
 import tkinter as tk
 from typing import Callable
-
-# Local imports
-from controllably.core.control import Controller
 
 class GUI:
     def __init__(self, principal: Callable):
@@ -13,15 +9,7 @@ class GUI:
         self.object_id = ''
         self.widget = None
         return
-    
-    # def bindObject(self, object_id: str):
-    #     self.object_id = object_id
-    #     return
-    
-    # def unbindObject(self):
-    #     self.object_id = ''
-    #     return
-    
+
     def bindWidget(self, widget: tk.Tk):
         self.widget = widget
         return
@@ -34,13 +22,6 @@ class GUI:
         assert isinstance(self.widget, tk.Tk), 'No widget is bound to this GUI'
         self.widget.quit()
         self.widget.destroy()
-        return
-
-    def sendCommand(self, command: dict):
-        # assert len(self.object_id), 'No tool is bound to this GUI'
-        # request = dict(object_id=self.object_id)
-        # request.update(command)
-        # self.controller.transmitRequest(request)
         return
     
     def updateValues(self):
