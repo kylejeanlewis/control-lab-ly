@@ -4,24 +4,20 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass
 import inspect
-import json
 import logging
 import queue
 import socket
 import threading
 import time
-from typing import Callable, Protocol, Mapping, Any, Iterable
+from typing import Callable, Mapping, Any, Iterable
 
-# Third-party imports
-import requests
+# Local application imports
+from .interpreter import Interpreter, Message
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
-
-class Message(Protocol):
-    ...
 
 @dataclass
 class ClassMethods:
@@ -106,37 +102,11 @@ class TwoTierQueue:
         return
 
 
-class Interpreter:
-    def __init__(self):
-        return
-    
-    @staticmethod
-    def decodeRequest(request: Message) -> dict[str, Any]:
-        command = request
-        return command
-    
-    @staticmethod
-    def encodeData(data: Any) -> Message:
-        package = data
-        return package
-    
-    @staticmethod
-    def encodeRequest(command: Mapping[str, Any]) -> Message:
-        request = command
-        return request
-    
-    @staticmethod
-    def decodeData(package: Message) -> Any:
-        data = package
-        return data
-    
 class Proxy:
     def __new__(cls, prime:Callable, object_id:str|None = None):
         new_class = cls.factory(prime, object_id)
         return super(Proxy,cls).__new__(new_class)
     
-class JSONInterpreter(Interpreter):
-    def __init__(self):
     def __init__(self, prime:Callable, object_id:str|None = None):
         self.prime = prime
         self.object_id = object_id or id(prime)
@@ -144,19 +114,6 @@ class JSONInterpreter(Interpreter):
         self.remote = False
         return
     
-    @staticmethod
-    def decodeRequest(request: Message|str|bytes) -> dict[str, Any]:
-        command = json.loads(request)
-        return command
-    
-    @staticmethod
-    def encodeData(data: Any) -> Message|str|bytes:
-        try:
-            package = json.dumps(data).encode('utf-8')
-        except TypeError:
-            data.update(dict(data=f"{data['data'].__class__.__name__}[{data['data']!r}]"))
-            package = json.dumps(data).encode('utf-8')
-        return package
     @classmethod
     def factory(cls, prime:Callable, object_id:str|None = None):
         name = prime.__name__ if inspect.isclass(prime) else prime.__class__.__name__
@@ -167,9 +124,6 @@ class JSONInterpreter(Interpreter):
         return new_class
     
     @staticmethod
-    def encodeRequest(command: Mapping[str, Any]) -> Message|str|bytes:
-        request = json.dumps(command).encode('utf-8')
-        return request
     def makeEmitter(method):
         def emitter(self, *args, **kwargs):
             if not self.remote and not inspect.isclass(self.prime):
@@ -189,10 +143,6 @@ class JSONInterpreter(Interpreter):
         emitter.__signature__ = inspect.signature(method)
         return emitter
     
-    @staticmethod
-    def decodeData(package: Message|str|bytes) -> Any:
-        data = json.loads(package)
-        return data
     def bindController(self, controller: Controller):
         self.controller = controller
         return
@@ -563,7 +513,6 @@ class Controller:
 
 
 # --- Socket Communication Implementation ---
-
 def handle_client(client_socket: socket.socket, client_addr:str, controller: Controller, client_role:str|None = None):
     """Handles communication with a single client."""
     relay = (controller.role == 'relay')
