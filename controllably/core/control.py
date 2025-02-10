@@ -10,6 +10,7 @@ import socket
 import threading
 import time
 from typing import Callable, Mapping, Any, Iterable
+import uuid
 
 # Local application imports
 from .interpreter import Interpreter, Message
@@ -163,7 +164,7 @@ class Controller:
         self.relays = []
         self.callbacks: dict[str, dict[str,Callable]] = dict(request={}, data={})
         self.command_queue = TwoTierQueue()
-        self.data_buffer = deque()
+        self.data_buffer = dict()
         self.objects = {}
         self.object_methods: dict[str, ClassMethods] = dict()
         
@@ -280,6 +281,7 @@ class Controller:
         sender = [self.address or str(id(self))]
         return dict(
             address = dict(sender=sender, target=target),
+            request_id = command.get('request_id', uuid.uuid4().hex),
             priority = command.get('priority', False),
             rank = command.get('rank', None)
         )
@@ -402,38 +404,40 @@ class Controller:
         private:bool = True, 
         priority: bool = False, 
         rank: int = None
-    ):
+    ) -> str:
         assert self.role in ('view', 'both'), "Only the view can transmit requests"
         sender = [self.address or str(id(self))] if private else []
         target = target if target is not None else []
         target.extend(self.relays)
+        request_id = uuid.uuid4().hex
         command['address'] = dict(sender=sender, target=target)
+        command['request_id'] = request_id
         command['priority'] = priority
         command['rank'] = rank
         request = self.interpreter.encodeRequest(command)
         logger.debug('Transmitted request')
         self.relayRequest(request)
-        return
+        return request_id
     
     def receiveData(self, package: Message):
         assert self.role in ('view', 'both'), "Only the view can receive data"
         data = self.interpreter.decodeData(package)
         sender = data.get('address', {}).get('sender', [])
+        request_id = data.get('request_id', uuid.uuid4().hex)
         if len(sender):
             logger.info(f"[{self.address or str(id(self))}] Received data from {sender}")
-        self.data_buffer.append(data)
+        self.data_buffer[request_id] = data
         logger.debug('Received data')
         return
     
     def getMethods(self, target: Iterable[int]|None = None, *, private: bool = True):
         assert self.role in ('view', 'both'), "Only the view can get methods"
         command = dict(method='exposeMethods')
-        buffer_length = len(self.data_buffer)
-        self.transmitRequest(command, target, private=private)
-        while len(self.data_buffer) == buffer_length:
+        request_id = self.transmitRequest(command, target, private=private)
+        while request_id not in self.data_buffer:
             time.sleep(0.1)
             pass
-        response = self.data_buffer.pop()
+        response = self.data_buffer.pop(request_id)
         methods = response.get('data', {})
         return methods
     
