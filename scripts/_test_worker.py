@@ -5,20 +5,21 @@ import test_init
 from controllably.core.control import Controller, start_server, start_client
 from controllably.core.interpreter import JSONInterpreter
 
-# %%
-host = "127.0.0.1"  # Or "localhost"
-port = 12345       # Choose a free port (above 1024 is recommended)
+host = "127.0.0.1"
+port = 12345
 worker = Controller('model', JSONInterpreter())
-worker.start()
+terminate = threading.Event()
 args = [host, port, worker]
+kwargs = dict(terminate=terminate)
+worker.start()
 
 # %% Client-server version
-worker_thread = threading.Thread(target=start_server, args=args, daemon=True)
+worker_thread = threading.Thread(target=start_server, args=args, kwargs=kwargs, daemon=True)
 worker_thread.start()
 
 # %% Hub-spoke version
 args.append(True)
-worker_thread = threading.Thread(target=start_client, args=args, daemon=True)
+worker_thread = threading.Thread(target=start_client, args=args, kwargs=kwargs, daemon=True)
 worker_thread.start()
 
 # %%
