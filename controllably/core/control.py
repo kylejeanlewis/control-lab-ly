@@ -15,6 +15,8 @@ import uuid
 # Local application imports
 from .interpreter import Interpreter, Message
 
+BYTESIZE = 1024
+
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
@@ -104,13 +106,14 @@ class TwoTierQueue:
 
 
 class Proxy:
-    def __new__(cls, prime:Callable, object_id:str|None = None):
-        new_class = cls.factory(prime, object_id)
+    def __new__(cls, prime:Callable, object_id:str|None = None, blocking:bool = True):
+        new_class = cls.factory(prime, object_id, blocking)
         return super(Proxy,cls).__new__(new_class)
     
-    def __init__(self, prime:Callable, object_id:str|None = None):
+    def __init__(self, prime:Callable, object_id:str|None = None, blocking:bool = True):
         self.prime = prime
         self.object_id = object_id or id(prime)
+        self.blocking = blocking
         self.controller: Controller|None = None
         self.remote = False
         return
@@ -584,7 +587,12 @@ def handle_client(
     terminate = threading.Event() if terminate is None else terminate
     while not terminate.is_set():
         try:
-            data = client_socket.recv(4096).decode("utf-8")  # Receive data (adjust buffer size if needed)
+            data = ''
+            while True:
+                fragment = client_socket.recv(BYTESIZE).decode("utf-8")  # Receive data (adjust buffer size if needed)
+                data += fragment
+                if len(fragment)==0 or len(fragment) < BYTESIZE:
+                    break
             if not data:  # Client disconnected
                 time.sleep(1)
                 continue
@@ -618,7 +626,7 @@ def start_server(host:str, port:int, controller: Controller, *, terminate: threa
         logger.info(f"Client connected from {addr}")
         client_addr = f"{addr[0]}:{addr[1]}"
         client_socket.sendall(f"[CONNECTED] {client_addr}".encode("utf-8"))
-        handshake = client_socket.recv(1024).decode("utf-8")  # Receive response" ")[1]
+        handshake = client_socket.recv(BYTESIZE).decode("utf-8")  # Receive response" ")[1]
         print(handshake)
         if not handshake.startswith("[CONNECTED] "):
             raise ConnectionError(f"Invalid handshake: {handshake}")
@@ -664,7 +672,7 @@ def start_client(host:str, port:int, controller: Controller, relay:bool = False,
         client_socket.connect((host, port))  # Connect to the server
         logger.info(f"Connected to server at {host}:{port}")
         time.sleep(1)
-        handshake = client_socket.recv(1024).decode("utf-8")  # Receive response" ")[1]
+        handshake = client_socket.recv(BYTESIZE).decode("utf-8")  # Receive response" ")[1]
         print(handshake)
         if not handshake.startswith("[CONNECTED] "):
             raise ConnectionError(f"Invalid handshake: {handshake}")
@@ -675,7 +683,12 @@ def start_client(host:str, port:int, controller: Controller, relay:bool = False,
         terminate = threading.Event() if terminate is None else terminate
         while not terminate.is_set():
             try:
-                data = client_socket.recv(4096).decode("utf-8")  # Receive data (adjust buffer size if needed)
+                data = ''
+                while True:
+                    fragment = client_socket.recv(BYTESIZE).decode("utf-8")  # Receive data (adjust buffer size if needed)
+                    data += fragment
+                    if len(fragment)==0 or len(fragment) < BYTESIZE:
+                        break
                 if not data:  # Client disconnected
                     time.sleep(1)
                     continue
