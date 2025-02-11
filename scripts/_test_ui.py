@@ -1,6 +1,5 @@
 # %%
 import threading
-import tkinter as tk
 
 import test_init
 from controllably.core.control import Controller, Proxy, start_client
@@ -44,25 +43,21 @@ ui.data_buffer
 # %%
 gantry = Gantry('COM0',[[100,100,100],[-100,-100,-100]], simulation=True)
 proxy = Proxy(gantry, 'MOVER')
-proxy.bindController(ui)
 gui = MoveGUI()
 
 # %%
-root = tk.Tk()
-gui.addTo(root)
-
+proxy.bindController(ui)
 gui.bindObject(proxy)
-gui.bindWidget(root)
-root.mainloop()
+# gui.show()
 
 # %%
 proxy.remote = True
-position = proxy.move('x',10)
+position = proxy.move('x',-10)
 position
 
 # %%
 proxy.remote = False
-position = proxy.move('x',-10)
+position = proxy.move('x',10)
 position
 
 # %%
