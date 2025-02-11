@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
 from __future__ import annotations
-from collections import deque
 from dataclasses import dataclass
 import inspect
 import logging
@@ -13,6 +12,7 @@ from typing import Callable, Mapping, Any, Iterable
 import uuid
 
 # Local application imports
+from .connection import SocketUtils
 from .interpreter import Interpreter, Message
 
 logger = logging.getLogger(__name__)
@@ -147,12 +147,14 @@ class Proxy:
     def bindController(self, controller: Controller):
         assert isinstance(controller, Controller), 'Controller must be an instance of Controller'
         self.controller = controller
+        self.remote = True
         return
     
     def releaseController(self) -> Controller:
         assert isinstance(self.controller, Controller), 'No controller is bound to this Proxy.'
         controller = self.controller
         self.controller = None
+        self.remote = False
         return controller
 
 
@@ -325,19 +327,20 @@ class Controller:
                 object_id = args[0] if len(args) else kwargs.get('object_id', '')
                 name = args[1] if len(args) > 1 else kwargs.get('name', '')
                 this_object = self.objects.get(object_id)
-                
                 if this_object is None:
                     logger.error(f"Object not found: {object_id}")
                     return None, dict(status='error', message='Object not found')
-                try:
-                    attr = getattr(this_object, name)
-                except AttributeError:
+                
+                if not hasattr(this_object, name):
                     logger.error(f"Attribute not found: {name}")
                     return None, dict(status='error', message='Attribute not found')
-                
                 if method_name == 'getattr':
-                    return attr, dict(status='completed')
+                    return getattr(this_object, name), dict(status='completed')
                 elif method_name == 'setattr':
+                    value = args[2] if len(args) > 2 else kwargs.get('value', None)
+                    if value is None:
+                        logger.error(f"Value not provided for attribute: {name}")
+                        return None, dict(status='error', message='Value not provided')
                     setattr(this_object, name, args[2]), dict(status='completed')
                     return None, dict(status='completed')
                 elif method_name == 'delattr':
@@ -433,16 +436,24 @@ class Controller:
         logger.debug('Received data')
         return
     
-    def getMethods(self, target: Iterable[int]|None = None, *, private: bool = True):
+    def retrieveData(self, request_id: str, timeout: int|float = 5, *, default: Any|None = None) -> Any|None:
+        assert self.role in ('view', 'both'), "Only the view can retrieve data"
+        start_time = time.perf_counter()
+        while request_id not in self.data_buffer:
+            time.sleep(0.1)
+            if (time.perf_counter()-start_time) >= timeout:
+                logger.warning(f"Timeout retrieving data for request_id: {request_id}")
+                logger.warning("Please try again later.")
+                return None
+        response: dict = self.data_buffer.pop(request_id)
+        data = response.get('data', default)
+        return data
+    
+    def getMethods(self, target: Iterable[int]|None = None, *, private: bool = True) -> dict:
         assert self.role in ('view', 'both'), "Only the view can get methods"
         command = dict(method='exposeMethods')
         request_id = self.transmitRequest(command, target, private=private)
-        while request_id not in self.data_buffer:
-            time.sleep(0.1)
-            pass
-        response = self.data_buffer.pop(request_id)
-        methods = response.get('data', {})
-        return methods
+        return self.retrieveData(request_id, default={})
     
     # Controller side
     def relay(self, message: Message, callback_type:str, addresses: Iterable[int]|None = None):
@@ -520,7 +531,14 @@ class Controller:
 
 
 # --- Socket Communication Implementation ---
-def handle_client(client_socket: socket.socket, client_addr:str, controller: Controller, client_role:str|None = None):
+def handle_client(
+    client_socket: socket.socket, 
+    client_addr:str, 
+    controller: Controller, 
+    client_role:str|None = None, 
+    *,
+    terminate: threading.Event|None = None
+):
     """Handles communication with a single client."""
     relay = (controller.role == 'relay')
     receive_method = controller.receiveRequest
@@ -532,7 +550,9 @@ def handle_client(client_socket: socket.socket, client_addr:str, controller: Con
                 receive_method = controller.relayRequest
             case _:
                 raise ValueError(f"Invalid role: {client_role}")
-    while True:
+    
+    terminate = threading.Event() if terminate is None else terminate
+    while not terminate.is_set():
         try:
             data = client_socket.recv(4096).decode("utf-8")  # Receive data (adjust buffer size if needed)
             if not data:  # Client disconnected
@@ -544,17 +564,15 @@ def handle_client(client_socket: socket.socket, client_addr:str, controller: Con
             print(data)
             data = data.encode("utf-8") if relay else data
             receive_method(data)
-                
         except Exception as e:
             print(f"Error handling client: {e}")
             break
-
-    print(f"Client [{client_addr}] disconnected.")
     client_socket.close()
+    print(f"Disconnected from client [{client_addr}]")
     return
 
 
-def start_server(host:str, port:int, controller: Controller):
+def start_server(host:str, port:int, controller: Controller, *, terminate: threading.Event|None = None):
     """Starts the server."""
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
@@ -563,7 +581,9 @@ def start_server(host:str, port:int, controller: Controller):
     print(f"Server listening on {host}:{port}")
     controller.setAddress(f"{host}:{port}")
 
-    while True:
+    threads = []
+    terminate = threading.Event() if terminate is None else terminate
+    while not terminate.is_set():
         client_socket, addr = server_socket.accept()  # Accept a connection
         print(f"Client connected from {addr}")
         client_addr = f"{addr[0]}:{addr[1]}"
@@ -583,12 +603,21 @@ def start_server(host:str, port:int, controller: Controller):
         controller.subscribe(client_socket.sendall, callback_type, client_addr)
 
         # Handle each client in a separate thread
-        client_thread = threading.Thread(target=handle_client, args=(client_socket,client_addr,controller,client_role))
+        client_thread = threading.Thread(
+            target = handle_client, daemon = True,
+            args = (client_socket,client_addr,controller,client_role), 
+            kwargs = dict(terminate=terminate),
+        )
         client_thread.start()
+        threads.append(client_thread)
+    
+    for thread in threads:
+        thread.join()
+    print(f"Server [{host}:{port}] stopped.")
     return
 
 
-def start_client(host:str, port:int, controller: Controller, relay:bool = False):
+def start_client(host:str, port:int, controller: Controller, relay:bool = False, *, terminate: threading.Event|None = None):
     """Starts the client."""
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     match controller.role:
@@ -613,7 +642,8 @@ def start_client(host:str, port:int, controller: Controller, relay:bool = False)
         client_socket.sendall(f"[CONNECTED] {controller.role}".encode("utf-8"))
         controller.subscribe(client_socket.sendall, callback_type, f"{host}:{port}", relay=relay)
         
-        while True:
+        terminate = threading.Event() if terminate is None else terminate
+        while not terminate.is_set():
             try:
                 data = client_socket.recv(4096).decode("utf-8")  # Receive data (adjust buffer size if needed)
                 if not data:  # Client disconnected
@@ -624,11 +654,11 @@ def start_client(host:str, port:int, controller: Controller, relay:bool = False)
                 logger.debug(f"Received from server: {data}")
                 print(data)
                 receive_method(data)
-
             except Exception as e:
                 print(f"Error listening server: {e}")
                 break
-
     except Exception as e:
         print(f"Error connecting to server: {e}")
+    else:
+        print(f"Disconnected from server [{host}:{port}]")
     return
