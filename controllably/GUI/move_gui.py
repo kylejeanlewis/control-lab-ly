@@ -1,15 +1,31 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
 import tkinter as tk
-from typing import Callable
+from typing import Callable, Protocol
 
 # Local application imports
+from ..core.position import Position
+from ..core.control import Proxy, Controller
 from .gui import GUI
 
+class Move(Protocol):
+    position: Position
+    def move(self, axis:str, value:int|float):
+        raise NotImplementedError
+    
+    def rotate(self, axis:str, value:int|float):
+        raise NotImplementedError
+    
+    def home(self):
+        raise NotImplementedError
+    
+    def moveToSafeHeight(self):
+        raise NotImplementedError
 
 class MoveGUI(GUI):
-    def __init__(self, principal: Callable):
+    def __init__(self, principal: Move|Proxy|None = None):
         super().__init__(principal)
+        self.principal: Move|Proxy|None = principal
     
         # Initialize axis values
         self.x = 0
@@ -20,8 +36,10 @@ class MoveGUI(GUI):
         self.c = 0  # Rotation around x-axis (roll)
         return
     
-    def updateValues(self):
+    def update(self, **kwargs):
+        position = self.getPosition()
         self.position_label.config(text=f"Position:\nx={self.x}, y={self.y}, z={self.z}\na={self.a}, b={self.b}, c={self.c}")
+        return
     
     def addTo(self, master: tk.Misc):
         master.title("Robot Control D-Pad")
@@ -88,10 +106,9 @@ class MoveGUI(GUI):
             self.y += value
         elif axis == 'z':
             self.z += value
-        else:
-            return
-        self.principal.move(axis,value)
-        self.updateValues()
+        if hasattr(self.principal, 'move'):
+            self.principal.move(axis,value)
+        self.update()
         return
 
     def rotate(self, axis:str, value:int|float):
@@ -102,26 +119,29 @@ class MoveGUI(GUI):
             self.b += value
         elif axis == 'c':
             self.c += value
-        else:
-            return
-        self.principal.rotate(axis,value)
-        self.updateValues()
+        if hasattr(self.principal, 'rotate'):
+            self.principal.rotate(axis,value)
+        self.update()
         return 
     
     def home(self):
-        self.principal.home()
-        self.updateValues()
+        if hasattr(self.principal, 'home'):
+            self.principal.home()
+        self.update()
         return
     
     def safe(self):
-        self.principal.moveToSafeHeight()
-        self.updateValues()
+        if hasattr(self.principal, 'safe'):
+            self.principal.moveToSafeHeight()
+        self.update()
         return
 
-    def getPosition(self):
-        command = dict(
-            method = 'getattr',
-            args = (self.object_id,'position')
-        )
-        self.sendCommand(command)
+    def getPosition(self) -> Position|None:
+        if hasattr(self.principal, 'position'):
+            return self.principal.position
+        if isinstance(self.principal, Proxy) and self.principal.remote:
+            controller = self.principal.controller
+            command = dict( method='getattr', args=[self.principal.object_id,'position'])
+            request_id = controller.transmitRequest(command)
+            return controller.retrieveData(request_id)
         return
