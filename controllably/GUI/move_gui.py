@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
 import tkinter as tk
-from typing import Callable, Protocol
+from typing import Protocol
 
 # Local application imports
 from ..core.position import Position
-from ..core.control import Proxy, Controller
+from ..core.control import Proxy
 from .gui import GUI
 
 class Move(Protocol):
@@ -38,10 +38,19 @@ class MoveGUI(GUI):
     
     def update(self, **kwargs):
         position = self.getPosition()
+        if isinstance(position, Position):
+            self.x, self.y, self.z = position.coordinates
+            self.c, self.b, self.c = position.rotation
         self.position_label.config(text=f"Position:\nx={self.x}, y={self.y}, z={self.z}\na={self.a}, b={self.b}, c={self.c}")
+        # self.widget.after(100, self.update)
         return
     
     def addTo(self, master: tk.Misc):
+        self.top_level = isinstance(master, tk.Tk)
+        if self.top_level:
+            self.bindWidget(master)
+            
+        # Add layout
         master.title("Robot Control D-Pad")
         
         # Create frames for organization
@@ -131,17 +140,18 @@ class MoveGUI(GUI):
         return
     
     def safe(self):
-        if hasattr(self.principal, 'safe'):
+        if hasattr(self.principal, 'moveToSafeHeight'):
             self.principal.moveToSafeHeight()
         self.update()
         return
 
     def getPosition(self) -> Position|None:
-        if hasattr(self.principal, 'position'):
-            return self.principal.position
-        if isinstance(self.principal, Proxy) and self.principal.remote:
-            controller = self.principal.controller
-            command = dict( method='getattr', args=[self.principal.object_id,'position'])
-            request_id = controller.transmitRequest(command)
-            return controller.retrieveData(request_id)
-        return
+        if isinstance(self.principal, Proxy):
+            if self.principal.remote:
+                controller = self.principal.controller
+                command = dict(method='getattr', args=[self.principal.object_id,'position'])
+                request_id = controller.transmitRequest(command)
+                return controller.retrieveData(request_id)
+            else:
+                return getattr(self.principal.prime, 'position', None)
+        return getattr(self.principal, 'position', None)
