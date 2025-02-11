@@ -6,6 +6,9 @@ import test_init
 from controllably.core.control import Controller, Proxy, start_client
 from controllably.core.interpreter import JSONInterpreter
 
+from controllably.Move.Cartesian import Gantry
+from controllably.GUI import MoveGUI
+
 host = "127.0.0.1"
 port = 12345 
 ui = Controller('view', JSONInterpreter())
@@ -38,19 +41,25 @@ content = ui.retrieveData(content_request)
 ui.data_buffer
 
 # %%
-from controllably.Move.Cartesian import Gantry
-from controllably.GUI import MoveGUI
-
 gantry = Gantry('COM0',[[100,100,100],[-100,-100,-100]], simulation=True)
 proxy = Proxy(gantry, 'MOVER')
+proxy.bindController(ui)
 gui = MoveGUI()
 
 # %%
 root = tk.Tk()
 gui.addTo(root)
 
-proxy.bindController(ui)
 gui.bindObject(proxy)
+gui.bindWidget(root)
+root.mainloop()
+
+# %%
+aproxy = Proxy(gantry, 'MOVER', blocking=True)
+gui.bindObject(aproxy)
+
+root = tk.Tk()
+gui.addTo(root)
 gui.bindWidget(root)
 root.mainloop()
 
