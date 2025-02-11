@@ -1,22 +1,23 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
 import tkinter as tk
-from typing import Callable
+from typing import Any
+
+# Local application imports
+from ..core.control import Proxy
 
 class GUI:
-    def __init__(self, principal: Callable|None = None):
+    def __init__(self, principal: Proxy|Any|None = None):
         self.principal = principal
         self.object_id = ''
         self.widget = None
         return
     
-    def bindObject(self, principal: Callable):
-        assert callable(principal), 'Principal must be a callable object'
+    def bindObject(self, principal: Proxy|Any):
         self.principal = principal
         return
     
-    def releaseObject(self) -> Callable:
-        assert callable(self.principal), 'No principal is bound to this GUI'
+    def releaseObject(self) -> Proxy|Any:
         principal = self.principal
         self.principal = None
         return principal
@@ -38,7 +39,7 @@ class GUI:
         self.widget.destroy()
         return
     
-    def updateValues(self):
+    def update(self, **kwargs):
         raise NotImplementedError
     
     def addTo(self, master: tk.Misc):
