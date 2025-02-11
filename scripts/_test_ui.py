@@ -27,6 +27,7 @@ ui_thread.start()
 
 # %%
 methods = ui.getMethods(private=True)
+methods
 
 # %%
 command = dict(object_id=list(methods.keys())[0], method='qsize')
@@ -55,12 +56,13 @@ gui.bindWidget(root)
 root.mainloop()
 
 # %%
-aproxy = Proxy(gantry, 'MOVER', blocking=True)
-gui.bindObject(aproxy)
+proxy.remote = True
+position = proxy.move('x',10)
+position
 
-root = tk.Tk()
-gui.addTo(root)
-gui.bindWidget(root)
-root.mainloop()
+# %%
+proxy.remote = False
+position = proxy.move('x',-10)
+position
 
 # %%
