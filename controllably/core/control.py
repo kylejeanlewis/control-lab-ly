@@ -106,14 +106,13 @@ class TwoTierQueue:
 
 
 class Proxy:
-    def __new__(cls, prime:Callable, object_id:str|None = None, blocking:bool = True):
-        new_class = cls.factory(prime, object_id, blocking)
+    def __new__(cls, prime:Callable, object_id:str|None = None):
+        new_class = cls.factory(prime, object_id)
         return super(Proxy,cls).__new__(new_class)
     
-    def __init__(self, prime:Callable, object_id:str|None = None, blocking:bool = True):
+    def __init__(self, prime:Callable, object_id:str|None = None):
         self.prime = prime
         self.object_id = object_id or id(prime)
-        self.blocking = blocking
         self.controller: Controller|None = None
         self.remote = False
         return
@@ -136,13 +135,15 @@ class Proxy:
                 return result
             
             assert isinstance(self.controller, Controller), 'No controller is bound to this Proxy.'
+            controller = self.controller
             command = dict(
                 object_id = self.object_id,
                 method = method.__name__,
                 args = args,
                 kwargs = kwargs
             )
-            return self.controller.transmitRequest(command)
+            request_id = controller.transmitRequest(command)
+            return controller.retrieveData(request_id)
         emitter.__name__ = method.__name__
         emitter.__doc__ = method.__doc__
         emitter.__signature__ = inspect.signature(method)
@@ -453,9 +454,10 @@ class Controller:
         timeout: int|float = 5, 
         *, 
         min_count: int|None = 1, 
+        max_count: int|None = 1,
         default: Any|None = None,
         close_request: bool = True
-    ) -> dict[tuple[str,str], Any]:
+    ) -> Any | dict[tuple[str,str], Any]:
         assert self.role in ('view', 'both'), "Only the view can listen for data"
         all_data = dict()
         count = 0
@@ -476,10 +478,14 @@ class Controller:
                     sender = response.get('address', {}).get('sender', [])[0]
                     all_data.update({(sender,reply_id[-6:]): data})
                     count += 1
+                    if count >= max_count:
+                        break
                     start_time = time.perf_counter()
                 continue
         if close_request:
             self.data_buffer.pop(request_id)
+        if max_count == 1:
+            return data
         return all_data
     
     def getMethods(self, target: Iterable[int]|None = None, *, private: bool = True) -> dict:
