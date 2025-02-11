@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
+import threading
 import tkinter as tk
 from typing import Any
 
@@ -10,7 +11,10 @@ class GUI:
     def __init__(self, principal: Proxy|Any|None = None):
         self.principal = principal
         self.object_id = ''
+        
+        self.top_level = True
         self.widget = None
+        self.widget_thread: threading.Thread|None = None
         return
     
     def bindObject(self, principal: Proxy|Any):
@@ -25,13 +29,23 @@ class GUI:
     def bindWidget(self, widget: tk.Tk):
         assert isinstance(widget, tk.Tk), 'Widget must be a tkinter.Tk object'
         self.widget = widget
+        self.widget_thread = threading.Thread(target=self.widget.mainloop, daemon=True)
         return
     
     def releaseWidget(self) -> tk.Tk:
         assert isinstance(self.widget, tk.Tk), 'No widget is bound to this GUI'
         widget = self.widget
         self.widget = None
+        self.widget_thread = None
         return widget
+    
+    def show(self):
+        if self.top_level:
+            self.addTo(tk.Tk())
+        assert isinstance(self.widget, tk.Tk), 'No widget is bound to this GUI'
+        self.update()
+        self.widget.mainloop()
+        return
     
     def close(self):
         assert isinstance(self.widget, tk.Tk), 'No widget is bound to this GUI'
@@ -43,4 +57,10 @@ class GUI:
         raise NotImplementedError
     
     def addTo(self, master: tk.Misc):
-        raise NotImplementedError
+        self.top_level = isinstance(master, tk.Tk)
+        if self.top_level:
+            self.bindWidget(master)
+        
+        # Add layout
+        ...
+        return
