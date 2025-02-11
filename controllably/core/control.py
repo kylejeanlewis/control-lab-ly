@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
 from __future__ import annotations
+import asyncio
 from dataclasses import dataclass
 import inspect
 import logging
@@ -12,7 +13,6 @@ from typing import Callable, Mapping, Any, Iterable
 import uuid
 
 # Local application imports
-from .connection import SocketUtils
 from .interpreter import Interpreter, Message
 
 logger = logging.getLogger(__name__)
@@ -129,7 +129,8 @@ class Proxy:
         def emitter(self, *args, **kwargs):
             if not self.remote and not inspect.isclass(self.prime):
                 prime_method = getattr(self.prime, method.__name__)
-                return prime_method(*args, **kwargs)
+                result = prime_method(*args, **kwargs)
+                return result
             
             assert isinstance(self.controller, Controller), 'No controller is bound to this Proxy.'
             command = dict(
@@ -287,6 +288,7 @@ class Controller:
         return dict(
             address = dict(sender=sender, target=target),
             request_id = command.get('request_id', uuid.uuid4().hex),
+            reply_id = uuid.uuid4().hex,
             priority = command.get('priority', False),
             rank = command.get('rank', None)
         )
@@ -416,6 +418,7 @@ class Controller:
         target = target if target is not None else []
         target.extend(self.relays)
         request_id = uuid.uuid4().hex
+        self.data_buffer[request_id] = dict()
         command['address'] = dict(sender=sender, target=target)
         command['request_id'] = request_id
         command['priority'] = priority
@@ -430,24 +433,51 @@ class Controller:
         data = self.interpreter.decodeData(package)
         sender = data.get('address', {}).get('sender', [])
         request_id = data.get('request_id', uuid.uuid4().hex)
+        reply_id = data.get('reply_id', uuid.uuid4().hex)
         if len(sender):
             logger.info(f"[{self.address or str(id(self))}] Received data from {sender}")
-        self.data_buffer[request_id] = data
+        
+        reply_data = {reply_id: data}
+        if request_id not in self.data_buffer:
+            self.data_buffer[request_id] = reply_data
+        else:
+            self.data_buffer[request_id].update(reply_data)
         logger.debug('Received data')
         return
     
-    def retrieveData(self, request_id: str, timeout: int|float = 5, *, default: Any|None = None) -> Any|None:
-        assert self.role in ('view', 'both'), "Only the view can retrieve data"
+    def retrieveData(self, 
+        request_id: str, 
+        timeout: int|float = 5, 
+        *, 
+        min_count: int|None = 1, 
+        default: Any|None = None,
+        close_request: bool = True
+    ) -> dict[tuple[str,str], Any]:
+        assert self.role in ('view', 'both'), "Only the view can listen for data"
+        all_data = dict()
+        count = 0
         start_time = time.perf_counter()
-        while request_id not in self.data_buffer:
+        while request_id in self.data_buffer:
             time.sleep(0.1)
+            if min_count and (count >= min_count):
+                break
             if (time.perf_counter()-start_time) >= timeout:
                 logger.warning(f"Timeout retrieving data for request_id: {request_id}")
                 logger.warning("Please try again later.")
-                return None
-        response: dict = self.data_buffer.pop(request_id)
-        data = response.get('data', default)
-        return data
+                return all_data if len(all_data) else None
+            if len(self.data_buffer[request_id]):
+                reply_ids = list(self.data_buffer[request_id].keys())
+                for reply_id in reply_ids:
+                    response = self.data_buffer[request_id].pop(reply_id)
+                    data = response.get('data', default)
+                    sender = response.get('address', {}).get('sender', [])[0]
+                    all_data.update({(sender,reply_id[-6:]): data})
+                    count += 1
+                    start_time = time.perf_counter()
+                continue
+        if close_request:
+            self.data_buffer.pop(request_id)
+        return all_data
     
     def getMethods(self, target: Iterable[int]|None = None, *, private: bool = True) -> dict:
         assert self.role in ('view', 'both'), "Only the view can get methods"
@@ -561,14 +591,14 @@ def handle_client(
             if data == '[EXIT]':
                 break
             logger.debug(f"Received from client: {data}")
-            print(data)
+            logger.debug(data)
             data = data.encode("utf-8") if relay else data
             receive_method(data)
         except Exception as e:
-            print(f"Error handling client: {e}")
+            logger.error(f"Error handling client: {e}")
             break
     client_socket.close()
-    print(f"Disconnected from client [{client_addr}]")
+    logger.warning(f"Disconnected from client [{client_addr}]")
     return
 
 
@@ -585,7 +615,7 @@ def start_server(host:str, port:int, controller: Controller, *, terminate: threa
     terminate = threading.Event() if terminate is None else terminate
     while not terminate.is_set():
         client_socket, addr = server_socket.accept()  # Accept a connection
-        print(f"Client connected from {addr}")
+        logger.info(f"Client connected from {addr}")
         client_addr = f"{addr[0]}:{addr[1]}"
         client_socket.sendall(f"[CONNECTED] {client_addr}".encode("utf-8"))
         handshake = client_socket.recv(1024).decode("utf-8")  # Receive response" ")[1]
@@ -613,7 +643,7 @@ def start_server(host:str, port:int, controller: Controller, *, terminate: threa
     
     for thread in threads:
         thread.join()
-    print(f"Server [{host}:{port}] stopped.")
+    logger.warning(f"Server [{host}:{port}] stopped.")
     return
 
 
@@ -632,7 +662,7 @@ def start_client(host:str, port:int, controller: Controller, relay:bool = False,
 
     try:
         client_socket.connect((host, port))  # Connect to the server
-        print(f"Connected to server at {host}:{port}")
+        logger.info(f"Connected to server at {host}:{port}")
         time.sleep(1)
         handshake = client_socket.recv(1024).decode("utf-8")  # Receive response" ")[1]
         print(handshake)
@@ -652,13 +682,13 @@ def start_client(host:str, port:int, controller: Controller, relay:bool = False,
                 if data == '[EXIT]':
                     break
                 logger.debug(f"Received from server: {data}")
-                print(data)
+                logger.debug(data)
                 receive_method(data)
             except Exception as e:
-                print(f"Error listening server: {e}")
+                logger.error(f"Error listening server: {e}")
                 break
     except Exception as e:
-        print(f"Error connecting to server: {e}")
+        logger.error(f"Error connecting to server: {e}")
     else:
-        print(f"Disconnected from server [{host}:{port}]")
+        logger.warning(f"Disconnected from server [{host}:{port}]")
     return
