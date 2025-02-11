@@ -148,9 +148,10 @@ class Proxy:
         self.controller = controller
         return
     
-    def unbindController(self):
+    def releaseController(self) -> Controller:
+        controller = self.controller
         self.controller = None
-        return
+        return controller
 
 
 class Controller:
