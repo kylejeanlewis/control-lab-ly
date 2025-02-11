@@ -145,10 +145,12 @@ class Proxy:
         return emitter
     
     def bindController(self, controller: Controller):
+        assert isinstance(controller, Controller), 'Controller must be an instance of Controller'
         self.controller = controller
         return
     
     def releaseController(self) -> Controller:
+        assert isinstance(self.controller, Controller), 'No controller is bound to this Proxy.'
         controller = self.controller
         self.controller = None
         return controller
