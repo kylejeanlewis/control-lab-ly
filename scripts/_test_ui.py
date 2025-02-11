@@ -3,223 +3,47 @@ import threading
 import tkinter as tk
 
 import test_init
-from controllably.core.control import Controller, JSONInterpreter, start_client
+from controllably.core.control import Controller, Proxy, start_client
+from controllably.core.interpreter import JSONInterpreter
 
-# %% Client-server version
-if __name__ == "__main__":
-    host = "127.0.0.1"  # Or "localhost"
-    port = 12345       # Choose a free port (above 1024 is recommended)
-    ui = Controller('view', JSONInterpreter())
-    
-    # Start client in a separate thread
-    ui_thread = threading.Thread(target=start_client, args=(host, port, ui))
-    ui_thread.daemon = True  # Allow the main thread to exit even if the server is running
-    ui_thread.start()
+# %%
+host = "127.0.0.1"  # Or "localhost"
+port = 12345       # Choose a free port (above 1024 is recommended)
+ui = Controller('view', JSONInterpreter())
+args = [host, port, ui]
+
+# %% Server-client version
+ui_thread = threading.Thread(target=start_client, args=args, daemon=True)
+ui_thread.start()
     
 # %% Hub-spoke version
-if __name__ == "__main__":
-    host = "127.0.0.1"  # Or "localhost"
-    port = 12345       # Choose a free port (above 1024 is recommended)
-    ui = Controller('view', JSONInterpreter())
-    
-    # Start client in a separate thread
-    ui_thread = threading.Thread(target=start_client, args=(host, port, ui, True))
-    ui_thread.daemon = True  # Allow the main thread to exit even if the server is running
-    ui_thread.start()
-    
-# %%
-ui.getMethods(private=True)
+args.append(True)
+ui_thread = threading.Thread(target=start_client, args=args, daemon=True)
+ui_thread.start()
 
 # %%
-methods = ui.getMethods(private=False)
+methods = ui.getMethods(private=True)
 
 # %%
-command = dict(
-    object_id = list(methods.keys())[0],
-    method = 'qsize'
-)
+command = dict(object_id=list(methods.keys())[0], method='qsize')
+ui.transmitRequest(command)
+
+command = dict(object_id=list(methods.keys())[0], method='get_nowait')
 ui.transmitRequest(command)
 
 # %%
 ui.data_buffer
 
 # %%
-command = dict(
-    object_id = list(methods.keys())[0],
-    method = 'get_nowait'
-)
-ui.transmitRequest(command)
+from controllably.Move.Cartesian import Gantry
+from controllably.GUI import MoveGUI
+
+g = Gantry('COM0',[[100,100,100],[-100,-100,-100]], simulation=True)
+p = Proxy(g, 'MOVER')
+p.bindController(ui)
 
 # %%
-ui.data_buffer
-
-# %%
-class GUI:
-    def __init__(self, controller: Controller):
-        self.controller = controller
-        self.object_id = ''
-        self.widget = None
-        return
-    
-    def bindObject(self, object_id: str):
-        self.object_id = object_id
-        return
-    
-    def unbindObject(self):
-        self.object_id = ''
-        return
-    
-    def bindWidget(self, widget: tk.Tk):
-        self.widget = widget
-        return
-    
-    def unbindWidget(self):
-        self.widget = None
-        return
-    
-    def close(self):
-        assert isinstance(self.widget, tk.Tk), 'No widget is bound to this GUI'
-        self.widget.quit()
-        self.widget.destroy()
-        return
-
-    def sendCommand(self, command: dict):
-        assert len(self.object_id), 'No tool is bound to this GUI'
-        request = dict(object_id=self.object_id)
-        request.update(command)
-        self.controller.transmitRequest(request)
-        return
-    
-    def updateValues(self):
-        raise NotImplementedError    
-
-
-class MoveGUI(GUI):
-    def __init__(self, controller: Controller):
-        super().__init__(controller)
-    
-        # Initialize axis values
-        self.x = 0
-        self.y = 0
-        self.z = 0
-        self.a = 0  # Rotation around z-axis (yaw)
-        self.b = 0  # Rotation around y-axis (pitch)
-        self.c = 0  # Rotation around x-axis (roll)
-        return
-    
-    def updateValues(self):
-        self.position_label.config(text=f"Position:\nx={self.x}, y={self.y}, z={self.z}\na={self.a}, b={self.b}, c={self.c}")
-    
-    def addTo(self, master: tk.Misc):
-        master.title("Robot Control D-Pad")
-        
-        # Create frames for organization
-        status_frame = tk.Frame(master)
-        status_frame.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
-        
-        translation_frame = tk.Frame(master)
-        translation_frame.grid(row=1, column=0, padx=10, pady=10)
-
-        rotation_frame = tk.Frame(master)
-        rotation_frame.grid(row=1, column=1, padx=10, pady=10)
-        
-        # Status Display
-        self.position_label = tk.Label(status_frame, text="Position: \nx=0, y=0, z=0\na=0, b=0, c=0")
-        self.position_label.grid(row=0, column=0, padx=(0,10), rowspan=2)
-        tk.Button(status_frame, text='Terminate', command=self.close).grid(row=0, column=1)
-        self.status_label = tk.Label(status_frame, text="Connected")
-        self.status_label.grid(row=1, column=1)
-
-        # Translation Controls
-        BUTTON_WIDTH = 5
-        tk.Label(translation_frame, text="Translation").grid(row=0, column=0, columnspan=7)
-        tk.Button(translation_frame, text="Home ", command=self.home, width=BUTTON_WIDTH).grid(row=4, column=3)
-        tk.Button(translation_frame, text="Safe ", command=self.safe, width=BUTTON_WIDTH).grid(row=4, column=7)
-        
-        tk.Button(translation_frame, text="X- 10", command=lambda: self.move(axis='x',value=-10), width=BUTTON_WIDTH).grid(row=4, column=0)
-        tk.Button(translation_frame, text="X-  1", command=lambda: self.move(axis='x',value=-1), width=BUTTON_WIDTH).grid(row=4, column=1)
-        tk.Button(translation_frame, text="X-0.1", command=lambda: self.move(axis='x',value=-0.1), width=BUTTON_WIDTH).grid(row=4, column=2)
-        tk.Button(translation_frame, text="X+0.1", command=lambda: self.move(axis='x',value=0.1), width=BUTTON_WIDTH).grid(row=4, column=4)
-        tk.Button(translation_frame, text="X+  1", command=lambda: self.move(axis='x',value=1), width=BUTTON_WIDTH).grid(row=4, column=5)
-        tk.Button(translation_frame, text="X+ 10", command=lambda: self.move(axis='x',value=10), width=BUTTON_WIDTH).grid(row=4, column=6)
-        
-        tk.Button(translation_frame, text="Y+ 10", command=lambda: self.move(axis='y',value=10), width=BUTTON_WIDTH).grid(row=1, column=3)
-        tk.Button(translation_frame, text="Y+  1", command=lambda: self.move(axis='y',value=1), width=BUTTON_WIDTH).grid(row=2, column=3)
-        tk.Button(translation_frame, text="Y+0.1", command=lambda: self.move(axis='y',value=0.1), width=BUTTON_WIDTH).grid(row=3, column=3)
-        tk.Button(translation_frame, text="Y-0.1", command=lambda: self.move(axis='y',value=-0.1), width=BUTTON_WIDTH).grid(row=5, column=3)
-        tk.Button(translation_frame, text="Y-  1", command=lambda: self.move(axis='y',value=-1), width=BUTTON_WIDTH).grid(row=6, column=3)
-        tk.Button(translation_frame, text="Y- 10", command=lambda: self.move(axis='y',value=-10), width=BUTTON_WIDTH).grid(row=7, column=3)
-        
-        tk.Button(translation_frame, text="Z+ 10", command=lambda: self.move(axis='z',value=10), width=BUTTON_WIDTH).grid(row=1, column=7)
-        tk.Button(translation_frame, text="Z+  1", command=lambda: self.move(axis='z',value=1), width=BUTTON_WIDTH).grid(row=2, column=7)
-        tk.Button(translation_frame, text="Z+0.1", command=lambda: self.move(axis='z',value=0.1), width=BUTTON_WIDTH).grid(row=3, column=7)
-        tk.Button(translation_frame, text="Z-0.1", command=lambda: self.move(axis='z',value=-0.1), width=BUTTON_WIDTH).grid(row=5, column=7)
-        tk.Button(translation_frame, text="Z-  1", command=lambda: self.move(axis='z',value=-1), width=BUTTON_WIDTH).grid(row=6, column=7)
-        tk.Button(translation_frame, text="Z- 10", command=lambda: self.move(axis='z',value=-10), width=BUTTON_WIDTH).grid(row=7, column=7)
-
-        # Rotation Controls
-        tk.Label(rotation_frame, text="Rotation").grid(row=0, column=0, columnspan=3)
-        tk.Button(rotation_frame, text="Roll CW (A+)", command=lambda: self.rotate(axis='a',value=1)).grid(row=1, column=1)
-        tk.Button(rotation_frame, text="Roll CCW (A-)", command=lambda: self.rotate(axis='a',value=-1)).grid(row=2, column=1)
-        tk.Button(rotation_frame, text="Pitch Up (B+)", command=lambda: self.rotate(axis='b',value=1)).grid(row=3, column=1)
-        tk.Button(rotation_frame, text="Pitch Down (B-)", command=lambda: self.rotate(axis='b',value=-1)).grid(row=4, column=1)
-        tk.Button(rotation_frame, text="Yaw CW (C+)", command=lambda: self.rotate(axis='c',value=1)).grid(row=5, column=1)
-        tk.Button(rotation_frame, text="Yaw CCW (C-)", command=lambda: self.rotate(axis='c',value=-1)).grid(row=6, column=1)
-        return
-
-    def move(self, axis:str, value:int|float):
-        assert axis in 'xyz', 'Provide one of x,y,z axis'
-        if axis == 'x':
-            self.x += value
-        elif axis == 'y':
-            self.y += value
-        elif axis == 'z':
-            self.z += value
-        else:
-            return
-        command = dict(
-            method = 'move',
-            args = (axis, value)
-        )
-        self.sendCommand(command)
-        self.updateValues()
-        return
-
-    def rotate(self, axis:str, value:int|float):
-        assert axis in 'abc', 'Provide one of a,b,c axis'
-        if axis == 'a':
-            self.a += value
-        elif axis == 'b':
-            self.b += value
-        elif axis == 'c':
-            self.c += value
-        else:
-            return
-        command = dict(
-            method = 'rotate',
-            args = (axis, value)
-        )
-        self.sendCommand(command)
-        self.updateValues()
-        return
-    
-    def home(self):
-        command = dict(
-            method = 'home'
-        )
-        self.sendCommand(command)
-        return
-    
-    def safe(self):
-        command = dict(
-            method = 'moveToSafeHeight'
-        )
-        self.sendCommand(command)
-        return
-
-# %%
-gui = MoveGUI(ui)
-gui.bindObject('MOVER')
+gui = MoveGUI(p)
 
 # %%
 root = tk.Tk()
