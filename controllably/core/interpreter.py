@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
 from __future__ import annotations
+import ast
 import json
+import pickle
 from typing import Protocol, Mapping, Any
 
 class Message(Protocol):
@@ -42,11 +44,12 @@ class JSONInterpreter(Interpreter):
         return command
     
     @staticmethod
-    def encodeData(data: Any) -> Message|str|bytes:
+    def encodeData(data: dict[str, Any]) -> Message|str|bytes:
         try:
             package = json.dumps(data).encode('utf-8')
         except TypeError:
-            data.update(dict(data=f"{data['data'].__class__.__name__}[{data['data']!r}]"))
+            content = data.pop('data')
+            data.update(dict(pickled = str(pickle.dumps(content))))
             package = json.dumps(data).encode('utf-8')
         return package
     
@@ -57,5 +60,9 @@ class JSONInterpreter(Interpreter):
     
     @staticmethod
     def decodeData(package: Message|str|bytes) -> Any:
-        data = json.loads(package)
+        data: dict[str, Any] = json.loads(package)
+        if 'data' not in data and 'pickled' in data:
+            pickled = data.pop('pickled')
+            data.update(dict(data = pickle.loads(ast.literal_eval(pickled))))
         return data
+    
