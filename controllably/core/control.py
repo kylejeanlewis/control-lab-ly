@@ -129,7 +129,9 @@ class Proxy:
     @staticmethod
     def makeEmitter(method):
         def emitter(self, *args, **kwargs):
-            if not self.remote and not inspect.isclass(self.prime):
+            if not self.remote:
+                if inspect.isclass(self.prime):
+                    raise TypeError('This Proxy was created with a class, not object.')
                 prime_method = getattr(self.prime, method.__name__)
                 result = prime_method(*args, **kwargs)
                 return result
