@@ -1,0 +1,45 @@
+# -*- coding: utf-8 -*-
+# Standard library imports
+import tkinter as tk
+from typing import Callable
+
+class GUI:
+    def __init__(self, principal: Callable|None = None):
+        self.principal = principal
+        self.object_id = ''
+        self.widget = None
+        return
+    
+    def bindObject(self, principal: Callable):
+        assert callable(principal), 'Principal must be a callable object'
+        self.principal = principal
+        return
+    
+    def releaseObject(self) -> Callable:
+        assert callable(self.principal), 'No principal is bound to this GUI'
+        principal = self.principal
+        self.principal = None
+        return principal
+
+    def bindWidget(self, widget: tk.Tk):
+        assert isinstance(widget, tk.Tk), 'Widget must be a tkinter.Tk object'
+        self.widget = widget
+        return
+    
+    def releaseWidget(self) -> tk.Tk:
+        assert isinstance(self.widget, tk.Tk), 'No widget is bound to this GUI'
+        widget = self.widget
+        self.widget = None
+        return widget
+    
+    def close(self):
+        assert isinstance(self.widget, tk.Tk), 'No widget is bound to this GUI'
+        self.widget.quit()
+        self.widget.destroy()
+        return
+    
+    def updateValues(self):
+        raise NotImplementedError
+    
+    def addTo(self, master: tk.Misc):
+        raise NotImplementedError
