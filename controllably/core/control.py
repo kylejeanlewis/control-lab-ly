@@ -163,6 +163,14 @@ class Proxy:
         self.controller = None
         self.remote = False
         return controller
+    
+    def getAttr(self, attr_name:str, default:Any|None = None) -> Any|None:
+        if self.remote:
+            controller = self.controller
+            command = dict(method='getattr', args=[self.object_id,attr_name])
+            request_id = controller.transmitRequest(command)
+            return controller.retrieveData(request_id, default=default)
+        return getattr(self.prime, attr_name, default)
 
 
 class Controller:
@@ -337,18 +345,18 @@ class Controller:
                 this_object = self.objects.get(object_id)
                 if this_object is None:
                     logger.error(f"Object not found: {object_id}")
-                    return None, dict(status='error', message='Object not found')
+                    return 'Object not found', dict(status='error')
                 
                 if not hasattr(this_object, name):
                     logger.error(f"Attribute not found: {name}")
-                    return None, dict(status='error', message='Attribute not found')
+                    return 'Attribute not found', dict(status='error')
                 if method_name == 'getattr':
                     return getattr(this_object, name), dict(status='completed')
                 elif method_name == 'setattr':
                     value = args[2] if len(args) > 2 else kwargs.get('value', None)
                     if value is None:
                         logger.error(f"Value not provided for attribute: {name}")
-                        return None, dict(status='error', message='Value not provided')
+                        return 'Value not provided', dict(status='error')
                     setattr(this_object, name, args[2]), dict(status='completed')
                     return None, dict(status='completed')
                 elif method_name == 'delattr':
@@ -356,14 +364,14 @@ class Controller:
                     return None, dict(status='completed')
             else:
                 logger.error(f"Object not found: {object_id}")
-                return None, dict(status='error', message='Object not found')
+                return 'Object not found', dict(status='error')
         
         this_object = self.objects[object_id]
         try:
             method: Callable = getattr(this_object, method_name)
         except AttributeError:
             logger.error(f"Method not found: {method_name}")
-            return None, dict(status='error', message='Method not found')
+            return 'Method not found', dict(status='error')
         
         logger.info(f"Executing command: {command}")
         args = command.get('args', [])
@@ -372,7 +380,7 @@ class Controller:
             out = method(*args, **kwargs)
         except Exception as e:
             logger.error(f"Error executing command: {e}")
-            return None, dict(status='error', message=str(e))
+            return str(e), dict(status='error')
         logger.info(f"Completed command: {command}")
         return out, dict(status='completed')
     
@@ -476,8 +484,13 @@ class Controller:
                 reply_ids = list(self.data_buffer[request_id].keys())
                 for reply_id in reply_ids:
                     response = self.data_buffer[request_id].pop(reply_id)
+                    status = response.get('status', None)
                     data = response.get('data', default)
                     sender = response.get('address', {}).get('sender', [])[0]
+                    if status != 'completed':
+                        error_message = data if status == 'error' else "Unable to read response"
+                        logger.warning(error_message)
+                        data = Exception(error_message)
                     all_data.update({(sender,reply_id[-6:]): data})
                     count += 1
                     if count >= max_count:
