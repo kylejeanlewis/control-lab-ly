@@ -142,7 +142,9 @@ class TriContinentDevice(SerialDevice):
     # Status query methods
     def getStatus(self) -> tuple[bool,str]:
         out: Data = self.query('Q')
-        status = out.data[1] if len(out.data) > 1 else ''
+        if out.data is None or len(out.data) == 0:
+            return self.flags.busy, self.status
+        status = out.data[0]
         if status not in BUSY + IDLE:
             raise RuntimeError(f"Unknown status code: {status!r}")
         self.flags.busy = (status in BUSY)
@@ -154,8 +156,8 @@ class TriContinentDevice(SerialDevice):
         return self.flags.busy, self.status
     
     def getPosition(self) -> int:
-        out: Data = self.query('?')
-        self.position = int(out.data[2:]) if len(out.data) > 2 else self.position
+        out: Data = self.query('?', data_type=IntData)
+        self.position =out.data
         return self.position
     
     # Getter methods
@@ -167,28 +169,28 @@ class TriContinentDevice(SerialDevice):
         return out.data
 
     def getStartSpeed(self) -> int:
-        out: Data =  self.query('?1')
-        start_speed = int(out.data[2:]) if len(out.data) > 2 else 0
+        out: Data =  self.query('?1', data_type=IntData)
+        start_speed = out.data
         return start_speed
 
     def getTopSpeed(self) -> int:
-        out: Data = self.query('?2')
-        top_speed = int(out.data[2:]) if len(out.data) > 2 else 0
+        out: Data = self.query('?2', data_type=IntData)
+        top_speed = out.data
         return top_speed
     
-    def getValvePosition(self) -> str:
-        out: Data = self.query('?6')
-        valve_position = out.data[2] if len(out.data) > 2 else ''
+    def getValvePosition(self) -> int:
+        out: Data = self.query('?6', data_type=IntData)
+        valve_position = out.data
         return valve_position
     
     def getAcceleration(self) -> int:
-        out: Data = self.query('?7')
-        acceleration = out.data[2:] if len(out.data) > 2 else 0
+        out: Data = self.query('?7', data_type=IntData)
+        acceleration = out.data
         return acceleration
     
     def getInitStatus(self) -> bool:
-        out: Data = self.query('?19')
-        init = bool(out.data[2:]) if len(out.data) > 2 else False
+        out: Data = self.query('?19', data_type=BoolData)
+        init = out.data
         return init
     
     def getPumpConfig(self) -> str:     #TODO
