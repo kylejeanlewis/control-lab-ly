@@ -53,6 +53,9 @@ class GUI:
         self.widget.destroy()
         return
     
+    def refresh(self, **kwargs):
+        raise NotImplementedError
+    
     def update(self, **kwargs):
         raise NotImplementedError
     
