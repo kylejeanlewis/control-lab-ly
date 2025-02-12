@@ -231,9 +231,11 @@ class SartoriusDevice(SerialDevice):
                 all_output.append(None)
                 continue
             out: Data = out
+            # Check channel
             if out.channel != self.channel:
                 self._logger.warning(f"Channel mismatch: self={self.channel} | response={out.channel}")
                 continue
+            # Check error code
             if out.data[:2] == 'er':
                 error_code = out.data
                 error_details = lib.ErrorCode[error_code].value
@@ -251,6 +253,7 @@ class SartoriusDevice(SerialDevice):
                         data_type=data_type, timestamp=timestamp
                     )
                     self._repeat_query = False
+            # Check command code
             elif data.startswith('D') and (data[:2] != out.data[:2].upper()):
                 self._logger.warning(f"Command mismatch: sent={data[:2]} | response={out.data[:2]}")
                 continue

@@ -85,6 +85,7 @@ class TriContinentDevice(SerialDevice):
         timestamp: bool = False
     ):
         data_type: NamedTuple = data_type or Data
+        format_out = format_out or self.read_format
         responses = super().query(
             data, multi_out, timeout=timeout, 
             format_in=format_in, timestamp=timestamp,

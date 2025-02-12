@@ -232,10 +232,11 @@ class _QInstrumentsDevice(SerialDevice):
                 out,now = response
             else:
                 out = response
-            out: Data|None = out
             if out is None:
                 all_output.append(None)
                 continue
+            out: Data = out
+            # Check invalid commands
             if isinstance(out.data, str) and out.data.startswith('u ->'):
                 error_message = f"{self.model} received an invalid command: {data!r}"
                 self._logger.error(error_message)
