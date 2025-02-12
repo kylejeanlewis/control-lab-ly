@@ -40,16 +40,26 @@ class TriContinent(LiquidHandler):
         self.capacity = capacity
         self.channel = self.device.channel
         self.volume_resolution = self.capacity / self.device.max_position
-        
         self.pullback_steps = 0
+        
+        self.speed_in = self.device.speed
+        self.speed_out = self.device.speed
         return
+    
+    @property
+    def start_speed(self):
+        return self.device.start_speed
+    
+    @property
+    def acceleration(self):
+        return self.device.acceleration
     
     def aspirate(self, 
         volume: float, 
         speed: float|None = None, 
         reagent: str|None = None,
         *,
-        start_speed: int = 50,
+        start_speed: int|None = None,
         pullback: bool = False,
         delay: int = 0, 
         pause: bool = False, 
@@ -85,12 +95,13 @@ class TriContinent(LiquidHandler):
             return False
         volume = round(volume/self.volume_resolution)*self.volume_resolution
         speed = speed or self.speed_in
+        start_speed = start_speed or self.start_speed
         
         # Replace with actual aspirate implementation
         steps = round(volume/self.volume_resolution)
         self.device.setStartSpeed(start_speed, immediate=False)
         self.device.setTopSpeed(speed, immediate=False)
-        self.device.setAcceleration(2500, immediate=False)
+        self.device.setAcceleration(self.acceleration, immediate=False)
         self.device.aspirate(steps, immediate=False, blocking=blocking)
         self.device.wait(delay, immediate=False)
         self.device.run()
@@ -107,7 +118,7 @@ class TriContinent(LiquidHandler):
         volume: float, 
         speed: float|None = None, 
         *,
-        start_speed: int = 50,
+        start_speed: int|None = None,
         blowout: bool = False,
         delay: int = 0, 
         pause: bool = False, 
@@ -143,12 +154,13 @@ class TriContinent(LiquidHandler):
             return False
         volume = round(volume/self.volume_resolution)*self.volume_resolution
         speed = speed or self.speed_out
+        start_speed = start_speed or self.start_speed
         
         # Replace with actual dispense implementation
         steps = round(volume/self.volume_resolution)
         self.device.setStartSpeed(start_speed, immediate=False)
         self.device.setTopSpeed(speed, immediate=False)
-        self.device.setAcceleration(2500, immediate=False)
+        self.device.setAcceleration(self.acceleration, immediate=False)
         if volume > self.volume and not ignore:
             self.device.setValvePosition('I', immediate=False)
             self.device.moveTo(self.device.max_position, immediate=False)
@@ -187,3 +199,26 @@ class TriContinent(LiquidHandler):
         """
         self.device.reverse()
         return
+    
+    def getSettings(self) -> dict[str, int|str|bool]:
+        """
+        Get the settings of the pump.
+        """
+        self.device.getInfo()
+        self.start_speed = self.device.getStartSpeed()
+        self.speed_in = self.device.getTopSpeed()
+        self.speed_out = self.speed_in
+        self.acceleration = self.device.getAcceleration()
+        self.valve_position = self.device.getValvePosition()
+        self.position = self.device.getPosition()
+        self.init_status = self.device.getInitStatus()
+        return {
+            'start_speed': self.start_speed,
+            'speed_in': self.speed_in,
+            'speed_out': self.speed_out,
+            'acceleration': self.acceleration,
+            'valve_position': self.valve_position,
+            'position': self.position,
+            'init_status': self.init_status
+        }
+        
