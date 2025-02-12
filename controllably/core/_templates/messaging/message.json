@@ -13,7 +13,6 @@
     "reply": {
         "data": null,
         "status": "",
-        "message": "optional",
 
         "address": {"sender": [""], "target": [""]},
         "request_id": "",
