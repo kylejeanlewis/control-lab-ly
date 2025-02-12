@@ -23,12 +23,12 @@ MAX_CHANNELS = 15
 BUSY = '@ABCDEFGHIJKO'
 IDLE = '`abcdefghijko'
 
-READ_FORMAT = "/{channel:1}{data}\x03\r"        # response template: <PRE><STRING><POST>
+READ_FORMAT = "/{_channel:1}{data}\x03\r"        # response template: <PRE><STRING><POST>
 WRITE_FORMAT = '/{channel}{data}\r'                         # command template: <PRE><ADR><STRING><POST>
-Data = NamedTuple("Data", [("data", str), ("channel", int)])
-BoolData = NamedTuple("BoolData", [("data", bool), ("channel", int)])
-FloatData = NamedTuple("FloatData", [("data", float), ("channel", int)])
-IntData = NamedTuple("IntData", [("data", int), ("channel", int)])
+Data = NamedTuple("Data", [("data", str)])
+BoolData = NamedTuple("BoolData", [("data", bool)])
+FloatData = NamedTuple("FloatData", [("data", float)])
+IntData = NamedTuple("IntData", [("data", int)])
 
 class TriContinentDevice(SerialDevice):
     
@@ -106,10 +106,10 @@ class TriContinentDevice(SerialDevice):
             status, content = (out.data[0],out.data[1:]) if len(out.data) > 1 else (out.data,'0')
             out: Data = out
             # Check channel
-            if out.channel != str(self.channel):
-                self._logger.warning(f"Channel mismatch: {out.channel} != {self.channel}")
-                all_output.append(('', now) if timestamp else '')
-                continue
+            # if out.channel != str(self.channel):
+            #     self._logger.warning(f"Channel mismatch: {out.channel} != {self.channel}")
+            #     all_output.append(('', now) if timestamp else '')
+            #     continue
             # Check status code
             if status not in BUSY + IDLE:
                 raise RuntimeError(f"Unknown status code: {status!r}")
