@@ -256,8 +256,10 @@ class SartoriusDevice(SerialDevice):
                 continue
             
             if self.flags.simulation:
-                # data_out = data_type('') if data_type.__annotations__['data'] == str else data_type(0)
-                pass
+                field_types = data_type.__annotations__
+                data_defaults = data_type._field_defaults
+                defaults = [data_defaults.get(f, ('' if t==str else 0)) for f,t in field_types.items()]
+                data_out = data_type(defaults)
             else:
                 data_dict = out._asdict()
                 if out.data != 'ok':
