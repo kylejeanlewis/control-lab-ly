@@ -31,18 +31,21 @@ class MoveGUI(GUI):
         self.x = 0
         self.y = 0
         self.z = 0
-        self.a = 0  # Rotation around z-axis (yaw)
+        self.a = 0  # Rotation around x-axis (roll)
         self.b = 0  # Rotation around y-axis (pitch)
-        self.c = 0  # Rotation around x-axis (roll)
+        self.c = 0  # Rotation around z-axis (yaw)
+        return
+    
+    def refresh(self, **kwargs):
+        self.position_label.config(text=f"Position:\nx={self.x}, y={self.y}, z={self.z}\nc={self.c}, b={self.b}, a={self.a}")
         return
     
     def update(self, **kwargs):
         position = self.getPosition()
         if isinstance(position, Position):
             self.x, self.y, self.z = position.coordinates
-            self.c, self.b, self.c = position.rotation
-        self.position_label.config(text=f"Position:\nx={self.x}, y={self.y}, z={self.z}\na={self.a}, b={self.b}, c={self.c}")
-        # self.widget.after(100, self.update)
+            self.c, self.b, self.a = position.rotation
+        self.refresh()
         return
     
     def addTo(self, master: tk.Misc):
@@ -109,28 +112,18 @@ class MoveGUI(GUI):
 
     def move(self, axis:str, value:int|float):
         assert axis in 'xyz', 'Provide one of x,y,z axis'
-        if axis == 'x':
-            self.x += value
-        elif axis == 'y':
-            self.y += value
-        elif axis == 'z':
-            self.z += value
+        setattr(self, axis, getattr(self, axis) + value)
         if hasattr(self.principal, 'move'):
             self.principal.move(axis,value)
-        self.update()
+        self.refresh()
         return
 
     def rotate(self, axis:str, value:int|float):
         assert axis in 'abc', 'Provide one of a,b,c axis'
-        if axis == 'a':
-            self.a += value
-        elif axis == 'b':
-            self.b += value
-        elif axis == 'c':
-            self.c += value
+        setattr(self, axis, getattr(self, axis) + value)
         if hasattr(self.principal, 'rotate'):
             self.principal.rotate(axis,value)
-        self.update()
+        self.refresh()
         return 
     
     def home(self):
