@@ -2,6 +2,7 @@
 # Standard library imports
 from __future__ import annotations
 import logging
+import time
 
 # Local application imports
 from ...liquid import LiquidHandler
@@ -103,11 +104,11 @@ class TriContinent(LiquidHandler):
         self.device.setTopSpeed(speed, immediate=False)
         self.device.setAcceleration(self.acceleration, immediate=False)
         self.device.aspirate(steps, immediate=False, blocking=blocking)
-        self.device.wait(delay, immediate=False)
+        # self.device.wait(delay, immediate=False)
         self.device.run()
         
         # Update values
-        # time.sleep(delay)
+        time.sleep(delay)
         # self.volume = min(self.volume + volume, self.capacity)
         self.volume = self.device.position * self.volume_resolution
         if pause:
@@ -165,11 +166,11 @@ class TriContinent(LiquidHandler):
             self.device.setValvePosition('I', immediate=False)
             self.device.moveTo(self.device.max_position, immediate=False)
         self.device.dispense(steps, immediate=False, blocking=blocking)
-        self.device.wait(delay, immediate=False)
+        # self.device.wait(delay, immediate=False)
         self.device.run()
         
         # Update values
-        # time.sleep(delay)
+        time.sleep(delay)
         # self.volume = max(self.volume - volume, 0)
         self.volume = self.device.position * self.volume_resolution
         if pause:
@@ -181,6 +182,7 @@ class TriContinent(LiquidHandler):
         Home the pump.
         """
         self.device.initialize(self.device.output_right)
+        self.volume = self.device.position * self.volume_resolution
         return
     
     def setSpeed(self, speed: float):
