@@ -61,7 +61,7 @@ def create_folder(base:Path|str = '', sub:Path|str = '') -> Path:
     main_folder = Path(datetime.now().strftime("%Y%m%d_%H%M"))
     new_folder = Path(base) / main_folder / Path(sub)
     os.makedirs(new_folder)
-    return main_folder
+    return new_folder
 
 def init(repository_name:str):
     """
