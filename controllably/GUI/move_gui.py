@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
 import tkinter as tk
+from tkinter import ttk
 from typing import Protocol
 
 # Local application imports
@@ -54,60 +55,93 @@ class MoveGUI(GUI):
             self.bindWidget(master)
             
         # Add layout
+        BUTTON_HEIGHT = 1
+        BUTTON_WIDTH = 6
         master.title("Robot Control D-Pad")
+        master.rowconfigure(1,weight=1, minsize=BUTTON_HEIGHT*10)
+        master.columnconfigure(0,weight=1, minsize=BUTTON_WIDTH*9)
         
         # Create frames for organization
-        status_frame = tk.Frame(master)
-        status_frame.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
+        status_frame = ttk.Frame(master)
+        status_frame.grid(row=0, column=0, padx=10, pady=10, sticky='nsew')
+        status_frame.grid_columnconfigure(0,weight=1)
         
-        translation_frame = tk.Frame(master)
-        translation_frame.grid(row=1, column=0, padx=10, pady=10)
+        control_frame = ttk.Frame(master)
+        control_frame.grid(row=1, column=0, padx=10, pady=10, sticky='nsew')
+        control_frame.grid_rowconfigure(1,weight=7, minsize=BUTTON_HEIGHT*7)
+        control_frame.grid_rowconfigure([0,2],weight=1, minsize=BUTTON_HEIGHT)
+        control_frame.grid_columnconfigure(1,weight=7, minsize=BUTTON_WIDTH*7)
+        control_frame.grid_columnconfigure([0,2],weight=1, minsize=BUTTON_WIDTH)
+        
+        translation_xy_frame = ttk.Frame(control_frame)
+        translation_xy_frame.grid(row=1, column=1, padx=10, pady=10, sticky='nsew')
+        translation_xy_frame.grid_rowconfigure([0,1,2,3,4,5,6],weight=1, minsize=BUTTON_HEIGHT)
+        translation_xy_frame.grid_columnconfigure([0,1,2,3,4,5,6],weight=1, minsize=BUTTON_WIDTH)
+        translation_z_frame = ttk.Frame(control_frame)
+        translation_z_frame.grid(row=1, column=2, padx=10, pady=10, sticky='nsew')
+        translation_z_frame.grid_rowconfigure([0,1,2,3,4,5,6],weight=1, minsize=BUTTON_HEIGHT)
+        translation_z_frame.grid_columnconfigure(0,weight=1, minsize=BUTTON_WIDTH)
 
-        rotation_frame = tk.Frame(master)
-        rotation_frame.grid(row=1, column=1, padx=10, pady=10)
+        rotation_a_frame = ttk.Frame(control_frame)
+        rotation_a_frame.grid(row=1, column=0, padx=10, pady=10, sticky='nsew')
+        rotation_a_frame.grid_rowconfigure(1,weight=7, minsize=BUTTON_HEIGHT*5)
+        rotation_a_frame.grid_rowconfigure([0,2],weight=1, minsize=BUTTON_HEIGHT)
+        rotation_a_frame.grid_columnconfigure(0,weight=1, minsize=BUTTON_WIDTH)
+        rotation_b_frame = ttk.Frame(control_frame)
+        rotation_b_frame.grid(row=0, column=1, padx=10, pady=10, sticky='nsew')
+        rotation_b_frame.grid_columnconfigure(1,weight=7, minsize=BUTTON_WIDTH*5)
+        rotation_b_frame.grid_columnconfigure([0,2],weight=1, minsize=BUTTON_WIDTH)
+        rotation_b_frame.grid_rowconfigure(0,weight=1, minsize=BUTTON_WIDTH)
+        rotation_c_frame = ttk.Frame(control_frame)
+        rotation_c_frame.grid(row=2, column=1, padx=10, pady=10, sticky='nsew')
+        rotation_c_frame.grid_columnconfigure(1,weight=7, minsize=BUTTON_WIDTH*5)
+        rotation_c_frame.grid_columnconfigure([0,2],weight=1, minsize=BUTTON_WIDTH)
+        rotation_c_frame.grid_rowconfigure(0,weight=1, minsize=BUTTON_WIDTH)
         
         # Status Display
-        self.position_label = tk.Label(status_frame, text="Position: \nx=0, y=0, z=0\na=0, b=0, c=0")
+        self.position_label = ttk.Label(status_frame, text="Position: \nx=0, y=0, z=0\na=0, b=0, c=0")
         self.position_label.grid(row=0, column=0, padx=(0,10), rowspan=2)
-        tk.Button(status_frame, text='Terminate', command=self.close).grid(row=0, column=1)
-        self.status_label = tk.Label(status_frame, text="Connected")
+        ttk.Button(status_frame, text='Terminate', command=self.close).grid(row=0, column=1)
+        self.status_label = ttk.Label(status_frame, text="Connected")
         self.status_label.grid(row=1, column=1)
 
         # Translation Controls
-        BUTTON_WIDTH = 5
-        tk.Label(translation_frame, text="Translation").grid(row=0, column=0, columnspan=7)
-        tk.Button(translation_frame, text="Home ", command=self.home, width=BUTTON_WIDTH).grid(row=4, column=3)
-        tk.Button(translation_frame, text="Safe ", command=self.safe, width=BUTTON_WIDTH).grid(row=4, column=7)
+        # ttk.Label(control_frame, text="Controls").grid(row=0, column=0)
+        ttk.Button(translation_xy_frame, text="Home ", command=self.home, width=BUTTON_WIDTH).grid(row=3, column=3, sticky='nsew')
+        ttk.Button(translation_z_frame, text="Safe ", command=self.safe, width=BUTTON_WIDTH).grid(row=3, column=0, sticky='nsew')
         
-        tk.Button(translation_frame, text="X- 10", command=lambda: self.move(axis='x',value=-10), width=BUTTON_WIDTH).grid(row=4, column=0)
-        tk.Button(translation_frame, text="X-  1", command=lambda: self.move(axis='x',value=-1), width=BUTTON_WIDTH).grid(row=4, column=1)
-        tk.Button(translation_frame, text="X-0.1", command=lambda: self.move(axis='x',value=-0.1), width=BUTTON_WIDTH).grid(row=4, column=2)
-        tk.Button(translation_frame, text="X+0.1", command=lambda: self.move(axis='x',value=0.1), width=BUTTON_WIDTH).grid(row=4, column=4)
-        tk.Button(translation_frame, text="X+  1", command=lambda: self.move(axis='x',value=1), width=BUTTON_WIDTH).grid(row=4, column=5)
-        tk.Button(translation_frame, text="X+ 10", command=lambda: self.move(axis='x',value=10), width=BUTTON_WIDTH).grid(row=4, column=6)
+        ttk.Button(translation_xy_frame, text="X- 10", command=lambda: self.move(axis='x',value=-10), width=BUTTON_WIDTH).grid(row=3, column=0, sticky='nsew')
+        ttk.Button(translation_xy_frame, text="X-  1", command=lambda: self.move(axis='x',value=-1), width=BUTTON_WIDTH).grid(row=3, column=1, sticky='nsew')
+        ttk.Button(translation_xy_frame, text="X-0.1", command=lambda: self.move(axis='x',value=-0.1), width=BUTTON_WIDTH).grid(row=3, column=2, sticky='nsew')
+        ttk.Button(translation_xy_frame, text="X+0.1", command=lambda: self.move(axis='x',value=0.1), width=BUTTON_WIDTH).grid(row=3, column=4, sticky='nsew')
+        ttk.Button(translation_xy_frame, text="X+  1", command=lambda: self.move(axis='x',value=1), width=BUTTON_WIDTH).grid(row=3, column=5, sticky='nsew')
+        ttk.Button(translation_xy_frame, text="X+ 10", command=lambda: self.move(axis='x',value=10), width=BUTTON_WIDTH).grid(row=3, column=6, sticky='nsew')
         
-        tk.Button(translation_frame, text="Y+ 10", command=lambda: self.move(axis='y',value=10), width=BUTTON_WIDTH).grid(row=1, column=3)
-        tk.Button(translation_frame, text="Y+  1", command=lambda: self.move(axis='y',value=1), width=BUTTON_WIDTH).grid(row=2, column=3)
-        tk.Button(translation_frame, text="Y+0.1", command=lambda: self.move(axis='y',value=0.1), width=BUTTON_WIDTH).grid(row=3, column=3)
-        tk.Button(translation_frame, text="Y-0.1", command=lambda: self.move(axis='y',value=-0.1), width=BUTTON_WIDTH).grid(row=5, column=3)
-        tk.Button(translation_frame, text="Y-  1", command=lambda: self.move(axis='y',value=-1), width=BUTTON_WIDTH).grid(row=6, column=3)
-        tk.Button(translation_frame, text="Y- 10", command=lambda: self.move(axis='y',value=-10), width=BUTTON_WIDTH).grid(row=7, column=3)
+        ttk.Button(translation_xy_frame, text="Y+ 10", command=lambda: self.move(axis='y',value=10), width=BUTTON_WIDTH).grid(row=0, column=3, sticky='nsew')
+        ttk.Button(translation_xy_frame, text="Y+  1", command=lambda: self.move(axis='y',value=1), width=BUTTON_WIDTH).grid(row=1, column=3, sticky='nsew')
+        ttk.Button(translation_xy_frame, text="Y+0.1", command=lambda: self.move(axis='y',value=0.1), width=BUTTON_WIDTH).grid(row=2, column=3, sticky='nsew')
+        ttk.Button(translation_xy_frame, text="Y-0.1", command=lambda: self.move(axis='y',value=-0.1), width=BUTTON_WIDTH).grid(row=4, column=3, sticky='nsew')
+        ttk.Button(translation_xy_frame, text="Y-  1", command=lambda: self.move(axis='y',value=-1), width=BUTTON_WIDTH).grid(row=5, column=3, sticky='nsew')
+        ttk.Button(translation_xy_frame, text="Y- 10", command=lambda: self.move(axis='y',value=-10), width=BUTTON_WIDTH).grid(row=6, column=3, sticky='nsew')
         
-        tk.Button(translation_frame, text="Z+ 10", command=lambda: self.move(axis='z',value=10), width=BUTTON_WIDTH).grid(row=1, column=7)
-        tk.Button(translation_frame, text="Z+  1", command=lambda: self.move(axis='z',value=1), width=BUTTON_WIDTH).grid(row=2, column=7)
-        tk.Button(translation_frame, text="Z+0.1", command=lambda: self.move(axis='z',value=0.1), width=BUTTON_WIDTH).grid(row=3, column=7)
-        tk.Button(translation_frame, text="Z-0.1", command=lambda: self.move(axis='z',value=-0.1), width=BUTTON_WIDTH).grid(row=5, column=7)
-        tk.Button(translation_frame, text="Z-  1", command=lambda: self.move(axis='z',value=-1), width=BUTTON_WIDTH).grid(row=6, column=7)
-        tk.Button(translation_frame, text="Z- 10", command=lambda: self.move(axis='z',value=-10), width=BUTTON_WIDTH).grid(row=7, column=7)
+        ttk.Button(translation_z_frame, text="Z+ 10", command=lambda: self.move(axis='z',value=10), width=BUTTON_WIDTH).grid(row=0, column=0, sticky='nsew')
+        ttk.Button(translation_z_frame, text="Z+  1", command=lambda: self.move(axis='z',value=1), width=BUTTON_WIDTH).grid(row=1, column=0, sticky='nsew')
+        ttk.Button(translation_z_frame, text="Z+0.1", command=lambda: self.move(axis='z',value=0.1), width=BUTTON_WIDTH).grid(row=2, column=0, sticky='nsew')
+        ttk.Button(translation_z_frame, text="Z-0.1", command=lambda: self.move(axis='z',value=-0.1), width=BUTTON_WIDTH).grid(row=4, column=0, sticky='nsew')
+        ttk.Button(translation_z_frame, text="Z-  1", command=lambda: self.move(axis='z',value=-1), width=BUTTON_WIDTH).grid(row=5, column=0, sticky='nsew')
+        ttk.Button(translation_z_frame, text="Z- 10", command=lambda: self.move(axis='z',value=-10), width=BUTTON_WIDTH).grid(row=6, column=0, sticky='nsew')
 
         # Rotation Controls
-        tk.Label(rotation_frame, text="Rotation").grid(row=0, column=0, columnspan=3)
-        tk.Button(rotation_frame, text="Roll CW (A+)", command=lambda: self.rotate(axis='a',value=1)).grid(row=1, column=1)
-        tk.Button(rotation_frame, text="Roll CCW (A-)", command=lambda: self.rotate(axis='a',value=-1)).grid(row=2, column=1)
-        tk.Button(rotation_frame, text="Pitch Up (B+)", command=lambda: self.rotate(axis='b',value=1)).grid(row=3, column=1)
-        tk.Button(rotation_frame, text="Pitch Down (B-)", command=lambda: self.rotate(axis='b',value=-1)).grid(row=4, column=1)
-        tk.Button(rotation_frame, text="Yaw CW (C+)", command=lambda: self.rotate(axis='c',value=1)).grid(row=5, column=1)
-        tk.Button(rotation_frame, text="Yaw CCW (C-)", command=lambda: self.rotate(axis='c',value=-1)).grid(row=6, column=1)
+        ttk.Scale(rotation_a_frame, from_=-180, to=180, orient=tk.VERTICAL, length=BUTTON_HEIGHT*5).grid(row=1, column=0, sticky='nsew')
+        ttk.Scale(rotation_b_frame, from_=-180, to=180, orient=tk.HORIZONTAL, length=BUTTON_WIDTH*5).grid(row=0, column=1, sticky='nsew')
+        ttk.Scale(rotation_c_frame, from_=-180, to=180, orient=tk.HORIZONTAL, length=BUTTON_WIDTH*5).grid(row=0, column=1, sticky='nsew')
+        
+        ttk.Button(rotation_a_frame, text="A-", command=lambda: self.rotate(axis='a',value=-1), width=BUTTON_WIDTH).grid(row=0, column=0, sticky='nsew')
+        ttk.Button(rotation_a_frame, text="A+", command=lambda: self.rotate(axis='a',value=1), width=BUTTON_WIDTH).grid(row=2, column=0, sticky='nsew')
+        ttk.Button(rotation_b_frame, text="B-", command=lambda: self.rotate(axis='b',value=-1), width=BUTTON_WIDTH).grid(row=0, column=0, sticky='nsew')
+        ttk.Button(rotation_b_frame, text="B+", command=lambda: self.rotate(axis='b',value=1), width=BUTTON_WIDTH).grid(row=0, column=2, sticky='nsew')
+        ttk.Button(rotation_c_frame, text="C-", command=lambda: self.rotate(axis='c',value=-1), width=BUTTON_WIDTH).grid(row=0, column=0, sticky='nsew')
+        ttk.Button(rotation_c_frame, text="C+", command=lambda: self.rotate(axis='c',value=1), width=BUTTON_WIDTH).grid(row=0, column=2, sticky='nsew')
         return
 
     def move(self, axis:str, value:int|float):
