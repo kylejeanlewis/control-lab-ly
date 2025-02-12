@@ -23,12 +23,12 @@ MAX_CHANNELS = 15
 BUSY = '@ABCDEFGHIJKO'
 IDLE = '`abcdefghijko'
 
-READ_FORMAT = "/{_channel:1}{data}\x03\r"        # response template: <PRE><STRING><POST>
-WRITE_FORMAT = '/{channel}{data}\r'                         # command template: <PRE><ADR><STRING><POST>
-Data = NamedTuple("Data", [("data", str)])
-BoolData = NamedTuple("BoolData", [("data", bool)])
-FloatData = NamedTuple("FloatData", [("data", float)])
-IntData = NamedTuple("IntData", [("data", int)])
+READ_FORMAT = "/{channel:1}{data}\x03\r"        # response template: <PRE><CHANNEL><STATUS><STRING><POST>
+WRITE_FORMAT = '/{channel}{data}\r'             # command template: <PRE><ADR><STRING><POST>
+Data = NamedTuple("Data", [("data", str), ("channel", int)])
+BoolData = NamedTuple("BoolData", [("data", bool), ("channel", int)])
+FloatData = NamedTuple("FloatData", [("data", float), ("channel", int)])
+IntData = NamedTuple("IntData", [("data", int), ("channel", int)])
 
 class TriContinentDevice(SerialDevice):
     
