@@ -65,6 +65,13 @@ class TriContinentDevice(SerialDevice):
         self.position = 0
         self.status = 0
         
+        self.start_speed = 0
+        self.speed = 0
+        self.acceleration = 0
+        self.valve_position = ''
+        self.init_status = False
+        self.pump_config = ''
+        
         self.command_buffer = ''
         self.output_right: bool|None = None
         return
@@ -141,19 +148,11 @@ class TriContinentDevice(SerialDevice):
     
     # Status query methods
     def getStatus(self) -> tuple[bool,str]:
-        out: Data = self.query('Q')
-        if out.data is None or len(out.data) == 0:
+        out: Data = self.query('Q', data_type=IntData)
+        if out.data is None:
             return self.flags.busy, self.status
-        status = out.data[0]
-        if status not in BUSY + IDLE:
-            raise RuntimeError(f"Unknown status code: {status!r}")
-        self.flags.busy = (status in BUSY)
-        self.status = BUSY.index(status) if self.flags.busy else IDLE.index(status)
-        if self.status:
-            self._logger.warning(f"Error [{self.status}]: {ErrorCode[f'er{self.status}'].value}")
-        if self.status in (1,7,9,10):
-            raise Exception(f"Please reinitialize: Pump {self.channel}.")
-        return self.flags.busy, self.status
+        self.status = out.data
+        return self.flags.busy, ErrorCode[f'er{self.status}'].value
     
     def getPosition(self) -> int:
         out: Data = self.query('?', data_type=IntData)
@@ -170,32 +169,33 @@ class TriContinentDevice(SerialDevice):
 
     def getStartSpeed(self) -> int:
         out: Data =  self.query('?1', data_type=IntData)
-        start_speed = out.data
-        return start_speed
+        self.start_speed = out.data
+        return self.start_speed
 
     def getTopSpeed(self) -> int:
         out: Data = self.query('?2', data_type=IntData)
-        top_speed = out.data
-        return top_speed
+        self.speed = out.data
+        return self.speed
     
-    def getValvePosition(self) -> int:
-        out: Data = self.query('?6', data_type=IntData)
-        valve_position = out.data
-        return valve_position
+    def getValvePosition(self) -> str:
+        out: Data = self.query('?6')
+        self.valve_position = out.data
+        return self.valve_position
     
     def getAcceleration(self) -> int:
         out: Data = self.query('?7', data_type=IntData)
-        acceleration = out.data
-        return acceleration
+        self.acceleration = out.data
+        return self.acceleration
     
     def getInitStatus(self) -> bool:
         out: Data = self.query('?19', data_type=BoolData)
-        init = out.data
-        return init
+        self.init_status = out.data
+        return self.init_status
     
     def getPumpConfig(self) -> str:     #TODO
         out: Data = self.query('?76')
-        return out.data
+        self.pump_config = out.data
+        return self.pump_config
     
     # Setter methods
     def setStartSpeed(self, speed: int, *, immediate: bool = True):
@@ -227,7 +227,7 @@ class TriContinentDevice(SerialDevice):
         return
     
     def setAcceleration(self, acceleration: int, *, immediate: bool = True):
-        assert (2500<=acceleration_code<=50_000), f"Acceleration code must be an integer between 2,500 and 50,000"
+        assert (2500<=acceleration<=50_000), f"Acceleration code must be an integer between 2,500 and 50,000"
         acceleration_code = int(acceleration/2500)
         command = f'L{acceleration_code}'
         if immediate:
