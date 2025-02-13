@@ -483,8 +483,15 @@ class Mover:
             Position: new tool/robot position
         """
         assert isinstance(by, (Sequence, Position, np.ndarray)), f"Ensure `by` is a Sequence or Position or np.ndarray object"
+        rotation = True
         if isinstance(by, (Sequence, np.ndarray)):
-            assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
+            if len(by) == 6:
+                by = Position(by[:3], Rotation.from_euler('zyx', by[3:], degrees=True))
+            else:
+                assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
+                rotation = False
+        # if isinstance(by, (Sequence, np.ndarray)):
+        #     assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
         move_by = by if isinstance(by, Position) else Position(by)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
         self._logger.info(f"Move By | {move_by} at speed factor {speed_factor}")
@@ -532,8 +539,15 @@ class Mover:
             Position: new tool/robot position
         """
         assert isinstance(to, (Sequence, Position, np.ndarray)), f"Ensure `to` is a Sequence or Position or np.ndarray object"
+        rotation = True
         if isinstance(to, (Sequence, np.ndarray)):
-            assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
+            if len(to) == 6:
+                to = Position(to[:3], Rotation.from_euler('zyx', to[3:], degrees=True))
+            else:
+                assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
+                rotation = False
+        # if isinstance(to, (Sequence, np.ndarray)):
+        #     assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
         current_orientation = self.robot_position.Rotation if robot else self.worktool_position.Rotation
         move_to = to if isinstance(to, Position) else Position(to, current_orientation)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
@@ -570,7 +584,7 @@ class Mover:
         return self.moveTo(safe_position, speed_factor,robot=True)
     
     def moveRobotTo(self,
-        to: Sequence[float]|Position,
+        to: Sequence[float]|Position|np.ndarray,
         speed_factor: float|None = None,
         *,
         jog: bool = False,
@@ -591,7 +605,7 @@ class Mover:
         return self.moveTo(to=to, speed_factor=speed_factor, jog=jog, rapid=rapid, robot=True)
         
     def moveToolTo(self,
-        to: Sequence[float]|Position,
+        to: Sequence[float]|Position|np.ndarray,
         speed_factor: float|None = None,
         *,
         jog: bool = False,
@@ -782,9 +796,16 @@ class Mover:
             Position: new tool/robot position
         """
         assert isinstance(to, (Sequence, Position, np.ndarray)), f"Ensure `to` is a Sequence or Position or np.ndarray object"
+        rotation = True
         if isinstance(to, (Sequence, np.ndarray)):
-            assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
-        rotation = any(to.rotation) if isinstance(to,Position) else False
+            if len(to) == 6:
+                to = Position(to[:3], Rotation.from_euler('zyx', to[3:], degrees=True))
+            else:
+                assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
+                rotation = False
+        # if isinstance(to, (Sequence, np.ndarray)):
+        #     assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
+        # rotation = any(to.rotation) if isinstance(to,Position) else False
         speed_factor_lateral = self.speed_factor if speed_factor_lateral is None else speed_factor_lateral
         speed_factor_up = self.speed_factor if speed_factor_up is None else speed_factor_up
         speed_factor_down = self.speed_factor if speed_factor_down is None else speed_factor_down
