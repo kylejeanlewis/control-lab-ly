@@ -63,7 +63,7 @@ class LiquidHandler:
         self.speed_in = 0
         self.speed_out = 0
         self.capacity = 0
-        self.volume = 0
+        self._volume = 0
         self.reagent = ''
         
         self.channel = 0
@@ -105,6 +105,14 @@ class LiquidHandler:
                 continue
             handler.setLevel(level)
         return
+    
+    @property
+    def volume(self) -> float:
+        """Current volume of liquid in the channel"""
+        return self._volume
+    @volume.setter
+    def volume(self, value:float):
+        return self._volume
     
     def connect(self):
         """Connect to the device"""
