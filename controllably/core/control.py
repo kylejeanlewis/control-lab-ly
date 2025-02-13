@@ -148,7 +148,12 @@ class Proxy:
                 kwargs = kwargs
             )
             request_id = controller.transmitRequest(command)
-            return controller.retrieveData(request_id)
+            response: dict = controller.retrieveData(request_id, data_only=False)
+            data = response.get('data')
+            if response.get('status', '') != 'completed':
+                exception = data if isinstance(data,Exception) else Exception(data)
+                raise exception
+            return data
         emitter.__name__ = method.__name__
         emitter.__doc__ = method.__doc__
         emitter.__signature__ = inspect.signature(method)
@@ -488,6 +493,7 @@ class Controller:
         min_count: int|None = 1, 
         max_count: int|None = 1,
         default: Any|None = None,
+        data_only: bool = True,
         close_request: bool = True
     ) -> Any | dict[tuple[str,str], Any]:
         assert self.role in ('view', 'both'), "Only the view can listen for data"
@@ -513,7 +519,7 @@ class Controller:
                         error_message = data if status == 'error' else "Unable to read response"
                         logger.warning(error_message)
                         data = Exception(error_message)
-                    all_data.update({(sender,reply_id[-6:]): data})
+                    all_data.update({(sender,reply_id[-6:]): (data if data_only else response)})
                     count += 1
                     if count >= max_count:
                         break
