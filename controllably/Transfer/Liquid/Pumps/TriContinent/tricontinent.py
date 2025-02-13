@@ -63,6 +63,11 @@ class TriContinent(LiquidHandler):
     def init_status(self):
         return self.device.init_status
     
+    def connect(self):
+        super().connect()
+        self.getState()
+        return
+    
     def aspirate(self, 
         volume: float, 
         speed: float|None = None, 
@@ -121,7 +126,7 @@ class TriContinent(LiquidHandler):
         self.volume = self.device.position * self.volume_resolution
         if pause:
             input("Press 'Enter' to proceed.")
-        return
+        return True
     
     def dispense(self, 
         volume: float, 
@@ -183,7 +188,17 @@ class TriContinent(LiquidHandler):
         self.volume = self.device.position * self.volume_resolution
         if pause:
             input("Press 'Enter' to proceed.")
-        return
+        return True
+    
+    def getState(self) -> dict[str, int|str|bool]:
+        """
+        Get the settings of the pump.
+        """
+        state = self.device.getState()
+        speed = state['speed']
+        self.speed_in = self.speed_in or speed
+        self.speed_out = self.speed_out or speed
+        return state
     
     def home(self):
         """
@@ -210,13 +225,13 @@ class TriContinent(LiquidHandler):
         self.device.reverse()
         return
     
-    def getState(self) -> dict[str, int|str|bool]:
+    def setChannel(self, channel: int):
         """
-        Get the settings of the pump.
+        Set the channel of the pump.
+
+        Args:
+            channel (int): The channel of the pump.
         """
-        state = self.device.getState()
-        speed = state['speed']
-        self.speed_in = self.speed_in or speed
-        self.speed_out = self.speed_out or speed
+        self.device.setChannel(channel)
         return
         
