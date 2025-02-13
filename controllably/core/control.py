@@ -121,8 +121,11 @@ class Proxy:
     def factory(cls, prime:Callable, object_id:str|None = None):
         name = prime.__name__ if inspect.isclass(prime) else prime.__class__.__name__
         object_id = object_id or id(prime)
-        attrs = {attr:cls.makeEmitter(getattr(prime,attr)) for attr in dir(prime) if callable(getattr(prime,attr)) and (attr not in dir(cls))}
-        attrs.update({"_channel_class":prime})
+        attrs = dict()
+        methods = {attr:cls.makeEmitter(getattr(prime,attr)) for attr in dir(prime) if callable(getattr(prime,attr)) and (attr not in dir(cls))}
+        properties = {attr:cls.makePropertyEmitter(attr) for attr in dir(prime) if not callable(getattr(prime,attr)) and (attr not in dir(cls))}
+        attrs.update(methods)
+        attrs.update(properties)
         new_class = type(f"{name}_Proxy-{object_id}", (cls,), attrs)
         return new_class
     
@@ -131,7 +134,7 @@ class Proxy:
         def emitter(self, *args, **kwargs):
             if not self.remote:
                 if inspect.isclass(self.prime):
-                    raise TypeError('This Proxy was created with a class, not object.')
+                    raise TypeError('This Proxy was created with a class, not instance.')
                 prime_method = getattr(self.prime, method.__name__)
                 result = prime_method(*args, **kwargs)
                 return result
@@ -151,6 +154,25 @@ class Proxy:
         emitter.__signature__ = inspect.signature(method)
         return emitter
     
+    @staticmethod
+    def makePropertyEmitter(attr_name:str):
+        def emitter(self):
+            if not self.remote:
+                if inspect.isclass(self.prime):
+                    raise TypeError('This Proxy was created with a class, not instance.')
+                result = getattr(self.prime, attr_name)
+                return result
+            
+            assert isinstance(self.controller, Controller), 'No controller is bound to this Proxy.'
+            controller = self.controller
+            command = dict(method='getattr', args=[self.object_id,attr_name])
+            request_id = controller.transmitRequest(command)
+            return controller.retrieveData(request_id)
+        emitter.__name__ = attr_name
+        emitter.__doc__ = f"Property {attr_name}"
+        return property(emitter)
+    
+    
     def bindController(self, controller: Controller):
         assert isinstance(controller, Controller), 'Controller must be an instance of Controller'
         self.controller = controller
@@ -164,13 +186,13 @@ class Proxy:
         self.remote = False
         return controller
     
-    def getAttr(self, attr_name:str, default:Any|None = None) -> Any|None:
-        if self.remote:
-            controller = self.controller
-            command = dict(method='getattr', args=[self.object_id,attr_name])
-            request_id = controller.transmitRequest(command)
-            return controller.retrieveData(request_id, default=default)
-        return getattr(self.prime, attr_name, default)
+    # def getAttr(self, attr_name:str, default:Any|None = None) -> Any|None:
+    #     if self.remote:
+    #         controller = self.controller
+    #         command = dict(method='getattr', args=[self.object_id,attr_name])
+    #         request_id = controller.transmitRequest(command)
+    #         return controller.retrieveData(request_id, default=default)
+    #     return getattr(self.prime, attr_name, default)
 
 
 class Controller:
