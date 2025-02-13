@@ -178,6 +178,7 @@ class TriContinentDevice(SerialDevice):
         self.getInitStatus()
         return {
             'start_speed': self.start_speed,
+            'speed': self.speed,
             'acceleration': self.acceleration,
             'valve_position': self.valve_position,
             'position': self.position,
