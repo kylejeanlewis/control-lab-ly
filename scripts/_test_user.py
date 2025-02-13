@@ -1,5 +1,6 @@
 # %%
 import threading
+import tkinter as tk
 
 import test_init
 from controllably.core.connection import get_host
@@ -7,7 +8,7 @@ from controllably.core.control import Controller, Proxy, start_client
 from controllably.core.interpreter import JSONInterpreter
 
 from controllably.Move.Cartesian import Gantry
-from controllably.GUI import MoveGUI
+from controllably.GUI import MoveGUI, GUI
 
 # %%
 host = get_host()
@@ -50,7 +51,7 @@ gui = MoveGUI()
 # %%
 proxy.bindController(ui)
 gui.bindObject(proxy)
-# gui.show()
+gui.show()
 
 # %%
 proxy.remote = True
@@ -61,5 +62,27 @@ position
 proxy.remote = False
 position = proxy.move('x',10)
 position
+
+# %%
+gui = GUI()
+mgui = MoveGUI()
+ngui = MoveGUI()
+
+# %%
+gui.addPack(mgui, side=tk.LEFT)
+gui.addPack(ngui)
+gui.show()
+
+# %%
+mgui.show()
+
+# %%
+gui.addGrid(mgui, row=0, column=0)
+gui.addGrid(ngui, row=1, column=1)
+gui.show()
+
+# %%
+gui = MoveGUI()
+gui.show()
 
 # %%
