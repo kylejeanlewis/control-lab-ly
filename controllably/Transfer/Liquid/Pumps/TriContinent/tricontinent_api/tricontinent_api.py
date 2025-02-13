@@ -82,6 +82,11 @@ class TriContinentDevice(SerialDevice):
     def max_position(self) -> int:
         return int(''.join(filter(str.isdigit, self.model)))
     
+    def connect(self):
+        super().connect()
+        self.getState()
+        return
+    
     def query(self, 
         data: Any, 
         multi_out: bool = False, 
@@ -144,7 +149,14 @@ class TriContinentDevice(SerialDevice):
     
     def setChannel(self, channel:int):
         assert channel in list(range(MAX_CHANNELS)), f"Channel must be an integer between 0 and {MAX_CHANNELS-1}"
+        _old_channel = self.channel
         self.channel = channel
+        try:
+            self.getStatus()
+            self.getState()
+        except AttributeError:
+            logger.warning(f"Channel {channel} not available.")
+            self.channel = _old_channel
         return
     
     # Status query methods
@@ -212,10 +224,10 @@ class TriContinentDevice(SerialDevice):
         self.init_status = out.data
         return self.init_status
     
-    def getPumpConfig(self) -> str:     #TODO
-        out: Data = self.query('?76')
-        self.pump_config = out.data
-        return self.pump_config
+    # def getPumpConfig(self) -> str:     #TODO
+    #     out: Data = self.query('?76')
+    #     self.pump_config = out.data
+    #     return self.pump_config
     
     # Setter methods
     def setStartSpeed(self, speed: int, *, immediate: bool = True):
