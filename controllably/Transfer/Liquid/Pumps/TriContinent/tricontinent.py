@@ -55,6 +55,14 @@ class TriContinent(LiquidHandler):
     def acceleration(self):
         return self.device.acceleration
     
+    @property
+    def valve_position(self):
+        return self.device.valve_position
+    
+    @property
+    def init_status(self):
+        return self.device.init_status
+    
     def aspirate(self, 
         volume: float, 
         speed: float|None = None, 
@@ -202,25 +210,9 @@ class TriContinent(LiquidHandler):
         self.device.reverse()
         return
     
-    def getSettings(self) -> dict[str, int|str|bool]:
+    def getState(self) -> dict[str, int|str|bool]:
         """
         Get the settings of the pump.
         """
-        self.device.getInfo()
-        self.start_speed = self.device.getStartSpeed()
-        self.speed_in = self.device.getTopSpeed()
-        self.speed_out = self.speed_in
-        self.acceleration = self.device.getAcceleration()
-        self.valve_position = self.device.getValvePosition()
-        self.position = self.device.getPosition()
-        self.init_status = self.device.getInitStatus()
-        return {
-            'start_speed': self.start_speed,
-            'speed_in': self.speed_in,
-            'speed_out': self.speed_out,
-            'acceleration': self.acceleration,
-            'valve_position': self.valve_position,
-            'position': self.position,
-            'init_status': self.init_status
-        }
+        return self.device.getState()
         
