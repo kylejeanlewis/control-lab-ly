@@ -17,6 +17,7 @@ class GUI:
         self.object_id = ''
         
         self.title = ''
+        self.drawn = False
         self.top_level = True
         self.widget = None
         self.sub_panels = dict()
@@ -68,7 +69,6 @@ class GUI:
             return
         self.widget.quit()
         self.widget.destroy()
-        self.widget = None
         return
     
     def getAttribute(self, attribute: str, default: Any|None = None) -> Any|None:
@@ -142,5 +142,7 @@ class GUI:
             master.title(self.title)
             if isinstance(size, Iterable) and len(size) == 2:
                 master.minsize(*size)
+        self.drawn = True
+        self.update()
         return size
  
