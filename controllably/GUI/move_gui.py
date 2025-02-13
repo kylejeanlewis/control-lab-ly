@@ -49,22 +49,23 @@ class MoveGUI(GUI):
         return
     
     def update(self, **kwargs):
+        # Status
+        if not self.getAttribute('is_connected', False):
+            self.status = 'Disconnected'
+            return self.refresh()
+        elif self.getAttribute('is_busy', False):
+            self.status = 'Busy'
+            return self.refresh()
+        else:
+            self.status = 'Connected'
+            
         # Position
-        position = self.getPosition()
+        position = self.getAttribute('position')
         if isinstance(position, Position):
             self.x, self.y, self.z = position.coordinates
             self.c, self.b, self.a = position.rotation
         
-        # Status
-        if not self.getConnected():
-            self.status = 'Disconnected'
-        elif self.getBusy():
-            self.status = 'Busy'
-        else:
-            self.status = 'Connected'
-        
-        self.refresh()
-        return
+        return self.refresh()
     
     def addTo(self, master: tk.Tk|tk.Frame, size: tuple[int,int]|None = None) -> tuple[int,int]|None:
         BUTTON_HEIGHT = 1
@@ -156,21 +157,16 @@ class MoveGUI(GUI):
         ttk.Button(rotation_c_frame, text="C-", command=lambda: self.rotate(axis='c',value=-1), width=BUTTON_WIDTH).grid(row=0, column=0, sticky='nsew')
         ttk.Button(rotation_c_frame, text="C+", command=lambda: self.rotate(axis='c',value=1), width=BUTTON_WIDTH).grid(row=0, column=2, sticky='nsew')
         
-        size = (9*BUTTON_WIDTH,11*BUTTON_HEIGHT)
-        return super().addTo(master, size)
+        # size = (9*BUTTON_WIDTH,11*BUTTON_HEIGHT)
+        return super().addTo(master, (9*BUTTON_WIDTH,11*BUTTON_HEIGHT))
 
     def move(self, axis:str, value:int|float):
         assert axis in 'xyz', 'Provide one of x,y,z axis'
         setattr(self, axis, round(getattr(self, axis) + value,2))
         try:
-            out = self.principal.move(axis,value)
-            if isinstance(out, Exception):
-                logger.warning(out)
-        except AttributeError as e:
-            pass
-        except NotImplementedError as e:
-            logger.warning(e)
-            self.update()
+            self.execute(self.principal.move, axis, value)
+        except AttributeError:
+            logger.warning('No move method found')
         self.refresh()
         return
 
@@ -178,58 +174,25 @@ class MoveGUI(GUI):
         assert axis in 'abc', 'Provide one of a,b,c axis'
         setattr(self, axis, round(getattr(self, axis) + value,2))
         try:
-            out = self.principal.rotate(axis,value)
-            if isinstance(out, Exception):
-                logger.warning(out)
-        except AttributeError as e:
-            pass
-        except NotImplementedError as e:
-            logger.warning(e)
-            self.update()
+            self.execute(self.principal.rotate, axis, value)
+        except AttributeError:
+            logger.warning('No rotate method found')
         self.refresh()
         return 
     
     def home(self):
         try:
-            out = self.principal.home()
-            if isinstance(out, Exception):
-                logger.warning(out)
-        except AttributeError as e:
-           pass
-        except NotImplementedError as e:
-            logger.warning(e)
-            self.update()
+            self.execute(self.principal.home)
+        except AttributeError:
+            logger.warning('No home method found')
         self.update()
         return
     
     def safe(self):
         try:
-            out = self.principal.moveToSafeHeight()
-            if isinstance(out, Exception):
-                logger.warning(out)
-        except AttributeError as e:
-            pass
-        except NotImplementedError as e:
-            logger.warning(e)
-            self.update()
+            self.execute(self.principal.moveToSafeHeight)
+        except AttributeError:
+            logger
         self.update()
         return
-
-    def getPosition(self) -> Position|None:
-        attr_name = 'position'
-        if isinstance(self.principal, Proxy):
-            return self.principal.getAttr(attr_name)
-        return getattr(self.principal, attr_name, None)
-
-    def getBusy(self) -> bool:
-        attr_name = 'is_busy'
-        if isinstance(self.principal, Proxy):
-            return self.principal.getAttr(attr_name, False)
-        return getattr(self.principal, attr_name, False)
-    
-    def getConnected(self) -> bool:
-        attr_name = 'is_connected'
-        if isinstance(self.principal, Proxy):
-            return self.principal.getAttr(attr_name, False)
-        return getattr(self.principal, attr_name, False)
     
