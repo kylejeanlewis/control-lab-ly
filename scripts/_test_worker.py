@@ -2,13 +2,15 @@
 import threading
 
 import test_init
+from controllably.core.connection import get_host
 from controllably.core.control import Controller, start_server, start_client
 from controllably.core.interpreter import JSONInterpreter
 
 from controllably.core.control import TwoTierQueue
 from controllably.Move.Cartesian import Gantry
 
-host = "127.0.0.1"
+# %%
+host = get_host()
 port = 12345
 worker = Controller('model', JSONInterpreter())
 terminate = threading.Event()

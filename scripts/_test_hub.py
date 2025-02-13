@@ -2,10 +2,11 @@
 import threading
 
 import test_init
+from controllably.core.connection import get_host
 from controllably.core.control import Controller, start_server
 from controllably.core.interpreter import JSONInterpreter
 
-host = "127.0.0.1"
+host = get_host()
 port = 12345
 hub = Controller('relay', JSONInterpreter())
 terminate = threading.Event()
