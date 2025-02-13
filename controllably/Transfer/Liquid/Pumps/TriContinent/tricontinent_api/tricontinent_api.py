@@ -20,6 +20,7 @@ handler.setLevel(logging.INFO)
 logger.addHandler(handler)
 
 MAX_CHANNELS = 15
+ACCEL_MULTIPLIER = 2500
 BUSY = '@ABCDEFGHIJKO'
 IDLE = '`abcdefghijko'
 
@@ -196,11 +197,13 @@ class TriContinentDevice(SerialDevice):
     def getValvePosition(self) -> str:
         out: Data = self.query('?6')
         self.valve_position = out.data
+        if out.data == '0':
+            self.valve_position = None
         return self.valve_position
     
     def getAcceleration(self) -> int:
         out: Data = self.query('?7', data_type=IntData)
-        self.acceleration = out.data
+        self.acceleration = out.data * ACCEL_MULTIPLIER
         return self.acceleration
     
     def getInitStatus(self) -> bool:
@@ -243,8 +246,8 @@ class TriContinentDevice(SerialDevice):
         return
     
     def setAcceleration(self, acceleration: int, *, immediate: bool = True):
-        assert (2500<=acceleration<=50_000), f"Acceleration code must be an integer between 2,500 and 50,000"
-        acceleration_code = int(acceleration/2500)
+        assert (ACCEL_MULTIPLIER<=acceleration<=20*ACCEL_MULTIPLIER), f"Acceleration code must be an integer between 2,500 and 50,000"
+        acceleration_code = int(acceleration/ACCEL_MULTIPLIER)
         command = f'L{acceleration_code}'
         if immediate:
             self.run(command)
