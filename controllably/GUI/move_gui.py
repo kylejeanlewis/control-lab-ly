@@ -20,13 +20,13 @@ class Move(Protocol):
     def move(self, axis:str, by:int|float, **kwargs):
         raise NotImplementedError
     
-    def safeMoveTo(self, x:int|float, y:int|float, z:int|float, **kwargs):
+    def safeMoveTo(self, to, **kwargs):
         raise NotImplementedError
     
     def rotate(self, axis:str, by:int|float, **kwargs):
         raise NotImplementedError
     
-    def rotateTo(self, to:int|float, **kwargs):
+    def rotateTo(self, to, **kwargs):
         raise NotImplementedError
     
     def home(self):
@@ -55,6 +55,24 @@ class MoveGUI(GUI):
         self.tick_interval = TICK_INTERVAL
         return
     
+    def update(self, **kwargs):
+        # Status
+        if not self.getAttribute('is_connected', False):
+            self.status = 'Disconnected'
+            return self
+        elif self.getAttribute('is_busy', False):
+            self.status = 'Busy'
+            return self.refresh()
+        else:
+            self.status = 'Connected'
+            
+        # Position
+        position = self.getAttribute('position')
+        if isinstance(position, Position):
+            self.x, self.y, self.z = position.coordinates.round(self.precision)
+            self.c, self.b, self.a = position.rotation.round(self.precision)
+        return self.refresh()
+    
     def refresh(self, **kwargs):
         if not self.drawn:
             return
@@ -82,24 +100,6 @@ class MoveGUI(GUI):
         self.entry_c.delete(0, tk.END)
         self.entry_c.insert(0, str(self.c))
         return
-    
-    def update(self, **kwargs):
-        # Status
-        if not self.getAttribute('is_connected', False):
-            self.status = 'Disconnected'
-            return self
-        elif self.getAttribute('is_busy', False):
-            self.status = 'Busy'
-            return self.refresh()
-        else:
-            self.status = 'Connected'
-            
-        # Position
-        position = self.getAttribute('position')
-        if isinstance(position, Position):
-            self.x, self.y, self.z = position.coordinates.round(self.precision)
-            self.c, self.b, self.a = position.rotation.round(self.precision)
-        return self.refresh()
     
     def addTo(self, master: tk.Tk|tk.Frame, size: tuple[int,int]|None = None) -> tuple[int,int]|None:
         BUTTON_HEIGHT = 1
@@ -239,21 +239,25 @@ class MoveGUI(GUI):
 
     def move(self, axis:str, value:int|float):
         assert axis in 'xyz', 'Provide one of x,y,z axis'
+        initial = getattr(self, axis)
         setattr(self, axis, round(getattr(self, axis) + value,self.precision))
         try:
             self.execute(self.principal.move, axis, value)
         except AttributeError:
             logger.warning('No move method found')
+            setattr(self, axis, initial)
         self.refresh()
         return
 
     def rotate(self, axis:str, value:int|float):
         assert axis in 'abc', 'Provide one of a,b,c axis'
+        initial = getattr(self, axis)
         setattr(self, axis, round(getattr(self, axis) + value,self.precision))
         try:
             self.execute(self.principal.rotate, axis, value)
         except AttributeError:
             logger.warning('No rotate method found')
+            setattr(self, axis, initial)
         self.refresh()
         return
     
@@ -265,28 +269,34 @@ class MoveGUI(GUI):
         b: int|float|None = None,
         c: int|float|None = None
     ):
-        values = [x,y,z,c,b,a]
-        for axis,value in zip('xyzcba',values):
+        inputs = [x,y,z,c,b,a]
+        initials = {}
+        for axis,value in zip('xyzcba',inputs):
+            initials[axis] = getattr(self, axis)
             if value is not None:
                 setattr(self, axis, round(value, self.precision))
         try:
-            self.execute(self.principal.safeMoveTo, values)
+            self.execute(self.principal.safeMoveTo, [getattr(self,axis) for axis in 'xyzcba'])
         except AttributeError:
             logger.warning('No moveTo method found')
+            for axis,initial in initials.items():
+                setattr(self, axis, initial)
         self.refresh()
         return
     
     def rotateTo(self, a:int|float|None = None, b:int|float|None = None, c:int|float|None = None):
-        axis_values = dict(a=a, b=b, c=c)
-        value = []
-        for axis in 'cba':
-            axis_value = axis_values[axis] if axis_values[axis] is not None else getattr(self, axis)
-            setattr(self, axis, round(axis_value, self.precision))
-            value.append(axis_value)
+        inputs = [c,b,a]
+        initials = {}
+        for axis,value in zip('cba',inputs):
+            initials[axis] = getattr(self, axis)
+            if value is not None:
+                setattr(self, axis, round(value, self.precision))
         try:
-            self.execute(self.principal.rotateTo, value)
+            self.execute(self.principal.rotateTo, [getattr(self,axis) for axis in 'cba'])
         except AttributeError:
             logger.warning('No rotateTo method found')
+            for axis,initial in initials.items():
+                setattr(self, axis, initial)
         self.refresh()
         return
     
@@ -295,8 +305,9 @@ class MoveGUI(GUI):
             self.execute(self.principal.home)
         except AttributeError:
             logger.warning('No home method found')
-        for axis in 'xyzabc':
-            setattr(self, axis, 0)
+        else:
+            for axis in 'xyzabc':
+                setattr(self, axis, 0)
         self.update()
         self.refresh()
         return
@@ -305,8 +316,9 @@ class MoveGUI(GUI):
         try:
             self.execute(self.principal.moveToSafeHeight)
         except AttributeError:
-            logger
-        self.z = 0
+            logger.warning('No safeMoveTo method found')
+        else:
+            self.z = 0
         self.update()
         self.refresh()
         return
