@@ -85,7 +85,7 @@ class GUI:
             return
         except NotImplementedError as e:
             logger.warning(e)
-            # self.update()
+            self.update()
             return
         return out
     
