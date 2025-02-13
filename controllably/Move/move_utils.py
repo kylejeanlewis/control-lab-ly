@@ -493,6 +493,7 @@ class Mover:
         # if isinstance(by, (Sequence, np.ndarray)):
         #     assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
         move_by = by if isinstance(by, Position) else Position(by)
+        rotation = any(move_by.rotation)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
         self._logger.info(f"Move By | {move_by} at speed factor {speed_factor}")
         
@@ -513,8 +514,8 @@ class Mover:
         ...
         
         # Update position
-        self.updateRobotPosition(by=move_by)
         raise NotImplementedError
+        self.updateRobotPosition(by=move_by)
         return self.robot_position if robot else self.worktool_position
 
     def moveTo(self,
@@ -548,8 +549,9 @@ class Mover:
                 rotation = False
         # if isinstance(to, (Sequence, np.ndarray)):
         #     assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
-        current_orientation = self.robot_position.Rotation if robot else self.worktool_position.Rotation
-        move_to = to if isinstance(to, Position) else Position(to, current_orientation)
+        current_Rotation = self.robot_position.Rotation if robot else self.worktool_position.Rotation
+        move_to = to if isinstance(to, Position) else Position(to, current_Rotation)
+        rotation = (move_to.Rotation == current_Rotation)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
         self._logger.info(f"Move To | {move_to} at speed factor {speed_factor}")
         
@@ -563,8 +565,8 @@ class Mover:
         ...
         
         # Update position
-        self.updateRobotPosition(to=move_to)
         raise NotImplementedError
+        self.updateRobotPosition(to=move_to)
         return self.robot_position if robot else self.worktool_position
     
     def moveToSafeHeight(self, speed_factor: float|None = None) -> Position:
@@ -688,8 +690,8 @@ class Mover:
         ...
         
         # Update position
-        self.updateRobotPosition(by=rotate_by)
         raise NotImplementedError
+        self.updateRobotPosition(by=rotate_by)
         return self.robot_position.Rotation if robot else self.worktool_position.Rotation
         
     def rotateTo(self,
@@ -728,8 +730,8 @@ class Mover:
         ...
         
         # Update position
-        self.updateRobotPosition(to=rotate_to)
         raise NotImplementedError
+        self.updateRobotPosition(to=rotate_to)
         return self.robot_position.Rotation if robot else self.worktool_position.Rotation
         
     def rotateRobotTo(self,
@@ -806,6 +808,9 @@ class Mover:
         # if isinstance(to, (Sequence, np.ndarray)):
         #     assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
         # rotation = any(to.rotation) if isinstance(to,Position) else False
+        current_Rotation = self.robot_position.Rotation if robot else self.worktool_position.Rotation
+        move_to = to if isinstance(to, Position) else Position(to, current_Rotation)
+        rotation = (move_to.Rotation == current_Rotation)
         speed_factor_lateral = self.speed_factor if speed_factor_lateral is None else speed_factor_lateral
         speed_factor_up = self.speed_factor if speed_factor_up is None else speed_factor_up
         speed_factor_down = self.speed_factor if speed_factor_down is None else speed_factor_down
@@ -950,10 +955,20 @@ class Mover:
             Position: new robot position
         """
         assert (by is None) != (to is None), f"Ensure input only for one of `by` or `to`"
+        rotation = True
+        try:
+            self.rotate('a',0)
+        except NotImplementedError:
+            rotation = False
         if isinstance(by, Position):
-            self._robot_position.translate(by.coordinates).orientate(by.Rotation)
+            self._robot_position.translate(by.coordinates)
+            if rotation:
+                self._robot_position.orientate(by.Rotation)
         elif isinstance(to, Position):
-            self._robot_position = deepcopy(to)
+            if rotation: 
+                self._robot_position = deepcopy(to)
+            else:
+                self._robot_position = Position(to.coordinates, self._robot_position.Rotation)
         elif isinstance(by, Rotation):
             self._robot_position.orientate(by)
         elif isinstance(to, Rotation):
