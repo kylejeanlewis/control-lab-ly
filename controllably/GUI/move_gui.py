@@ -62,8 +62,8 @@ class MoveGUI(GUI):
         # Position
         position = self.getAttribute('position')
         if isinstance(position, Position):
-            self.x, self.y, self.z = position.coordinates
-            self.c, self.b, self.a = position.rotation
+            self.x, self.y, self.z = position.coordinates.round(2)
+            self.c, self.b, self.a = position.rotation.round(2)
         
         return self.refresh()
     
