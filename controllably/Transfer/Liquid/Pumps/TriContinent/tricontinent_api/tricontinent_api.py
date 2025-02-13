@@ -166,6 +166,22 @@ class TriContinentDevice(SerialDevice):
         self.model = out.data.split(':')[0].strip()
         self.version = out.data.split(':')[1].strip()
         return out.data
+    
+    def getState(self) -> str:
+        self.getInfo()
+        self.getStartSpeed()
+        self.getTopSpeed()
+        self.getAcceleration()
+        self.getValvePosition()
+        self.getPosition()
+        self.getInitStatus()
+        return {
+            'start_speed': self.start_speed,
+            'acceleration': self.acceleration,
+            'valve_position': self.valve_position,
+            'position': self.position,
+            'init_status': self.init_status
+        }
 
     def getStartSpeed(self) -> int:
         out: Data =  self.query('?1', data_type=IntData)
