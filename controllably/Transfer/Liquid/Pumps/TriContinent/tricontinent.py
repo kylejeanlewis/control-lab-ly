@@ -112,7 +112,7 @@ class TriContinent(LiquidHandler):
         self.device.setTopSpeed(speed, immediate=False)
         self.device.setAcceleration(self.acceleration, immediate=False)
         self.device.aspirate(steps, immediate=False, blocking=blocking)
-        # self.device.wait(delay, immediate=False)
+        self.device.wait(delay, immediate=False)
         self.device.run()
         
         # Update values
@@ -174,7 +174,7 @@ class TriContinent(LiquidHandler):
             self.device.setValvePosition('I', immediate=False)
             self.device.moveTo(self.device.max_position, immediate=False)
         self.device.dispense(steps, immediate=False, blocking=blocking)
-        # self.device.wait(delay, immediate=False)
+        self.device.wait(delay, immediate=False)
         self.device.run()
         
         # Update values
@@ -214,5 +214,9 @@ class TriContinent(LiquidHandler):
         """
         Get the settings of the pump.
         """
-        return self.device.getState()
+        state = self.device.getState()
+        speed = state['speed']
+        self.speed_in = self.speed_in or speed
+        self.speed_out = self.speed_out or speed
+        return
         
