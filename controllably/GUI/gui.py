@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import tkinter as tk
 from tkinter import ttk
+import tkinter.messagebox as msgbox
 from typing import Any, Callable, Iterable
 
 # Local application imports
@@ -74,30 +75,23 @@ class GUI:
     def getAttribute(self, attribute: str, default: Any|None = None) -> Any|None:
         return getattr(self.principal, attribute, default) if self.principal is not None else default
     
-    def execute(self, func: Callable, *args, **kwargs) -> Any|None:
-        assert callable(func), 'Method must be a callable object'
+    def execute(self, method: Callable, *args, **kwargs) -> Any|None:
+        assert callable(method), 'Method must be a callable object'
         try:
-            out = func(*args, **kwargs)
+            out = method(*args, **kwargs)
             if isinstance(out, Exception):
                 logger.warning(out)
                 return
-        except AttributeError as e:
-            return
-        except NotImplementedError as e:
-            logger.warning(e)
+        except NotImplementedError:
+            out = NotImplementedError(f'Not implemented:\n`{method.__name__}` from\n{method.__self__.__class__}')
+        except Exception as e:
+            out = e
+        if isinstance(out, Exception):
+            logger.warning(out)
+            msgbox.showerror('Execution error', str(out))
             self.update()
             return
         return out
-    
-    def refresh(self, **kwargs):
-        # Refresh layout
-        ...
-        return
-    
-    def update(self, **kwargs):
-        # Update layout
-        ...
-        return
     
     def addPack(self, panel: GUI, **kwargs):
         return self.addPanel('pack', panel, **kwargs)
@@ -117,6 +111,16 @@ class GUI:
     
     def clearPanels(self):
         self.sub_panels.clear()
+        return
+    
+    def update(self, **kwargs):
+        # Update layout
+        ...
+        return
+    
+    def refresh(self, **kwargs):
+        # Refresh layout
+        ...
         return
     
     def addTo(self, master: tk.Tk|tk.Frame, size: Iterable[int,int]|None = None) -> tuple[int,int]|None:
