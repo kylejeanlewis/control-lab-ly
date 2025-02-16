@@ -122,15 +122,15 @@ class Proxy:
         name = prime.__name__ if inspect.isclass(prime) else prime.__class__.__name__
         object_id = object_id or id(prime)
         attrs = dict()
-        methods = {attr:cls.makeEmitter(getattr(prime,attr)) for attr in dir(prime) if callable(getattr(prime,attr)) and (attr not in dir(cls))}
-        properties = {attr:cls.makePropertyEmitter(attr) for attr in dir(prime) if not callable(getattr(prime,attr)) and (attr not in dir(cls))}
+        methods = {attr:cls.createMethodEmitter(getattr(prime,attr)) for attr in dir(prime) if callable(getattr(prime,attr)) and (attr not in dir(cls))}
+        properties = {attr:cls.createPropertyEmitter(attr) for attr in dir(prime) if not callable(getattr(prime,attr)) and (attr not in dir(cls))}
         attrs.update(methods)
         attrs.update(properties)
         new_class = type(f"{name}_Proxy-{object_id}", (cls,), attrs)
         return new_class
     
     @staticmethod
-    def makeEmitter(method):
+    def createMethodEmitter(method):
         def emitter(self, *args, **kwargs):
             if not self.remote:
                 if inspect.isclass(self.prime):
@@ -160,7 +160,7 @@ class Proxy:
         return emitter
     
     @staticmethod
-    def makePropertyEmitter(attr_name:str):
+    def createPropertyEmitter(attr_name:str):
         def emitter(self):
             if not self.remote:
                 if inspect.isclass(self.prime):
