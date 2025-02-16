@@ -8,7 +8,7 @@ from typing import Protocol
 # Local application imports
 from ..core.position import Position
 from ..core.control import Proxy
-from .gui import GUI
+from .gui import Panel
 
 logger = logging .getLogger(__name__)
 
@@ -35,7 +35,7 @@ class Move(Protocol):
     def moveToSafeHeight(self):
         raise NotImplementedError
 
-class MoveGUI(GUI):
+class MovePanel(Panel):
     def __init__(self, principal: Move|Proxy|None = None):
         super().__init__(principal)
         self.principal: Move|Proxy|None = principal
@@ -108,6 +108,21 @@ class MoveGUI(GUI):
         # Add layout
         master.rowconfigure(1,weight=1, minsize=10*BUTTON_HEIGHT)
         master.columnconfigure(0,weight=1, minsize=9*BUTTON_WIDTH)
+        
+        # Add keyboard events
+        master.bind('<Up>', lambda event: self.move(axis='y', value=0.1))
+        master.bind('<Down>', lambda event: self.move(axis='y', value=-0.1))
+        master.bind('<Left>', lambda event: self.move(axis='x', value=-0.1))
+        master.bind('<Right>', lambda event: self.move(axis='x', value=0.1))
+        master.bind('<Shift-Up>', lambda event: self.move(axis='z', value=0.1))
+        master.bind('<Shift-Down>', lambda event: self.move(axis='z', value=-0.1))
+        
+        master.bind(',', lambda event: self.rotate(axis='c', value=-1))
+        master.bind('.', lambda event: self.rotate(axis='c', value=1))
+        master.bind(';', lambda event: self.rotate(axis='b', value=-1))
+        master.bind("'", lambda event: self.rotate(axis='b', value=1))
+        master.bind('[', lambda event: self.rotate(axis='a', value=-1))
+        master.bind(']', lambda event: self.rotate(axis='a', value=1))
         
         # Create frames for organization
         status_frame = ttk.Frame(master)
