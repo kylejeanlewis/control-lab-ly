@@ -8,7 +8,7 @@ from controllably.core.control import Controller, Proxy, start_client
 from controllably.core.interpreter import JSONInterpreter
 
 from controllably.Move.Cartesian import Gantry
-from controllably.GUI import MoveGUI, GUI
+from controllably.GUI import MovePanel, GUI
 
 # %%
 host = get_host()
@@ -46,7 +46,7 @@ ui.data_buffer
 # %%
 gantry = Gantry('COM0',[[100,100,100],[-100,-100,-100]], simulation=True)
 proxy = Proxy(gantry, 'MOVER')
-gui = MoveGUI()
+gui = MovePanel()
 
 # %%
 proxy.bindController(ui)
@@ -65,8 +65,8 @@ position
 
 # %%
 gui = GUI()
-mgui = MoveGUI()
-ngui = MoveGUI()
+mgui = MovePanel()
+ngui = MovePanel()
 
 # %%
 gui.addPack(mgui, side=tk.LEFT)
@@ -82,7 +82,7 @@ gui.addGrid(ngui, row=1, column=1)
 gui.show()
 
 # %%
-gui = MoveGUI()
+gui = MovePanel()
 gui.show()
 
 # %%
