@@ -1,2 +1,2 @@
-from .gui import GUI
-from .move_gui import MoveGUI
+from .gui import Panel
+from .move_gui import MovePanel
