@@ -40,6 +40,7 @@ class MovePanel(Panel):
         super().__init__(principal)
         self.principal: Move|Proxy|None = principal
         self.title = "Robot Control D-Pad"
+        self.status = 'Disconnected'
     
         # Initialize axis values
         self.x = 0.0
@@ -48,7 +49,6 @@ class MovePanel(Panel):
         self.a = 0.0  # Rotation around x-axis (roll)
         self.b = 0.0  # Rotation around y-axis (pitch)
         self.c = 0.0  # Rotation around z-axis (yaw)
-        self.status = 'Disconnected'
         
         # Settings
         self.precision = PRECISION
@@ -171,12 +171,12 @@ class MovePanel(Panel):
         
         # Status Display
         self.button_close = ttk.Button(status_frame, text='Terminate', command=self.close)
-        self.button_close.grid(row=0, column=1)
         self.button_refresh = ttk.Button(status_frame, text='Refresh', command=self.update)
-        self.button_refresh.grid(row=1, column=1)
         self.label_position = ttk.Label(status_frame, text="Position: \nx=0, y=0, z=0\na=0, b=0, c=0")
-        self.label_position.grid(row=0, column=0, padx=(0,10), rowspan=2)
         self.label_status = ttk.Label(status_frame, text="Disconnected")
+        self.button_close.grid(row=0, column=1)
+        self.button_refresh.grid(row=1, column=1)
+        self.label_position.grid(row=0, column=0, padx=(0,10), rowspan=2)
         self.label_status.grid(row=2, column=1)
 
         # Translation Controls
@@ -215,20 +215,20 @@ class MovePanel(Panel):
         self.scale_a = tk.Scale(rotation_a_frame, from_=180, to=-180, orient=tk.VERTICAL, length=BUTTON_HEIGHT*5, tickinterval=self.tick_interval)
         self.scale_b = tk.Scale(rotation_b_frame, from_=-180, to=180, orient=tk.HORIZONTAL, length=BUTTON_WIDTH*5, tickinterval=self.tick_interval)
         self.scale_c = tk.Scale(rotation_c_frame, from_=-180, to=180, orient=tk.HORIZONTAL, length=BUTTON_WIDTH*5, tickinterval=self.tick_interval)
-        self.scale_a.bind("<ButtonRelease-1>", lambda event: self.rotateTo(a=float(self.scale_a.get())))
-        self.scale_b.bind("<ButtonRelease-1>", lambda event: self.rotateTo(b=float(self.scale_b.get())))
-        self.scale_c.bind("<ButtonRelease-1>", lambda event: self.rotateTo(c=float(self.scale_c.get())))
+        self.scale_a.bind("<ButtonRelease-1>", lambda event: self.rotateTo(a=self.scale_a.get()))
+        self.scale_b.bind("<ButtonRelease-1>", lambda event: self.rotateTo(b=self.scale_b.get()))
+        self.scale_c.bind("<ButtonRelease-1>", lambda event: self.rotateTo(c=self.scale_c.get()))
         self.scale_a.grid(row=1, column=0, sticky='nsew')
         self.scale_b.grid(row=0, column=1, sticky='nsew')
         self.scale_c.grid(row=0, column=1, sticky='nsew')
         
         # Input fields
-        self.entry_x = ttk.Entry(entry_frame, width=BUTTON_WIDTH, justify='center')
-        self.entry_y = ttk.Entry(entry_frame, width=BUTTON_WIDTH, justify='center')
-        self.entry_z = ttk.Entry(entry_frame, width=BUTTON_WIDTH, justify='center')
-        self.entry_a = ttk.Entry(entry_frame, width=BUTTON_WIDTH, justify='center')
-        self.entry_b = ttk.Entry(entry_frame, width=BUTTON_WIDTH, justify='center')
-        self.entry_c = ttk.Entry(entry_frame, width=BUTTON_WIDTH, justify='center')
+        self.entry_x = ttk.Entry(entry_frame, width=BUTTON_WIDTH, justify=tk.CENTER)
+        self.entry_y = ttk.Entry(entry_frame, width=BUTTON_WIDTH, justify=tk.CENTER)
+        self.entry_z = ttk.Entry(entry_frame, width=BUTTON_WIDTH, justify=tk.CENTER)
+        self.entry_a = ttk.Entry(entry_frame, width=BUTTON_WIDTH, justify=tk.CENTER)
+        self.entry_b = ttk.Entry(entry_frame, width=BUTTON_WIDTH, justify=tk.CENTER)
+        self.entry_c = ttk.Entry(entry_frame, width=BUTTON_WIDTH, justify=tk.CENTER)
         self.entry_x.grid(row=0, column=0, sticky='nsew')
         self.entry_y.grid(row=0, column=1, sticky='nsew')
         self.entry_z.grid(row=0, column=2, sticky='nsew')
@@ -239,12 +239,12 @@ class MovePanel(Panel):
         ttk.Button(
             entry_frame, text="Go", 
             command=lambda: self.moveTo(
-                x=float(self.entry_x.get()), 
-                y=float(self.entry_y.get()), 
-                z=float(self.entry_z.get()), 
-                a=float(self.entry_a.get()), 
-                b=float(self.entry_b.get()), 
-                c=float(self.entry_c.get())
+                x=self.entry_x.get(), 
+                y=self.entry_y.get(), 
+                z=self.entry_z.get(), 
+                a=self.entry_a.get(), 
+                b=self.entry_b.get(), 
+                c=self.entry_c.get()
             ),
             width=BUTTON_WIDTH
         ).grid(row=0, column=3, sticky='nsew')
@@ -277,21 +277,27 @@ class MovePanel(Panel):
         return
     
     def moveTo(self, 
-        x: int|float|None = None, 
-        y: int|float|None = None, 
-        z: int|float|None = None,
-        a: int|float|None = None,
-        b: int|float|None = None,
-        c: int|float|None = None
+        x: int|float|str|None = None, 
+        y: int|float|str|None = None, 
+        z: int|float|str|None = None,
+        a: int|float|str|None = None,
+        b: int|float|str|None = None,
+        c: int|float|str|None = None
     ):
-        inputs = [x,y,z,c,b,a]
+        inputs = [x,y,z,c,b,a] # TODO: Validate input
+        axes = 'xyzcba'
+        for i,input_ in enumerate(inputs):
+            try:
+                inputs[i] = float(input_)
+            except ValueError:
+                logger.warning(f'Ensure input for {axes[i]} is of type float')
         initials = {}
-        for axis,value in zip('xyzcba',inputs):
+        for axis,value in zip(axes,inputs):
             initials[axis] = getattr(self, axis)
             if value is not None:
                 setattr(self, axis, round(value, self.precision))
         try:
-            self.execute(self.principal.safeMoveTo, [getattr(self,axis) for axis in 'xyzcba'])
+            self.execute(self.principal.safeMoveTo, [getattr(self,axis) for axis in axes])
         except AttributeError:
             logger.warning('No moveTo method found')
             for axis,initial in initials.items():
