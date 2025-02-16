@@ -4,11 +4,13 @@ import tkinter as tk
 import test_init
 from controllably.GUI import gui
 from controllably.GUI import move_gui
+from controllably.GUI import transfer_gui
 
 # %%
 import importlib
 importlib.reload(gui)
 importlib.reload(move_gui)
+importlib.reload(transfer_gui)
 
 # %%
 app = move_gui.MovePanel()
@@ -32,6 +34,10 @@ gantry = Gantry('COM0', limits=[[100,100,100],[-100,-100,-100]], simulation=True
 
 # %%
 app.bindObject(gantry)
+app.show()
+
+# %%
+app = transfer_gui.LiquidPanel()
 app.show()
 
 # %%
