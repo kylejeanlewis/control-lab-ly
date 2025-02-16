@@ -11,7 +11,7 @@ importlib.reload(gui)
 importlib.reload(move_gui)
 
 # %%
-app = move_gui.MoveGUI()
+app = move_gui.MovePanel()
 app.show()
 
 # %%
