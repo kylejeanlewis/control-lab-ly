@@ -12,7 +12,7 @@ from ..core.control import Proxy
 
 logger = logging.getLogger(__name__)
 
-class GUI:
+class Panel:
     def __init__(self, principal: Proxy|Any|None = None):
         self.principal = principal
         self.object_id = ''
@@ -39,7 +39,7 @@ class GUI:
         return
     
     def releaseWidget(self) -> tk.Tk:
-        assert isinstance(self.widget, tk.Tk), 'No widget is bound to this GUI'
+        assert isinstance(self.widget, tk.Tk), 'No widget is bound to this Panel'
         widget = self.widget
         self.widget = None
         return widget
@@ -49,7 +49,7 @@ class GUI:
         if self.top_level:
             self.addTo(tk.Tk())
         if not isinstance(self.widget, tk.Tk):
-            logger.warning('No widget is bound to this GUI')
+            logger.warning('No widget is bound to this Panel')
             return
         self.update()
         try:
@@ -66,7 +66,7 @@ class GUI:
     
     def close(self):
         if not isinstance(self.widget, tk.Tk):
-            logger.warning('No widget is bound to this GUI')
+            logger.warning('No widget is bound to this Panel')
             return
         self.widget.quit()
         self.widget.destroy()
@@ -93,14 +93,14 @@ class GUI:
             return
         return out
     
-    def addPack(self, panel: GUI, **kwargs):
+    def addPack(self, panel: Panel, **kwargs):
         return self.addPanel('pack', panel, **kwargs)
     
-    def addGrid(self, panel: GUI, **kwargs):
+    def addGrid(self, panel: Panel, **kwargs):
         return self.addPanel('grid', panel, **kwargs)
     
-    def addPanel(self, mode:str, panel:GUI, **kwargs):
-        assert isinstance(panel, GUI), 'Panel must be a GUI object'
+    def addPanel(self, mode:str, panel:Panel, **kwargs):
+        assert isinstance(panel, Panel), 'Panel must be a Panel object'
         assert mode in ['pack','grid'], 'Mode must be either "pack" or "grid"'
         if mode not in self.sub_panels:
             if len(self.sub_panels):
