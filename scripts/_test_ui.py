@@ -13,31 +13,45 @@ importlib.reload(move_gui)
 importlib.reload(transfer_gui)
 
 # %%
-app = move_gui.MovePanel()
-app.show()
+panel = gui.Panel()
+panel.show()
 
 # %%
-root = tk.Tk()
-left = tk.Frame(root)
-right = tk.Frame(root)
+move_app = move_gui.MovePanel()
+move_app.show()
 
-left.grid(row=0, column=0)
-right.grid(row=0, column=1)
+# %%
+liquid_app = transfer_gui.LiquidPanel()
+liquid_app.show()
 
-lgui = app.addTo(left)
-rgui = app.addTo(right)
-root.mainloop()
+# %%
+panel.clearPanels()
+panel.addGrid(move_app, row=0, column=0)
+panel.addGrid(move_app, row=0, column=1)
+panel.show()
 
 # %%
 from controllably.Move.Cartesian import Gantry
 gantry = Gantry('COM0', limits=[[100,100,100],[-100,-100,-100]], simulation=True)
 
 # %%
-app.bindObject(gantry)
-app.show()
+move_app.bindObject(gantry)
+move_app.show()
 
 # %%
-app = transfer_gui.LiquidPanel()
-app.show()
+from controllably.Transfer.Liquid.Pumps.TriContinent.tricontinent import TriContinent
+pump = TriContinent('COM0',5000, simulation=True)
+
+# %%
+liquid_app.bindObject(pump)
+liquid_app.show()
+
+# %%
+from controllably.Transfer.Liquid.Sartorius.sartorius import Sartorius
+pipette = Sartorius('COM0', simulation=True)
+
+# %%
+from controllably.Make.Mixture.QInstruments.orbital_shaker_utils import _BioShake
+shake = _BioShake('COM0', simulation=True)
 
 # %%
