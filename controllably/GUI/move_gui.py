@@ -59,10 +59,10 @@ class MovePanel(Panel):
         # Status
         if not self.getAttribute('is_connected', False):
             self.status = 'Disconnected'
-            return self
+            # return self.refresh()
         elif self.getAttribute('is_busy', False):
             self.status = 'Busy'
-            return self.refresh()
+            # return self.refresh()
         else:
             self.status = 'Connected'
             
@@ -170,14 +170,12 @@ class MovePanel(Panel):
         entry_frame.grid_rowconfigure([0,1],weight=1, minsize=BUTTON_WIDTH)
         
         # Status Display
-        self.button_close = ttk.Button(status_frame, text='Terminate', command=self.close)
-        self.button_refresh = ttk.Button(status_frame, text='Refresh', command=self.update)
         self.label_position = ttk.Label(status_frame, text="Position: \nx=0, y=0, z=0\na=0, b=0, c=0")
+        self.button_refresh = ttk.Button(status_frame, text='Refresh', command=self.update)
         self.label_status = ttk.Label(status_frame, text="Disconnected")
-        self.button_close.grid(row=0, column=1)
-        self.button_refresh.grid(row=1, column=1)
         self.label_position.grid(row=0, column=0, padx=(0,10), rowspan=2)
-        self.label_status.grid(row=2, column=1)
+        self.button_refresh.grid(row=0, column=1)
+        self.label_status.grid(row=1, column=1)
 
         # Translation Controls
         ttk.Button(translation_xy_frame, text="Home", command=self.home, width=BUTTON_WIDTH).grid(row=3, column=3, sticky='nsew')
