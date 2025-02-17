@@ -10,6 +10,7 @@ Other constants and variables:
 """
 # Standard library imports
 from __future__ import annotations
+from datetime import datetime
 import logging
 import numpy as np
 import time
@@ -210,8 +211,16 @@ class SartoriusDevice(SerialDevice):
         data_type: NamedTuple|None = None, 
         timestamp: bool = False
     ):
-        data_type: NamedTuple = data_type or Data
+        data_type: NamedTuple = data_type or self.data_type
         format_out = format_out or self.read_format
+        if self.flags.simulation:
+            field_types = data_type.__annotations__
+            data_defaults = data_type._field_defaults
+            defaults = [data_defaults.get(f, ('' if t==str else 0)) for f,t in field_types.items()]
+            data_out = data_type(*defaults)
+            response = (data_out, datetime.now()) if timestamp else data_out
+            return [response] if multi_out else response
+        
         responses = super().query(
             data, multi_out, timeout=timeout, 
             format_in=format_in, timestamp=timestamp,
@@ -227,10 +236,11 @@ class SartoriusDevice(SerialDevice):
                 out,now = response
             else:
                 out = response
-            if out is None or len(out.data) == 0:
-                all_output.append(None)
+            if out is None:
+                all_output.append(response)
                 continue
             out: Data = out
+            
             # Check channel
             if out.channel != self.channel:
                 self._logger.warning(f"Channel mismatch: self={self.channel} | response={out.channel}")
@@ -258,17 +268,12 @@ class SartoriusDevice(SerialDevice):
                 self._logger.warning(f"Command mismatch: sent={data[:2]} | response={out.data[:2]}")
                 continue
             
-            if self.flags.simulation:
-                field_types = data_type.__annotations__
-                data_defaults = data_type._field_defaults
-                defaults = [data_defaults.get(f, ('' if t==str else 0)) for f,t in field_types.items()]
-                data_out = data_type(defaults)
-            else:
-                data_dict = out._asdict()
-                if out.data != 'ok':
-                    data_dict.update(dict(data=out.data[2:]))
-                data_out = self.processOutput(format_out.format(**data_dict).strip(), format=format_out, data_type=data_type)
-                data_out = data_out if timestamp else data_out[0]
+            data_dict = out._asdict()
+            if out.data != 'ok':
+                data_dict.update(dict(data=out.data[2:]))
+            data_out = self.processOutput(format_out.format(**data_dict).strip(), format=format_out, data_type=data_type)
+            data_out = data_out if timestamp else data_out[0]
+            
             all_output.append((data_out, now) if timestamp else data_out)
             self._repeat_query = True
         return all_output if multi_out else all_output[0]

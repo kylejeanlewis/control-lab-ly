@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
 from __future__ import annotations
+from datetime import datetime
 import logging
 import time
 from types import SimpleNamespace
@@ -97,13 +98,22 @@ class TriContinentDevice(SerialDevice):
         data_type: NamedTuple|None = None, 
         timestamp: bool = False
     ):
-        data_type: NamedTuple = data_type or Data
+        data_type: NamedTuple = data_type or self.data_type
         format_out = format_out or self.read_format
+        if self.flags.simulation:
+            field_types = data_type.__annotations__
+            data_defaults = data_type._field_defaults
+            defaults = [data_defaults.get(f, ('' if t==str else 0)) for f,t in field_types.items()]
+            data_out = data_type(*defaults)
+            response = (data_out, datetime.now()) if timestamp else data_out
+            return [response] if multi_out else response
+        
         responses = super().query(
             data, multi_out, timeout=timeout, 
             format_in=format_in, timestamp=timestamp,
             channel=self.channel
         )
+        print(repr(responses))
         if multi_out and not len(responses):
             return None
         responses = responses if multi_out else [responses]
@@ -114,16 +124,18 @@ class TriContinentDevice(SerialDevice):
                 out,now = response
             else:
                 out = response
-            if out is None or len(out.data) == 0:
-                all_output.append(None)
+            if out is None:
+                all_output.append(response)
                 continue
-            status, content = (out.data[0],out.data[1:]) if len(out.data) > 1 else (out.data,'0')
             out: Data = out
+            
+            status, content = (out.data[0],out.data[1:]) if len(out.data) > 1 else (out.data,'0')
             # Check channel
             # if out.channel != str(self.channel):
-            #     self._logger.warning(f"Channel mismatch: {out.channel} != {self.channel}")
+            #     self._logger.warning(f"Channel mismatch: self={self.channel} | response={out.channel}")
             #     all_output.append(('', now) if timestamp else '')
             #     continue
+            
             # Check status code
             if status not in BUSY + IDLE:
                 raise RuntimeError(f"Unknown status code: {status!r}")
@@ -134,16 +146,11 @@ class TriContinentDevice(SerialDevice):
             if self.status in (1,7,9,10):
                 raise Exception(f"Please reinitialize: Pump {self.channel}.")
             
-            if self.flags.simulation:
-                field_types = data_type.__annotations__
-                data_defaults = data_type._field_defaults
-                defaults = [data_defaults.get(f, ('' if t==str else 0)) for f,t in field_types.items()]
-                data_out = data_type(defaults)
-            else:
-                data_dict = out._asdict()
-                data_dict.update(dict(data=content))
-                data_out = self.processOutput(format_out.format(**data_dict).strip(), format=format_out, data_type=data_type)
-                data_out = data_out if timestamp else data_out[0]
+            data_dict = out._asdict()
+            data_dict.update(dict(data=content))
+            data_out = self.processOutput(format_out.format(**data_dict).strip(), format=format_out, data_type=data_type)
+            data_out = data_out if timestamp else data_out[0]
+            
             all_output.append((data_out, now) if timestamp else data_out)
         return all_output if multi_out else all_output[0]
     
@@ -161,15 +168,15 @@ class TriContinentDevice(SerialDevice):
     
     # Status query methods
     def getStatus(self) -> tuple[bool,str]:
-        out: Data = self.query('Q', data_type=IntData)
-        if out.data is None:
+        out: Data|None = self.query('Q', data_type=IntData)
+        if out is None:
             return self.flags.busy, self.status
         self.status = out.data
         return self.flags.busy, ErrorCode[f'er{self.status}'].value
     
     def getPosition(self) -> int:
         out: Data = self.query('?', data_type=IntData)
-        self.position =out.data
+        self.position = out.data
         return self.position
     
     # Getter methods

@@ -11,6 +11,7 @@ Refer to manual for more information on the GRBL firmware.
 # Standard library imports
 from __future__ import annotations
 from copy import deepcopy
+from datetime import datetime
 import logging
 import time
 from types import SimpleNamespace
@@ -217,11 +218,20 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             str|float|None: response (string / float)
         """
-        data_type: NamedTuple = data_type or Data
+        data_type: NamedTuple = data_type or self.data_type
+        if self.flags.simulation:
+            field_types = data_type.__annotations__
+            data_defaults = data_type._field_defaults
+            defaults = [data_defaults.get(f, ('' if t==str else 0)) for f,t in field_types.items()]
+            data_out = data_type(*defaults)
+            response = (data_out, datetime.now()) if timestamp else data_out
+            return [response] if multi_out else response
+        
         responses = super().query(
             data, multi_out=multi_out, timeout=timeout,
             format_in=format_in, timestamp=timestamp
         )
+        print(repr(responses))
         if multi_out and not len(responses):
             return None
         responses = responses if multi_out else [responses]
@@ -233,7 +243,7 @@ class _QInstrumentsDevice(SerialDevice):
             else:
                 out = response
             if out is None:
-                all_output.append(None)
+                all_output.append(response)
                 continue
             out: Data = out
             # Check invalid commands
@@ -243,14 +253,9 @@ class _QInstrumentsDevice(SerialDevice):
                 self.clear()
                 raise AttributeError(error_message)
             
-            if self.flags.simulation:
-                field_types = data_type.__annotations__
-                data_defaults = data_type._field_defaults
-                defaults = [data_defaults.get(f, ('' if t==str else 0)) for f,t in field_types.items()]
-                data_out = data_type(defaults)
-            else:
-                data_out = self.processOutput(out.data, format=format_out, data_type=data_type)
-                data_out = data_out if timestamp else data_out[0]
+            data_out = self.processOutput(out.data, format=format_out, data_type=data_type)
+            data_out = data_out if timestamp else data_out[0]
+            
             all_output.append((data_out, now) if timestamp else data_out)
         return all_output if multi_out else all_output[0]
 
@@ -297,8 +302,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             str: model type
         """
-        data: Data = self.query("getDescription")
-        return data.data
+        out: Data = self.query("getDescription")
+        return out.data
         
     def getErrorList(self) -> list[str]:
         """
@@ -318,8 +323,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             str: device serial number
         """
-        data: Data = self.query("getSerial")
-        return data.data
+        out: Data = self.query("getSerial")
+        return out.data
         
     def getVersion(self) -> str:
         """
@@ -328,13 +333,13 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             str: firmware version number
         """
-        data: Data = self.query("getVersion")
-        return data.data
+        out: Data = self.query("getVersion")
+        return out.data
         
     def info(self):
         """Retrieve the boot screen text"""
-        data: list[Data] = self.query("info", multi_out=True, timeout=5)
-        return '\n'.join([d.data for d in data])
+        out: list[Data] = self.query("info", multi_out=True, timeout=5)
+        return '\n'.join([d.data for d in out])
         
     def resetDevice(self, timeout:int = 30):
         """
@@ -372,8 +377,8 @@ class _QInstrumentsDevice(SerialDevice):
         Returns:
             str: model type and firmware version number
         """
-        data: list[Data] = self.query("version", multi_out=True, timeout=5)
-        return '\n'.join([d.data for d in data])
+        out: list[Data] = self.query("version", multi_out=True, timeout=5)
+        return '\n'.join([d.data for d in out])
     
     # ECO methods
     def leaveEcoMode(self, timeout:int = 5):
