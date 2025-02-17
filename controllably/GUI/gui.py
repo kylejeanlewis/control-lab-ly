@@ -72,6 +72,7 @@ class Panel:
             return
         self.widget.quit()
         self.widget.destroy()
+        self.drawn = False
         return
     
     def getAttribute(self, attribute: str, default: Any|None = None) -> Any|None:
