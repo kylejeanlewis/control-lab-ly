@@ -73,6 +73,7 @@ class LiquidPanel(Panel):
         self.capacity = self.getAttribute('capacity') or self.capacity
         self.volume = self.getAttribute('volume') or self.volume
         self.channel = self.getAttribute('channel') or self.channel
+        self.tick_interval = self.capacity // 5
         
         # Fields
         # volume = self.entry_volume.get()
@@ -91,6 +92,7 @@ class LiquidPanel(Panel):
         self.label_capacity.config(text=f"{self.capacity} µL")
         
         # Update scales
+        self.scale_volume.config(from_=self.capacity, to=0, tickinterval=self.tick_interval)
         self.scale_volume.set(self.volume)
         
         # Update entries
