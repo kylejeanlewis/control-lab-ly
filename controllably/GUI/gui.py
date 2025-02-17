@@ -26,6 +26,7 @@ class Panel:
     
     def bindObject(self, principal: Proxy|Any):
         self.principal = principal
+        self.update()
         return
     
     def releaseObject(self) -> Proxy|Any:
@@ -47,7 +48,9 @@ class Panel:
     def show(self, title:str = ''):
         self.title = title or (self.title or 'Application')
         if self.top_level:
-            self.addTo(tk.Tk())
+            root = tk.Tk()
+            root.protocol("WM_DELETE_WINDOW", self.close)
+            self.addTo(root)
         if not isinstance(self.widget, tk.Tk):
             logger.warning('No widget is bound to this Panel')
             return
