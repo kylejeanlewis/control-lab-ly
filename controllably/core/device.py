@@ -397,18 +397,27 @@ class BaseDevice:
         **kwargs
     ) -> Any | None:
         """Query the device"""
+        data_type: NamedTuple = data_type or self.data_type
+        # if self.flags.simulation:
+        #     field_types = data_type.__annotations__
+        #     data_defaults = data_type._field_defaults
+        #     defaults = [data_defaults.get(f, ('' if t==str else 0)) for f,t in field_types.items()]
+        #     data_out = data_type(*defaults)
+        #     response = (data_out, datetime.now()) if timestamp else data_out
+        #     return [response] if multi_out else response
+        
         data_in = self.processInput(data, format_in, **kwargs)
         if not multi_out:
             raw_out = self.poll(data_in)
             if raw_out is None:
-                return None
+                return (None, now) if timestamp else None
             out, now = self.processOutput(raw_out, format_out, data_type)
             return (out, now) if timestamp else out
         
         all_data = []
         ret = self.write(data_in) if data_in is not None else True
         if not ret:
-            return None
+            return all_data
         start_time = time.perf_counter()
         while True:
             if time.perf_counter() - start_time > timeout:
