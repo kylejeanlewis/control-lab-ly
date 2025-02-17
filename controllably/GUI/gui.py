@@ -39,9 +39,8 @@ class Panel:
         self.widget = widget
         return
     
-    def releaseWidget(self) -> tk.Tk:
-        assert isinstance(self.widget, tk.Tk), 'No widget is bound to this Panel'
-        widget = self.widget
+    def releaseWidget(self) -> tk.Tk|None:
+        widget = self.widget if isinstance(self.widget, tk.Tk) else None
         self.widget = None
         return widget
     
