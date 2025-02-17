@@ -113,9 +113,9 @@ class TriContinent(LiquidHandler):
         
         # Replace with actual aspirate implementation
         steps = round(volume/self.volume_resolution)
-        self.device.setStartSpeed(start_speed, immediate=False)
-        self.device.setTopSpeed(speed, immediate=False)
-        self.device.setAcceleration(self.acceleration, immediate=False)
+        _ = self.device.setStartSpeed(start_speed, immediate=False) if start_speed else None
+        _ = self.device.setTopSpeed(speed, immediate=False) if speed else None
+        # self.device.setAcceleration(self.acceleration, immediate=False)
         self.device.aspirate(steps, immediate=False, blocking=blocking)
         self.device.wait(delay, immediate=False)
         self.device.run()
@@ -167,14 +167,14 @@ class TriContinent(LiquidHandler):
             self._logger.warning("Volume is too small. Ensure volume is greater than resolution.")
             return False
         volume = round(volume/self.volume_resolution)*self.volume_resolution
-        speed = speed or self.speed_out
-        start_speed = start_speed or self.start_speed
+        # speed = speed or self.speed_out
+        # start_speed = start_speed or self.start_speed
         
         # Replace with actual dispense implementation
         steps = round(volume/self.volume_resolution)
-        self.device.setStartSpeed(start_speed, immediate=False)
-        self.device.setTopSpeed(speed, immediate=False)
-        self.device.setAcceleration(self.acceleration, immediate=False)
+        _ = self.device.setStartSpeed(start_speed, immediate=False) if start_speed else None
+        _ = self.device.setTopSpeed(speed, immediate=False) if speed else None
+        # self.device.setAcceleration(self.acceleration, immediate=False)
         if volume > self.volume and not ignore:
             self.device.setValvePosition('I', immediate=False)
             self.device.moveTo(self.device.max_position, immediate=False)
