@@ -40,15 +40,15 @@ move_app.show()
 
 # %%
 from controllably.Transfer.Liquid.Pumps.TriContinent.tricontinent import TriContinent
-pump = TriContinent('COM0',5000, simulation=True)
-
-# %%
-liquid_app.bindObject(pump)
-liquid_app.show()
+pump = TriContinent('COM0',5000, simulation=True, verbose=True)
 
 # %%
 from controllably.Transfer.Liquid.Sartorius.sartorius import Sartorius
 pipette = Sartorius('COM0', simulation=True)
+
+# %%
+liquid_app.bindObject(pipette)
+liquid_app.show()
 
 # %%
 from controllably.Make.Mixture.QInstruments.orbital_shaker_utils import _BioShake
