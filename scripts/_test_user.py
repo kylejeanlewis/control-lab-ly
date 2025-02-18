@@ -6,9 +6,15 @@ import test_init
 from controllably.core.connection import get_host
 from controllably.core.control import Controller, Proxy, start_client
 from controllably.core.interpreter import JSONInterpreter
+from controllably.GUI import MovePanel, Panel, LiquidPanel
 
 from controllably.Move.Cartesian import Gantry
-from controllably.GUI import MovePanel, GUI
+from controllably.Transfer.Liquid.Sartorius.sartorius import Sartorius
+from controllably.Transfer.Liquid.Pumps.TriContinent.tricontinent import TriContinent
+
+import logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 # %%
 host = get_host()
@@ -64,7 +70,7 @@ position = proxy.move('x',10)
 position
 
 # %%
-gui = GUI()
+gui = Panel()
 mgui = MovePanel()
 ngui = MovePanel()
 
@@ -83,6 +89,12 @@ gui.show()
 
 # %%
 gui = MovePanel()
+gui.show()
+
+# %%
+pipette = Proxy(Sartorius, 'PIPETTE')
+pipette.bindController(ui)
+gui = LiquidPanel(pipette)
 gui.show()
 
 # %%
