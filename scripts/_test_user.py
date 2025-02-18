@@ -50,8 +50,8 @@ content = ui.retrieveData(content_request)
 ui.data_buffer
 
 # %%
-gantry = Gantry('COM0',[[100,100,100],[-100,-100,-100]], simulation=True)
-proxy = Proxy(gantry, 'MOVER')
+# gantry = Gantry('COM0',[[100,100,100],[-100,-100,-100]], simulation=True)
+proxy = Proxy(Gantry, 'MOVER')
 gui = MovePanel()
 
 # %%
