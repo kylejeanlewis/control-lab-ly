@@ -92,7 +92,8 @@ class Panel:
         assert self.principal.controller is not None, 'Principal object is not bound to a controller'
         assert self.principal.remote, 'Principal object is not in remote mode'
         command = dict(method='getattr', args=[self.principal.object_id, list(out.keys())])
-        request_id = self.principal.controller.transmitRequest(command)
+        target = self.principal.controller.registry.get(self.principal.object_id, [])
+        request_id = self.principal.controller.transmitRequest(command,target=target)
         data = self.principal.controller.retrieveData(request_id)
         out.update(data)
         return out
