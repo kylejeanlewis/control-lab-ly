@@ -15,6 +15,10 @@ logger = logging .getLogger(__name__)
 PRECISION = 1
 TICK_INTERVAL = 200
 
+BUTTON_HEIGHT = 1
+BUTTON_WIDTH = 6
+SCALE_LENGTH = 200
+
 class Liquid(Protocol):
     capacity: float
     channel: int
@@ -34,6 +38,15 @@ class Liquid(Protocol):
     
     def fill(self, speed:float|None = None, reagent:str|None = None, *args, **kwargs):
         raise NotImplementedError
+    
+    def isTipOn(self) -> bool:
+        raise NotImplementedError
+    
+    def eject(self, *args, **kwargs):
+        raise NotImplementedError
+    
+    def attach(self, *args, **kwargs):
+        raise NotImplementedError
 
 
 class LiquidPanel(Panel):
@@ -48,12 +61,15 @@ class LiquidPanel(Panel):
         self.capacity = 1000
         self.volume = 0
         self.channel = 0
+        self.tip_on: bool|None = None
         
         # Fields
         self.volume_field = 0
         self.speed_field = None
         
         # Settings
+        self.button_height = BUTTON_HEIGHT
+        self.button_width = BUTTON_WIDTH
         self.precision = PRECISION
         self.tick_interval = TICK_INTERVAL
         return
@@ -74,6 +90,10 @@ class LiquidPanel(Panel):
         self.volume = self.getAttribute('volume') or self.volume
         self.channel = self.getAttribute('channel') or self.channel
         self.tick_interval = self.capacity // 5
+        if not hasattr(self.principal, 'isTipOn'):
+            self.tip_on = None
+        else:
+            self.tip_on = self.principal.isTipOn()
         
         # Fields
         # volume = self.entry_volume.get()
@@ -107,6 +127,10 @@ class LiquidPanel(Panel):
         self.entry_speed.delete(0, tk.END)
         self.entry_speed.insert(0, str(self.speed_field).replace('None',''))
         
+        button_eject_text = "Eject" if self.tip_on else "Attach"
+        button_eject_state = tk.NORMAL if self.tip_on is not None else tk.DISABLED
+        self.button_eject.config(text=button_eject_text, state=button_eject_state)
+        
         # self.entry_cycles.delete(0, tk.END)
         # self.entry_cycles.insert(0, str(self.cycles_field))
         
@@ -115,13 +139,9 @@ class LiquidPanel(Panel):
         return
     
     def addTo(self, master: tk.Tk|tk.Frame, size: tuple[int,int]|None = None) -> tuple[int,int]|None:
-        BUTTON_HEIGHT = 1
-        BUTTON_WIDTH = 6
-        SCALE_LENGTH = 200
-        
         # Add layout
-        master.rowconfigure(1,weight=1, minsize=13*BUTTON_WIDTH)
-        master.columnconfigure(0,weight=1, minsize=9*BUTTON_WIDTH)
+        master.rowconfigure(1,weight=1, minsize=13*self.button_width)
+        master.columnconfigure(0,weight=1, minsize=9*self.button_width)
         
         # Add keyboard events
         master.bind('<Up>', lambda event: self.aspirate(volume=float(self.entry_volume.get()), speed=self.entry_speed.get(), reagent=self.entry_reagent.get()))
@@ -172,33 +192,36 @@ class LiquidPanel(Panel):
         self.label_capacity.grid(row=1, column=0)
         self.label_current_reagent.grid(row=3, column=0)
         
-        
-        self.scale_volume = tk.Scale(scale_frame, from_=self.capacity, to=0, orient=tk.VERTICAL, length=SCALE_LENGTH, width=BUTTON_WIDTH, tickinterval=self.tick_interval)
+        self.scale_volume = tk.Scale(scale_frame, from_=self.capacity, to=0, orient=tk.VERTICAL, length=SCALE_LENGTH, width=self.button_width, tickinterval=self.tick_interval)
         self.scale_volume.bind("<ButtonRelease-1>", lambda event: self.volumeTo(volume=float(self.scale_volume.get()), speed=self.entry_speed.get(), reagent=self.entry_reagent.get()))
         self.scale_volume.grid(row=2, column=0, sticky='nsew')
         
         # Buttons
-        ttk.Button(button_frame, text="⏫", command=lambda: self.fill(speed=self.entry_speed.get(), reagent=self.entry_reagent.get()), width=BUTTON_WIDTH).grid(row=0, column=0, sticky='nsew')
-        ttk.Button(button_frame, text="🔼", command=lambda: self.aspirate(volume=float(self.entry_volume.get()), speed=self.entry_speed.get(), reagent=self.entry_reagent.get()), width=BUTTON_WIDTH).grid(row=1, column=0, sticky='nsew')
-        ttk.Button(button_frame, text="🔽", command=lambda: self.dispense(volume=float(self.entry_volume.get()), speed=self.entry_speed.get()), width=BUTTON_WIDTH).grid(row=2, column=0, sticky='nsew')
-        ttk.Button(button_frame, text="⏬", command=lambda: self.empty(speed=self.entry_speed.get()), width=BUTTON_WIDTH).grid(row=3, column=0, sticky='nsew')
-        ttk.Button(button_frame, text="⏺️", command=lambda: self.blowout(), width=BUTTON_WIDTH).grid(row=4, column=0, sticky='nsew')
+        ttk.Button(button_frame, text="⏫", command=lambda: self.fill(speed=self.entry_speed.get(), reagent=self.entry_reagent.get()), width=self.button_width).grid(row=0, column=0, sticky='nsew')
+        ttk.Button(button_frame, text="🔼", command=lambda: self.aspirate(volume=float(self.entry_volume.get()), speed=self.entry_speed.get(), reagent=self.entry_reagent.get()), width=self.button_width).grid(row=1, column=0, sticky='nsew')
+        ttk.Button(button_frame, text="🔽", command=lambda: self.dispense(volume=float(self.entry_volume.get()), speed=self.entry_speed.get()), width=self.button_width).grid(row=2, column=0, sticky='nsew')
+        ttk.Button(button_frame, text="⏬", command=lambda: self.empty(speed=self.entry_speed.get()), width=self.button_width).grid(row=3, column=0, sticky='nsew')
+        ttk.Button(button_frame, text="⏺️", command=self.blowout, width=self.button_width).grid(row=4, column=0, sticky='nsew')
         
         # Input fields
         self.label_reagent = ttk.Label(label_frame, text="Reagent", justify=tk.RIGHT)
         self.label_volume = ttk.Label(label_frame, text="Volume", justify=tk.RIGHT)
         self.label_speed = ttk.Label(label_frame, text="Speed", justify=tk.RIGHT)
-        self.label_reagent.grid(row=0, column=0, sticky='e')
-        self.label_volume.grid(row=1, column=0, sticky='e')
-        self.label_speed.grid(row=2, column=0, sticky='e')
+        self.label_ = ttk.Label(label_frame, text="", justify=tk.RIGHT)
+        self.label_reagent.grid(row=0, column=0, sticky='nse')
+        self.label_volume.grid(row=1, column=0, sticky='nse')
+        self.label_speed.grid(row=2, column=0, sticky='nse')
+        self.label_.grid(row=3, column=0, sticky='nse')
         
-        self.entry_reagent = ttk.Entry(input_frame, width=2*BUTTON_WIDTH, justify=tk.CENTER)
-        self.entry_volume = ttk.Entry(input_frame, width=2*BUTTON_WIDTH, justify=tk.CENTER)
-        self.entry_speed = ttk.Entry(input_frame, width=2*BUTTON_WIDTH, justify=tk.CENTER)
+        self.entry_reagent = ttk.Entry(input_frame, width=2*self.button_width, justify=tk.CENTER)
+        self.entry_volume = ttk.Entry(input_frame, width=2*self.button_width, justify=tk.CENTER)
+        self.entry_speed = ttk.Entry(input_frame, width=2*self.button_width, justify=tk.CENTER)
         self.entry_reagent.grid(row=0, column=0, sticky='nsew')
         self.entry_volume.grid(row=1, column=0, sticky='nsew')
         self.entry_speed.grid(row=2, column=0, sticky='nsew')
-        return super().addTo(master, (5*BUTTON_WIDTH,13*BUTTON_HEIGHT))
+        self.button_eject = ttk.Button(input_frame, text="Attach", command=self.toggleTip, width=2*self.button_width)
+        self.button_eject.grid(row=3, column=0, sticky='nsew')
+        return super().addTo(master, (5*self.button_width,13*self.button_height))
 
     def aspirate(self, volume:float, speed:float|str|None = None, reagent:str|None = None):
         speed = float(speed) if (isinstance(speed,str) and len(speed)) else self.speed_field
@@ -274,10 +297,25 @@ class LiquidPanel(Panel):
     def attach(self):
         self.tip_on = True
         self.reagent = None
+        try:
+            self.execute(self.principal.attach, tip_length=90)  # TODO: Add tip length to settings
+        except AttributeError:
+            logger.warning('No attach method found')
+            self.update()
+        self.refresh()
         return
         
     def eject(self):
         self.tip_on = False
         self.reagent = None
+        try:
+            self.execute(self.principal.eject)
+        except AttributeError:
+            logger.warning('No eject method found')
+            self.update()
+        self.refresh()
         return
+    
+    def toggleTip(self):
+        return self.eject() if self.tip_on else self.attach()
         
