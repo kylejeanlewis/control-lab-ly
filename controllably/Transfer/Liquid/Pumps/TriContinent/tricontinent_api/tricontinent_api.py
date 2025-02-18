@@ -169,13 +169,15 @@ class TriContinentDevice(SerialDevice):
     # Status query methods
     def getStatus(self) -> tuple[bool,str]:
         out: Data|None = self.query('Q', data_type=IntData)
-        if out is None:
+        if self.flags.simulation:
             return self.flags.busy, self.status
         self.status = out.data
         return self.flags.busy, ErrorCode[f'er{self.status}'].value
     
     def getPosition(self) -> int:
         out: Data = self.query('?', data_type=IntData)
+        if self.flags.simulation:
+            return self.position
         self.position = out.data
         return self.position
     
@@ -183,8 +185,9 @@ class TriContinentDevice(SerialDevice):
     def getInfo(self) -> str:
         out: Data = self.query('&')
         self.info = out.data
-        self.model = out.data.split(':')[0].strip()
-        self.version = out.data.split(':')[1].strip()
+        model_version = out.data.split(':')
+        self.model = model_version[0].strip() or self.model
+        self.version = model_version[1].strip() if len(model_version) > 1 else self.version
         return out.data
     
     def getState(self) -> str:
@@ -311,6 +314,8 @@ class TriContinentDevice(SerialDevice):
         self.command_buffer = ''
         self.flags.busy = True
         while self.flags.busy:
+            if self.flags.simulation:
+                break
             time.sleep(0.1)
             self.getStatus()
         self.getStatus()
