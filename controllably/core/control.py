@@ -114,7 +114,7 @@ class Proxy:
         self.prime = prime
         self.object_id = object_id or id(prime)
         self.controller: Controller|None = None
-        self.remote = False
+        self.remote = True
         return
     
     @classmethod
@@ -528,7 +528,7 @@ class Controller:
         if close_request:
             self.data_buffer.pop(request_id)
         if max_count == 1:
-            return data
+            return (data if data_only else response)
         return all_data
     
     def getMethods(self, target: Iterable[int]|None = None, *, private: bool = True) -> dict:
