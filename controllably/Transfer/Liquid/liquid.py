@@ -62,14 +62,14 @@ class LiquidHandler:
         # Category specific attributes
         self.speed_in = 0
         self.speed_out = 0
-        self.capacity = 0
+        self._capacity = 0
         self._volume = 0
         self.reagent = ''
         
-        self.channel = 0
+        self._channel = 0
         self.offset = (0,0,0)
         
-        self.volume_resolution = 0
+        self._volume_resolution = 1
         return
     
     def __del__(self):
@@ -107,12 +107,40 @@ class LiquidHandler:
         return
     
     @property
+    def capacity(self) -> float:
+        """Capacity of liquid handler"""
+        return self._capacity
+    @capacity.setter
+    def capacity(self, value:float):
+        self._capacity = value
+        return
+    
+    @property
+    def channel(self) -> float:
+        """Current channel of liquid handler"""
+        return self._channel
+    @channel.setter
+    def channel(self, value:float):
+        self._channel = value
+        return
+    
+    @property
     def volume(self) -> float:
         """Current volume of liquid in the channel"""
         return self._volume
     @volume.setter
     def volume(self, value:float):
-        return self._volume
+        self._volume = value
+        return
+    
+    @property
+    def volume_resolution(self) -> float:
+        """Volume resolution of liquid handler"""
+        return self._volume_resolution
+    @volume_resolution.setter
+    def volume_resolution(self, value:float):
+        self._volume_resolution = value
+        return
     
     def connect(self):
         """Connect to the device"""

@@ -70,9 +70,6 @@ class Sartorius(LiquidHandler):
         # Category specific attributes
         self.speed_in: int|float = self.device.preset_speeds[self.device.speed_code_in-1]
         self.speed_out: int|float = self.device.preset_speeds[self.device.speed_code_out-1]
-        self.capacity = self.device.capacity
-        self.channel = self.device.channel
-        self.volume_resolution = self.device.volume_resolution
         self.tip_length = 0
         self.pullback_steps = 10
         
@@ -84,6 +81,27 @@ class Sartorius(LiquidHandler):
         return
     
     # Properties
+    @property
+    def capacity(self) -> float:
+        return self.device.capacity
+    @capacity.setter
+    def capacity(self, value: float):
+        return
+    
+    @property
+    def channel(self) -> int:
+        return self.device.channel
+    @channel.setter
+    def channel(self, value: int):
+        return
+    
+    @property
+    def volume_resolution(self) -> float:
+        return self.device.volume_resolution
+    @volume_resolution.setter
+    def volume_resolution(self, value: float):
+        return
+    
     @property
     def tip_inset_mm(self) -> float:
         return self.device.tip_inset_mm
@@ -118,6 +136,7 @@ class Sartorius(LiquidHandler):
             return False
         if not self.isTipOn():
             self._logger.warning("Ensure tip is attached.")
+            raise RuntimeWarning("Ensure tip is attached.")
             return False
         if volume > (self.capacity - self.volume) and ignore:
             volume = self.capacity - self.volume
@@ -140,6 +159,8 @@ class Sartorius(LiquidHandler):
         if (volume,speed) not in self.speed_interpolation:
             self.speed_interpolation[(volume,speed)] = parameters
         if parameters['n_intervals'] == 0:
+            logger.error("No feasible interpolation found.")
+            raise ValueError("No feasible interpolation found.")
             return False
         if self.speed_in != parameters['preset_speed']:
             self.setSpeed(parameters['preset_speed'], as_default=False)
@@ -150,7 +171,7 @@ class Sartorius(LiquidHandler):
             step = parameters['step_size'] if (i+1 != parameters['n_intervals']) else remaining_steps
             move_time = step*self.volume_resolution / parameters['preset_speed']
             out = self.device.aspirate(step)
-            if out != 'ok':
+            if not self.device.flags.simulation and out != 'ok':
                 return False
             remaining_steps -= step
             sleep_time = max(move_time + delay - (time.perf_counter()-start_time), 0)
@@ -193,6 +214,7 @@ class Sartorius(LiquidHandler):
         """
         if not self.isTipOn():
             self._logger.warning("Ensure tip is attached.")
+            raise RuntimeWarning("Ensure tip is attached.")
             return False
         if volume > self.volume and ignore:
             volume = self.volume
@@ -215,6 +237,8 @@ class Sartorius(LiquidHandler):
         if (volume,speed) not in self.speed_interpolation:
             self.speed_interpolation[(volume,speed)] = parameters
         if parameters['n_intervals'] == 0:
+            logger.error("No feasible interpolation found.")
+            raise ValueError("No feasible interpolation found.")
             return False
         if self.speed_out != parameters['preset_speed']:
             self.setSpeed(-1 * parameters['preset_speed'], as_default=False)
@@ -225,7 +249,7 @@ class Sartorius(LiquidHandler):
             step = parameters['step_size'] if (i+1 != parameters['n_intervals']) else remaining_steps
             move_time = step*self.volume_resolution / parameters['preset_speed']
             out = self.device.dispense(step)
-            if out != 'ok':
+            if not self.device.flags.simulation and out != 'ok':
                 return False
             remaining_steps -= step
             sleep_time = max(move_time + delay - (time.perf_counter()-start_time), 0)
