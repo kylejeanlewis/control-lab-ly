@@ -27,7 +27,7 @@ liquid_app.show()
 # %%
 panel.clearPanels()
 panel.addGrid(move_app, row=0, column=0)
-panel.addGrid(move_app, row=0, column=1)
+panel.addGrid(liquid_app, row=0, column=1)
 panel.show()
 
 # %%
@@ -40,11 +40,23 @@ move_app.show()
 
 # %%
 from controllably.Transfer.Liquid.Pumps.TriContinent.tricontinent import TriContinent
-pump = TriContinent('COM0',5000, simulation=True, verbose=True)
+from controllably.Transfer.Liquid.Pumps.TriContinent.tricontinent_api.tricontinent_api import TriContinentDevice
+pump_device = TriContinentDevice('COM0', simulation=True, verbose=True)
+pump_device.connect()
+pump_device.getInfo()
+pump = TriContinent('COM0', 5000, simulation=True, device=pump_device, verbose=True)
+
+# %%
+liquid_app.bindObject(pump)
+liquid_app.show()
 
 # %%
 from controllably.Transfer.Liquid.Sartorius.sartorius import Sartorius
-pipette = Sartorius('COM0', simulation=True)
+from controllably.Transfer.Liquid.Sartorius.sartorius_api.sartorius_api import SartoriusDevice
+pipette_device = SartoriusDevice('COM0', simulation=True, verbose=True)
+pipette_device.connect()
+pipette_device.getInfo(model='BRL1000')
+pipette = Sartorius('COM0', simulation=True, device=pipette_device, verbose=True)
 
 # %%
 liquid_app.bindObject(pipette)
