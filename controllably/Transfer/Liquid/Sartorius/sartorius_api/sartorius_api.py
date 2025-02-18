@@ -196,6 +196,8 @@ class SartoriusDevice(SerialDevice):
     # General methods
     def connect(self):
         super().connect()
+        if self.flags.simulation:
+            self.position = self.home_position
         if self.checkDeviceConnection():
             self.getInfo()
             self.reset()
@@ -290,11 +292,15 @@ class SartoriusDevice(SerialDevice):
     
     def getPosition(self) -> int:
         out: IntData = self.query('DP', data_type=IntData)
+        if self.flags.simulation:
+            return self.position
         self.position = out.data
         return out.data
     
     def getStatus(self) -> int:
         out: IntData = self.query('DS', data_type=IntData)
+        if self.flags.simulation:
+            return self.status
         self.status = out.data
         status_name = lib.StatusCode(self.status).name
         if self.status in [4,6,8]:
@@ -312,11 +318,11 @@ class SartoriusDevice(SerialDevice):
     
     # Getter methods
     def getInfo(self, *, model: str|None = None) -> lib.ModelInfo:
-        if not self.checkDeviceConnection():
+        if not self.is_connected:
             return
         self.model = self.getModel()
         self.version = self.getVersion()
-        self.volume_resolution = self.getVolumeResolution()
+        self.volume_resolution = self.getVolumeResolution() or 1
         self.speed_code_in = self.getInSpeedCode()
         self.speed_code_out = self.getOutSpeedCode()
         
@@ -325,7 +331,8 @@ class SartoriusDevice(SerialDevice):
         self.info = model_info
         if self.volume_resolution != model_info.resolution:
             logger.warning(f"Resolution mismatch: {self.volume_resolution=} | {model_info.resolution=}")
-            logger.warning("Check library values.")
+            # logger.warning("Check library values.")
+            self.volume_resolution = model_info.resolution
         return model_info
     
     def getModel(self) -> str:
@@ -421,7 +428,7 @@ class SartoriusDevice(SerialDevice):
     
     def moveBy(self, steps:int) -> str:
         steps = round(steps)
-        assert (min(self.limits) <= (self.position+steps) <= max(self.limits)), "Range limits reached!"
+        assert (min(self.limits) <= (self.position+steps) <= max(self.limits)), f"Range limits reached! ({self.position+steps})"
         data = f'RI{steps}' if steps >= 0 else f'RO{abs(steps)}'
         out: Data = self.query(data)
         while self.flags.busy:
@@ -433,7 +440,7 @@ class SartoriusDevice(SerialDevice):
     
     def moveTo(self, position:int) -> str:
         position = round(position)
-        assert (min(self.limits) <= position <= max(self.limits)), "Range limits reached!"
+        assert (min(self.limits) <= position <= max(self.limits)), f"Range limits reached! ({position})"
         out: Data = self.query(f'RP{position}')
         while self.flags.busy:
             self.getStatus()
