@@ -230,7 +230,7 @@ class Controller:
             objects = reply.get('data', {})
             for key, address in objects.items():
                 if key not in registry:
-                    registry[key] = address
+                    registry[key] = list(set(address))
                 elif set(registry[key]) != set(address):
                     logger.warning(f'Conflict in object_id {key} at multiple addresses: {[registry[key], address]}')
                     logger.warning('Please resolve ID object_id conflict.')
@@ -607,12 +607,14 @@ class Controller:
     
     def relayData(self, package: Message):
         content = self.interpreter.decodeData(package)
-        if self.role not in ('worker','both') and content.get('reply_id', '') != self.address:
+        if self.role == 'relay':
             if content.get('request_id', '') == 'registration':
-                if 'registration' not in self.data_buffer:
-                    self.data_buffer['registration'] = dict()
-                sender = content.get('address', {}).get('sender', ['UNKNOWN'])[0]
-                self.data_buffer['registration'].update({sender: content})
+                if content.get('reply_id', '') != self.address:
+                    if 'registration' not in self.data_buffer:
+                        self.data_buffer['registration'] = dict()
+                    sender = content.get('address', {}).get('sender', ['UNKNOWN'])[0]
+                    self.data_buffer['registration'].update({sender: content})
+                    return self.broadcastRegistry()
         addresses = content.get('address', {}).get('target', [])
         self.relay(package, 'data', addresses=addresses)
         if self.role == 'relay':
