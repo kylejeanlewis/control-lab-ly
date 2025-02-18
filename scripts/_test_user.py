@@ -88,13 +88,27 @@ gui.addGrid(ngui, row=1, column=1)
 gui.show()
 
 # %%
-gui = MovePanel()
-gui.show()
+move_gui = MovePanel()
+move_gui.show()
+
+# %%
+liquid_gui = LiquidPanel()
+liquid_gui.show()
 
 # %%
 pipette = Proxy(Sartorius, 'PIPETTE')
 pipette.bindController(ui)
-gui = LiquidPanel(pipette)
-gui.show()
+
+# %%
+pump = Proxy(TriContinent, 'PUMP')
+pump.bindController(ui)
+
+# %%
+liquid_gui.bindObject(pipette)
+liquid_gui.show()
+
+# %%
+liquid_gui.bindObject(pipette)
+liquid_gui.show()
 
 # %%
