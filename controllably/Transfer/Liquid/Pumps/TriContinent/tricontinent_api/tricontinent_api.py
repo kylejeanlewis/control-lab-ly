@@ -103,7 +103,7 @@ class TriContinentDevice(SerialDevice):
         if self.flags.simulation:
             field_types = data_type.__annotations__
             data_defaults = data_type._field_defaults
-            defaults = [data_defaults.get(f, ('' if t==str else 0)) for f,t in field_types.items()]
+            defaults = [data_defaults.get(f, ('' if t==str else t(0))) for f,t in field_types.items()]
             data_out = data_type(*defaults)
             response = (data_out, datetime.now()) if timestamp else data_out
             return [response] if multi_out else response
