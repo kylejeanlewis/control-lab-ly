@@ -55,6 +55,9 @@ class Panel:
             return
         self.update()
         try:
+            self.widget.lift()
+            self.widget.attributes('-topmost',True)
+            self.widget.after_idle(self.widget.attributes,'-topmost',False)
             self.widget.mainloop()
         except Exception as e:
             logger.warning(e)
