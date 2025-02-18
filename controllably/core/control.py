@@ -141,13 +141,14 @@ class Proxy:
             
             assert isinstance(self.controller, Controller), 'No controller is bound to this Proxy.'
             controller = self.controller
+            target = self.controller.registry.get(self.object_id, [])
             command = dict(
                 object_id = self.object_id,
                 method = method.__name__,
                 args = args,
                 kwargs = kwargs
             )
-            request_id = controller.transmitRequest(command)
+            request_id = controller.transmitRequest(command, target=target)
             response: dict = controller.retrieveData(request_id, data_only=False)
             data = response.get('data')
             if response.get('status', '') != 'completed':
@@ -170,8 +171,9 @@ class Proxy:
             
             assert isinstance(self.controller, Controller), 'No controller is bound to this Proxy.'
             controller = self.controller
+            target = self.controller.registry.get(self.object_id, [])
             command = dict(method='getattr', args=[self.object_id,attr_name])
-            request_id = controller.transmitRequest(command)
+            request_id = controller.transmitRequest(command, target=target)
             return controller.retrieveData(request_id)
         emitter.__name__ = attr_name
         emitter.__doc__ = f"Property {attr_name}"
@@ -205,6 +207,7 @@ class Controller:
         self.data_buffer = dict()
         self.objects = {}
         self.object_methods: dict[str, ClassMethods] = dict()
+        self._registry: dict[str, list[str]] = dict()
         
         self.execution_event = threading.Event()
         self.threads = {}
@@ -212,6 +215,31 @@ class Controller:
         if self.role in ('model', 'both'):
             # self.register(self)
             pass
+        return
+    
+    @property
+    def registry(self) -> dict[str,str]:
+        if self.role in ('model', 'both'):
+            return self._registry
+        
+        registry = dict()
+        registration = self.data_buffer.get('registration', {})
+        if not len(registration):
+            return {}
+        for _, reply in registration.items():
+            objects = reply.get('data', {})
+            for key, address in objects.items():
+                if key not in registry:
+                    registry[key] = address
+                elif set(registry[key]) != set(address):
+                    logger.warning(f'Conflict in object_id {key} at multiple addresses: {[registry[key], address]}')
+                    logger.warning('Please resolve ID object_id conflict.')
+                    registry[key] = list(set(registry[key] + address))
+        return registry
+    @registry.setter
+    def registry(self, value: dict[str,str]):
+        if self.role in ('model', 'both'):
+            self._registry = value
         return
     
     # Model side
@@ -233,7 +261,7 @@ class Controller:
         metadata: Mapping[str, Any]|None = None, 
         status: Mapping[str, Any]|None = None
     ):
-        assert self.role in ('model', 'both'), "Only the model can transmit data"
+        assert self.role in ('model', 'both', 'relay'), "Only the model can transmit data"
         response = dict()
         status = status or dict(status='completed')
         response.update(dict(data=data))
@@ -244,6 +272,23 @@ class Controller:
         self.relayData(package)
         return
     
+    def broadcastRegistry(self, target: Iterable[int]|None = None):
+        address = self.address or str(id(self))
+        target = target if target is not None else []
+        self.registry = {key: [address] for key in self.objects}
+        metadata = self.extractMetadata(dict(method='registration'))
+        metadata.update(dict(
+            request_id = 'registration',
+            reply_id = address,
+            address = metadata.get('address', dict(sender=[address],target=target))
+        ))
+        self.transmitData(
+            data = self.registry,
+            metadata = metadata,
+            status = dict(status='completed')
+        )
+        return
+    
     def register(self, new_object: Callable, object_id: str|None = None):
         assert self.role in ('model', 'both'), "Only the model can register object"
         key =  str(id(new_object)) if object_id is None else object_id
@@ -252,6 +297,7 @@ class Controller:
             return False
         self.object_methods[key] = self.extractMethods(new_object)
         self.objects[key] = new_object
+        self.broadcastRegistry()
         return
     
     def unregister(self, object_id:str|None = None, old_object: Callable|None = None) -> bool:
@@ -268,7 +314,20 @@ class Controller:
                 logger.warning(f"Object not found: {old_object.__class__} [{key}]")
             else:
                 logger.warning(f"Object not found: {key}")
+        self.broadcastRegistry()
         return success
+    
+    def extractMetadata(self, command: Mapping[str, Any]) -> Mapping[str, Any]:
+        target = command.get('address', {}).get('sender', [])
+        target.extend(self.relays)
+        sender = [self.address or str(id(self))]
+        return dict(
+            address = dict(sender=sender, target=target),
+            request_id = command.get('request_id', uuid.uuid4().hex),
+            reply_id = uuid.uuid4().hex,
+            priority = command.get('priority', False),
+            rank = command.get('rank', None)
+        )
     
     @staticmethod
     def extractMethods(new_object: Callable) -> ClassMethods:
@@ -311,18 +370,6 @@ class Controller:
         return ClassMethods(
             name = new_object.__class__.__name__,
             methods = methods
-        )
-    
-    def extractMetadata(self, command: Mapping[str, Any]) -> Mapping[str, Any]:
-        target = command.get('address', {}).get('sender', [])
-        target.extend(self.relays)
-        sender = [self.address or str(id(self))]
-        return dict(
-            address = dict(sender=sender, target=target),
-            request_id = command.get('request_id', uuid.uuid4().hex),
-            reply_id = uuid.uuid4().hex,
-            priority = command.get('priority', False),
-            rank = command.get('rank', None)
         )
     
     def exposeMethods(self):
@@ -540,7 +587,7 @@ class Controller:
         if self_address in addresses and self.role == 'relay':
             addresses.remove(self_address)
         addresses = addresses or self.callbacks[callback_type].keys()
-        for address in addresses:
+        for address in set(addresses):
             if address not in self.callbacks[callback_type]:
                 if len(self.relays) == 0:
                     logger.warning(f"Callback not found for address: {address}")
@@ -560,6 +607,11 @@ class Controller:
     
     def relayData(self, package: Message):
         content = self.interpreter.decodeData(package)
+        if self.role not in ('worker','both') and content.get('request_id', '') == 'registration':
+            if 'registration' not in self.data_buffer:
+                self.data_buffer['registration'] = dict()
+            sender = content.get('address', {}).get('sender', ['UNKNOWN'])[0]
+            self.data_buffer['registration'].update({sender: content})
         addresses = content.get('address', {}).get('target', [])
         self.relay(package, 'data', addresses=addresses)
         if self.role == 'relay':
@@ -589,14 +641,13 @@ class Controller:
         self.callbacks[callback_type][key] = callback
         return
     
-    def unsubscribe(self, callback: Callable, callback_type: str):
+    def unsubscribe(self, callback_type: str, address: int|str):
         assert callback_type in self.callbacks, f"Invalid callback type: {callback_type}"
-        assert isinstance(callback, Callable), f"Invalid callback: {callback}"
-        key = id(callback.__self__) if '__self__' in dir(callback) else id(callback)
+        key = address
         key = str(key)
         _callback = self.callbacks[callback_type].pop(key, None)
         if _callback is None:
-            logger.warning(f"{callback} was not subscribed to {callback_type}")
+            logger.warning(f"{key} was not subscribed to {callback_type}")
             return
         if key in self.relays:
             self.relays.remove(key)
@@ -621,13 +672,19 @@ def handle_client(
     relay = (controller.role == 'relay')
     receive_method = controller.receiveRequest
     if relay:
-        match client_role:
-            case 'model':  # (i.e. client is a model)
-                receive_method = controller.relayData
-            case 'view':
-                receive_method = controller.relayRequest
-            case _:
-                raise ValueError(f"Invalid role: {client_role}")
+        if client_role not in ('model', 'view'):
+            raise ValueError(f"Invalid role: {client_role}")
+        callback_type = 'request' if client_role == 'model' else 'data'
+        receive_method = controller.relayData if client_role == 'model' else controller.relayRequest
+        # match client_role:
+        #     case 'model':  # (i.e. client is a model)
+        #         receive_method = controller.relayData
+        #         callback_type = 'request'
+        #     case 'view':
+        #         receive_method = controller.relayRequest
+        #         callback_type = 'data'
+        #     case _:
+        #         raise ValueError(f"Invalid role: {client_role}")
     
     terminate = threading.Event() if terminate is None else terminate
     while not terminate.is_set():
@@ -652,6 +709,7 @@ def handle_client(
             break
     client_socket.close()
     logger.warning(f"Disconnected from client [{client_addr}]")
+    controller.unsubscribe(callback_type, client_addr)
     return
 
 
@@ -676,14 +734,12 @@ def start_server(host:str, port:int, controller: Controller, *, terminate: threa
         if not handshake.startswith("[CONNECTED] "):
             raise ConnectionError(f"Invalid handshake: {handshake}")
         client_role = handshake.replace('[CONNECTED] ','')
-        match client_role:
-            case 'model':
-                callback_type = 'request'
-            case 'view':
-                callback_type = 'data'
-            case _:
-                raise ValueError(f"Invalid role: {client_role}")
+        if client_role not in ('model', 'view'):
+            raise ValueError(f"Invalid role: {client_role}")
+        callback_type = 'request' if client_role == 'model' else 'data'
         controller.subscribe(client_socket.sendall, callback_type, client_addr)
+        if client_role == 'view':
+            controller.broadcastRegistry(target=[client_addr])
 
         # Handle each client in a separate thread
         client_thread = threading.Thread(
