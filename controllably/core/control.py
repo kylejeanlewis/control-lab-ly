@@ -177,7 +177,6 @@ class Proxy:
         emitter.__doc__ = f"Property {attr_name}"
         return property(emitter)
     
-    
     def bindController(self, controller: Controller):
         assert isinstance(controller, Controller), 'Controller must be an instance of Controller'
         self.controller = controller
@@ -190,14 +189,6 @@ class Proxy:
         self.controller = None
         self.remote = False
         return controller
-    
-    # def getAttr(self, attr_name:str, default:Any|None = None) -> Any|None:
-    #     if self.remote:
-    #         controller = self.controller
-    #         command = dict(method='getattr', args=[self.object_id,attr_name])
-    #         request_id = controller.transmitRequest(command)
-    #         return controller.retrieveData(request_id, default=default)
-    #     return getattr(self.prime, attr_name, default)
 
 
 class Controller:
@@ -373,6 +364,11 @@ class Controller:
                 if this_object is None:
                     logger.error(f"Object not found: {object_id}")
                     return 'Object not found', dict(status='error')
+                
+                if not isinstance(name, str):
+                    assert isinstance(name, Iterable), "Invalid input for attribute(s)"
+                    data = {attr: getattr(this_object, attr) for attr in name if hasattr(this_object, attr)}
+                    return data, dict(status='completed')
                 
                 if not hasattr(this_object, name):
                     logger.error(f"Attribute not found: {name}")
