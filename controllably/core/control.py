@@ -607,11 +607,12 @@ class Controller:
     
     def relayData(self, package: Message):
         content = self.interpreter.decodeData(package)
-        if self.role not in ('worker','both') and content.get('request_id', '') == 'registration':
-            if 'registration' not in self.data_buffer:
-                self.data_buffer['registration'] = dict()
-            sender = content.get('address', {}).get('sender', ['UNKNOWN'])[0]
-            self.data_buffer['registration'].update({sender: content})
+        if self.role not in ('worker','both') and content.get('reply_id', '') != self.address:
+            if content.get('request_id', '') == 'registration':
+                if 'registration' not in self.data_buffer:
+                    self.data_buffer['registration'] = dict()
+                sender = content.get('address', {}).get('sender', ['UNKNOWN'])[0]
+                self.data_buffer['registration'].update({sender: content})
         addresses = content.get('address', {}).get('target', [])
         self.relay(package, 'data', addresses=addresses)
         if self.role == 'relay':
@@ -709,7 +710,10 @@ def handle_client(
             break
     client_socket.close()
     logger.warning(f"Disconnected from client [{client_addr}]")
+    
+    # Clean up
     controller.unsubscribe(callback_type, client_addr)
+    controller.data_buffer.get('registration', {}).pop(client_addr, None)
     return
 
 
