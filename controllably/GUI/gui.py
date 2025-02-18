@@ -81,6 +81,22 @@ class Panel:
     def getAttribute(self, attribute: str, default: Any|None = None) -> Any|None:
         return getattr(self.principal, attribute, default) if self.principal is not None else default
     
+    def getAttributes(self, *attr_defaults: tuple[str, Any]) -> dict[str,Any]:
+        out = {attr: default for attr, default in attr_defaults}
+        if self.principal is None:
+            return out
+        if not isinstance(self.principal, Proxy):
+            return {attr: getattr(self.principal, attr, default) for attr, default in attr_defaults}
+        
+        # Proxy object
+        assert self.principal.controller is not None, 'Principal object is not bound to a controller'
+        assert self.principal.remote, 'Principal object is not in remote mode'
+        command = dict(method='getattr', args=[self.principal.object_id, list(out.keys())])
+        request_id = self.principal.controller.transmitRequest(command)
+        data = self.principal.controller.retrieveData(request_id)
+        out.update(data)
+        return out
+    
     def execute(self, method: Callable, *args, **kwargs) -> Any|None:
         assert callable(method), 'Method must be a callable object'
         try:

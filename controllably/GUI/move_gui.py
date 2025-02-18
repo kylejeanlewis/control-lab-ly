@@ -61,18 +61,21 @@ class MovePanel(Panel):
         return
     
     def update(self, **kwargs):
+        attributes = self.getAttributes(
+            ('is_connected', False), 
+            ('is_busy', False), 
+            ('position', None)
+        )
         # Status
-        if not self.getAttribute('is_connected', False):
+        if not attributes['is_connected']:
             self.status = 'Disconnected'
-            # return self.refresh()
-        elif self.getAttribute('is_busy', False):
+        elif attributes['is_busy']:
             self.status = 'Busy'
-            # return self.refresh()
         else:
             self.status = 'Connected'
             
         # Position
-        position = self.getAttribute('position')
+        position = attributes['position']
         if isinstance(position, Position):
             self.x, self.y, self.z = position.coordinates.round(self.precision)
             self.c, self.b, self.a = position.rotation.round(self.precision)

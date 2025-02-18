@@ -75,31 +75,30 @@ class LiquidPanel(Panel):
         return
     
     def update(self, **kwargs):
+        attributes = self.getAttributes(
+            ('is_connected', False), 
+            ('is_busy', False), 
+            ('capacity', None),
+            ('volume', None),
+            ('channel', None)
+        )
         # Status
-        if not self.getAttribute('is_connected', False):
+        if not attributes['is_connected']:
             self.status = 'Disconnected'
-            # return self.refresh()
-        elif self.getAttribute('is_busy', False):
+        elif attributes['is_busy']:
             self.status = 'Busy'
-            # return self.refresh()
         else:
             self.status = 'Connected'
             
         # Values
-        self.capacity = self.getAttribute('capacity') or self.capacity
-        self.volume = self.getAttribute('volume') or self.volume
-        self.channel = self.getAttribute('channel') or self.channel
+        self.capacity = attributes['capacity'] or self.capacity
+        self.volume = attributes['volume'] or self.volume
+        self.channel = attributes['channel'] or self.channel
         self.tick_interval = self.capacity // 5
         if not hasattr(self.principal, 'isTipOn'):
             self.tip_on = None
         else:
             self.tip_on = self.principal.isTipOn()
-        
-        # Fields
-        # volume = self.entry_volume.get()
-        # speed = self.entry_speed.get()
-        # self.volume_field = volume if len(volume) else 0
-        # self.speed_field = speed if len(speed) else None
         return self.refresh()
     
     def refresh(self, **kwargs):
@@ -130,12 +129,6 @@ class LiquidPanel(Panel):
         button_eject_text = "Eject" if self.tip_on else "Attach"
         button_eject_state = tk.NORMAL if self.tip_on is not None else tk.DISABLED
         self.button_eject.config(text=button_eject_text, state=button_eject_state)
-        
-        # self.entry_cycles.delete(0, tk.END)
-        # self.entry_cycles.insert(0, str(self.cycles_field))
-        
-        # self.entry_delay.delete(0, tk.END)
-        # self.entry_delay.insert(0, str(self.delay_field))
         return
     
     def addTo(self, master: tk.Tk|tk.Frame, size: tuple[int,int]|None = None) -> tuple[int,int]|None:
