@@ -34,9 +34,9 @@ def record(
     show: bool = False, 
     clear_cache: bool = False, 
     *, 
-    query: Any|None = None,
-    data_store: deque, 
     device: StreamingDevice, 
+    data_store: deque, 
+    query: Any|None = None,
     event: threading.Event|None = None
 ):
     if clear_cache:
@@ -55,9 +55,9 @@ def stream(
     on: bool, 
     show: bool = False, 
     *, 
-    query: Any|None = None,
-    data_store: deque, 
     device: StreamingDevice, 
+    data_store: deque, 
+    query: Any|None = None,
     event: threading.Event|None = None
 ):
     if on:
