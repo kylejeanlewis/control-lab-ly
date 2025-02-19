@@ -5,15 +5,10 @@ This module holds the references for AX8 cameras from FLIR.
 Classes:
     BoxRegs (Enum)
     SpotmeterRegs (Enum)
-    
 """
 # Standard library imports
 from __future__ import annotations
 from enum import IntEnum
-import logging
-
-logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
 
 class BoxRegs(IntEnum):
     UNIT_ID             = int('6D', base=16)
