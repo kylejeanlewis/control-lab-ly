@@ -81,9 +81,9 @@ def create_from_config(config:dict) -> object:
         assert inspect.isclass(device_type), "Ensure device_type is a callable class"
         return create(device_type, **config)
     if 'baudrate' in config:
-        device_type = connection.SerialDevice
+        device_type = device.SerialDevice
     elif 'host' in config:
-        device_type = connection.SocketDevice
+        device_type = device.SocketDevice
     return create(device_type, **config)
 
 def dict_to_named_tuple(d:dict, tuple_name:str = 'Setup') -> tuple:
