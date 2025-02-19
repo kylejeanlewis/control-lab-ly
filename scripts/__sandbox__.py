@@ -1,4 +1,24 @@
 # %%
+import test_init
+from controllably.core.position import Position
+from controllably.Move.Cartesian import Gantry
+from controllably.core.device import SerialDevice
+from controllably.GUI.move_gui import MovePanel
+
+ser = SerialDevice(port='COM21', baudrate=115200, timeout=1, verbose=True, simulation=False)
+# %%
+# mover = Gantry('COM22', limits=((-100,-100,-100),(0,0,0)),safe_height=0, verbose=True, device_type_name='GRBL')
+mover = Gantry('COM21', 
+    limits=((0,0,0),(220,220,250)),safe_height=30,
+    home_position=Position((0,0,30)), verbose=True, 
+    device_type_name='Marlin'
+)
+
+# %%
+app = MovePanel(mover)
+app.show()
+
+# %%
 import time
 
 import test_init
