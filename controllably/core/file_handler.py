@@ -63,7 +63,7 @@ def create_folder(base:Path|str = '', sub:Path|str = '') -> Path:
     os.makedirs(new_folder)
     return new_folder
 
-def init(repository_name:str):
+def init(repository_name:str) -> str:
     """
     Add repository to `sys.path`, and getting machine id and connected ports
 
@@ -78,7 +78,7 @@ def init(repository_name:str):
         sys.path.append(target_dir)
     connection.get_node()
     connection.get_ports()
-    return
+    return target_dir
 
 def read_config_file(filepath:Path|str) -> dict:
     """
