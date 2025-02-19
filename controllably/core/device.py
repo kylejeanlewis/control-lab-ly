@@ -14,7 +14,6 @@ from types import SimpleNamespace
 from typing import Any, NamedTuple, Callable, Protocol, Iterable
 
 # Third party imports
-import pandas as pd
 import parse
 import serial
 
@@ -24,6 +23,10 @@ _logger.debug(f"Import: OK <{__name__}>")
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
+
+READ_FORMAT = "{data}\n"
+WRITE_FORMAT = "{data}\n"
+Data = NamedTuple("Data", [("data", str)])
 
 class Device(Protocol):
     """Protocol for device connection classes"""
@@ -172,9 +175,9 @@ class BaseDevice:
         *, 
         connection_details:dict|None = None, 
         init_timeout:int = 1, 
-        data_type: NamedTuple = NamedTuple("Data", [("data", str)]),
-        read_format:str = "{data}\n",
-        write_format:str = "{data}\n",
+        data_type: NamedTuple =  Data,
+        read_format:str = READ_FORMAT,
+        write_format:str = WRITE_FORMAT,
         simulation:bool = False, 
         verbose:bool = False, 
         **kwargs
@@ -590,9 +593,9 @@ class SerialDevice(BaseDevice):
         timeout: int = 1, 
         *,
         init_timeout:int = 1, 
-        data_type: NamedTuple = NamedTuple("Data", [("data", str)]),
-        read_format:str = "{data}",
-        write_format:str = "{data}\n",
+        data_type: NamedTuple = Data,
+        read_format:str = READ_FORMAT,
+        write_format:str = WRITE_FORMAT,
         simulation:bool = False, 
         verbose:bool = False,
         **kwargs
@@ -729,7 +732,7 @@ class SerialDevice(BaseDevice):
         data = ''
         try:
             while True:
-                out = self.serial.read_all()().decode("utf-8", "replace").strip()
+                out = self.serial.read_all().decode("utf-8", "replace").strip()
                 data += out
                 if not out:
                     break
