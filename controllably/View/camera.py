@@ -9,7 +9,7 @@ import queue
 import threading
 import time
 from types import SimpleNamespace
-from typing import Any, NamedTuple, Callable
+from typing import Any, Callable, Iterable, Mapping, Sequence
 
 # Third party imports
 import cv2              # pip install opencv-python
@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
 
 class Camera:
-    
     _default_flags: SimpleNamespace = SimpleNamespace(verbose=False, connected=False, simulation=False)
     def __init__(self, 
         *, 
@@ -32,6 +31,12 @@ class Camera:
         verbose:bool = False, 
         **kwargs
     ):
+        # Camera attributes
+        self._feed = cv2.VideoCapture()
+        self.placeholder = self.decodeBytesToFrame(np.asarray(bytearray(PLACEHOLDER), dtype="uint8"))
+        self.transforms: list[tuple[Callable[[np.ndarray,Any], np.ndarray], Iterable|None, Mapping|None]] = []
+        self.callbacks: list[tuple[Callable[[np.ndarray,Any], np.ndarray], Iterable|None, Mapping|None]] = []
+        
         # Connection attributes
         self.connection: Any|None = None
         self.connection_details = dict() if connection_details is None else connection_details
@@ -46,15 +51,23 @@ class Camera:
         self.stream_event = threading.Event()
         self.threads = dict()
         
-        # Camera attributes
-        self.feed: cv2.VideoCapture|None = None
-        self.placeholder = self.decodeBytesToFrame(np.asarray(bytearray(PLACEHOLDER), dtype="uint8"))
-        self.transforms = []
-        
         # Logging attributes
         self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
         self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
+        return
+    
+    def __del__(self):
+        self.disconnect()
+        return
+    
+    @property
+    def feed(self) -> cv2.VideoCapture:
+        return self._feed
+    @feed.setter
+    def feed(self, value: cv2.VideoCapture):
+        assert isinstance(value, cv2.VideoCapture)
+        self._feed = value
         return
     
     @property
@@ -81,24 +94,23 @@ class Camera:
     # Connection methods
     def checkDeviceConnection(self) -> bool:
         """Check the connection to the device"""
-        return self.feed.isOpened() if self.feed is not None else False
+        return self.feed.isOpened()
     
-    def connect(self):  # TODO
+    def connect(self):
         """Connect to the device"""
         if self.is_connected:
             return
         try:
-            index_ = self.connection_details.get('index', 0)
-            self.feed = cv2.VideoCapture(index_, cv2.CAP_DSHOW) # TODO: Replace with specific implementation
-            self.feed.set(cv2.CAP_PROP_FRAME_WIDTH, 10_000)
-            self.feed.set(cv2.CAP_PROP_FRAME_HEIGHT, 10_000)
+            feed_source = self.connection_details.get('feed_source', 0)
+            success = self.feed.open(feed_source, cv2.CAP_DSHOW)
         except Exception as e:
             self._logger.error(f"Failed to connect to {self.connection_details}")
             self._logger.debug(e)
         else:
             self._logger.info(f"Connected to {self.connection_details}")
             time.sleep(self.init_timeout)
-        self.flags.connected = True
+            self.setResolution()
+        self.flags.connected = success
         return
 
     def disconnect(self):
@@ -115,9 +127,21 @@ class Camera:
         self.flags.connected = False
         return
     
+    def setResolution(self, size:Iterable[int] = (10_000,10_000)):
+        """
+        Set the resolution of camera feed
+
+        Args:
+            size (tuple[int], optional): width and height of feed in pixels. Defaults to (10000,10000).
+        """
+        assert len(size)==2, "Please provide a tuple of (w,h) in pixels"
+        self.feed.set(cv2.CAP_PROP_FRAME_WIDTH, size[0])
+        self.feed.set(cv2.CAP_PROP_FRAME_HEIGHT, size[1])
+        return
+    
     # Image handling
     @staticmethod
-    def decodeBytesToFrame(array: bytes) -> np.ndarray:
+    def decodeBytesToFrame(bytearray: bytes) -> np.ndarray:
         """
         Decode byte array of image
 
@@ -127,7 +151,7 @@ class Camera:
         Returns:
             np.ndarray: image array of decoded byte array
         """
-        return cv2.imdecode(array, cv2.IMREAD_COLOR)
+        return cv2.imdecode(bytearray, cv2.IMREAD_COLOR)
     
     @staticmethod
     def encodeFrameToBytes(frame: np.ndarray, extension: str = '.png') -> bytes:
@@ -175,15 +199,31 @@ class Camera:
         return cv2.imwrite(filename, frame)
     
     @staticmethod
-    def processFrame(
+    def transformFrame(
         frame: np.ndarray,
-        transforms: list[Callable[[np.ndarray], np.ndarray]]|None = None,
+        transforms: Iterable[tuple[Callable[[np.ndarray,Any], np.ndarray], Iterable|None, Mapping|None]]|None = None,
     ) -> np.ndarray:
         """Process the output"""
-        processed_frame = frame
+        transformed_frame = frame
         transforms = transforms or []
-        for transform in transforms:
-            processed_frame = transform(processed_frame)
+        for transform, args, kwargs in transforms:
+            args = args or []
+            kwargs = kwargs or {}
+            transformed_frame = transform(transformed_frame, *args, **kwargs)
+        return transformed_frame
+    
+    @staticmethod
+    def processFrame(
+        frame: np.ndarray,
+        callbacks: Iterable[tuple[Callable[[np.ndarray,Any], np.ndarray], Iterable|None, Mapping|None]]|None = None,
+    ) -> np.ndarray:
+        """Process the output"""
+        processed_frame = deepcopy(frame)
+        callbacks = callbacks or []
+        for callback, args, kwargs in callbacks:
+            args = args or []
+            kwargs = kwargs or {}
+            processed_frame = callback(processed_frame, *args, **kwargs)
         return processed_frame
     
     def getFrame(self, latest: bool = False) -> tuple[bool, np.ndarray]:
@@ -201,8 +241,8 @@ class Camera:
         ret, frame = self.read()
         if latest:
             ret, frame = self.read()
-        processed_frame = self.processFrame(frame, self.transforms)
-        return ret, processed_frame
+        transformed_frame = self.transformFrame(frame, self.transforms)
+        return ret, transformed_frame
     
     def show(self, 
         transforms: list[Callable[[np.ndarray], np.ndarray]]|None = None
@@ -230,9 +270,6 @@ class Camera:
         self.stopStream()
         self.buffer = deque()
         self.data_queue = queue.Queue()
-        if self.flags.simulation:
-            return
-        ... # Replace with specific implementation to clear input and output buffers
         return
     
     def read(self) -> tuple[bool, np.ndarray]:
@@ -311,8 +348,9 @@ class Camera:
         while self.stream_event.is_set():
             try:
                 frame, now = self.data_queue.get(timeout=5)
-                processed_frame = self.processFrame(frame=frame, transforms=self.transforms)
-                buffer.append((processed_frame, now))
+                transformed_frame = self.transformFrame(frame=frame, transforms=self.transforms)
+                self.processFrame(transformed_frame, self.callbacks)
+                buffer.append((transformed_frame, now))
                 self.data_queue.task_done()
             except queue.Empty:
                 time.sleep(0.01)
@@ -323,7 +361,7 @@ class Camera:
             else:
                 if not self.show_event.is_set():
                     continue
-                cv2.imshow('output', processed_frame)  
+                cv2.imshow('output', transformed_frame)  
                 if (cv2.waitKey(1) & 0xFF) == ord('q'):
                     break
         time.sleep(1)
@@ -331,8 +369,9 @@ class Camera:
         while self.data_queue.qsize() > 0:
             try:
                 frame, now = self.data_queue.get(timeout=1)
-                processed_frame = self.processFrame(frame=frame, transforms=self.transforms)
-                buffer.append((processed_frame, now))
+                transformed_frame = self.transformFrame(frame=frame, transforms=self.transforms)
+                self.processFrame(transformed_frame, self.callbacks)
+                buffer.append((transformed_frame, now))
                 self.data_queue.task_done()
             except queue.Empty:
                 break
@@ -341,7 +380,7 @@ class Camera:
             else:
                 if not self.show_event.is_set():
                     continue
-                cv2.imshow('output', processed_frame)
+                cv2.imshow('output', transformed_frame)
                 if (cv2.waitKey(1) & 0xFF) == ord('q'):
                     break
         self.data_queue.join()
