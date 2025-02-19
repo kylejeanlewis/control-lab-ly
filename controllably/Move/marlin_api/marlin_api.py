@@ -3,13 +3,14 @@
 from __future__ import annotations
 import logging
 import time
-from typing import Any
+from typing import Any, NamedTuple
 
 # Third-party imports
 import numpy as np
 
 # Local application imports
-from ...core.connection import SerialDevice
+# from ...core.connection import SerialDevice
+from ...core.device import SerialDevice
 from ...core.position import Position
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,10 @@ logger.debug(f"Import: OK <{__name__}>")
 
 LOOP_INTERVAL = 0.1
 MOVEMENT_TIMEOUT = 30
+
+READ_FORMAT = "{data}\n"
+WRITE_FORMAT = "{data}\n"
+Data = NamedTuple("Data", [("data", str), ("channel", int)])
 
 class Marlin(SerialDevice):
     """
@@ -95,16 +100,16 @@ class Marlin(SerialDevice):
             dict[str, int|float|str]: settings in the response
         """
         self.clear()
+        time.sleep(1)
         responses = self.query('M503')
+        while len(responses)==0 or 'ok' not in responses[-1]:
+            time.sleep(1)
+            chunk = self.readAll()
+            responses.extend(chunk)
         settings = {}
         if self.flags.simulation:
             return settings
-        while len(responses) == 0 or 'fail' in responses[-1]:
-            time.sleep(LOOP_INTERVAL)
-            try:    # NOTE: temporary for transition to new SerialDevice
-                responses = self.readAll()
-            except:
-                responses = self.read(True)
+        print(responses)
         for response in responses:
             response = response.replace('echo:','').split(';')[0].strip()
             if not len(response):
@@ -129,15 +134,15 @@ class Marlin(SerialDevice):
                 value_dict[k] = v * ((-1)**int(negative)) if isinstance(v, (int,float)) else v
             self._logger.debug(f"[{setting}]: {value_dict}")
             settings[setting] = value_dict
-        settings['max_accel_x'] = settings['M201']['X']
-        settings['max_accel_y'] = settings['M201']['Y']
-        settings['max_accel_z'] = settings['M201']['Z']
-        settings['max_speed_x'] = settings['M203']['X']
-        settings['max_speed_y'] = settings['M203']['Y']
-        settings['max_speed_z'] = settings['M203']['Z']
-        settings['home_offset_x'] = settings['M206']['X']
-        settings['home_offset_y'] = settings['M206']['Y']
-        settings['home_offset_z'] = settings['M206']['Z']
+        settings['max_accel_x'] = settings.get('M201',{}).get('X',0)
+        settings['max_accel_y'] = settings.get('M201',{}).get('Y',0)
+        settings['max_accel_z'] = settings.get('M201',{}).get('Z',0)
+        settings['max_speed_x'] = settings.get('M203',{}).get('X',0)
+        settings['max_speed_y'] = settings.get('M203',{}).get('Y',0)
+        settings['max_speed_z'] = settings.get('M203',{}).get('Z',0)
+        settings['home_offset_x'] = settings.get('M206',{}).get('X',0)
+        settings['home_offset_y'] = settings.get('M206',{}).get('Y',0)
+        settings['home_offset_z'] = settings.get('M206',{}).get('Z',0)
         return settings
     
     def getStatus(self) -> tuple[str, np.ndarray[float], np.ndarray[float]]:  # TODO: Implement status check
@@ -148,14 +153,15 @@ class Marlin(SerialDevice):
             tuple[str, np.ndarray[float], np.ndarray[float]]: status, current position, home offset
         """
         self.clear()
-        responses = self.query('M114 R', lines=False)
-        # responses = self.query('M105')      # Check the current temperature
+        responses = self.query('M114 R', multi_out=False)
+        self.clear()
+        # responses = self.query('M105', multi_out=False)      # Check the current temperature
         if self.flags.simulation:
             return 'Idle', current_position, self._home_offset
-        while len(responses) == 0 or 'fail' in responses[-1]:
-            time.sleep(LOOP_INTERVAL)
-            responses = self.read()
-        
+        while len(responses)==0 or 'ok' not in responses[-1]:
+            time.sleep(1)
+            chunk = self.readAll()
+            responses.extend(chunk)
         status,current_position = 'Idle', np.array([0,0,0])
         relevant_responses = []
         for response in responses:
@@ -169,7 +175,7 @@ class Marlin(SerialDevice):
     
     def halt(self) -> Position:         # TODO: Check if this is the correct implementation
         """Halt the device"""
-        self.query('M410')
+        self.query('M410', multi_out=False)
         _,coordinates,_home_offset = self.getStatus()
         return Position(coordinates-_home_offset)
     
@@ -185,15 +191,11 @@ class Marlin(SerialDevice):
         """
         # if axis is not None:
         #     self._logger.warning("Ignoring homing axis parameter for Marlin firmware")
-        axis = '' if axis is None else f'{axis.upper()}'
-        self.query('G90', lines=False)
+        axis = '' if axis is None else axis.upper()
+        self.query('G90', multi_out=False)
         
         data = f'G28 {axis}'
-        try:
-            data = self.processInput(data)
-        except:
-            pass
-        self.write(data)
+        self.query(data, multi_out=False)
         self.clear()
         while True:
             time.sleep(LOOP_INTERVAL)
@@ -221,29 +223,17 @@ class Marlin(SerialDevice):
         assert (0.0 <= speed_factor <= 1.0), "Ensure speed factor is between 0.0 and 1.0"
         # feed_rate = int(speed_factor * speed_max) * 60      # Convert to mm/min
         # data = f'G90 F{feed_rate}'
-        # try:
-        #     data = self.processInput(data)
-        # except:
-        #     pass
-        # self.write(data)
+        # self.query(data, multi_out=False)
         speed_percent = speed_factor*100
         data = f'M220 S{int(speed_percent)}'
-        try:
-            data = self.processInput(data)
-        except:
-            pass
-        self.write(data)
-        self.read()
+        self.query(data, multi_out=False)
         return
     
     # Overwritten methods
     def connect(self):
         """Connect to the device"""
         super().connect()
-        try:    # NOTE: temporary for transition to new SerialDevice
-            startup_lines = self.readAll()
-        except:
-            startup_lines = self.read(True)
+        startup_lines = self.readAll()
         for line in startup_lines:
             if line.startswith('Marlin'):
                 self._version = line.split(" ")[-1]
@@ -255,7 +245,14 @@ class Marlin(SerialDevice):
         self._logger.info(f'Marlin version: {self._version}')
         return
     
-    def query(self, data: Any, lines:bool = True, *, wait:bool = False, **kwargs) -> list[str]|None:
+    def query(self, 
+        data: Any, 
+        multi_out: bool = True, 
+        *,
+        timeout:int|float = 1, 
+        wait: bool = False, 
+        **kwargs
+    ) -> list[str]|None:
         """
         Query the device (i.e. write and read data)
         
@@ -269,24 +266,18 @@ class Marlin(SerialDevice):
         """
         if data.startswith('F'):
             data = f'G1 {data}'
-        if not wait:
-            _data = data
-            try:
-                _data = self.processInput(_data)
-            except:
-                pass
-            self.write(_data)
-            return self.read(lines=lines)
-        
-        try:    # NOTE: temporary for transition to new SerialDevice
-            responses = self.readAll() if lines else self.read()
-        except:
-            responses = super().query(data, lines=lines)
-        # success = self._wait_for_idle()
-        # if not success:
-        #     self._logger.error(f"Timeout: {data}")
-        #     return []
-        return responses
+        out: Data|list[Data] = super().query(data, multi_out=multi_out, timeout=timeout, **kwargs)
+        if isinstance(out,list):
+            data_out = [(response.data if response is not None else None) for response in out]
+        else:
+            data_out = [(out.data if out is not None else None)]
+        if wait:
+            ...
+            # success = self._wait_for_idle()
+            # if not success:
+            #     self._logger.error(f"Timeout: {data}")
+            #     return []
+        return data_out
     
     # def _wait_for_idle(self, timeout:int = MOVEMENT_TIMEOUT) -> bool:
     #     """

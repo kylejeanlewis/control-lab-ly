@@ -17,13 +17,14 @@ Attributes:
 from __future__ import annotations
 import logging
 import time
-from typing import Any, Sequence
+from typing import Any, Sequence, NamedTuple
 
 # Third-party imports
 import numpy as np
 
 # Local application imports
-from ...core.connection import SerialDevice
+# from ...core.connection import SerialDevice
+from ...core.device import SerialDevice
 from ...core.position import Position
 from .grbl_lib import Alarm, Error, Setting, Status
 
@@ -32,6 +33,10 @@ logger.debug(f"Import: OK <{__name__}>")
 
 LOOP_INTERVAL = 0.1
 MOVEMENT_TIMEOUT = 30
+
+READ_FORMAT = "{data}\n"
+WRITE_FORMAT = "{data}\n"
+Data = NamedTuple("Data", [("data", str), ("channel", int)])
 
 class GRBL(SerialDevice):
     """
@@ -272,7 +277,7 @@ class GRBL(SerialDevice):
             tuple[str, np.ndarray[float], np.ndarray[float]]: status, current position, home offset
         """
         self.clear()
-        responses = self.query('?',lines=False)
+        responses = self.query('?',multi_out=False)
         self.clear()
         status,current_position = '', np.array([0,0,0])
         if self.flags.simulation:
@@ -316,11 +321,7 @@ class GRBL(SerialDevice):
             assert axis.upper() in 'XYZ', "Ensure axis is X,Y,Z for GRBL"
         command = '$H' if axis is None else f'$H{axis.upper()}'
         self.clear()
-        try:    # NOTE: temporary for transition to new SerialDevice
-            command = self.processInput(command)
-        except:
-            pass
-        self.write(command)
+        self.query(command)
         while True:
             time.sleep(LOOP_INTERVAL)
             responses = self.read()
@@ -355,15 +356,7 @@ class GRBL(SerialDevice):
         feed_rate = int(speed_factor * speed_max) * 60      # Convert to mm/min
         
         data = f'G90 F{feed_rate}'
-        try:    # NOTE: temporary for transition to new SerialDevice
-            data = self.processInput(data)
-        except:
-            pass
-        self.write(data)
-        try:    # NOTE: temporary for transition to new SerialDevice
-            self.readAll()
-        except:
-            self.read(lines=True)
+        self.query(data)
         return
     
     def _wait_for_status(self, statuses:Sequence[str], timeout:int = MOVEMENT_TIMEOUT) -> bool:
@@ -395,10 +388,7 @@ class GRBL(SerialDevice):
         """Connect to the device"""
         super().connect()
         self.clear()
-        try:    # NOTE: temporary for transition to new SerialDevice
-            startup_lines = self.readAll()
-        except:
-            startup_lines = self.read(True)
+        startup_lines = self.readAll()
         self.clearAlarms()
         info = self.getInfo()
         try:
@@ -413,13 +403,21 @@ class GRBL(SerialDevice):
         self._logger.info(f'GRBL version: {self._version}')
         return
     
-    def query(self, data: Any, lines:bool = True, *, timeout:int|None = None, jog:bool = False, wait:bool = False) -> list[str]|None:
+    def query(self, 
+        data: Any, 
+        multi_out:bool = True, 
+        *, 
+        timeout:int|float = 1, 
+        jog:bool = False, 
+        wait:bool = False,
+        **kwargs
+    ) -> list[str]|None:
         """
         Query the device (i.e. write and read data)
         
         Args:
             data (Any): data to query
-            lines (bool): whether to read lines
+            multi_out (bool): whether to read lines
             timeout (int|None): timeout for query
             jog (bool): whether to perform jog movements
             wait (bool): whether to wait for the device to reach the status
@@ -434,44 +432,18 @@ class GRBL(SerialDevice):
             assert self.__version__().startswith("1.1"), "Ensure GRBL version is at least 1.1 to perform jog movements"
             data = data.replace('G0 ', '').replace('G1 ', '')
             data = f'$J={data}'
-            _data = data
-            try:    # NOTE: temporary for transition to new SerialDevice
-                _data = self.processInput(_data)
-            except:
-                pass
-            self.write(_data)
-            return self.read()
-        if not wait:
-            _data = data
-            try:    # NOTE: temporary for transition to new SerialDevice
-                _data = self.processInput(_data)
-            except:
-                pass
-            self.write(_data)
-            try:    # NOTE: temporary for transition to new SerialDevice
-                out = self.readAll() if lines else self.read()
-            except:
-                out = self.read(lines=lines)
-            return out
-        
-        # success = self._wait_for_status(('Idle',), timeout=timeout)
-        # if not success:
-        #     status,_,_ = self.getStatus()
-        #     self._logger.error(f"Timeout: {data} | {status}")
-        #     if status == 'Jog':
-        #         raise RuntimeError("Jog mode still active")
-        #     return []
-        
-        responses = super().query(data, lines=lines)
-        for response in responses:
-            self._logger.debug(f"Response: {response}")
-            if response == 'ok':
-                continue
-            if any([self.getAlarms(response), self.getErrors(response)]):
-                raise RuntimeError(f"Response: {response}")
-        
-        # success = self._wait_for_status(('Idle',), timeout=timeout)
-        # if not success:
-        #     status,_,_ = self.getStatus()
-        #     self._logger.error(f"Timeout: {data} | {status}")
-        return responses
+            jog_out: Data = super().query(data, multi_out=False, timeout=timeout, **kwargs)
+            return jog_out.data
+        out: Data|list[Data] = super().query(data, multi_out=multi_out, timeout=timeout, **kwargs)
+        if isinstance(out,list):
+            data_out = [(response.data if response is not None else None) for response in out]
+        else:
+            data_out = [(out.data if out is not None else None)]
+        if wait:
+            for response in data_out:
+                self._logger.debug(f"Response: {response}")
+                if response == 'ok':
+                    continue
+                if any([self.getAlarms(response), self.getErrors(response)]):
+                    raise RuntimeError(f"Response: {response}")
+        return data_out

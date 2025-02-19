@@ -52,12 +52,16 @@ class GCodeDevice(Protocol):
         """Disconnect from the device"""
         raise NotImplementedError
 
-    def query(self, data:Any, lines:bool = True, **kwargs) -> list[str]|None:
+    def query(self, data:Any, multi_out:bool = True, **kwargs) -> list[str]|None:
         """Query the device"""
         raise NotImplementedError
 
-    def read(self, lines:bool = False) -> str|list[str]:
+    def read(self) -> str:
         """Read data from the device"""
+        raise NotImplementedError
+    
+    def readAll(self) -> list[str]:
+        """Read all data from the device"""
         raise NotImplementedError
 
     def write(self, data:str) -> bool:
@@ -405,7 +409,7 @@ class GCode(Mover):
         self.updateRobotPosition(to=move_to)
         return self.robot_position if robot else self.worktool_position
     
-    def query(self, data:Any, lines:bool = True, *, timeout:int|None = None, jog:bool = False, wait:bool = False) -> Any:
+    def query(self, data:Any, multi_out:bool = True, *, timeout:int|float = 1, jog:bool = False, wait:bool = False) -> Any:
         """
         Query the device
         
@@ -422,8 +426,8 @@ class GCode(Mover):
         if jog:
             # assert isinstance(self.device, GRBL), "Ensure device is of type `GRBL` to perform jog movements"
             data = f'{data} F{int(self.speed*60)}'         # Convert speed from mm/s to mm/min
-            return self.device.query(data, lines=False, jog=jog, wait=wait)
-        return self.device.query(data, lines=lines, timeout=timeout, jog=jog, wait=wait)
+            return self.device.query(data, multi_out=False, jog=jog, wait=wait)
+        return self.device.query(data, multi_out=multi_out, timeout=timeout, jog=jog, wait=wait)
     
     def reset(self):
         """Reset the robot"""
@@ -455,7 +459,7 @@ class GCode(Mover):
             on (bool): whether to turn the coolant valve on
         """
         command = 'M8' if on else 'M9'
-        self.query(command, lines=False)
+        self.query(command, multi_out=False)
         return
     
     # Overwritten methods
