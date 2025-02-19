@@ -131,7 +131,7 @@ class Proxy:
     
     @staticmethod
     def createMethodEmitter(method):
-        def emitter(self, *args, **kwargs):
+        def methodEmitter(self, *args, **kwargs):
             if not self.remote:
                 if inspect.isclass(self.prime):
                     raise TypeError('This Proxy was created with a class, not instance.')
@@ -155,14 +155,14 @@ class Proxy:
                 exception = data if isinstance(data,Exception) else Exception(data)
                 raise exception
             return data
-        emitter.__name__ = method.__name__
-        emitter.__doc__ = method.__doc__
-        emitter.__signature__ = inspect.signature(method)
-        return emitter
+        methodEmitter.__name__ = method.__name__
+        methodEmitter.__doc__ = method.__doc__
+        methodEmitter.__signature__ = inspect.signature(method)
+        return methodEmitter
     
     @staticmethod
     def createPropertyEmitter(attr_name:str):
-        def emitter(self):
+        def getterEmitter(self) -> Any:
             if not self.remote:
                 if inspect.isclass(self.prime):
                     raise TypeError('This Proxy was created with a class, not instance.')
@@ -172,12 +172,26 @@ class Proxy:
             assert isinstance(self.controller, Controller), 'No controller is bound to this Proxy.'
             controller = self.controller
             target = self.controller.registry.get(self.object_id, [])
-            command = dict(method='getattr', args=[self.object_id,attr_name])
+            command = dict(method='getattr', args=[self.object_id, attr_name])
             request_id = controller.transmitRequest(command, target=target)
             return controller.retrieveData(request_id)
-        emitter.__name__ = attr_name
-        emitter.__doc__ = f"Property {attr_name}"
-        return property(emitter)
+        getterEmitter.__name__ = attr_name
+        getterEmitter.__doc__ = f"Property {attr_name}"
+        
+        def setterEmitter(self, value: Any):
+            if not self.remote:
+                if inspect.isclass(self.prime):
+                    raise TypeError('This Proxy was created with a class, not instance.')
+                result = setattr(self.prime, attr_name, value)
+                return result
+            
+            assert isinstance(self.controller, Controller), 'No controller is bound to this Proxy.'
+            controller = self.controller
+            target = self.controller.registry.get(self.object_id, [])
+            command = dict(method='getattr', args=[self.object_id, attr_name, value])
+            request_id = controller.transmitRequest(command, target=target)
+            return controller.retrieveData(request_id)
+        return property(getterEmitter, setterEmitter)
     
     def bindController(self, controller: Controller):
         assert isinstance(controller, Controller), 'Controller must be an instance of Controller'
