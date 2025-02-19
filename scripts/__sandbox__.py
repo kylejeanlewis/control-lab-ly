@@ -1,4 +1,19 @@
 # %%
+import matplotlib.pyplot as plt
+
+import test_init
+from controllably.View.camera import Camera
+
+cam = Camera()
+cam.connect()
+
+_,frame = cam.getFrame()
+plt.imshow(frame)
+
+# %%
+cam.show()
+
+# %%
 import test_init
 from controllably.core.position import Position
 from controllably.Move.Cartesian import Gantry
