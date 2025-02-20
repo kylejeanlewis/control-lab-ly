@@ -94,12 +94,25 @@ class Camera:
             handler.setLevel(level)
         return
     
+    @property
+    def frame_rate(self) -> int|float:
+        return self.feed.get(cv2.CAP_PROP_FPS)
+    
+    @property
+    def frame_size(self) -> tuple[int,int]:
+        width = int(self.feed.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(self.feed.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        return (width,height)
+    
     # Connection methods
     def checkDeviceConnection(self) -> bool:
         """Check the connection to the device"""
         return self.feed.isOpened()
     
     def connect(self):
+        return self.connectFeed()
+    
+    def connectFeed(self):
         """Connect to the device"""
         # if self.is_connected:
         #     return
@@ -116,11 +129,14 @@ class Camera:
             time.sleep(self.init_timeout)
             width = int(self.feed.get(cv2.CAP_PROP_FRAME_WIDTH))
             height = int(self.feed.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            self.setResolution((width,height))
+            self.setFrameSize((width,height))
         self.flags.connected = success
         return
-
+    
     def disconnect(self):
+        return self.disconnectFeed()
+    
+    def disconnectFeed(self):
         """Disconnect from the device"""
         if not self.is_connected:
             return
@@ -134,7 +150,7 @@ class Camera:
         self.flags.connected = False
         return
     
-    def setResolution(self, size:Iterable[int] = (10_000,10_000)):
+    def setFrameSize(self, size:Iterable[int] = (10_000,10_000)):
         """
         Set the resolution of camera feed
 
