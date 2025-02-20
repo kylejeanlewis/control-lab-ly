@@ -5,12 +5,14 @@ import test_init
 from controllably.GUI import gui
 from controllably.GUI import move_gui
 from controllably.GUI import transfer_gui
+from controllably.GUI import view_gui
 
 # %%
 import importlib
 importlib.reload(gui)
 importlib.reload(move_gui)
 importlib.reload(transfer_gui)
+importlib.reload(view_gui)
 
 # %%
 panel = gui.Panel()
@@ -66,4 +68,88 @@ liquid_app.show()
 from controllably.Make.Mixture.QInstruments.orbital_shaker_utils import _BioShake
 shake = _BioShake('COM0', simulation=True)
 
+# %%
+from controllably.View.camera import Camera
+cam = Camera()
+cam.connect()
+
+# %%
+view_app = view_gui.ViewPanel(cam)
+view_app.show()
+
+# %%
+import tkinter as tk
+from PIL import Image, ImageTk
+
+root = tk.Tk()
+canvas = tk.Canvas(root, width=1920, height=1080)
+canvas.pack()
+
+# Load an image using PIL
+image_pil = Image.fromarray(cam.getFrame()[1])
+image_tk = ImageTk.PhotoImage(image_pil)
+
+# Display the image on the canvas
+canvas.create_image((200, 150), image=image_tk, anchor=tk.CENTER)
+
+# Keep a reference to the image (important!)
+canvas.image = image_tk #avoid garbage collection.
+
+root.mainloop()
+# %%
+import tkinter as tk
+from tkinter import ttk
+import cv2
+from PIL import Image, ImageTk
+import threading
+import time
+
+class VideoPlayer:
+    def __init__(self, window, video_source=0):
+        self.window = window
+        self.window.title("OpenCV Video Feed")
+
+        self.video_source = video_source
+        self.vid = cv2.VideoCapture(self.video_source)
+
+        if not self.vid.isOpened():
+            raise ValueError("Unable to open video source", video_source)
+
+        self.width = self.vid.get(cv2.CAP_PROP_FRAME_WIDTH)
+        self.height = self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT)
+
+        self.canvas = tk.Canvas(window, width=self.width, height=self.height)
+        self.canvas.pack()
+
+        self.btn_snapshot = ttk.Button(window, text="Snapshot", command=self.snapshot)
+        self.btn_snapshot.pack(anchor=tk.CENTER, padx=5, pady=10)
+
+        self.delay = 15  # milliseconds
+        self.update()
+
+        self.window.mainloop()
+
+    def snapshot(self):
+        ret, frame = self.vid.read()
+        if ret:
+            cv2.imwrite("snapshot-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".jpg", cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+
+    def update(self):
+        ret, frame = self.vid.read()
+        if ret:
+            self.photo = ImageTk.PhotoImage(image=Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
+            self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
+
+        self.window.after(self.delay, self.update)
+
+    def __del__(self):
+        if self.vid.isOpened():
+            self.vid.release()
+
+def main():
+    root = tk.Tk()
+    VideoPlayer(root)
+
+if __name__ == "__main__":
+    main()
 # %%
