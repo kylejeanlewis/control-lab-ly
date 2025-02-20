@@ -10,6 +10,18 @@ Classes:
 from __future__ import annotations
 from enum import IntEnum
 
+class SpotMeterRegs(IntEnum):
+    UNIT_ID             = int('6C', base=16)
+    ENABLE_LOCAL_PARAMS = (1-1) * 20
+    REFLECTED_TEMP      = (2-1) * 20
+    EMISSIVITY          = (3-1) * 20
+    DISTANCE            = (4-1) * 20
+    ENABLE_SPOTMETER    = (5-1) * 20
+    SPOT_X_POSITION     = (6-1) * 20
+    SPOT_Y_POSITION     = (7-1) * 20
+    SPOT_TEMPERATURE    = (8-1) * 20
+    SPOT_TEMP_STATE     = (9-1) * 20
+
 class BoxRegs(IntEnum):
     UNIT_ID             = int('6D', base=16)
     ENABLE_LOCAL_PARAMS = ( 1-1) * 20
@@ -33,14 +45,4 @@ class BoxRegs(IntEnum):
     BOX_HEIGHT          = (19-1) * 20
     TEMP_DISP_OPTION    = (20-1) * 20
 
-class SpotmeterRegs(IntEnum):
-    UNIT_ID             = int('6C', base=16)
-    ENABLE_LOCAL_PARAMS = (1-1) * 20
-    REFLECTED_TEMP      = (2-1) * 20
-    EMISSIVITY          = (3-1) * 20
-    DISTANCE            = (4-1) * 20
-    ENABLE_SPOTMETER    = (5-1) * 20
-    SPOT_X_POSITION     = (6-1) * 20
-    SPOT_Y_POSITION     = (7-1) * 20
-    SPOT_TEMPERATURE    = (8-1) * 20
-    SPOT_TEMP_STATE     = (9-1) * 20
+
