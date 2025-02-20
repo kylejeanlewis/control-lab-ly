@@ -11,6 +11,7 @@ import pandas as pd
 
 # Local application imports
 from ...core import datalogger
+from ...core.compound import Ensemble
 from ..measure import Program
 from .load_cell import LoadCell
 
@@ -199,6 +200,7 @@ class ActuatedSensor(LoadCell):
         self.force_threshold = initial_force_threshold
         return not success
     
+Parallel_ActuatedSensor = Ensemble.factory(ActuatedSensor)
 
 class ForceDisplacement(Program):
     """
