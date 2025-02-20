@@ -102,6 +102,7 @@ class Camera:
             return
         try:
             feed_source = self.connection_details.get('feed_source', 0)
+            logger.info(f'Opening feed: {feed_source}')
             success = self.feed.open(feed_source, cv2.CAP_DSHOW)
         except Exception as e:
             self._logger.error(f"Failed to connect to {self.connection_details}")
