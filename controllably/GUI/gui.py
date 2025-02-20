@@ -47,14 +47,20 @@ class Panel:
     def show(self, title:str = ''):
         self.title = title or (self.title or 'Application')
         if self.top_level:
-            root = tk.Tk()
-            root.protocol("WM_DELETE_WINDOW", self.close)
-            self.addTo(root)
+            try:
+                root = tk.Tk()
+                root.protocol("WM_DELETE_WINDOW", self.close)
+                self.addTo(root)
+            except Exception as e:
+                self.close()
+                raise e
+        
         if not isinstance(self.widget, tk.Tk):
             logger.warning('No widget is bound to this Panel')
             return
-        self.update()
+        
         try:
+            self.update()
             self.widget.lift()
             self.widget.attributes('-topmost',True)
             self.widget.after_idle(self.widget.attributes,'-topmost',False)
@@ -172,4 +178,3 @@ class Panel:
         self.drawn = True
         self.update()
         return size
- 
