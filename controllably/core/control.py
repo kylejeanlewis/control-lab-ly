@@ -9,7 +9,7 @@ import queue
 import socket
 import threading
 import time
-from typing import Callable, Mapping, Any, Iterable
+from typing import Callable, Mapping, Any, Iterable, Type
 import uuid
 
 # Local application imports
@@ -118,7 +118,7 @@ class Proxy:
         return
     
     @classmethod
-    def factory(cls, prime:Callable, object_id:str|None = None):
+    def factory(cls, prime:Callable, object_id:str|None = None) -> Type[Proxy]:
         name = prime.__name__ if inspect.isclass(prime) else prime.__class__.__name__
         object_id = object_id or id(prime)
         attrs = dict()
@@ -130,7 +130,7 @@ class Proxy:
         return new_class
     
     @staticmethod
-    def createMethodEmitter(method):
+    def createMethodEmitter(method) -> Callable:
         def methodEmitter(self, *args, **kwargs):
             if not self.remote:
                 if inspect.isclass(self.prime):
@@ -161,7 +161,7 @@ class Proxy:
         return methodEmitter
     
     @staticmethod
-    def createPropertyEmitter(attr_name:str):
+    def createPropertyEmitter(attr_name:str) -> property:
         def getterEmitter(self) -> Any:
             if not self.remote:
                 if inspect.isclass(self.prime):
