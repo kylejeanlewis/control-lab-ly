@@ -5,6 +5,7 @@ import logging
 import time
 
 # Local application imports
+from .....core.compound import Multichannel
 from ...liquid import LiquidHandler
 from .tricontinent_api import TriContinentDevice
 
@@ -39,7 +40,7 @@ class TriContinent(LiquidHandler):
         
         # Category specific attributes
         self.capacity = capacity
-        self.channel = self.device.channel
+        self.channel = channel
         self.volume_resolution = self.capacity / self.device.max_position
         self.pullback_steps = 0
         
@@ -49,18 +50,22 @@ class TriContinent(LiquidHandler):
     
     @property
     def start_speed(self):
+        self.setChannel()
         return self.device.start_speed
     
     @property
     def acceleration(self):
+        self.setChannel()
         return self.device.acceleration
     
     @property
     def valve_position(self):
+        self.setChannel()
         return self.device.valve_position
     
     @property
     def init_status(self):
+        self.setChannel()
         return self.device.init_status
     
     def connect(self):
@@ -95,6 +100,7 @@ class TriContinent(LiquidHandler):
         Returns:
             bool: whether the action is successful
         """
+        self.setChannel()
         if (reagent and self.reagent) and reagent != self.reagent:
             self._logger.warning(f"Reagent {reagent} does not match current reagent {self.reagent}.")
             return False
@@ -155,6 +161,7 @@ class TriContinent(LiquidHandler):
         Returns:
             bool: whether the action is successful
         """
+        self.setChannel()
         if volume > self.capacity:
             self._logger.warning("Volume exceeds maximum capacity.")
             return False
@@ -194,6 +201,7 @@ class TriContinent(LiquidHandler):
         """
         Get the settings of the pump.
         """
+        self.setChannel()
         state = self.device.getState()
         speed = state['speed']
         self.speed_in = self.speed_in or speed
@@ -204,6 +212,7 @@ class TriContinent(LiquidHandler):
         """
         Home the pump.
         """
+        self.setChannel()
         self.device.initialize(self.device.output_right)
         self.volume = self.device.position * self.volume_resolution
         return
@@ -215,6 +224,7 @@ class TriContinent(LiquidHandler):
         Args:
             speed (float): The speed of the pump.
         """
+        self.setChannel()
         self.device.setTopSpeed(round(speed/self.volume_resolution))
         return
     
@@ -222,16 +232,19 @@ class TriContinent(LiquidHandler):
         """
         Reverse the pump.
         """
+        self.setChannel()
         self.device.reverse()
         return
     
-    def setChannel(self, channel: int):
+    def setChannel(self):
         """
         Set the channel of the pump.
 
         Args:
             channel (int): The channel of the pump.
         """
-        self.device.setChannel(channel)
+        if self.channel != self.device.channel:
+            self.device.setChannel(self.channel)
         return
-        
+    
+Multi_TriContinent = Multichannel.factory(TriContinent)
