@@ -23,14 +23,16 @@ is presented in the table below:
 """
 # Standard library imports
 from __future__ import annotations
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
 import inspect
 import logging
+import time
 from types import SimpleNamespace
-from typing import Protocol, Callable, Sequence, Type
+from typing import Protocol, Callable, Sequence, Type, Iterable, Any
 
 # Local application imports
-from .connection import Device
+from .device import Device
 from . import factory
 
 _logger = logging.getLogger("controllably.core")
@@ -42,6 +44,7 @@ logger.addHandler(logging.StreamHandler())
 
 class Part(Protocol):
     """Protocol for Part (i.e. component tools)"""
+    device: Any
     connection_details: dict
     is_busy: bool
     is_connected: bool
@@ -226,7 +229,14 @@ class Ensemble(Compound):
     
     _channel_class: Part = Part
     _channel_prefix: str = "chn_"
-    def __init__(self, *args, parts: dict[str,Part], verbose:bool = False, **kwargs):
+    def __init__(self, 
+        channels: Sequence[int]|None = None, 
+        details:dict|Sequence[dict]|None = None, 
+        *args, 
+        parts: dict[str,Part]|None = None, 
+        verbose:bool = False, 
+        **kwargs
+    ):
         """
         Initialise Ensemble class
 
@@ -234,12 +244,14 @@ class Ensemble(Compound):
             parts (dict[str,Part]): dictionary of parts
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
+        if parts is None:
+            parts = self.createParts(channels, details, *args, **kwargs)
         parts = {f"{self._channel_prefix}{chn}":part for chn,part in parts.items()}
         super().__init__(*args, parts=parts, verbose=verbose, **kwargs)
         return
     
     @classmethod
-    def create(cls, channels: Sequence[int], details:dict|Sequence[dict], *args, **kwargs) -> Type[Ensemble]:
+    def createParts(cls, channels: Sequence[int], details:dict|Sequence[dict], *args, **kwargs) -> dict[str,Part]:
         """
         Factory method to instantiate Ensemble from channels and part details
 
@@ -255,14 +267,13 @@ class Ensemble(Compound):
         elif isinstance(details,Sequence) and len(details) == 1:
             details = details*len(channels)
         assert len(channels) == len(details), "Ensure the number of channels match the number of part details"
-        
         assert type(cls._channel_class) == type, "Use the `factory` method to generate the desired class first"
         
         parent = cls._channel_class
         parts_list = [parent(**settings) for settings in details]
         parts = {chn:part for chn,part in zip(channels,parts_list)}
         assert len(channels) == len(parts), "Ensure the number of channels match the number of parts"
-        return cls(parts=parts, **kwargs)
+        return parts
     
     @classmethod
     def factory(cls, parent: type) -> Type[Ensemble]:
@@ -286,34 +297,74 @@ class Ensemble(Compound):
         """Dictionary of channels"""
         return {int(chn.replace(self._channel_prefix,"")):part for chn,part in self._parts.items()}
     
+    def connect(self):
+        """Connect to each component Part"""
+        self.parallel('connect', channels=list(self.channels.keys()))
+        return
+    
+    def parallel(self, 
+        method_name: str, 
+        kwargs_generator: Callable[[int,int,Part], dict[str,Any]],
+        *args, 
+        channels: Iterable[int],
+        max_workers: int = 4,
+        timeout:int|float = 120,
+        stagger: int|float = 0.5,
+        **kwargs
+    ) -> dict[int,Any]:
+        """Execute function in parallel on all channels"""
+        with ThreadPoolExecutor(max_workers=max_workers) as e:
+            futures = {}
+            for i,(key,part) in enumerate(self.channels.items()):
+                if key not in channels:
+                    continue
+                if not hasattr(part, method_name):
+                    raise AttributeError(f"Method {method_name} not found in {part.__class__.__name__}")
+                func: Callable = getattr(part, method_name)
+                assert callable(func), f"Ensure {method_name} is a callable method"
+                kwargs.update(kwargs_generator(i,key,part))
+                future = e.submit(func, *args, **kwargs)
+                futures[future] = key
+                time.sleep(stagger)
+            outs = dict()
+            for future in as_completed(futures, timeout=timeout):
+                key = futures[future]
+                out = future.result()
+                logger.info(f"Channel {key}: {out}")
+                outs[key] = out
+        return outs
+    
     @classmethod
-    def _make_multichannel(cls, function: Callable) -> Callable:
+    def _make_multichannel(cls, method: Callable) -> Callable:
         """
-        Make a function multichannel
+        Make a method multichannel
 
         Args:
-            function (Callable): function or method to be made multichannel
+            method (Callable): method to be made multichannel
 
         Returns:
-            Callable: multichannel function
+            Callable: multichannel method
         """
-        func_name = function.__name__
+        func_name = method.__name__
+        if func_name.endswith("__") and not func_name.startswith("__"):
+            return method
         def func(self, *args, channel: int|Sequence[int]|None = None, **kwargs) -> list|None:
             outs = []
             for chn,obj in cls._get_channel(self, channel).items():
+                obj_method: Callable = getattr(obj, func_name)
+                assert callable(obj_method), f"Ensure {func_name} is a callable method"
                 logger.info(f"Executing {func_name} on channel {chn}")
-                function = getattr(obj, func_name)
-                out = function(*args, **kwargs)
+                out = obj_method(*args, **kwargs)
                 outs.append(out)
             if all([o is None for o in outs]):
                 return None
             return outs
         
-        # Set function name, docstring, signature and annotations
+        # Set method name, docstring, signature and annotations
         func.__name__ = func_name
         
         channel_doc = '    channel (int|Sequence[int]|None, optional): select channel(s). Defaults to None.\n\n'
-        doc = function.__doc__
+        doc = method.__doc__
         if isinstance(doc, str):
             doc_parts = doc.split('Returns:')
             indent = doc_parts[0].split('\n')[-1]
@@ -323,7 +374,7 @@ class Ensemble(Compound):
             doc = 'Returns:'.join(doc_parts) if len(doc_parts) > 1 else doc_parts[0]
         func.__doc__ = doc
         
-        signature = inspect.signature(function)
+        signature = inspect.signature(method)
         parameters = list(signature.parameters.values())
         new_parameter = inspect.Parameter('channel', inspect.Parameter.KEYWORD_ONLY, default=None, annotation=int|Sequence[int]|None)
         if inspect.Parameter('kwargs', inspect.Parameter.VAR_KEYWORD) in parameters:
@@ -524,8 +575,15 @@ class Multichannel(Combined):
     
     _channel_class: Part = Part
     _channel_prefix: str = "chn_"
-    _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, verbose=False, coupled=False)
-    def __init__(self, *args, parts: dict[str,Part], coupled:bool = False, verbose:bool = False, **kwargs):
+    _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, verbose=False)
+    def __init__(self, 
+        channels: Sequence[int]|None = None, 
+        details:dict|Sequence[dict]|None = None, 
+        *args, 
+        parts: dict[str,Part]|None = None, 
+        verbose:bool = False, 
+        **kwargs 
+    ):
         """
         Initialise Multichannel class
         
@@ -535,16 +593,18 @@ class Multichannel(Combined):
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
         logger.warning("Multichannel class and factory method is still under development")      # TODO: Remove this line
+        if parts is None:
+            parts, device = self.createParts(channels, details, *args, **kwargs)
+            kwargs['device'] = device
         parts = {f"{self._channel_prefix}{chn}":part for chn,part in parts.items()}
         super().__init__(*args, parts=parts, verbose=verbose, **kwargs)
         
         self.active_channel = None
-        self.flags.coupled = coupled
         self.setActiveChannel()
         return
     
     @classmethod
-    def create(cls, channels: Sequence[int], details:dict|Sequence[dict], *args, **kwargs) -> Type[Multichannel]:
+    def createParts(cls, channels: Sequence[int], details:dict|Sequence[dict], *args, **kwargs) -> tuple[dict[str,Part],Device]:
         """
         Factory method to instantiate Multichannel from channels and part details
         
@@ -560,14 +620,19 @@ class Multichannel(Combined):
         elif isinstance(details,Sequence) and len(details) == 1:
             details = details*len(channels)
         assert len(channels) == len(details), "Ensure the number of channels match the number of part details"
-        
         assert type(cls._channel_class) == type, "Use the `factory` method to generate the desired class first"
         
         parent = cls._channel_class
-        parts_list = [parent(**settings) for settings in details]
+        parts_list: list[Part] = []
+        for i,settings in enumerate(details):
+            parts_list.append(parent(**settings))
+            if i == 0:
+                device = parts_list[0].device
+                settings['device'] = device
+        # parts_list = [parent(**settings) for settings in details]
         parts = {chn:part for chn,part in zip(channels,parts_list)}
         assert len(channels) == len(parts), "Ensure the number of channels match the number of parts"
-        return cls(parts=parts, **kwargs)
+        return parts, device
     
     @classmethod
     def factory(cls, parent: type) -> Type[Multichannel]:
@@ -593,35 +658,38 @@ class Multichannel(Combined):
         return {int(chn.replace(self._channel_prefix,"")):part for chn,part in self._parts.items()}
     
     @classmethod
-    def _make_multichannel(cls, function: Callable) -> Callable:
+    def _make_multichannel(cls, method: Callable) -> Callable:
         """
-        Make a function multichannel
+        Make a method multichannel
         
         Args:
-            function (Callable): function or method to be made multichannel
+            method (Callable): method to be made multichannel
             
         Returns:
-            Callable: multichannel function
+            Callable: multichannel method
         """
-        func_name = function.__name__
+        func_name = method.__name__
+        if func_name.endswith("__") and not func_name.startswith("__"):
+            return method
         def func(self, *args, channel: int|Sequence[int]|None = None, **kwargs) -> list|None:
             # device = cls._get_device(self)
             # kwargs['device'] = device
             outs = []
             for chn,obj in cls._get_channel(self, channel).items():
+                obj_method = getattr(obj, func_name)
+                assert callable(obj_method), f"Ensure {func_name} is a callable method"
                 logger.info(f"Executing {func_name} on channel {chn}")
-                function = getattr(obj, func_name)
-                out = function(*args, **kwargs)
+                out = obj_method(*args, **kwargs)
                 outs.append(out)
             if all([o is None for o in outs]):  # If all outputs are None
                 return None # Return None
             return outs
         
-        # Set function name, docstring, signature and annotations
+        # Set method name, docstring, signature and annotations
         func.__name__ = func_name
         
         channel_doc = '    channel (int|Sequence[int]|None, optional): select channel(s). Defaults to None.\n\n'
-        doc = function.__doc__
+        doc = method.__doc__
         if isinstance(doc, str):
             doc_parts = doc.split('Returns:')
             indent = doc_parts[0].split('\n')[-1]
@@ -631,7 +699,7 @@ class Multichannel(Combined):
             doc = 'Returns:'.join(doc_parts) if len(doc_parts) > 1 else doc_parts[0]
         func.__doc__ = doc
         
-        signature = inspect.signature(function)
+        signature = inspect.signature(method)
         parameters = list(signature.parameters.values())
         new_parameter = inspect.Parameter('channel', inspect.Parameter.KEYWORD_ONLY, default=None, annotation=int|Sequence[int]|None)
         if inspect.Parameter('kwargs', inspect.Parameter.VAR_KEYWORD) in parameters:
