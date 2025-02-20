@@ -157,7 +157,7 @@ class AX8(Camera):
         self.modbus.unit_id = SpotMeterRegs.UNIT_ID.value
         for instance in instances:
             base_reg_addr = (instance*4000)
-            self.modbus.write_multiple_registers(base_reg_addr + SpotMeterRegs.ENABLE_SPOTMETER.value, self._encode_to_modbus(False)) 
+            self.modbus.write_multiple_registers(base_reg_addr + SpotMeterRegs.ENABLE_SPOTMETER.value, self.encodeModbus(False)) 
         return
     
     def enableSpotmeter(self, instances:dict[int, tuple[int,int]], use_local_params:bool = True):
@@ -173,13 +173,13 @@ class AX8(Camera):
         for instance, position in instances.items():
             base_reg_addr = (instance*4000)
             if use_local_params:
-                self.modbus.write_multiple_registers(base_reg_addr + SpotMeterRegs.ENABLE_LOCAL_PARAMS.value, self._encode_to_modbus(True))
-                self.modbus.write_multiple_registers(base_reg_addr + SpotMeterRegs.REFLECTED_TEMP.value, self._encode_to_modbus(self.spotmeter_parameters['reflected_temperature']))
-                self.modbus.write_multiple_registers(base_reg_addr + SpotMeterRegs.EMISSIVITY.value, self._encode_to_modbus(self.spotmeter_parameters['emissivity']))
-                self.modbus.write_multiple_registers(base_reg_addr + SpotMeterRegs.DISTANCE.value, self._encode_to_modbus(self.spotmeter_parameters['distance']))
-            self.modbus.write_multiple_registers(base_reg_addr + SpotMeterRegs.SPOT_X_POSITION.value, self._encode_to_modbus(position[0]))
-            self.modbus.write_multiple_registers(base_reg_addr + SpotMeterRegs.SPOT_Y_POSITION.value, self._encode_to_modbus(position[1]))
-            self.modbus.write_multiple_registers(base_reg_addr + SpotMeterRegs.ENABLE_SPOTMETER.value, self._encode_to_modbus(True))
+                self.modbus.write_multiple_registers(base_reg_addr + SpotMeterRegs.ENABLE_LOCAL_PARAMS.value, self.encodeModbus(True))
+                self.modbus.write_multiple_registers(base_reg_addr + SpotMeterRegs.REFLECTED_TEMP.value, self.encodeModbus(self.spotmeter_parameters['reflected_temperature']))
+                self.modbus.write_multiple_registers(base_reg_addr + SpotMeterRegs.EMISSIVITY.value, self.encodeModbus(self.spotmeter_parameters['emissivity']))
+                self.modbus.write_multiple_registers(base_reg_addr + SpotMeterRegs.DISTANCE.value, self.encodeModbus(self.spotmeter_parameters['distance']))
+            self.modbus.write_multiple_registers(base_reg_addr + SpotMeterRegs.SPOT_X_POSITION.value, self.encodeModbus(position[0]))
+            self.modbus.write_multiple_registers(base_reg_addr + SpotMeterRegs.SPOT_Y_POSITION.value, self.encodeModbus(position[1]))
+            self.modbus.write_multiple_registers(base_reg_addr + SpotMeterRegs.ENABLE_SPOTMETER.value, self.encodeModbus(True))
         return
     
     def getCutline(self, 
@@ -243,8 +243,8 @@ class AX8(Camera):
             base_reg_addr = (instance*4000)
             spot_x = self.modbus.read_holding_registers(base_reg_addr + SpotMeterRegs.SPOT_X_POSITION.value, 6)[-2:]
             spot_y = self.modbus.read_holding_registers(base_reg_addr + SpotMeterRegs.SPOT_Y_POSITION.value, 6)[-2:]
-            spot_x = self._decode_from_modbus(spot_x, is_int=True)[0]
-            spot_y = self._decode_from_modbus(spot_y, is_int=True)[0]
+            spot_x = self.decodeModbus(spot_x, is_int=True)[0]
+            spot_y = self.decodeModbus(spot_y, is_int=True)[0]
             values[instance] = (spot_x, spot_y)
         return values
 
@@ -264,7 +264,7 @@ class AX8(Camera):
         for instance in instances:
             base_reg_addr = (instance*4000)
             temperature = self.modbus.read_holding_registers(base_reg_addr + SpotMeterRegs.SPOT_TEMPERATURE.value, 6)[-2:]
-            temperature = self._decode_from_modbus(temperature, is_int=False)[0]
+            temperature = self.decodeModbus(temperature, is_int=False)[0]
             value = temperature - 273.15 if unit_celsius else temperature
             values[instance] = value
         return values
