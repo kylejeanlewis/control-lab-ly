@@ -36,6 +36,9 @@ class Camera:
         self.placeholder = self.decodeBytesToFrame(np.asarray(bytearray(PLACEHOLDER), dtype="uint8"))
         self.transforms: list[tuple[Callable[[np.ndarray,Any], np.ndarray], Iterable|None, Mapping|None]] = []
         self.callbacks: list[tuple[Callable[[np.ndarray,Any], np.ndarray], Iterable|None, Mapping|None]] = []
+        self.transforms.append((cv2.cvtColor, (cv2.COLOR_BGR2RGB,), None))
+        if 'transforms' in kwargs:
+            self.transforms.extend(kwargs['transforms'])
         
         # Connection attributes
         self.connection: Any|None = None
@@ -98,19 +101,22 @@ class Camera:
     
     def connect(self):
         """Connect to the device"""
-        if self.is_connected:
-            return
+        # if self.is_connected:
+        #     return
         try:
             feed_source = self.connection_details.get('feed_source', 0)
+            feed_api = self.connection_details.get('feed_api', None)
             logger.info(f'Opening feed: {feed_source}')
-            success = self.feed.open(feed_source, cv2.CAP_DSHOW)
+            success = self.feed.open(feed_source, feed_api)
         except Exception as e:
             self._logger.error(f"Failed to connect to {self.connection_details}")
             self._logger.debug(e)
         else:
             self._logger.info(f"Connected to {self.connection_details}")
             time.sleep(self.init_timeout)
-            self.setResolution()
+            width = int(self.feed.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(self.feed.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            self.setResolution((width,height))
         self.flags.connected = success
         return
 
@@ -381,7 +387,7 @@ class Camera:
             else:
                 if not self.show_event.is_set():
                     continue
-                cv2.imshow('output', transformed_frame)
+                cv2.imshow('output', cv2.cvtColor(transformed_frame, cv2.COLOR_RGB2BGR))
                 if (cv2.waitKey(1) & 0xFF) == ord('q'):
                     break
         self.data_queue.join()
