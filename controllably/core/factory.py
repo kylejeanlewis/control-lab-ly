@@ -62,8 +62,8 @@ def create(obj:Callable, *args, **kwargs) -> object:
     parents = [parent.__name__ for parent in obj.__mro__]
     if 'Compound' in parents or 'Combined' in parents:
         return obj.fromConfig(kwargs)
-    elif 'Ensemble' in parents or 'Multichannel' in parents:
-        return obj.create(**kwargs)
+    # elif 'Multichannel' in parents or 'Ensemble' in parents:
+    #     return obj.create(**kwargs)
     return obj(*args, **kwargs)
 
 def create_from_config(config:dict) -> object:
