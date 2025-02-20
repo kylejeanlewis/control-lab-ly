@@ -32,7 +32,7 @@ class LED(Maker, TimedDeviceMixin):
         Args:
             `power` (int): power level
         """
-        timer = self.onState(power, duration, blocking, event=self.timer_event)
+        timer = self.setValueDelayed(duration, power, 0, blocking, event=self.timer_event)
         if isinstance(timer, threading.Timer):
             self.threads['timer'] = timer
         return

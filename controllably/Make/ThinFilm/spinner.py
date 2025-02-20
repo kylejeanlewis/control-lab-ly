@@ -28,22 +28,9 @@ class Spinner(Maker, TimedDeviceMixin):
         Args:
             `rpm` (int): spin speed in rpm
         """
-        timer = self.onState(rpm, duration, blocking, event=self.timer_event)
+        timer = self.setValueDelayed(duration, rpm, 0, blocking, event=self.timer_event)
         if isinstance(timer, threading.Timer):
             self.threads['timer'] = timer
-        # assert rpm >= 0, "Ensure the spin speed is a non-negative number"
-        # assert duration >= 0, "Ensure the spin time is a non-negative number"
-        # success = self.setSpinSpeed(rpm)
-        # if not success:
-        #     return
-        # self.timer_event.set()
-        # if blocking:
-        #     time.sleep(duration)
-        #     self.stop()
-        #     return
-        # timer = threading.Timer(duration, self.setSpinSpeed, args=(0,self.timer_event))
-        # timer.start()
-        # self.threads['timer'] = timer
         return
     
     def stop(self):
@@ -51,10 +38,6 @@ class Spinner(Maker, TimedDeviceMixin):
         Stop the spinner
         """
         self.stopTimer(self.threads.get('timer', None), event=self.timer_event)
-        # self.setSpinSpeed(0)
-        # if 'timer' in self.threads and isinstance(self.threads['timer'] , threading.Timer):
-        #     self.threads['timer'].cancel()
-        # self.timer_event.clear()
         return
     
     def setSpinSpeed(self, rpm: int, event: threading.Event|None = None) -> bool:
