@@ -5,7 +5,7 @@ import logging
 import time
 
 # Local application imports
-from .....core.compound import Multichannel
+from .....core.compound import Multichannel, Ensemble
 from ...liquid import LiquidHandler
 from .tricontinent_api import TriContinentDevice
 
@@ -248,3 +248,4 @@ class TriContinent(LiquidHandler):
         return
     
 Multi_TriContinent = Multichannel.factory(TriContinent)
+Parallel_TriContinent = Ensemble.factory(TriContinent)
