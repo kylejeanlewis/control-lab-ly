@@ -10,9 +10,17 @@ from ...core.device import TimedDeviceMixin
 from .. import Maker
 
 class LED(Maker, TimedDeviceMixin):
-    def __init__(self, port: str = 'COM0', *, baudrate: int = 9600, verbose = False, **kwargs):
+    def __init__(self, 
+        port: str = 'COM0', 
+        channel: int = 0,
+        *, 
+        baudrate: int = 9600, 
+        verbose = False, 
+        **kwargs
+    ):
         super().__init__(port=port, baudrate=baudrate, verbose=verbose, **kwargs)
         
+        self.channel = channel
         self.target_power = 0
         self.timer_event = threading.Event()
         self.threads = dict()
@@ -44,6 +52,12 @@ class LED(Maker, TimedDeviceMixin):
         self.stopTimer(self.threads.get('timer', None), event=self.timer_event)
         return
     
+    def getPower(self) -> int:
+        """
+        Get the current power level of the LED
+        """
+        return self.target_power
+    
     def setPower(self, power: int, event: threading.Event|None = None) -> bool:
         """
         Set power level of LED
@@ -53,17 +67,24 @@ class LED(Maker, TimedDeviceMixin):
         """
         assert power >= 0, "Ensure the power level is a non-negative number"
         if self.timer_event.is_set() and power != 0:
-            self._logger.info("[BUSY] LED is currently in use")
+            self._logger.info(f"[BUSY] LED {self.channel} is currently in use")
             return False
-        self._logger.info(f"[LED] {power}")
-        self.device.write(self.device.processInput(power))
+        self._logger.info(f"[LED {self.channel}] {power}")
         self.target_power = power
+        self.update__()
         if isinstance(event, threading.Event):
             _ = event.clear() if event.is_set() else event.set()
         return True
     
     def setValue(self, value: int, event: threading.Event|None = None) -> bool:
         return self.setPower(value, event)
+    
+    def update__(self):
+        all_power = self.getPower()
+        all_power = all_power if isinstance(all_power, list) else [all_power]
+        data = ';'.join([str(v) for v in all_power])
+        self.device.write(self.device.processInput(data))
+        return
     
     # Overwritten method(s)
     def execute(self, dark_time:int|float = 0, power:int = 255, light_time:int|float = 1, blocking:bool = True, *args, **kwargs):
