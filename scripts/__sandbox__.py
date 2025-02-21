@@ -1,4 +1,17 @@
 # %%
+import test_init
+
+from controllably.core.connection import get_ports
+from controllably.Make.Mixture.TwoMag.twomag_api import TwoMagDevice
+from controllably.Make.Mixture.TwoMag import TwoMagStirrer
+
+get_ports()
+# %%
+mag = TwoMagStirrer('COM40')
+mag.connect()
+mag.getStatus()
+
+# %%
 import cv2
 import matplotlib.pyplot as plt
 
