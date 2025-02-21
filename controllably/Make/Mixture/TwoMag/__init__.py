@@ -1,1 +1,1 @@
-from twomag import TwoMagStirrer
+from .twomag import TwoMagStirrer
