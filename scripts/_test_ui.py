@@ -70,7 +70,7 @@ shake = _BioShake('COM0', simulation=True)
 
 # %%
 from controllably.View.camera import Camera
-cam = Camera()
+cam = Camera(simulation=True)
 cam.connect()
 
 # %%
