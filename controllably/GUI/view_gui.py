@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
 import logging
+import time
 import tkinter as tk
 from tkinter import ttk
 from typing import Protocol, Iterable
@@ -42,6 +43,7 @@ class View(Protocol):
     def setFrameSize(self, size:Iterable[int] = (10_000,10_000)):
         raise NotImplementedError
 
+
 class ViewPanel(Panel):
     def __init__(self, principal: View|Proxy|None = None):
         super().__init__(principal)
@@ -53,6 +55,7 @@ class ViewPanel(Panel):
         self.fps = getattr(self.principal, 'frame_rate', 24)
         self.size = getattr(self.principal, 'frame_size', (640,360))
         self.is_connected = False
+        self.is_connected_previous = False
         self.is_frozen = False
         self.latest_frame: np.ndarray|None = None
         self.tk_image: ImageTk.PhotoImage|None = None
@@ -79,9 +82,13 @@ class ViewPanel(Panel):
             self.is_connected = True
         
         # Get next frame
+        if self.is_connected != self.is_connected_previous:
+            time.sleep(1)
         self.getFrame()
+        self.is_connected_previous = self.is_connected
         self.refresh()
         if isinstance(self.widget, tk.Tk):
+            
             self.widget.after(int(1000/self.fps), self.update)
         return 
     
@@ -98,7 +105,7 @@ class ViewPanel(Panel):
         
         # Redraw canvas
         if self.latest_frame is not None:
-            self.tk_image = ImageTk.PhotoImage(image=self.latest_image)
+            self.tk_image = ImageTk.PhotoImage(image=self.latest_image, master=self.image_frame)
             self.canvas.create_image(0,0, image=self.tk_image, anchor=tk.NW)
         return
     
@@ -113,19 +120,19 @@ class ViewPanel(Panel):
         status_frame.columnconfigure(0,weight=1)
         
         button_frame = ttk.Frame(status_frame)
-        button_frame.grid(row=0, column=0, padx=10, pady=10, sticky='nsew', rowspan=2)
+        button_frame.grid(row=0, column=0, padx=10, pady=10, sticky='nsew')
         button_frame.columnconfigure([0,1,2,3],weight=1)
         
-        # image_frame = ttk.Frame(master)
-        # image_frame.grid(row=1, column=0, padx=10, pady=10, sticky='nsew')
-        # image_frame.rowconfigure(0,weight=1)
-        # image_frame.columnconfigure(0,weight=1)
+        self.image_frame = ttk.Frame(master)
+        self.image_frame.grid(row=1, column=0, padx=10, pady=10, sticky='nsew')
+        self.image_frame.rowconfigure(0,weight=1)
+        self.image_frame.columnconfigure(0,weight=1)
         
         # Status Display
-        self.button_refresh = ttk.Button(status_frame, text='Refresh', command=self.update)
+        # self.button_refresh = ttk.Button(status_frame, text='Refresh', command=self.update, state='disabled', width=self.button_width)
         self.label_status = ttk.Label(status_frame, text="Disconnected")
-        self.button_refresh.grid(row=0, column=1)
-        self.label_status.grid(row=1, column=1)
+        # self.button_refresh.grid(row=0, column=1)
+        self.label_status.grid(row=0, column=1)
         
         # Buttons
         self.button_freeze = ttk.Button(button_frame, text='Freeze', command=self.toggleFreeze, width=self.button_width)
@@ -138,7 +145,7 @@ class ViewPanel(Panel):
         self.button_connect.grid(row=0,column=3,sticky='nsew')
         
         # Canvas
-        self.canvas = tk.Canvas(master, width=self.size[0], height=self.size[1])
+        self.canvas = tk.Canvas(self.image_frame, width=self.size[0], height=self.size[1])
         self.canvas.grid(row=1, column=0, padx=10, pady=10, sticky='nsew')
         
         return super().addTo(master, (self.button_width,self.button_height))
@@ -147,14 +154,12 @@ class ViewPanel(Panel):
         tag = "canvas"
         self.canvas.itemcget(tag, "image")
         self.principal.saveFrame(self.latest_frame, filename)
-        self.update()
         return
     
     def load(self, filename:str):
         image = self.principal.loadImageFile(filename)
         self.is_frozen = True
         self.latest_frame = image
-        self.update()
         return
     
     def toggleConnect(self):
@@ -167,13 +172,11 @@ class ViewPanel(Panel):
     def connect(self):
         self.principal.connectFeed()
         self.is_connected = True
-        self.update()
         return
     
     def disconnect(self):
         self.principal.disconnectFeed()
         self.is_connected = False
-        self.update()
         return
         
     def getFrame(self):
