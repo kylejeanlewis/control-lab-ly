@@ -71,7 +71,7 @@ class LED(Maker, TimedDeviceMixin):
             return False
         self._logger.info(f"[LED {self.channel}] {power}")
         self.target_power = power
-        self.update__()
+        self.updatePower()
         if isinstance(event, threading.Event):
             _ = event.clear() if event.is_set() else event.set()
         return True
@@ -79,7 +79,7 @@ class LED(Maker, TimedDeviceMixin):
     def setValue(self, value: int, event: threading.Event|None = None) -> bool:
         return self.setPower(value, event)
     
-    def update__(self):
+    def updatePower(self):
         all_power = self.getPower()
         all_power = all_power if isinstance(all_power, list) else [all_power]
         data = ';'.join([str(v) for v in all_power])
@@ -122,3 +122,6 @@ class LED(Maker, TimedDeviceMixin):
         return super().shutdown()
 
 Multi_LED = Multichannel.factory(LED)
+# Couple the getPower method to the Multi_LED class
+Multi_LED.getPower = lambda self: [led.target_power for led in self.channels]
+Multi_LED._channel_class.getPower = Multi_LED.getPower
