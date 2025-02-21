@@ -9,7 +9,7 @@ from typing import NamedTuple, Any
 
 # Local application imports
 from .....core.device import SerialDevice
-from .twomag_lib import ErrorCodes
+from .twomag_lib import ErrorCode
 
 logger = logging.getLogger("controllably.Make")
 logger.debug(f"Import: OK <{__name__}>")
@@ -18,7 +18,7 @@ READ_FORMAT = "{status}_{data}_{address}\r"
 WRITE_FORMAT = "{data}_{address}\r"
 Data = NamedTuple("Data", [("data", str), ("status", str), ("address", str)])
 
-class MIXControlMTP(SerialDevice):
+class TwoMagDevice(SerialDevice):
     
     _default_speed = 350
     _default_power = 50
@@ -135,7 +135,7 @@ class MIXControlMTP(SerialDevice):
         )
         
         if out.status == 'ER':
-            error = ErrorCodes[out.data]
+            error = ErrorCode[out.data]
             logger.error(f"Error: {error}")
         return out
         
