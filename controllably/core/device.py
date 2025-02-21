@@ -454,7 +454,9 @@ class BaseDevice:
         """Start the stream"""
         sync_start = sync_start or threading.Barrier(2, timeout=2)
         assert isinstance(sync_start, threading.Barrier), "Ensure sync_start is a threading.Barrier"
-        
+        if self.stream_event.is_set():
+            self.showStream(show)
+            return
         self.stream_event.set()
         self.threads['stream'] = threading.Thread(
             target=self._loop_stream, 
