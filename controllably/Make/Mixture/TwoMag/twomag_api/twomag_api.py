@@ -14,7 +14,7 @@ from .twomag_lib import ErrorCode
 logger = logging.getLogger("controllably.Make")
 logger.debug(f"Import: OK <{__name__}>")
 
-READ_FORMAT = "{status}_{data}_{address}\r"
+READ_FORMAT = "{status}_{data}_{address:.1}\r"
 WRITE_FORMAT = "{data}_{address}\r"
 Data = NamedTuple("Data", [("data", str), ("status", str), ("address", str)])
 
@@ -73,14 +73,14 @@ class TwoMagDevice(SerialDevice):
         speed = int(round(speed, -1))       # round to nearest 10
         out: Data = self.query(f'setrpm_{int(speed)}', address=self.address)
         data = out.data
-        set_speed = int(data.replace('RPM','').lstrip("0"))
+        set_speed = int(data.replace('RPM','').replace('\x00', '').lstrip("0"))
         self.speed = set_speed
         return set_speed
         
     def getSpeed(self) -> int:
         out: Data = self.query(f'sendrpm', address=self.address)
         data = out.data
-        set_speed = int(data.replace('RPM','').lstrip("0"))
+        set_speed = int(data.replace('RPM','').replace('\x00', '').lstrip("0"))
         self.speed = set_speed
         return set_speed
         
@@ -89,14 +89,14 @@ class TwoMagDevice(SerialDevice):
         power = round(power/25) * 25       # round to nearest 25
         out: Data = self.query(f'setpower_{int(power)}', address=self.address)
         data = out.data
-        set_power = int(data.replace('POWER','').lstrip("0"))
+        set_power = int(data.replace('POWER','').replace('\x00', '').lstrip("0"))
         self.power = set_power
         return set_power
         
     def getPower(self) -> int:
         out: Data = self.query(f'sendpower', address=self.address)
         data = out.data
-        set_power = int(data.replace('POWER','').lstrip("0"))
+        set_power = int(data.replace('POWER','').replace('\x00', '').lstrip("0"))
         self.power = set_power
         return set_power
         
