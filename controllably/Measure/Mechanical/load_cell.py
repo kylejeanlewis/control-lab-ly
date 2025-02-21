@@ -32,9 +32,16 @@ class LoadCell(Measurer):
         verbose: bool = False, 
         **kwargs
     ):
+        defaults = dict(
+            init_timeout=3, 
+            data_type=ValueData, 
+            read_format=READ_FORMAT, 
+        )
+        defaults.update(kwargs)
+        kwargs = defaults
         super().__init__(
-            port=port, baudrate=baudrate, init_timeout=3, 
-            data_type=ValueData, read_format=READ_FORMAT, verbose=verbose, **kwargs
+            port=port, baudrate=baudrate, 
+            verbose=verbose, **kwargs
         )
         
         self.force_tolerance = force_tolerance
