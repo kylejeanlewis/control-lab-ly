@@ -1,6 +1,26 @@
 # %%
 import test_init
+from controllably.Measure.Mechanical.actuated_sesnor import ActuatedSensor, Parallel_ActuatedSensor
+from controllably.core.datalogger import monitor_plot
 
+fin = ActuatedSensor(
+    port='COM27',
+    correction_parameters=(1.0453861330027523, -717.008056157306),
+    calibration_factor=573.2622826433104
+)
+fin.connect()
+fin.home()
+
+# %%
+fin.record(True,clear_cache=True)
+event = monitor_plot(fin.records,y='value', stop_trigger=fin.record_event)
+
+# %% 
+fin.touch(1,-15)
+fin.record(False)
+
+# %%
+import test_init
 from controllably.core.connection import get_ports
 from controllably.Make.Mixture.TwoMag.twomag_api import TwoMagDevice
 from controllably.Make.Mixture.TwoMag import TwoMagStirrer
