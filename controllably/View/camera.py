@@ -216,6 +216,7 @@ class Camera:
         Returns:
             bool: whether the image array is successfully saved
         """
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         if filename is None:
             now = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f'image-{now}.png'
@@ -307,6 +308,8 @@ class Camera:
         except Exception as e: # Replace with specific exception
             self._logger.debug(f"Failed to receive data")
             self._logger.exception(e)
+        if frame is None:
+            frame = self.placeholder
         if self.flags.simulation:
             ret = True
         return ret, frame
