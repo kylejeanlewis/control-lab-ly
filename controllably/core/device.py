@@ -539,7 +539,7 @@ class BaseDevice:
             timestamp (bool, optional): whether to return the timestamp. Defaults to False.
             
         Returns:
-            Any | None: queried data
+            Any|None: queried data
         """
         data_type: NamedTuple = data_type or self.data_type
         # if self.flags.simulation:
