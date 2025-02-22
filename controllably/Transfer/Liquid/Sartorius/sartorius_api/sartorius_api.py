@@ -139,7 +139,7 @@ class SartoriusDevice(SerialDevice):
             data_type=data_type, read_format=read_format, write_format=write_format, **kwargs
         )
         
-        self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
+        self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
         self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         

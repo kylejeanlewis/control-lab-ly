@@ -204,7 +204,7 @@ class BaseDevice:
         self.threads = dict()
         
         # Logging attributes
-        self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
+        self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
         self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         return

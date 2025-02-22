@@ -250,7 +250,7 @@ class _Measurer:
         self.device: StreamingDevice = kwargs.get('device', factory.create_from_config(kwargs))
         self.flags: SimpleNamespace = deepcopy(self._default_flags)
         
-        self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
+        self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
         self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         

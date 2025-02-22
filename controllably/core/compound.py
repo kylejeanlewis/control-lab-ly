@@ -106,7 +106,7 @@ class Compound:
         self._parts = parts
         self.flags = deepcopy(self._default_flags)
         
-        self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
+        self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
         self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         return
@@ -125,7 +125,7 @@ class Compound:
         return
     
     @classmethod
-    def fromConfig(cls, config:dict) -> Type[Compound]:
+    def fromConfig(cls, config:dict) -> Compound:
         """
         Factory method to create Compound from configuration dictionary
         
@@ -133,7 +133,7 @@ class Compound:
             config (dict): configuration dictionary
             
         Returns:
-            Type[Compound]: instance of Compound (or its subclasses)
+            Compound: instance of Compound (or its subclasses)
         """
         details = config.pop('details')
         parts = factory.load_parts(details)
@@ -449,7 +449,7 @@ class Combined:
         self._parts = parts
         self.flags = deepcopy(self._default_flags)
         
-        self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
+        self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
         self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         return

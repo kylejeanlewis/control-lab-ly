@@ -715,7 +715,7 @@ class SerialDevice:
         
         self.flags.simulation = simulation
         
-        self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
+        self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
         self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         return
@@ -935,7 +935,7 @@ class SocketDevice:
         self.socket.settimeout(self.timeout)
         self.flags.simulation = simulation
         
-        self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
+        self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
         self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         return

@@ -94,7 +94,7 @@ class DobotDevice:
         self.flags = deepcopy(self._default_flags)
         self.flags.simulation = simulation
         
-        self._logger = logger.getChild(f"{self.__class__.__name__}_{id(self)}")
+        self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
         self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         return
