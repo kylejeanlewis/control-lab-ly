@@ -1,3 +1,15 @@
+# -*- coding: utf-8 -*-
+"""
+This module contains the HeaterMixin class.
+
+Attributes:
+    TOLERANCE (float): tolerance for temperature
+    
+## Classes:
+    `HeaterMixin`: Mixin class for heater control
+    
+<i>Documentation last updated: 2025-02-22</i>
+"""
 # Standard library imports
 from __future__ import annotations
 import logging
@@ -25,10 +37,26 @@ class HeaterMixin:
         pass
     
     def atTemperature(self, temperature: float, *, tolerance: float|None = None, **kwargs) -> bool:
+        """
+        Check if at temperature
+        
+        Args:
+            temperature (float): target temperature
+            tolerance (float, optional): tolerance. Defaults to None.
+            
+        Returns:
+            bool: at temperature
+        """
         tolerance = tolerance or 0.1
         return (abs(self.getTemperature() - temperature) < tolerance)
         
     def getTemperature(self) -> float:
+        """
+        Get temperature
+        
+        Returns:
+            float: temperature
+        """
         temperature = None # Replace with implementation
         return temperature 
     
@@ -40,6 +68,19 @@ class HeaterMixin:
         tolerance: float|None = None, 
         release: threading.Event|None = None
     ) -> threading.Event|None:
+        """ 
+        Hold temperature
+        
+        Args:
+            temperature (float): target temperature
+            duration (float): duration to hold temperature
+            blocking (bool, optional): blocking call. Defaults to True.
+            tolerance (float, optional): tolerance. Defaults to None.
+            release (threading.Event, optional): release event. Defaults to None.
+            
+        Returns:
+            threading.Event: release event
+        """
         def inner(temperature: float, duration: float, tolerance: float|None, release: threading.Event|None = None):
             logger = logging.getLogger(f"{self.__class__}.{self.__class__.__name__}_{id(self)}")
             self.setTemperature(temperature, tolerance=tolerance)
@@ -66,6 +107,18 @@ class HeaterMixin:
         tolerance: float|None = None, 
         release: threading.Event|None = None
     ) -> tuple[threading.Thread, threading.Event]|None:
+        """
+        Set temperature
+        
+        Args:
+            temperature (float): target temperature
+            blocking (bool, optional): blocking call. Defaults to True.
+            tolerance (float, optional): tolerance. Defaults to None.
+            release (threading.Event, optional): release event. Defaults to None.
+            
+        Returns:
+            tuple[threading.Thread, threading.Event]: thread and release event
+        """
         def inner(temperature: float, tolerance: float|None, release: threading.Event|None = None):
             logger = logging.getLogger(f"{self.__class__}.{self.__class__.__name__}_{id(self)}")
             self._set_temperature(temperature)
@@ -88,5 +141,11 @@ class HeaterMixin:
         return thread, release
         
     def _set_temperature(self, temperature: float):
+        """
+        Set temperature
+        
+        Args:
+            temperature (float): target temperature
+        """
         ... # Replace with implementation
         return

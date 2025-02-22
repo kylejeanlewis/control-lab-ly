@@ -1,4 +1,13 @@
 # -*- coding: utf-8 -*-
+"""
+This module holds the spinner class.
+
+## Classes:
+    `Spinner`: Spinner class
+    `Multi_Spinner`: Ensemble of spinner tools
+    
+<i>Documentation last updated: 2025-02-22</i>
+"""
 # Standard Library imports
 from __future__ import annotations
 import threading
@@ -10,7 +19,38 @@ from ...core.device import TimedDeviceMixin
 from .. import Maker
 
 class Spinner(Maker, TimedDeviceMixin):
+    """ 
+    Spinner class
+    
+    ### Constructor:
+        `port` (str): port to connect to
+        `baudrate` (int, optional): baudrate of the connection. Defaults to 9600.
+        `verbose` (bool, optional): verbosity of the class. Defaults to False.
+        
+    ### Attributes and properties:
+        `target_rpm` (int): target rpm of the spinner
+        `timer_event` (threading.Event): event for timer
+        `threads` (dict): threads for the spinner
+        
+    ### Methods:
+        `soak`: soak the spinner
+        `spin`: spin the spinner
+        `stop`: stop the spinner
+        `setSpinSpeed`: set the spin speed
+        `setValue`: set the spin speed
+        `execute`: execute the soak and spin steps
+        `shutdown`: shutdown procedure for the spinner
+    """
+    
     def __init__(self, port: str, *, baudrate: int = 9600, verbose = False, **kwargs):
+        """
+        Initialize the spinner
+        
+        Args:
+            port (str): port to connect to
+            baudrate (int, optional): baudrate of the connection. Defaults to 9600.
+            verbose (bool, optional): verbosity of the class. Defaults to False.
+        """
         super().__init__(port=port, baudrate=baudrate, verbose=verbose, **kwargs)
         
         self.target_rpm = 0
@@ -19,6 +59,13 @@ class Spinner(Maker, TimedDeviceMixin):
         return
     
     def soak(self, duration: int|float, blocking: bool = True):
+        """
+        Soak the spinner for a given duration
+        
+        Args:
+            duration (int): soak time in seconds
+            blocking (bool, optional): whether to block the thread. Defaults to True.
+        """
         return self.spin(0, duration, blocking)
     
     def spin(self, rpm: int, duration: int|float, blocking: bool = True):
@@ -26,7 +73,9 @@ class Spinner(Maker, TimedDeviceMixin):
         Spin the spinner at a given speed
         
         Args:
-            `rpm` (int): spin speed in rpm
+            rpm (int): spin speed in rpm
+            duration (int): spin time in seconds
+            blocking (bool, optional): whether to block the thread. Defaults to True.
         """
         timer = self.setValueDelayed(duration, rpm, 0, blocking, event=self.timer_event)
         if isinstance(timer, threading.Timer):
@@ -34,9 +83,7 @@ class Spinner(Maker, TimedDeviceMixin):
         return
     
     def stop(self):
-        """
-        Stop the spinner
-        """
+        """Stop the spinner"""
         self.stopTimer(self.threads.get('timer', None), event=self.timer_event)
         return
     
@@ -45,7 +92,11 @@ class Spinner(Maker, TimedDeviceMixin):
         Set the spin speed in rpm
         
         Args:
-            `rpm` (int): spin speed in rpm
+            rpm (int): spin speed in rpm
+            event (threading.Event, optional): event to set. Defaults to None.
+            
+        Returns:
+            bool: whether the command was successful
         """
         assert rpm >= 0, "Ensure the spin speed is a non-negative number"
         if self.timer_event.is_set() and rpm != 0:
@@ -59,6 +110,16 @@ class Spinner(Maker, TimedDeviceMixin):
         return True
     
     def setValue(self, value: int, event: threading.Event|None = None) -> bool:
+        """ 
+        Set the spin speed in rpm
+        
+        Args:
+            value (int): spin speed in rpm
+            event (threading.Event, optional): event to set. Defaults to None.
+            
+        Returns:
+            bool: whether the command was successful
+        """
         return self.setSpinSpeed(value, event)
     
     # Overwritten method(s)
@@ -70,6 +131,7 @@ class Spinner(Maker, TimedDeviceMixin):
             soak_time (int, optional): soak time. Defaults to 0.
             spin_speed (int, optional): spin speed. Defaults to 2000.
             spin_time (int, optional): spin time. Defaults to 1.
+            blocking (bool, optional): whether to block the thread. Defaults to True.
         """
         def inner(soak_time:int|float, spin_speed:int, spin_time:int|float):
             if self.timer_event.is_set():

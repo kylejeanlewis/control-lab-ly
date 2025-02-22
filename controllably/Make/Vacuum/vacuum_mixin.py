@@ -9,7 +9,7 @@ Attributes:
 ## Classes:
     `VacuumMixin`: Mixin class for vacuum control
     
-<i>Documentation last updated: 2024-11-19</i>
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 from __future__ import annotations

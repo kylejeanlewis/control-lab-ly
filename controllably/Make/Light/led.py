@@ -1,4 +1,13 @@
 # -*- coding: utf-8 -*-
+"""
+This module contains the LED class.
+
+## Classes:
+    `LED`: LED class
+    `Multi_LED`: Multi-channel LED class
+    
+<i>Documentation last updated: 2025-02-22</i>
+"""
 # Standard Library imports
 from __future__ import annotations
 import threading
@@ -10,6 +19,33 @@ from ...core.device import TimedDeviceMixin
 from .. import Maker
 
 class LED(Maker, TimedDeviceMixin):
+    """ 
+    LED class
+    
+    ### Constructor:
+        `port` (str, optional): port to connect to. Defaults to 'COM0'.
+        `channel` (int, optional): channel number. Defaults to 0.
+        `baudrate` (int, optional): baudrate for connection. Defaults to 9600.
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+        
+    ### Attributes and properties:
+        `channel` (int): channel number
+        `target_power` (int): target power level
+        `timer_event` (threading.Event): timer event
+        `threads` (dict): threads
+        
+    ### Methods:
+        `dark`: Darken the LED
+        `light`: Light up the LED
+        `stop`: Stop the LED
+        `getPower`: Get the power level of the LED
+        `setPower`: Set the power level of the LED
+        `setValue`: Set the power level of the LED
+        `updatePower`: Update the power level of the LED
+        `execute`: Execute the dark and spin steps
+        `shutdown`: Shutdown procedure for the LED
+    """
+    
     def __init__(self, 
         port: str = 'COM0', 
         channel: int = 0,
@@ -18,6 +54,15 @@ class LED(Maker, TimedDeviceMixin):
         verbose = False, 
         **kwargs
     ):
+        """
+        Initialize the LED class
+        
+        Args:
+            port (str, optional): port to connect to. Defaults to 'COM0'.
+            channel (int, optional): channel number. Defaults to 0.
+            baudrate (int, optional): baudrate for connection. Defaults to 9600.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         super().__init__(port=port, baudrate=baudrate, verbose=verbose, **kwargs)
         
         self.channel = channel
@@ -26,11 +71,24 @@ class LED(Maker, TimedDeviceMixin):
         self.threads = dict()
         return
     
-    def getAttributes(self):
+    def getAttributes(self) -> dict:
+        """
+        Get relevant attributes of the class
+        
+        Returns:
+            dict: relevant attributes
+        """
         relevant = ['targer_power', 'timer_event', 'threads']
         return {key: getattr(self, key) for key in relevant}
     
     def dark(self, duration: int|float, blocking: bool = True):
+        """
+        Darken the LED for a given duration
+        
+        Args:
+            duration (int|float): duration to darken the LED
+            blocking (bool, optional): whether to block the thread. Defaults to True.
+        """
         return self.light(0, duration, blocking)
     
     def light(self, power: int, duration: int|float, blocking: bool = True):
@@ -38,7 +96,9 @@ class LED(Maker, TimedDeviceMixin):
         Light up the LED at a given power level for a given duration
         
         Args:
-            `power` (int): power level
+            power (int): power level
+            duration (int|float): duration to light up the LED
+            blocking (bool, optional): whether to block the thread. Defaults to
         """
         timer = self.setValueDelayed(duration, power, 0, blocking, event=self.timer_event)
         if isinstance(timer, threading.Timer):
@@ -46,15 +106,16 @@ class LED(Maker, TimedDeviceMixin):
         return
     
     def stop(self):
-        """
-        Stop the LED from emitting light
-        """
+        """Stop the LED from emitting light"""
         self.stopTimer(self.threads.get('timer', None), event=self.timer_event)
         return
     
     def getPower(self) -> int:
         """
         Get the current power level of the LED
+        
+        Returns:
+            int: power level
         """
         return self.target_power
     
@@ -63,7 +124,11 @@ class LED(Maker, TimedDeviceMixin):
         Set power level of LED
         
         Args:
-            `power` (int): power level
+            power (int): power level
+            event (threading.Event, optional): event to set. Defaults to None.
+            
+        Returns:
+            bool: whether the power level was set
         """
         assert power >= 0, "Ensure the power level is a non-negative number"
         if self.timer_event.is_set() and power != 0:
@@ -77,9 +142,20 @@ class LED(Maker, TimedDeviceMixin):
         return True
     
     def setValue(self, value: int, event: threading.Event|None = None) -> bool:
+        """ 
+        Set the power level of the LED
+        
+        Args:
+            value (int): power level
+            event (threading.Event, optional): event to set. Defaults to None.
+            
+        Returns:
+            bool: whether the power level was set
+        """
         return self.setPower(value, event)
     
     def updatePower(self):
+        """Update the power level of the LED"""
         all_power = self.getPower()
         all_power = all_power if isinstance(all_power, list) else [all_power]
         data = ';'.join([str(v) for v in all_power])
@@ -95,6 +171,7 @@ class LED(Maker, TimedDeviceMixin):
             dark_time (int, optional): dark time. Defaults to 0.
             power (int, optional): power level. Defaults to 255.
             light_time (int, optional): spin time. Defaults to 1.
+            blocking (bool, optional): whether to block the thread. Defaults to True.
         """
         def inner(dark_time:int|float, power:int, light_time:int|float):
             if self.timer_event.is_set():
@@ -112,6 +189,7 @@ class LED(Maker, TimedDeviceMixin):
         return
     
     def shutdown(self):
+        """Shutdown procedure for the LED"""
         if 'timer' in self.threads and isinstance(self.threads['timer'], threading.Timer):
             self.threads['timer'].cancel()
         for thread in self.threads.values():

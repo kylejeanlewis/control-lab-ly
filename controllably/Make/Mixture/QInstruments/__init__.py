@@ -1,2 +1,3 @@
 # -*- coding: utf-8 -*-
-from .orbital_shaker_utils import BioShake
+"""Sub package for QInstruments tools."""
+from .bioshake import BioShake

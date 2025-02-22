@@ -1,12 +1,20 @@
 # -*- coding: utf-8 -*-
 """
 QInstruments API for controlling hardware from QInstruments.
-Refer to manual for more information on the GRBL firmware.
+
+Attributes:
+    READ_FORMAT (str): format for reading data
+    WRITE_FORMAT (str): format for writing data
+    Data (NamedTuple): data type for data
+    BoolData (NamedTuple): data type for boolean data
+    FloatData (NamedTuple): data type for float data
+    IntData (NamedTuple): data type for integer data
     
 ## Classes:
     `QInstrumentsDevice`: provides an interface for available actions to control devices from QInstruments
+    `_QInstrumentsDevice`: provides an interface for available actions to control devices from QInstruments
     
-<i>Documentation last updated: 2024-11-16</i>
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -210,10 +218,13 @@ class _QInstrumentsDevice(SerialDevice):
         Query the device (i.e. write and read data)
 
         Args:
-            data (Any): data to query
-            lines (bool, optional): whether to read multiple lines. Defaults to False.
-            numeric(bool, optional): whether to expect a numeric response. Defaults to False.
-            timeout_s (float, optional): duration to wait before timeout. Defaults to 0.3.
+            data (Any): data to write to the device
+            multi_out (bool, optional): whether to expect multiple outputs. Defaults to False.
+            timeout (int|float, optional): timeout for the query. Defaults to 0.3.
+            format_in (str|None, optional): format for writing data. Defaults to None.
+            format_out (str|None, optional): format for reading data. Defaults to None.
+            data_type (NamedTuple|None, optional): data type for data. Defaults to None.
+            timestamp (bool, optional): whether to include a timestamp. Defaults to False.
         
         Returns:
             str|float|None: response (string / float)

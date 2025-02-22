@@ -1,6 +1,3 @@
 # -*- coding: utf-8 -*-
-import logging
-logger = logging.getLogger("controllably.Make")
-logger.setLevel(logging.DEBUG)
-
+"""Sub package for Make utilities"""
 from .make_utils import Maker
