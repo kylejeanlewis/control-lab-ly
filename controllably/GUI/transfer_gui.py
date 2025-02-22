@@ -69,19 +69,19 @@ class LiquidPanel(Panel):
     LiquidPanel is a GUI panel for controlling liquid handling devices
     
     ### Constructor:
-        `principal (Liquid|Proxy|None)`: The liquid handling device to control
+        `principal` (Liquid|Proxy|None): The liquid handling device to control
         
     ### Attributes:
-        `principal (Liquid|Proxy|None)`: The liquid handling device to control
-        `title (str)`: The title of the panel
-        `status (str)`: The status of the liquid handling device
-        `reagent (str)`: The current reagent in the liquid handling device
-        `capacity (float)`: The capacity of the liquid handling device
-        `volume (float)`: The current volume of liquid in the liquid handling device
-        `channel (int)`: The current channel of the liquid handling device
-        `tip_on (bool)`: The status of the tip on the liquid handling device
-        `volume_field (float)`: The volume to aspirate/dispense
-        `speed_field (float)`: The speed to aspirate/dispense
+        `principal` (Liquid|Proxy|None): The liquid handling device to control
+        `title` (str): The title of the panel
+        `status` (str): The status of the liquid handling device
+        `reagent` (str): The current reagent in the liquid handling device
+        `capacity` (float): The capacity of the liquid handling device
+        `volume` (float): The current volume of liquid in the liquid handling device
+        `channel` (int): The current channel of the liquid handling device
+        `tip_on` (bool): The status of the tip on the liquid handling device
+        `volume_field` (float): The volume to aspirate/dispense
+        `speed_field` (float): The speed to aspirate/dispense
         `button_height` (int): The height of the buttons in the GUI panel.
         `button_width` (int): The width of the buttons in the GUI panel.
         `precision` (int): The number of decimal places to which to round the robot's position and orientation.
