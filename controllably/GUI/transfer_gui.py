@@ -1,4 +1,20 @@
 # -*- coding: utf-8 -*-
+""" 
+This module contains the GUI panel for controlling liquid handling devices.
+
+Attributes:
+    PRECISION (int): The number of decimal places to display for liquid volumes
+    TICK_INTERVAL (int): The interval between ticks on the volume scale
+    BUTTON_HEIGHT (int): The height of the buttons in the panel
+    BUTTON_WIDTH (int): The width of the buttons in the panel
+    SCALE_LENGTH (int): The length of the volume scale in the panel
+    
+## Classes:
+    Liquid: A protocol for liquid handling devices
+    LiquidPanel: A GUI panel for controlling liquid handling devices
+
+<i>Documentation last updated: 2025-02-22</i>
+"""
 # Standard library imports
 import logging
 import tkinter as tk
@@ -6,7 +22,6 @@ from tkinter import ttk
 from typing import Protocol
 
 # Local application imports
-from ..core.position import Position
 from ..core.control import Proxy
 from .gui import Panel
 
@@ -50,7 +65,65 @@ class Liquid(Protocol):
 
 
 class LiquidPanel(Panel):
+    """ 
+    LiquidPanel is a GUI panel for controlling liquid handling devices
+    
+    ### Constructor:
+        `principal (Liquid|Proxy|None)`: The liquid handling device to control
+        
+    ### Attributes:
+        `principal (Liquid|Proxy|None)`: The liquid handling device to control
+        `title (str)`: The title of the panel
+        `status (str)`: The status of the liquid handling device
+        `reagent (str)`: The current reagent in the liquid handling device
+        `capacity (float)`: The capacity of the liquid handling device
+        `volume (float)`: The current volume of liquid in the liquid handling device
+        `channel (int)`: The current channel of the liquid handling device
+        `tip_on (bool)`: The status of the tip on the liquid handling device
+        `volume_field (float)`: The volume to aspirate/dispense
+        `speed_field (float)`: The speed to aspirate/dispense
+        `button_height` (int): The height of the buttons in the GUI panel.
+        `button_width` (int): The width of the buttons in the GUI panel.
+        `precision` (int): The number of decimal places to which to round the robot's position and orientation.
+        `tick_interval` (int): The interval between tick marks on the rotation scales.
+        
+    ### Methods:
+        `update`: Update the status of the liquid handling device
+        `refresh`: Refresh the GUI panel
+        `addTo`: Add the GUI panel to a master widget
+        `aspirate`: Aspirate a volume of liquid from a container
+        `blowout`: Blowout the liquid from the pipette
+        `dispense`: Dispense a volume of liquid from the pipette
+        `empty`: Empty the liquid from the pipette
+        `fill`: Fill the pipette with liquid
+        `volumeTo`: Adjust the volume of liquid in the pipette to a specific value
+        `attach`: Attach a tip to the pipette
+        `eject`: Eject the tip from the pipette
+        `toggleTip`: Toggle the tip on the pipette
+        
+        `bindObject`: Bind a principal object to the Panel.
+        `releaseObject`: Release the principal object from the Panel.
+        `bindWidget`: Bind a tkinter.Tk object to the Panel.
+        `releaseWidget`: Release the tkinter.Tk object from the Panel.
+        `show`: Show the Panel.
+        `close`: Close the Panel.
+        `getAttribute`: Get an attribute from the principal object.
+        `getAttributes`: Get multiple attributes from the principal object.
+        `execute`: Execute a method from the principal object.
+        `addPack`: Add a Panel to the layout using the pack geometry manager.
+        `addGrid`: Add a Panel to the layout using the grid geometry manager.
+        `addPanel`: Add a Panel to the layout.
+        `clearPanels`: Clear all the Panels from the layout.
+        `updateStream`: Update the Panel continuously.
+    """
+    
     def __init__(self, principal: Liquid|Proxy|None = None):
+        """ 
+        Initialize the LiquidPanel
+        
+        Args:
+            principal (Liquid|Proxy|None): The liquid handling device to control
+        """
         super().__init__(principal)
         self.principal: Liquid|Proxy|None = principal
         self.title = "Liquid Handler Control"
@@ -217,6 +290,14 @@ class LiquidPanel(Panel):
         return super().addTo(master, (5*self.button_width,13*self.button_height))
 
     def aspirate(self, volume:float, speed:float|str|None = None, reagent:str|None = None):
+        """ 
+        Aspirate a volume of liquid from a container
+        
+        Args:
+            volume (float): The volume of liquid to aspirate
+            speed (float|str): The speed at which to aspirate the liquid
+            reagent (str): The reagent to aspirate
+        """
         speed = float(speed) if (isinstance(speed,str) and len(speed)) else self.speed_field
         reagent = self.reagent or reagent
         self.volume = min(self.volume + volume, self.capacity)
@@ -233,6 +314,7 @@ class LiquidPanel(Panel):
         return
     
     def blowout(self):
+        """Blowout the liquid from the pipette"""
         self.volume = 0
         try:
             self.execute(self.principal.blowout)
@@ -243,6 +325,13 @@ class LiquidPanel(Panel):
         return
     
     def dispense(self, volume:float, speed:float|str|None = None):
+        """ 
+        Dispense a volume of liquid from the pipette
+        
+        Args:
+            volume (float): The volume of liquid to dispense
+            speed (float|str): The speed at which to dispense the liquid
+        """
         speed = float(speed) if (isinstance(speed,str) and len(speed)) else self.speed_field
         self.volume = max(self.volume - volume, 0)
         
@@ -257,6 +346,12 @@ class LiquidPanel(Panel):
         return
     
     def empty(self, speed:float|str|None = None):
+        """ 
+        Empty the liquid from the pipette
+        
+        Args:
+            speed (float|str): The speed at which to empty the liquid
+        """
         speed = float(speed) if (isinstance(speed,str) and len(speed)) else self.speed_field
         self.volume = 0
         self.speed_field = speed
@@ -269,6 +364,13 @@ class LiquidPanel(Panel):
         return
     
     def fill(self, speed:float|str|None = None, reagent:str|None = None):
+        """ 
+        Fill the pipette with liquid
+        
+        Args:
+            speed (float|str): The speed at which to fill the pipette
+            reagent (str): The reagent to fill the pipette with
+        """
         speed = float(speed) if (isinstance(speed,str) and len(speed)) else self.speed_field
         reagent = self.reagent or reagent
         self.volume = self.capacity
@@ -283,11 +385,20 @@ class LiquidPanel(Panel):
         return
     
     def volumeTo(self, volume:float, speed:float|str|None = None, reagent:str|None = None):
+        """
+        Adjust the volume of liquid in the pipette to a specific value
+        
+        Args:
+            volume (float): The volume to adjust to
+            speed (float|str): The speed at which to adjust the volume
+            reagent (str): The reagent to use for the adjustment
+        """
         current_volume = self.volume
         diff = volume - current_volume
         return self.aspirate(volume=diff, speed=speed, reagent=reagent) if diff > 0 else self.dispense(volume=abs(diff), speed=speed)
 
     def attach(self):
+        """Attach a tip to the pipette"""
         self.tip_on = True
         self.reagent = None
         try:
@@ -299,6 +410,7 @@ class LiquidPanel(Panel):
         return
         
     def eject(self):
+        """Eject the tip from the pipette"""
         self.tip_on = False
         self.reagent = None
         try:
@@ -310,5 +422,6 @@ class LiquidPanel(Panel):
         return
     
     def toggleTip(self):
+        """Toggle the tip on the pipette"""
         return self.eject() if self.tip_on else self.attach()
         

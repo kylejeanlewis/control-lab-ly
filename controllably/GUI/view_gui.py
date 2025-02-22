@@ -1,4 +1,17 @@
 # -*- coding: utf-8 -*-
+""" 
+This module contains the view panel for the camera feed.
+
+Attributes:
+    BUTTON_HEIGHT (int): Button height
+    BUTTON_WIDTH (int): Button width
+    
+## Classes:
+    `View`: Protocol for the view panel
+    `ViewPanel`: View panel for the camera feed
+    
+<i>Documentation last updated: 2025-02-22</i>
+"""
 # Standard library imports
 from __future__ import annotations
 from datetime import datetime
@@ -50,7 +63,48 @@ class View(Protocol):
 
 
 class ViewPanel(Panel):
+    """ 
+    View panel for the camera feed
+    
+    ### Constructor:
+        `principal` (View|Proxy|None): The principal object for the view panel
+        
+    ### Attributes:
+        `fps` (int|float): Frames per second
+        `size` (tuple[int,int]): Frame size
+        `is_connected` (bool): Connection status
+        `is_connected_previous` (bool): Previous connection status
+        `is_frozen` (bool): Freeze status
+        `latest_frame` (np.ndarray|None): Latest frame
+        `latest_image` (Image.Image|None): Latest image as a PIL Image
+        `tk_image` (ImageTk.PhotoImage|None): Latest image as a Tkinter image
+        `loaded_filename` (str): Loaded filename
+        `last_visited_load_dir` (str): Last visited directory for loading files
+        `last_visited_save_dir` (str): Last visited directory for saving files
+        `button_height` (int): Button height
+        `button_width` (int): Button width
+        
+    ### Methods:
+        `updateStream`: Update the stream
+        `refresh`: Refresh the view
+        `addTo`: Add the view to the master widget
+        `getSaveDirectory`: Get the directory to save the image
+        `save`: Save the current image
+        `load`: Load an image file
+        `toggleConnect`: Toggle connection to the feed
+        `toggleFreeze`: Toggle the freeze state
+        `connect`: Connect to the feed
+        `disconnect`: Disconnect from the feed
+        `getFrame`: Get the next frame
+    """
+    
     def __init__(self, principal: View|Proxy|None = None):
+        """ 
+        Initialize the view panel
+        
+        Args:
+            principal (View|Proxy|None): The principal object for the view panel
+        """
         super().__init__(principal)
         self.principal: View|Proxy|None = principal
         self.title = "Camera control"
@@ -77,6 +131,7 @@ class ViewPanel(Panel):
     
     @property
     def latest_image(self) -> Image.Image|None:
+        """Latest image as a PIL Image"""
         return Image.fromarray(self.latest_frame) if self.latest_frame is not None else None
     
     def updateStream(self, **kwargs):
@@ -182,10 +237,12 @@ class ViewPanel(Panel):
         return super().addTo(master, (self.button_width,self.button_height))
     
     def getSaveDirectory(self):
+        """Get the directory to save the image"""
         self.last_visited_save_dir = filedialog.askdirectory(initialdir=self.last_visited_save_dir)
         return
     
     def save(self):
+        """Save the current image"""
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f'image-{now}.png'
         filepath = Path(self.last_visited_save_dir)/filename
@@ -193,6 +250,7 @@ class ViewPanel(Panel):
         return
     
     def load(self):
+        """Load an image file"""
         filename = filedialog.askopenfilename(initialdir=self.last_visited_load_dir)
         if not filename:
             return
@@ -204,25 +262,30 @@ class ViewPanel(Panel):
         return
     
     def toggleConnect(self):
+        """Toggle connection to the feed"""
         return self.disconnect() if self.is_connected else self.connect()
     
     def toggleFreeze(self):
+        """Toggle the freeze state"""
         self.is_frozen = not self.is_frozen
         if not self.is_frozen:
             self.loaded_filename = 'Feed'
         return
             
     def connect(self):
+        """Connect to the feed"""
         self.principal.connectFeed()
         self.is_connected = True
         return
     
     def disconnect(self):
+        """Disconnect from the feed"""
         self.principal.disconnectFeed()
         self.is_connected = False
         return
         
     def getFrame(self):
+        """Get the next frame"""
         next_frame = self.latest_frame
         if not self.is_frozen:
             ret, frame = self.principal.getFrame()

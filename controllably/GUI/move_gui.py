@@ -1,4 +1,19 @@
 # -*- coding: utf-8 -*-
+""" 
+This module provides a GUI panel for controlling the robot's position and orientation.
+
+Attributes:
+    PRECISION (int): The number of decimal places to which to round the robot's position and orientation.
+    TICK_INTERVAL (int): The interval between tick marks on the rotation scales.
+    BUTTON_HEIGHT (int): The height of the buttons in the GUI panel.
+    BUTTON_WIDTH (int): The width of the buttons in the GUI panel.
+    
+## Classes:
+    `Move`: A protocol for objects that can move and rotate.
+    `MovePanel`: A GUI panel for controlling the robot's position and orientation.
+
+<i>Documentation last updated: 2025-02-22</i>
+"""
 # Standard library imports
 import logging
 import tkinter as tk
@@ -38,8 +53,63 @@ class Move(Protocol):
     def moveToSafeHeight(self):
         raise NotImplementedError
 
+
 class MovePanel(Panel):
+    """ 
+    MovePanel is a GUI panel for controlling the robot's position and orientation.
+    
+    ### Constructor:
+        `principal` (Move|Proxy|None): The object to control. Defaults to None.
+        
+    ### Attributes:
+        `principal` (Move|Proxy|None): The object to control.
+        `title` (str): The title of the panel.
+        `status` (str): The status of the robot connection.
+        `x` (float): The x-coordinate of the robot's position.
+        `y` (float): The y-coordinate of the robot's position.
+        `z` (float): The z-coordinate of the robot's position.
+        `a` (float): The angle around the x-axis (roll) of the robot's orientation.
+        `b` (float): The angle around the y-axis (pitch) of the robot's orientation.
+        `c` (float): The angle around the z-axis (yaw) of the robot's orientation.
+        `button_height` (int): The height of the buttons in the GUI panel.
+        `button_width` (int): The width of the buttons in the GUI panel.
+        `precision` (int): The number of decimal places to which to round the robot's position and orientation.
+        `tick_interval` (int): The interval between tick marks on the rotation scales.
+        
+    ### Methods:
+        `update`: Update the panel with the current position and orientation of the robot.
+        `refresh`: Refresh the panel with the current position and orientation of the robot.
+        `addTo`: Add the panel to a master widget.
+        `move`: Move the robot along the specified axis by the specified value.
+        `rotate`: Rotate the robot around the specified axis by the specified value.
+        `moveTo`: Move the robot to the specified position.
+        `rotateTo`: Rotate the robot to the specified orientation.
+        `home`: Move the robot to the home position.
+        `safe`: Move the robot to a safe height above the work surface.
+
+        `bindObject`: Bind a principal object to the Panel.
+        `releaseObject`: Release the principal object from the Panel.
+        `bindWidget`: Bind a tkinter.Tk object to the Panel.
+        `releaseWidget`: Release the tkinter.Tk object from the Panel.
+        `show`: Show the Panel.
+        `close`: Close the Panel.
+        `getAttribute`: Get an attribute from the principal object.
+        `getAttributes`: Get multiple attributes from the principal object.
+        `execute`: Execute a method from the principal object.
+        `addPack`: Add a Panel to the layout using the pack geometry manager.
+        `addGrid`: Add a Panel to the layout using the grid geometry manager.
+        `addPanel`: Add a Panel to the layout.
+        `clearPanels`: Clear all the Panels from the layout.
+        `updateStream`: Update the Panel continuously.
+    """
+    
     def __init__(self, principal: Move|Proxy|None = None):
+        """ 
+        Initialize the MovePanel.
+        
+        Args:
+            principal (Move|Proxy|None): The object to control. Defaults to None.
+        """
         super().__init__(principal)
         self.principal: Move|Proxy|None = principal
         self.title = "Robot Control D-Pad"
@@ -256,6 +326,13 @@ class MovePanel(Panel):
         return super().addTo(master, (9*self.button_width,11*self.button_height))
 
     def move(self, axis:str, value:int|float):
+        """ 
+        Move the robot along the specified axis by the specified value.
+        
+        Args:
+            axis (str): The axis along which to move the robot. Must be one of 'x', 'y', or 'z'.
+            value (int|float): The distance by which to move the robot along the specified axis.
+        """
         assert axis in 'xyz', 'Provide one of x,y,z axis'
         initial = getattr(self, axis)
         setattr(self, axis, round(getattr(self, axis) + value,self.precision))
@@ -268,6 +345,13 @@ class MovePanel(Panel):
         return
 
     def rotate(self, axis:str, value:int|float):
+        """ 
+        Rotate the robot around the specified axis by the specified value.
+        
+        Args:
+            axis (str): The axis around which to rotate the robot. Must be one of 'a', 'b', or 'c'.
+            value (int|float): The angle by which to rotate the robot around the specified axis.
+        """
         assert axis in 'abc', 'Provide one of a,b,c axis'
         initial = getattr(self, axis)
         setattr(self, axis, round(getattr(self, axis) + value,self.precision))
@@ -287,6 +371,17 @@ class MovePanel(Panel):
         b: int|float|str|None = None,
         c: int|float|str|None = None
     ):
+        """ 
+        Move the robot to the specified position.
+        
+        Args:
+            x (int|float|str|None): The x-coordinate of the position to which to move the robot.
+            y (int|float|str|None): The y-coordinate of the position to which to move the robot.
+            z (int|float|str|None): The z-coordinate of the position to which to move the robot.
+            a (int|float|str|None): The angle around the x-axis (roll) of the position to which to move the robot.
+            b (int|float|str|None): The angle around the y-axis (pitch) of the position to which to move the robot.
+            c (int|float|str|None): The angle around the z-axis (yaw) of the position to which to move the robot.
+        """
         inputs = [x,y,z,c,b,a] # TODO: Validate input
         axes = 'xyzcba'
         for i,input_ in enumerate(inputs):
@@ -309,6 +404,14 @@ class MovePanel(Panel):
         return
     
     def rotateTo(self, a:int|float|None = None, b:int|float|None = None, c:int|float|None = None):
+        """
+        Rotate the robot to the specified orientation.
+        
+        Args:
+            a (int|float|None): The angle around the x-axis (roll) to which to rotate the robot.
+            b (int|float|None): The angle around the y-axis (pitch) to which to rotate the robot.
+            c (int|float|None): The angle around the z-axis (yaw) to which to rotate the robot.
+        """
         inputs = [c,b,a]
         initials = {}
         for axis,value in zip('cba',inputs):
@@ -325,6 +428,7 @@ class MovePanel(Panel):
         return
     
     def home(self):
+        """Move the robot to the home position."""
         try:
             self.execute(self.principal.home)
         except AttributeError:
@@ -337,6 +441,7 @@ class MovePanel(Panel):
         return
     
     def safe(self):
+        """Move the robot to a safe height above the work surface."""
         try:
             self.execute(self.principal.moveToSafeHeight)
         except AttributeError:
