@@ -21,7 +21,9 @@ class Panel:
         self.drawn = False
         self.top_level = True
         self.widget = None
-        self.sub_panels = dict()
+        self.sub_panels: dict[str, list[tuple[Panel, dict]]] = dict()
+        
+        self.stream_update_callbacks: list[Callable] = []
         return
     
     def bindObject(self, principal: Proxy|Any):
@@ -64,6 +66,7 @@ class Panel:
             self.widget.lift()
             self.widget.attributes('-topmost',True)
             self.widget.after_idle(self.widget.attributes,'-topmost',False)
+            self.updateStream()
             self.widget.mainloop()
         except Exception as e:
             logger.warning(e)
@@ -142,6 +145,12 @@ class Panel:
         self.sub_panels.clear()
         return
     
+    def updateStream(self, **kwargs):
+        if isinstance(self.widget, tk.Tk):
+            for callback in self.stream_update_callbacks:
+                callback()
+        return
+    
     def update(self, **kwargs):
         # Update layout
         ...
@@ -163,6 +172,7 @@ class Panel:
                 sub_size = panel.addTo(frame)
                 if isinstance(master, tk.Tk):
                     panel.bindWidget(master)
+                    self.stream_update_callbacks.append(panel.updateStream)
                 all_sizes.append(sub_size)
                 if layout == 'pack':
                     frame.pack(**kwargs)
