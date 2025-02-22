@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-"""
-This module holds the class for pipette tools from Sartorius.
+""" 
+This module contains the Sartorius class.
 
-Classes:
-    Sartorius (LiquidHandler)
-
-Other constants and variables:
-    STEP_RESOLUTION (int)
+## Classes:
+    `Sartorius`: Sartorius pipette tool class
+    
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -28,16 +27,56 @@ logger.addHandler(handler)
 
 class Sartorius(LiquidHandler):
     """
-    Class for Sartorius pipette tools.
-
-    This class is a subclass of LiquidHandler and is specifically designed to
-    handle Sartorius pipette tools.
-
-    Attributes:
-        device (SartoriusDevice): The Sartorius device that is being used.
-        volume (float): The volume of the pipette tool.
-        step_resolution (int): The step resolution of the pipette tool.
-        speed (float): The speed of the pipette tool.
+    Sartorius pipette tool class
+    
+    ### Constructor:
+        `port` (str): The port to connect to the pipette tool.
+        `channel` (int): The channel to connect to. Defaults to 1.
+        `verbose` (bool): Whether to print verbose output. Defaults to False.
+        `simulation` (bool): Whether to simulate the pipette tool. Defaults to False.
+        `tip_inset_mm` (int): The inset of the tip in mm. Defaults to 12.
+        `tip_capacitance` (int): The capacitance of the tip. Defaults to 276.
+        
+    ### Attributes and properties:
+        `tip_length` (int|float): The length of the tip attached to the pipette tool.
+        `pullback_steps` (int): The number of steps to pull back the pipette tool.
+        `speed_interpolation` (dict): The interpolation of speed values.
+        `capacity` (float): The capacity of the pipette tool.
+        `channel` (int): The channel of the pipette tool.
+        `volume_resolution` (float): The volume resolution of the pipette tool.
+        `tip_inset_mm` (float): The inset of the tip in mm.
+        `device`: Device object
+        `flags`: Flags for the class
+        `speed_in`: Speed for aspiration
+        `speed_out`: Speed for dispense
+        `reagent`: Name of reagent
+        `offset`: Offset for liquid handling
+        `connection_details`: Connection details for the device
+        `is_busy`: Whether the device is busy
+        `is_connected`: Whether the device is connected
+        `verbose`: Verbosity of class
+        `volume`: Current volume of liquid in the channel
+        
+    ### Methods:
+        `aspirate`: Aspirate desired volume of reagent
+        `blowout`: Blowout liquid from tip
+        `dispense`: Dispense desired volume of reagent
+        `pullback`: Pullback liquid from tip
+        `addAirGap`: Add an air gap to the pipette tool
+        `attach`: Attach the tip to the pipette tool
+        `eject`: Eject the tip from the pipette tool
+        `home`: Home the pipette tool
+        `setSpeed`: Set the speed of the pipette tool
+        `isTipOn`: Check if the tip is on the pipette tool
+        
+        `connect`: Connect to the device
+        `disconnect`: Disconnect from the device
+        `resetFlags`: Reset all flags to to default
+        `shutdown`: Shutdown procedure for tool
+        `cycle`: Cycle between aspirate and dispense
+        `empty`: Empty the channel
+        `fill`: Fill the channel
+        `rinse`: Rinse the channel with aspirate and dispense cycles
     """
 
     def __init__(self,
@@ -50,14 +89,16 @@ class Sartorius(LiquidHandler):
         tip_capacitance: int = 276,
         **kwargs
     ):
-        """
-        Initialize the Sartorius class.
-
+        """ 
+        Initialize the Sartorius pipette tool.
+        
         Args:
-            device (SartoriusDevice): The Sartorius device that is being used.
-            volume (float): The volume of the pipette tool.
-            step_resolution (int): The step resolution of the pipette tool.
-            speed (float): The speed of the pipette tool.
+            port (str): The port to connect to the pipette tool.
+            channel (int): The channel to connect to. Defaults to 1.
+            verbose (bool): Whether to print verbose output. Defaults to False.
+            simulation (bool): Whether to simulate the pipette tool. Defaults to False.
+            tip_inset_mm (int): The inset of the tip in mm. Defaults to 12.
+            tip_capacitance (int): The capacitance of the tip. Defaults to 276.
         """
         super().__init__(
             device_type=SartoriusDevice, port=port, channel=channel, 
@@ -104,6 +145,7 @@ class Sartorius(LiquidHandler):
     
     @property
     def tip_inset_mm(self) -> float:
+        """The inset of the tip in mm"""
         return self.device.tip_inset_mm
 
     def aspirate(self, 
@@ -117,20 +159,6 @@ class Sartorius(LiquidHandler):
         ignore: bool = False, 
         **kwargs
     ) -> bool:
-        """
-        Aspirate desired volume of reagent
-
-        Args:
-            volume (float): target volume
-            speed (float|None, optional): speed to aspirate at. Defaults to None.
-            delay (int, optional): time delay after aspirate. Defaults to 0.
-            pause (bool, optional): whether to pause for user intervention. Defaults to False.
-            reagent (str|None, optional): name of reagent. Defaults to None.
-            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
-
-        Returns:
-            bool: whether the action is successful
-        """
         if (reagent and self.reagent) and reagent != self.reagent:
             self._logger.warning(f"Reagent {reagent} does not match current reagent {self.reagent}.")
             return False
@@ -197,21 +225,6 @@ class Sartorius(LiquidHandler):
         ignore: bool = False,
         **kwargs
     ) -> bool:
-        """
-        Dispense desired volume of reagent
-
-        Args:
-            volume (float): target volume
-            speed (float|None, optional): speed to dispense at. Defaults to None.
-            delay (int, optional): time delay after dispense. Defaults to 0.
-            pause (bool, optional): whether to pause for user intervention. Defaults to False.
-            blowout (bool, optional): whether perform blowout. Defaults to False.
-            ignore (bool, optional): whether to dispense reagent regardless. Defaults to False.
-            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
-
-        Returns:
-            bool: whether the action is successful
-        """
         if not self.isTipOn():
             self._logger.warning("Ensure tip is attached.")
             raise RuntimeWarning("Ensure tip is attached.")
@@ -267,7 +280,13 @@ class Sartorius(LiquidHandler):
         
     def blowout(self, home:bool = True, **kwargs) -> bool:
         """
-        Blow out the liquid from the pipette tool.
+        Blowout liquid from tip
+        
+        Args:
+            home (bool): whether to home the pipette tool after blowing out
+            
+        Returns:
+            bool: whether the action is successful
         """
         logger.debug("Blowing out")
         out = self.device.blowout(home=home)
@@ -278,6 +297,15 @@ class Sartorius(LiquidHandler):
         return out == 'ok'
     
     def addAirGap(self, steps: int = 10) -> bool:
+        """ 
+        Add an air gap to the pipette tool.
+        
+        Args:
+            steps (int): The number of steps to move the pipette tool.
+            
+        Returns:
+            bool: Whether the action is successful.
+        """
         assert steps > 0, "Steps must be greater than 0"
         out = self.device.move(steps)
         return out == 'ok'
@@ -285,6 +313,12 @@ class Sartorius(LiquidHandler):
     def attach(self, tip_length: int|float) -> bool:
         """
         Attach the tip to the pipette tool.
+        
+        Args:
+            tip_length (int|float): The length of the tip to attach.
+            
+        Returns:
+            bool: Whether the action is successful.
         """
         logger.debug("Attaching tip")
         self.device.flags.tip_on = True
@@ -296,6 +330,9 @@ class Sartorius(LiquidHandler):
     def eject(self) -> bool:
         """
         Eject the tip from the pipette tool.
+        
+        Returns:
+            bool: Whether the action is successful.
         """
         logger.debug("Ejecting tip")
         out = self.device.eject()
@@ -308,6 +345,9 @@ class Sartorius(LiquidHandler):
     def home(self) -> bool:
         """
         Home the pipette tool.
+        
+        Returns:
+            bool: Whether the action is successful.
         """
         logger.debug("Homing")
         out = self.device.home()
@@ -319,6 +359,10 @@ class Sartorius(LiquidHandler):
 
         Args:
             speed (float): The speed to set the pipette tool to.
+            as_default (bool): Whether to set the speed as the default speed.
+            
+        Returns:
+            bool: Whether the action is successful.
         """
         assert abs(speed) in self.device.preset_speeds, f"Speed must be one of {self.device.preset_speeds}"
         logger.debug(f"Setting speed to {speed} uL/s")

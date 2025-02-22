@@ -1,12 +1,22 @@
 # -*- coding: utf-8 -*-
-"""
-This module holds the class for pipette tools from Sartorius.
+""" 
+This module contains the SartoriusDevice class.
 
-Classes:
-    Sartorius (LiquidHandler)
-
-Other constants and variables:
-    STEP_RESOLUTION (int)
+Attributes:
+    READ_FORMAT (str): command template for reading
+    WRITE_FORMAT (str): command template for writing
+    Data (NamedTuple): data type for communication
+    IntData (NamedTuple): data type for communication
+    STEP_RESOLUTION (int): minimum number of steps to have tolerable errors in volume
+    RESPONSE_TIME (float): delay between sending a command and receiving a response, in seconds
+    
+## Classes:
+    `SartoriusDevice`: Sartorius pipette device class
+    
+## Functions:
+    `interpolate_speed`: Calculates the best parameters for volume and speed
+    
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -41,62 +51,77 @@ RESPONSE_TIME = 1.03
 """Delay between sending a command and receiving a response, in seconds"""
 
 class SartoriusDevice(SerialDevice):
-    """
-    Sartorius object
-
-    ### Constructor
-    Args:
-        `port` (str): COM port address
+    """ 
+    Sartorius pipette device class
+    
+    ### Constructor:
+        `port` (str, optional): COM port address. Defaults to None.
+        `baudrate` (int, optional): baudrate of the device. Defaults to 9600.
+        `timeout` (int, optional): timeout for communication. Defaults to 2.
         `channel` (int, optional): channel id. Defaults to 1.
-        `offset` (tuple[float], optional): x,y,z offset of tip. Defaults to (0,0,0).
-        `response_time` (float, optional): delay between sending a command and receiving a response, in seconds. Defaults to 1.03.
-        `tip_inset_mm` (float, optional): length of pipette that is inserted into the pipette tip. Defaults to 12.
+        `step_resolution` (int, optional): minimum number of steps to have tolerable errors in volume. Defaults to STEP_RESOLUTION.
+        `response_time` (float, optional): delay between sending a command and receiving a response, in seconds. Defaults to RESPONSE_TIME.
+        `tip_inset_mm` (int, optional): length of pipette that is inserted into the pipette tip. Defaults to 12.
         `tip_capacitance` (int, optional): threshold above which a conductive pipette tip is considered to be attached. Defaults to 276.
+        `init_timeout` (int, optional): timeout for initialization. Defaults to 2.
+        `data_type` (NamedTuple, optional): data type for communication. Defaults to Data.
+        `read_format` (str, optional): read format for communication. Defaults to READ_FORMAT.
+        `write_format` (str, optional): write format for communication. Defaults to WRITE_FORMAT.
+        `simulation` (bool, optional): simulation mode. Defaults to False.
+        `verbose` (bool, optional): verbose mode. Defaults to False.
+        
+    ### Attributes and properties:
+        `info` (lib.ModelInfo): Sartorius model info
+        `model` (str): model of the pipette
+        `version` (str): version of the pipette
+        `total_cycles` (int): total number of cycles of the pipette
+        `volume_resolution` (float): volume resolution of the pipette
+        `step_resolution` (int): minimum number of steps to have tolerable errors in volume
+        `capacitance` (int): capacitance as measured at the end of the pipette
+        `position` (int): current position of the pipette
+        `speed_code_in` (int): speed code for aspirating
+        `speed_code_out` (int): speed code for dispensing
+        `status` (int): status of the pipette
+        `channel` (int): channel id
+        `response_time` (float): delay between sending a command and receiving a response, in seconds
+        `tip_capacitance` (int): threshold above which a conductive pipette tip is considered to be attached
+        `tip_inset_mm` (int): length of pipette that is inserted into the pipette tip
+        `tip_length` (int): length of the pipette tip
+        `capacity` (int): Capacity of the pipette
+        `home_position` (int): Home position of the pipette
+        `max_position` (int): Maximum position of the pipette
+        `tip_eject_position` (int): Tip eject position of the pipette
+        `limits` (tuple[int]): Lower and upper step limits of the pipette
+        `preset_speeds` (np.ndarray[int|float]): Preset speeds available for the pipette
     
-    ### Attributes
-    - `channel` (int): channel id
-    - `limits` (tuple[int]): lower and upper step limits
-    - `model_info` (SartoriusPipetteModel): Sartorius model info
-    - `offset` (tuple[float]): x,y,z offset of tip
-    - `position` (int): position of plunger
-    - `response_time` (float): delay between sending a command and receiving a response, in seconds
-    - `speed_code` (Speed): codes for aspirate and dispense speeds
-    - `speed_presets` (PresetSpeeds): preset speeds available
-    - `tip_inset_mm` (float): length of pipette that is inserted into the pipette tip
-    - `tip_length` (float): length of pipette tip
-    - `tip_capacitance` (int): threshold above which a conductive pipette tip is considered to be attached
-    
-    ### Properties
-    - `capacitance` (int): capacitance as measured at the end of the pipette
-    - `home_position` (int): home position of pipette
-    - `port` (str): COM port address
-    - `resolution` (float): volume resolution of pipette (i.e. uL per step)
-    - `status` (str): pipette status
-    
-    ### Methods
-    - `addAirGap`: create an air gap between two volumes of liquid in pipette
-    - `aspirate`: aspirate desired volume of reagent into pipette
-    - `blowout`: blowout liquid from tip
-    - `dispense`: dispense desired volume of reagent
-    - `eject`: eject the pipette tip
-    - `empty`: empty the pipette
-    - `getCapacitance`: get the capacitance as measured at the end of the pipette
-    - `getErrors`: get errors from the device
-    - `getInfo`: get details of the Sartorius pipette model
-    - `getPosition`: get the current position of the pipette
-    - `getStatus`: get the status of the pipette
-    - `home`: return plunger to home position
-    - `isFeasible`: checks and returns whether the plunger position is feasible
-    - `isTipOn`: checks and returns whether a pipette tip is attached
-    - `move`: move the plunger either up or down by a specified number of steps
-    - `moveBy`: move the plunger by a specified number of steps
-    - `moveTo`: move the plunger to a specified position
-    - `pullback`: pullback liquid from tip
-    - `reset`: reset the pipette
-    - `setSpeed`: set the speed of the plunger
-    - `shutdown`: shutdown procedure for tool
-    - `toggleFeedbackLoop`: start or stop feedback loop
-    - `zero`: zero the plunger position
+    ### Methods:
+        `connect`: Connect to the device
+        `query`: Query the device
+        `getCapacitance`: Get the capacitance as measured at the end of the pipette
+        `getErrors`: Get errors from the device
+        `getPosition`: Get the current position of the pipette
+        `getStatus`: Get the status of the pipette
+        `isTipOn`: Check and return whether a pipette tip is attached
+        `getInfo`: Get details of the Sartorius pipette model
+        `getModel`: Get the model of the pipette
+        `getVolumeResolution`: Get the volume resolution of the pipette
+        `getInSpeedCode`: Get the speed code for aspirating
+        `getOutSpeedCode`: Get the speed code for dispensing
+        `getVersion`: Get the version of the pipette
+        `getLifetimeCycles`: Get the total number of cycles of the pipette
+        `setInSpeedCode`: Set the speed code for aspirating
+        `setOutSpeedCode`: Set the speed code for dispensing
+        `setChannelID`: Set the channel ID
+        `aspirate`: Aspirate desired volume of reagent into pipette
+        `blowout`: Blowout liquid from tip
+        `dispense`: Dispense desired volume of reagent
+        `eject`: Eject the pipette tip
+        `home`: Return plunger to home position
+        `move`: Move the plunger either up or down by a specified number of steps
+        `moveBy`: Move the plunger by a specified number of steps
+        `moveTo`: Move the plunger to a specified position
+        `zero`: Zero the plunger position
+        `reset`: Reset the pipette
     """
     
     _default_flags: SimpleNamespace = SimpleNamespace(
@@ -123,15 +148,23 @@ class SartoriusDevice(SerialDevice):
         **kwargs
     ):
         """
-        Instantiate the class
-
+        Initialize the Sartorius pipette device
+        
         Args:
-            port (str): COM port address
+            port (str, optional): COM port address. Defaults to None.
+            baudrate (int, optional): baudrate of the device. Defaults to 9600.
+            timeout (int, optional): timeout for communication. Defaults to 2.
             channel (int, optional): channel id. Defaults to 1.
-            offset (tuple[float], optional): x,y,z offset of tip. Defaults to (0,0,0).
-            response_time (float, optional): delay between sending a command and receiving a response, in seconds. Defaults to 1.03.
-            tip_inset_mm (float, optional): length of pipette that is inserted into the pipette tip. Defaults to 12.
+            step_resolution (int, optional): minimum number of steps to have tolerable errors in volume. Defaults to STEP_RESOLUTION.
+            response_time (float, optional): delay between sending a command and receiving a response, in seconds. Defaults to RESPONSE_TIME.
+            tip_inset_mm (int, optional): length of pipette that is inserted into the pipette tip. Defaults to 12.
             tip_capacitance (int, optional): threshold above which a conductive pipette tip is considered to be attached. Defaults to 276.
+            init_timeout (int, optional): timeout for initialization. Defaults to 2.
+            data_type (NamedTuple, optional): data type for communication. Defaults to Data.
+            read_format (str, optional): read format for communication. Defaults to READ_FORMAT.
+            write_format (str, optional): write format for communication. Defaults to WRITE_FORMAT.
+            simulation (bool, optional): simulation mode. Defaults to False.
+            verbose (bool, optional): verbose mode. Defaults to False.
         """
         super().__init__(
             port=port, baudrate=baudrate, timeout=timeout,
@@ -168,29 +201,34 @@ class SartoriusDevice(SerialDevice):
         return
     
     # Properties
-    
     @property
     def capacity(self) -> int:
+        """Capacity of the pipette"""
         return self.info.capacity
     
     @property
     def home_position(self) -> int:
+        """Home position of the pipette"""
         return self.info.home_position
     
     @property
     def max_position(self) -> int:
+        """Maximum position of the pipette"""
         return self.info.max_position
     
     @property
     def tip_eject_position(self) -> int:
+        """Tip eject position of the pipette"""
         return self.info.tip_eject_position
     
     @property
     def limits(self) -> tuple[int]:
+        """Lower and upper step limits of the pipette"""
         return (self.info.tip_eject_position, self.info.max_position)
     
     @property
     def preset_speeds(self) -> np.ndarray[int|float]:
+        """Preset speeds available for the pipette"""
         return np.array(self.info.preset_speeds)
     
     # General methods
@@ -282,15 +320,33 @@ class SartoriusDevice(SerialDevice):
     
     # Status query methods
     def getCapacitance(self) -> int:
+        """ 
+        Get the capacitance as measured at the end of the pipette
+        
+        Returns:
+            int: capacitance as measured at the end of the pipette
+        """
         out: IntData = self.query('DN', data_type=IntData)
         self.capacitance = out.data
         return out.data
     
     def getErrors(self) -> str:
+        """
+        Get errors from the device
+        
+        Returns:
+            str: errors from the device
+        """
         out: Data = self.query('DE')
         return out.data
     
     def getPosition(self) -> int:
+        """
+        Get the current position of the pipette
+        
+        Returns:
+            int: current position of the pipette
+        """
         out: IntData = self.query('DP', data_type=IntData)
         if self.flags.simulation:
             return self.position
@@ -298,6 +354,12 @@ class SartoriusDevice(SerialDevice):
         return out.data
     
     def getStatus(self) -> int:
+        """
+        Get the status of the pipette
+        
+        Returns:
+            int: status of the pipette
+        """
         out: IntData = self.query('DS', data_type=IntData)
         if self.flags.simulation:
             return self.status
@@ -311,6 +373,12 @@ class SartoriusDevice(SerialDevice):
         return out.data
     
     def isTipOn(self) -> bool:
+        """
+        Check and return whether a pipette tip is attached
+        
+        Returns:
+            bool: whether a pipette tip is attached
+        """
         if self.flags.conductive_tips:
             self.flags.tip_on = (self.getCapacitance() > self.tip_capacitance)
             logger.info(f'Tip capacitance: {self.capacitance}')
@@ -318,6 +386,15 @@ class SartoriusDevice(SerialDevice):
     
     # Getter methods
     def getInfo(self, *, model: str|None = None) -> lib.ModelInfo:
+        """
+        Get details of the Sartorius pipette model
+        
+        Args:
+            model (str, optional): model name. Defaults to None.
+            
+        Returns:
+            lib.ModelInfo: Sartorius model info
+        """
         if not self.is_connected:
             return
         self.model = self.getModel()
@@ -336,6 +413,12 @@ class SartoriusDevice(SerialDevice):
         return model_info
     
     def getModel(self) -> str:
+        """
+        Get the model of the pipette
+        
+        Returns:
+            str: model of the pipette
+        """
         out: Data = self.query('DM')
         model_name = out.data.split('-')[0]
         if model_name not in lib.Model._member_names_:
@@ -345,39 +428,96 @@ class SartoriusDevice(SerialDevice):
         return out.data
     
     def getVolumeResolution(self) -> float:
+        """
+        Get the volume resolution of the pipette
+        
+        Returns:
+            float: volume resolution of the pipette
+        """
         out: IntData = self.query('DR', data_type=IntData)
         return out.data / 1000
     
     def getInSpeedCode(self) -> int:
+        """
+        Get the speed code for aspirating
+        
+        Returns:
+            int: speed code for aspirating
+        """
         out: IntData = self.query('DI', data_type=IntData)
         return out.data
     
     def getOutSpeedCode(self) -> int:
+        """
+        Get the speed code for dispensing
+        
+        Returns:
+            int: speed code for dispensing
+        """
         out: IntData = self.query('DO', data_type=IntData)
         return out.data
     
     def getVersion(self) -> str:
+        """
+        Get the version of the pipette
+        
+        Returns:
+            str: version of the pipette
+        """
         out: Data = self.query('DV')
         return out.data
     
     def getLifetimeCycles(self) -> int:
+        """
+        Get the total number of cycles of the pipette
+        
+        Returns:
+            int: total number of cycles of the pipette
+        """
         out: IntData = self.query('DX', data_type=IntData)
         return out.data
     
     # Setter methods
     def setInSpeedCode(self, value:int) -> str:
+        """
+        Set the speed code for aspirating
+        
+        Args:
+            value (int): speed code
+            
+        Returns:
+            str: response from the device
+        """
         out: Data = self.query(f'SI{value}')
         if out.data == 'ok':
             self.speed_code_in = value
         return out.data
     
     def setOutSpeedCode(self, value:int) -> str:
+        """
+        Set the speed code for dispensing
+        
+        Args:
+            value (int): speed code
+            
+        Returns:
+            str: response from the device
+        """
         out: Data = self.query(f'SO{value}')
         if out.data == 'ok':
             self.speed_code_out = value
         return out.data
     
     def setChannelID(self, channel:int) -> str:
+        """
+        Set the channel ID
+        
+        Args:
+            channel (int): channel ID
+            
+        Returns:
+            str: response from the device
+        """
         assert 1 <= channel <= 9, "Channel ID must be between 1 and 9!"
         out: Data = self.query(f'*A{channel}')
         if out.data == 'ok':
@@ -386,6 +526,15 @@ class SartoriusDevice(SerialDevice):
     
     # Action methods
     def aspirate(self, steps:int) -> str:
+        """
+        Aspirate desired volume of reagent into pipette
+        
+        Args:
+            steps (int): number of steps to aspirate
+            
+        Returns:
+            str: response from the device
+        """
         steps = round(steps)
         assert steps >= 0, "Ensure non-negative steps!"
         # out: Data = self.query(f'RI{steps}', data_type=Data)
@@ -393,6 +542,16 @@ class SartoriusDevice(SerialDevice):
         return self.moveBy(steps)
     
     def blowout(self, home:bool = True, *, position: int|None = None) -> str:
+        """
+        Blowout liquid from tip
+        
+        Args:
+            home (bool, optional): return to home position. Defaults to True.
+            position (int|None, optional): position to move to. Defaults to None.
+            
+        Returns:
+            str: response from the device
+        """
         position = self.home_position if position is None else position
         position = round(position)
         data = f'RB{position}' if home else 'RB'
@@ -403,6 +562,15 @@ class SartoriusDevice(SerialDevice):
         return out.data
     
     def dispense(self, steps:int) -> str:
+        """
+        Dispense desired volume of reagent
+        
+        Args:
+            steps (int): number of steps to dispense
+            
+        Returns:
+            str: response from the device
+        """
         steps = round(steps)
         assert steps >= 0, "Ensure non-negative steps!"
         # out: Data =  self.query(f'RO{steps}', data_type=Data)
@@ -410,6 +578,16 @@ class SartoriusDevice(SerialDevice):
         return self.moveBy(-steps)
     
     def eject(self, home:bool = True, *, position: int|None = None) -> str:
+        """
+        Eject the pipette tip
+        
+        Args:
+            home (bool, optional): return to home position. Defaults to True.
+            position (int|None, optional): position to move to. Defaults to None.
+            
+        Returns:
+            str: response from the device
+        """
         position = self.home_position if position is None else position
         position = round(position)
         data = f'RE{position}' if home else 'RE'
@@ -421,12 +599,36 @@ class SartoriusDevice(SerialDevice):
         return out.data
     
     def home(self) -> str:
+        """
+        Return plunger to home position
+        
+        Returns:
+            str: response from the device
+        """
         return self.moveTo(self.home_position)
     
     def move(self, steps:int) -> str:
+        """
+        Move the plunger either up or down by a specified number of steps
+        
+        Args:
+            steps (int): number of steps to move
+            
+        Returns:
+            str: response from the device
+        """
         return self.moveBy(steps)
     
     def moveBy(self, steps:int) -> str:
+        """
+        Move the plunger by a specified number of steps
+        
+        Args:
+            steps (int): number of steps to move
+            
+        Returns:
+            str: response from the device
+        """
         steps = round(steps)
         assert (min(self.limits) <= (self.position+steps) <= max(self.limits)), f"Range limits reached! ({self.position+steps})"
         data = f'RI{steps}' if steps >= 0 else f'RO{abs(steps)}'
@@ -439,6 +641,15 @@ class SartoriusDevice(SerialDevice):
         return out.data
     
     def moveTo(self, position:int) -> str:
+        """
+        Move the plunger to a specified position
+        
+        Args:
+            position (int): position to move to
+            
+        Returns:
+            str: response from the device
+        """
         position = round(position)
         assert (min(self.limits) <= position <= max(self.limits)), f"Range limits reached! ({position})"
         out: Data = self.query(f'RP{position}')
@@ -450,6 +661,12 @@ class SartoriusDevice(SerialDevice):
         return out.data
     
     def zero(self) -> str:
+        """
+        Zero the plunger position
+        
+        Returns:
+            str: response from the device
+        """
         self.eject()
         out: Data = self.query('RZ')
         self.position = 0
@@ -457,6 +674,12 @@ class SartoriusDevice(SerialDevice):
         return out.data
     
     def reset(self) -> str:
+        """
+        Reset the pipette
+        
+        Returns:
+            str: response from the device
+        """
         self.zero()
         return self.home()
 
@@ -476,6 +699,10 @@ def interpolate_speed(
     Args:
         volume (int): volume to be transferred
         speed (int): speed at which liquid is transferred
+        speed_presets (tuple[int|float]): preset speeds available
+        volume_resolution (float): volume resolution of pipette (i.e. uL per step)
+        step_resolution (int, optional): minimum number of steps to have tolerable errors in volume. Defaults to STEP_RESOLUTION.
+        time_resolution (float, optional): minimum communication / time delay. Defaults to RESPONSE_TIME.
 
     Returns:
         dict: dictionary of best parameters

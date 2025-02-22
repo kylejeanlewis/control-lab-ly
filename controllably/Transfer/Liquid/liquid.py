@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-This module holds the base class for liquid handler tools.
+This module contains the LiquidHandler class.
 
-Classes:
-    LiquidHandler (ABC)
-    Speed (dataclass)
+## Classes:
+    `LiquidHandler`: Liquid handler base class
+    
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -27,21 +28,41 @@ handler.setLevel(logging.INFO)
 logger.addHandler(handler)
 
 class LiquidHandler:
-    """
-    LiquidHandler is an abstract base class for liquid handler tools.
-
-    ### Attributes
-    - `name` (str): name of the liquid handler tool
-    - `model` (Model): model of the liquid handler tool
-    - `speed` (Speed): speed of the liquid handler tool
-
-    ### Methods
-    - `transfer(volume: int, speed: int)`: abstract method for transferring liquid
-    - `home()`: abstract method for moving the liquid handler to home position
-    - `eject_tip()`: abstract method for ejecting the tip from the liquid handler
-    - `aspirate(volume: int)`: abstract method for aspirating liquid
-    - `dispense(volume: int)`: abstract method for dispensing liquid
-    - `set_speed(speed: int)`: abstract method for setting the speed of the liquid handler
+    """ 
+    Liquid handler base class
+    
+    ### Constructor:
+        `verbose` (bool, optional): verbosity of class. Defaults to False
+        
+    ### Attributes and properties:
+        `device`: Device object
+        `flags`: Flags for the class
+        `speed_in`: Speed for aspiration
+        `speed_out`: Speed for dispense
+        `reagent`: Name of reagent
+        `offset`: Offset for liquid handling
+        `connection_details`: Connection details for the device
+        `is_busy`: Whether the device is busy
+        `is_connected`: Whether the device is connected
+        `verbose`: Verbosity of class
+        `capacity`: Capacity of liquid handler
+        `channel`: Current channel of liquid handler
+        `volume`: Current volume of liquid in the channel
+        `volume_resolution`: Volume resolution of liquid handler
+        
+    ### Methods:
+        `connect`: Connect to the device
+        `disconnect`: Disconnect from the device
+        `resetFlags`: Reset all flags to to default
+        `shutdown`: Shutdown procedure for tool
+        `aspirate`: Aspirate desired volume of reagent
+        `blowout`: Blowout liquid from tip
+        `dispense`: Dispense desired volume of reagent
+        `pullback`: Pullback liquid from tip
+        `cycle`: Cycle between aspirate and dispense
+        `empty`: Empty the channel
+        `fill`: Fill the channel
+        `rinse`: Rinse the channel with aspirate and dispense cycles
     """
     
     _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, verbose=False)
@@ -181,10 +202,11 @@ class LiquidHandler:
         Args:
             volume (float): target volume
             speed (float|None, optional): speed to aspirate at. Defaults to None.
+            reagent (str|None, optional): name of reagent. Defaults to None.
+            pullback (bool, optional): whether to pullback after aspirate. Defaults to False.
             delay (int, optional): time delay after aspirate. Defaults to 0.
             pause (bool, optional): whether to pause for user intervention. Defaults to False.
-            reagent (str|None, optional): name of reagent. Defaults to None.
-            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+            ignore (bool, optional): whether to aspirate reagent regardless. Defaults to False.
 
         Returns:
             bool: whether the action is successful
@@ -219,9 +241,6 @@ class LiquidHandler:
     def blowout(self, **kwargs) -> bool:
         """
         Blowout liquid from tip
-
-        Args:
-            channel (Optional[Union[int, tuple[int]], optional): channel id. Defaults to None.
             
         Returns:
             bool: whether the action is successful
@@ -245,11 +264,10 @@ class LiquidHandler:
         Args:
             volume (float): target volume
             speed (float|None, optional): speed to dispense at. Defaults to None.
+            blowout (bool, optional): whether perform blowout. Defaults to False.
             delay (int, optional): time delay after dispense. Defaults to 0.
             pause (bool, optional): whether to pause for user intervention. Defaults to False.
-            blowout (bool, optional): whether perform blowout. Defaults to False.
             ignore (bool, optional): whether to dispense reagent regardless. Defaults to False.
-            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
 
         Returns:
             bool: whether the action is successful
@@ -281,9 +299,6 @@ class LiquidHandler:
     def pullback(self, **kwargs) -> bool:
         """
         Pullback liquid from tip
-
-        Args:
-            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
             
         Returns:
             bool: whether the action is successful
@@ -306,10 +321,9 @@ class LiquidHandler:
         Args:
             volume (float): target volume
             speed (float|None, optional): speed to aspirate and dispense at. Defaults to None.
-            delay (int, optional): time delay after each action. Defaults to 0.
-            cycles (int, optional): number of cycles. Defaults to 1.
             reagent (str|None, optional): name of reagent. Defaults to None.
-            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+            cycles (int, optional): number of cycles. Defaults to 1.
+            delay (int, optional): time delay after each action. Defaults to 0.
 
         Returns:
             bool: whether the action is successful
@@ -335,9 +349,9 @@ class LiquidHandler:
 
         Args:
             speed (float|None, optional): speed to empty. Defaults to None.
+            blowout (bool, optional): whether to perform blowout. Defaults to False.
             delay (int, optional): delay time between steps in seconds. Defaults to 0.
             pause (bool, optional): whether to pause for user intervention. Defaults to False.
-            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
             
         Returns:
             bool: whether the action is successful
@@ -359,11 +373,11 @@ class LiquidHandler:
 
         Args:
             speed (float|None, optional): speed to aspirate and dispense at. Defaults to None.
+            reagent (str|None, optional): name of reagent. Defaults to None.
+            pullback (bool, optional): whether to pullback after aspirate. Defaults to False.
+            cycles (int, optional): number of cycles before filling. Defaults to 0.
             delay (int, optional): time delay after each action. Defaults to 0.
             pause (bool, optional): whether to pause for user intervention. Defaults to False.
-            cycles (int, optional): number of cycles before filling. Defaults to 0.
-            reagent (str|None, optional): name of reagent. Defaults to None.
-            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
         
         Returns:
             bool: whether the action is successful
@@ -385,9 +399,9 @@ class LiquidHandler:
         
         Args:
             speed (float|None, optional): speed to aspirate and dispense at. Defaults to None.
-            delay (int, optional): time delay after each action. Defaults to 0.
+            reagent (str|None, optional): name of reagent. Defaults to None.
             cycles (int, optional): number of cycles. Defaults to 1.
-            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+            delay (int, optional): time delay after each action. Defaults to 0.
 
         Returns:
             bool: whether the action is successful

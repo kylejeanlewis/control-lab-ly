@@ -1,4 +1,14 @@
 # -*- coding: utf-8 -*-
+""" 
+This module provides a class for handling TriContinent pumps.
+
+## Classes:
+    `TriContinent`: Class for handling TriContinent pumps.
+    `Multi_TriContinent`: Class for handling multiple TriContinent pumps.
+    `Parallel_TriContinent`: Class for handling multiple TriContinent pumps in parallel.
+
+<i>Documentation last updated: 2025-02-22</i>
+"""
 # Standard library imports
 from __future__ import annotations
 import logging
@@ -13,6 +23,46 @@ logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
 
 class TriContinent(LiquidHandler):
+    """
+    TriContinent class for handling TriContinent pumps.
+    
+    ### Constructor:
+        `port` (str): The port of the pump.
+        `capacity` (float, optional): The capacity of the pump. Defaults to 1000.0.
+        `channel` (int, optional): The channel of the pump. Defaults to 1.
+        `verbose` (bool, optional): Whether to output extra information. Defaults to False.
+        `simulation` (bool, optional): Whether to simulate the pump. Defaults to False.
+        
+    ### Attributes and properties:
+        `capacity` (float): The capacity of the pump.
+        `channel` (int): The channel of the pump.
+        `volume_resolution` (float): The volume resolution of the pump.
+        `pullback_steps` (int): The number of pullback steps.
+        `speed_in` (int): The speed of the pump when aspirating.
+        `speed_out` (int): The speed of the pump when dispensing.
+        `start_speed` (int): The start speed of the pump.
+        `acceleration` (int): The acceleration of the pump.
+        `valve_position` (str): The valve position of the pump.
+        `init_status` (bool): The initialization status of the pump.
+        
+    ### Methods:
+        `connect`: Connect to the pump.
+        `aspirate`: Aspirate desired volume of reagent.
+        `dispense`: Dispense desired volume of reagent.
+        `getState`: Get the settings of the pump.
+        `home`: Home the pump.
+        `setSpeed`: Set the speed of the pump.
+        `reverse`: Reverse the pump.
+        `setChannel`: Set the channel
+        `disconnect`: Disconnect from the device
+        `resetFlags`: Reset all flags to to default
+        `shutdown`: Shutdown procedure for tool
+        `cycle`: Cycle between aspirate and dispense
+        `empty`: Empty the channel
+        `fill`: Fill the channel
+        `rinse`: Rinse the channel with aspirate and dispense cycles
+    """
+    
     def __init__(self,
         port: str,
         capacity: float = 1000.0,  # uL
@@ -26,10 +76,11 @@ class TriContinent(LiquidHandler):
         Initialize the TriContinent class.
 
         Args:
-            device (TriContinentDevice): The TriContinent device that is being used.
-            volume (float): The volume of the pipette tool.
-            step_resolution (int): The step resolution of the pipette tool.
-            speed (float): The speed of the pipette tool.
+            port (str): The port of the pump.
+            capacity (float, optional): The capacity of the pump. Defaults to 1000.0.
+            channel (int, optional): The channel of the pump. Defaults to 1.
+            verbose (bool, optional): Whether to output extra information. Defaults to False.
+            simulation (bool, optional): Whether to simulate the pump. Defaults to False.
         """
         super().__init__(
             device_type=TriContinentDevice, port=port, channel=channel, 
@@ -50,21 +101,25 @@ class TriContinent(LiquidHandler):
     
     @property
     def start_speed(self):
+        """Start speed of the pump"""
         self.setChannel()
         return self.device.start_speed
     
     @property
     def acceleration(self):
+        """Acceleration of the pump"""
         self.setChannel()
         return self.device.acceleration
     
     @property
     def valve_position(self):
+        """Valve position of the pump"""
         self.setChannel()
         return self.device.valve_position
     
     @property
     def init_status(self):
+        """Initialization status of the pump"""
         self.setChannel()
         return self.device.init_status
     
@@ -200,6 +255,9 @@ class TriContinent(LiquidHandler):
     def getState(self) -> dict[str, int|str|bool]:
         """
         Get the settings of the pump.
+        
+        Returns:
+            dict[str, int|str|bool]: The settings of the pump.
         """
         self.setChannel()
         state = self.device.getState()
@@ -209,9 +267,7 @@ class TriContinent(LiquidHandler):
         return state
     
     def home(self):
-        """
-        Home the pump.
-        """
+        """Home the pump."""
         self.setChannel()
         self.device.initialize(self.device.output_right)
         self.volume = self.device.position * self.volume_resolution
@@ -229,20 +285,13 @@ class TriContinent(LiquidHandler):
         return
     
     def reverse(self):
-        """
-        Reverse the pump.
-        """
+        """Reverse the pump."""
         self.setChannel()
         self.device.reverse()
         return
     
     def setChannel(self):
-        """
-        Set the channel of the pump.
-
-        Args:
-            channel (int): The channel of the pump.
-        """
+        """Set the channel of the pump."""
         if self.channel != self.device.channel:
             self.device.setChannel(self.channel)
         return

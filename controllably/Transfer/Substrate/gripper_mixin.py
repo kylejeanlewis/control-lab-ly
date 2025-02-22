@@ -9,7 +9,7 @@ Attributes:
 ## Classes:
     `GripperMixin`: Mixin class for gripper control
     
-<i>Documentation last updated: 2024-11-19</i>
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -63,6 +63,11 @@ class GripperMixin:
         return 
     
     def toggleGrip(self, on:bool):
-        """Toggle grip"""
+        """
+        Toggle grip
+        
+        Args:
+            on (bool): True to turn on, False to turn off
+        """
         raise NotImplementedError
     
