@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
+from __future__ import annotations
+from datetime import datetime
 import logging
+import os
+from pathlib import Path
 import time
 import tkinter as tk
 from tkinter import ttk
+from tkinter import filedialog
 from typing import Protocol, Iterable
 
 # Third party imports
@@ -60,6 +65,11 @@ class ViewPanel(Panel):
         self.latest_frame: np.ndarray|None = None
         self.tk_image: ImageTk.PhotoImage|None = None
         
+        # Dialog values
+        self.loaded_filename = 'Feed'
+        self.last_visited_load_dir = os.getcwd()
+        self.last_visited_save_dir = os.getcwd()
+        
         # Settings
         self.button_height = BUTTON_HEIGHT
         self.button_width = BUTTON_WIDTH
@@ -69,7 +79,7 @@ class ViewPanel(Panel):
     def latest_image(self) -> Image.Image|None:
         return Image.fromarray(self.latest_frame) if self.latest_frame is not None else None
     
-    def update(self, **kwargs):
+    def updateStream(self, **kwargs):
         attributes = self.getAttributes(
             ('is_connected', False)
         )
@@ -88,8 +98,7 @@ class ViewPanel(Panel):
         self.is_connected_previous = self.is_connected
         self.refresh()
         if isinstance(self.widget, tk.Tk):
-            
-            self.widget.after(int(1000/self.fps), self.update)
+            self.widget.after(int(1000/self.fps), self.updateStream)
         return 
     
     def refresh(self, **kwargs):
@@ -98,14 +107,27 @@ class ViewPanel(Panel):
         
         # Update labels
         self.label_status.config(text=self.status)
+        self.label_canvas.config(text=self.loaded_filename)
         
         # Update buttons
         self.button_connect.config(text=('Disconnect' if self.is_connected else 'Connect'))
         self.button_freeze.config(text=('Unfreeze' if self.is_frozen else 'Freeze'))
         
+        # Update entries
+        self.entry_save.delete(0, tk.END)
+        self.entry_save.insert(0, str(self.last_visited_save_dir).replace('None',''))
+        
         # Redraw canvas
-        if self.latest_frame is not None:
-            self.tk_image = ImageTk.PhotoImage(image=self.latest_image, master=self.image_frame)
+        if self.latest_frame is not None and all(self.latest_frame.shape):
+            # width = self.image_frame.winfo_width()
+            # height = self.image_frame.winfo_height()
+            # image_height,image_width,_ = self.latest_frame.shape
+            # aspect_ratio = image_width/image_height
+            # width,height = (height/aspect_ratio,height) if (width/height > aspect_ratio) else (width, width*aspect_ratio)
+            # image = self.latest_image.resize((int(width),int(height)))
+            image = self.latest_image
+            self.tk_image = ImageTk.PhotoImage(image=image, master=self.image_frame)
+            self.canvas.delete("all")
             self.canvas.create_image(0,0, image=self.tk_image, anchor=tk.NW)
         return
     
@@ -121,43 +143,62 @@ class ViewPanel(Panel):
         
         button_frame = ttk.Frame(status_frame)
         button_frame.grid(row=0, column=0, padx=10, pady=10, sticky='nsew')
-        button_frame.columnconfigure([0,1,2,3],weight=1)
+        button_frame.columnconfigure([0,1,2],weight=1)
         
         self.image_frame = ttk.Frame(master)
         self.image_frame.grid(row=1, column=0, padx=10, pady=10, sticky='nsew')
-        self.image_frame.rowconfigure(0,weight=1)
+        self.image_frame.rowconfigure(1,weight=1)
         self.image_frame.columnconfigure(0,weight=1)
         
+        save_frame = ttk.Frame(master)
+        save_frame.grid(row=2, column=0, padx=10, pady=10, sticky='nsew')
+        save_frame.columnconfigure(0,weight=1)
+        
         # Status Display
-        # self.button_refresh = ttk.Button(status_frame, text='Refresh', command=self.update, state='disabled', width=self.button_width)
         self.label_status = ttk.Label(status_frame, text="Disconnected")
-        # self.button_refresh.grid(row=0, column=1)
         self.label_status.grid(row=0, column=1)
         
         # Buttons
         self.button_freeze = ttk.Button(button_frame, text='Freeze', command=self.toggleFreeze, width=self.button_width)
-        self.button_save = ttk.Button(button_frame, text='Save', command=lambda: self.save(), width=self.button_width)
-        self.button_load = ttk.Button(button_frame, text='Load', command=lambda: 0, width=self.button_width)
+        self.button_load = ttk.Button(button_frame, text='Load', command=self.load, width=self.button_width)
         self.button_connect = ttk.Button(button_frame, text='Connect', command=self.toggleConnect, width=self.button_width)
         self.button_freeze.grid(row=0,column=0,sticky='nsew')
-        self.button_save.grid(row=0,column=1,sticky='nsew')
-        self.button_load.grid(row=0,column=2,sticky='nsew')
-        self.button_connect.grid(row=0,column=3,sticky='nsew')
+        self.button_load.grid(row=0,column=1,sticky='nsew')
+        self.button_connect.grid(row=0,column=2,sticky='nsew')
         
         # Canvas
+        self.label_canvas = ttk.Label(self.image_frame, text='')
+        self.label_canvas.grid(row=0, column=0, sticky='nsew')
         self.canvas = tk.Canvas(self.image_frame, width=self.size[0], height=self.size[1])
-        self.canvas.grid(row=1, column=0, padx=10, pady=10, sticky='nsew')
+        self.canvas.grid(row=1, column=0,    sticky='nsew')
+        
+        # Save options
+        self.button_save = ttk.Button(save_frame, text='Save', command=self.save, width=self.button_width)
+        self.button_save.grid(row=0, column=1, sticky='nsew')
+        self.entry_save = ttk.Entry(save_frame, width=2*self.button_width, justify=tk.LEFT)
+        self.entry_save.grid(row=0, column=0, sticky='nsew')
+        self.entry_save.bind("<ButtonPress-1>", lambda event: self.getSaveDirectory())
         
         return super().addTo(master, (self.button_width,self.button_height))
-        
-    def save(self, filename:str|None = None):
-        tag = "canvas"
-        self.canvas.itemcget(tag, "image")
-        self.principal.saveFrame(self.latest_frame, filename)
+    
+    def getSaveDirectory(self):
+        self.last_visited_save_dir = filedialog.askdirectory(initialdir=self.last_visited_save_dir)
         return
     
-    def load(self, filename:str):
-        image = self.principal.loadImageFile(filename)
+    def save(self):
+        now = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f'image-{now}.png'
+        filepath = Path(self.last_visited_save_dir)/filename
+        self.principal.saveFrame(self.latest_frame, str(filepath))
+        return
+    
+    def load(self):
+        filename = filedialog.askopenfilename(initialdir=self.last_visited_load_dir)
+        if not filename:
+            return
+        self.last_visited_load_dir = str(Path(filename).parent)
+        self.loaded_filename = filename
+        image = cv2.cvtColor(cv2.imread(filename), cv2.COLOR_BGR2RGB)
         self.is_frozen = True
         self.latest_frame = image
         return
@@ -167,6 +208,8 @@ class ViewPanel(Panel):
     
     def toggleFreeze(self):
         self.is_frozen = not self.is_frozen
+        if not self.is_frozen:
+            self.loaded_filename = 'Feed'
         return
             
     def connect(self):
@@ -180,7 +223,11 @@ class ViewPanel(Panel):
         return
         
     def getFrame(self):
-        ret, frame = self.principal.getFrame()
-        self.latest_frame = frame if (not self.is_frozen and ret) else self.latest_frame
+        next_frame = self.latest_frame
+        if not self.is_frozen:
+            ret, frame = self.principal.getFrame()
+            if ret:
+                next_frame = frame
+        self.latest_frame = next_frame
         return
     
