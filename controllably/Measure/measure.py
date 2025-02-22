@@ -1,4 +1,17 @@
 # -*- coding: utf-8 -*-
+""" 
+This module contains the base classes for making measurements with a device.
+
+Attributes:
+    MAX_LEN (int): maximum length of data buffer
+    
+## Classes:
+    `Measurer`: Base class for maker tools
+    `Program`: Base Program template
+    `ProgramDetails`: ProgramDetails dataclass represents the set of inputs, default values, truncated docstring and tooltip of a program class
+    
+<i>Documentation last updated: 2025-02-22</i>
+"""
 # Standard library imports
 from __future__ import annotations
 from collections import deque
@@ -35,7 +48,15 @@ class Measurer:
     ### Constructor
         `verbose` (bool, optional): verbosity of class. Defaults to False.
     
-    ### Attributes and properties
+    ### Attributes and properties:
+        `buffer` (deque): data buffer for the device
+        `buffer_df` (pd.DataFrame): data buffer as a DataFrame
+        `records` (deque): records for the device
+        `records_df` (pd.DataFrame): records as a DataFrame
+        `record_event` (threading.Event): event for recording data
+        `program` (Program): program to run
+        `runs` (dict): dictionary of runs
+        `n_runs` (int): number of runs
         `connection_details` (dict): connection details for the device
         `device` (Device): device object that communicates with physical tool
         `flags` (SimpleNamespace[str, bool]): flags for the class
@@ -55,7 +76,7 @@ class Measurer:
     _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, verbose=False)
     def __init__(self, *, verbose:bool = False, **kwargs):
         """
-        Instantiate the class
+        Initialize Measurer class
 
         Args:
             verbose (bool, optional): verbosity of class. Defaults to False.
@@ -117,10 +138,12 @@ class Measurer:
     # Data logging properties
     @property
     def buffer_df(self) -> pd.DataFrame:
+        """Data buffer as a DataFrame"""
         return self.getDataframe(data_store=self.buffer)
     
     @property
     def records_df(self) -> pd.DataFrame:
+        """Records as a DataFrame"""
         return self.getDataframe(data_store=self.records)
     
     def connect(self):
@@ -134,6 +157,7 @@ class Measurer:
         return
     
     def reset(self):
+        """Reset the device and clear cache"""
         self.clearCache()
         self.program = None
         return
@@ -151,6 +175,18 @@ class Measurer:
 
     # Category specific properties and methods
     def measure(self, *args, parameters: dict|None = None, blocking:bool = True, **kwargs) -> pd.DataFrame|None:
+        """
+        Run the measurement program
+        
+        Args:
+        *args: positional arguments
+            parameters (dict, optional): dictionary of kwargs. Defaults to None.
+            blocking (bool, optional): whether to block until completion. Defaults to True.
+            **kwargs: keyword arguments
+            
+        Returns:
+            pd.DataFrame|None: dataframe of data collected
+        """
         assert issubclass(self.program, Program), "No Program loaded"
         new_run = self.program(
             instrument = self, 
@@ -170,18 +206,36 @@ class Measurer:
         return new_run.data_df
         
     def loadProgram(self, program: Program):
+        """
+        Load a program to the Measurer
+        
+        Args:
+            program (Program): program to load
+        """
         assert issubclass(program, Program), "Ensure program type is a subclass of Program"
         self.program = program
         self.measure.__func__.__doc__ = program.parseDocstring(program, verbose=self.verbose)
         return
         
     def clearCache(self):
+        """Clear the cache"""
         self.buffer.clear()
         self.records.clear()
         self.n_runs = 0
         return
         
     def getData(self, query:Any|None = None, *args, **kwargs) -> Any|None:
+        """
+        Get data from the device
+        
+        Args:
+            query (Any, optional): query to device. Defaults to None.
+            *args: positional arguments
+            **kwargs: keyword arguments
+            
+        Returns:
+            Any|None: data from device
+        """
         if not self.device.stream_event.is_set():
             return self.device.query(query, multi_out=False)
         
@@ -191,21 +245,57 @@ class Measurer:
         return data
     
     def getDataframe(self, data_store: Iterable[NamedTuple, datetime]) -> pd.DataFrame:
+        """
+        Get dataframe of data collected
+        
+        Args:
+            data_store (Iterable[NamedTuple, datetime]): data store
+            
+        Returns:
+            pd.DataFrame: dataframe of data collected
+        """
         return datalogger.get_dataframe(data_store=data_store, fields=self.device.data_type._fields)
     
     def saveData(self, filepath:str|Path):
+        """
+        Save data to file
+        
+        Args:
+            filepath (str|Path): path to save file
+        """
         if not len(self.records):
             raise
         self.records_df.to_csv(filepath)
         return
     
     def record(self, on: bool, show: bool = False, clear_cache: bool = False):
+        """
+        Record data from the device
+        
+        Args:
+            on (bool): whether to record data
+            show (bool, optional): whether to show data. Defaults to False.
+            clear_cache (bool, optional): whether to clear the cache. Defaults to False.
+            
+        Returns:
+            pd.DataFrame: dataframe of data collected
+        """
         return datalogger.record(
             on=on, show=show, clear_cache=clear_cache, data_store=self.records, 
             device=self.device, event=self.record_event
         )
     
     def stream(self, on: bool, show: bool = False):
+        """
+        Stream data from the device
+        
+        Args:
+            on (bool): whether to stream data
+            show (bool, optional): whether to show data. Defaults to False.
+            
+        Returns:
+            pd.DataFrame: dataframe of data collected
+        """
         return datalogger.stream(
             on=on, show=show, data_store=self.buffer, 
             device=self.device, event=self.record_event
@@ -218,15 +308,21 @@ class Program:
 
     ### Constructor
     Args:
-        `device` (Device): device object
-        `parameters` (Optional[dict], optional): dictionary of kwargs. Defaults to None.
+        `instrument` (Measurer, optional): Measurer object. Defaults to None.
+        `parameters` (dict, optional): dictionary of kwargs. Defaults to None.
         `verbose` (bool, optional): verbosity of class. Defaults to False.
         
-    ### Attributes and properties
-    - `data_df` (pd.DataFrame): data collected from device when running the program
-    - `device` (Device): device object
-    - `parameters` (dict[str, ...]): parameters
-    - `verbose` (bool): verbosity of class
+    ### Attributes and properties:
+        `data` (deque): data collected from device when running the program
+        `instrument` (Measurer): Measurer object
+        `parameters` (dict): dictionary of kwargs
+        `verbose` (bool): verbosity of class
+        `data_df` (pd.DataFrame): dataframe of data collected
+        
+    ### Methods
+        `getDataframe`: get dataframe of data collected
+        `run`: measurement program to run
+        `saveData`: save data to file
 
     ==========
     """
@@ -236,6 +332,15 @@ class Program:
         verbose: bool = False, 
         **kwargs
     ):
+        """
+        Initialize Program class
+        
+        Args:
+            instrument (Measurer, optional): Measurer object. Defaults to None.
+            parameters (dict, optional): dictionary of kwargs. Defaults to None.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
+        
         self.data = deque()
         self.instrument = instrument
         self.parameters = parameters or dict()
@@ -249,6 +354,7 @@ class Program:
     
     @property
     def data_df(self) -> pd.DataFrame:
+        """Data collected from device when running the program"""
         return self.getDataframe(self.data)
     
     @staticmethod
@@ -297,6 +403,15 @@ class Program:
         return details
     
     def getDataframe(self, data_store: Iterable[NamedTuple, datetime]) -> pd.DataFrame:
+        """
+        Get dataframe of data collected
+        
+        Args:
+            data_store (Iterable[NamedTuple, datetime]): data store
+            
+        Returns:
+            pd.DataFrame: dataframe of data collected
+        """
         assert issubclass(self.instrument, Measurer), "Ensure instrument is a (subclass of) Measurer"
         return self.instrument.getDataframe(data_store=data_store)
     
@@ -311,6 +426,12 @@ class Program:
         return self.data_df
     
     def saveData(self, filepath: str|Path):
+        """
+        Save data to file
+        
+        Args:
+            filepath (str|Path): path to save file
+        """
         self.data_df.to_csv(filepath)
         return
 

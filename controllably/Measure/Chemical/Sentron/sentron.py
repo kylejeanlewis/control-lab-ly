@@ -1,4 +1,17 @@
 # -*- coding: utf-8 -*-
+""" 
+This module provides a class for the Sentron pH meter.
+
+Attributes:
+    MAX_LEN (int): Maximum length of the data buffer
+    READ_FORMAT (str): Format for reading data
+    pHData (NamedTuple): NamedTuple for pH data
+    
+## Classes:
+    `SI600`: Sentron pH meter class
+    
+<i>Documentation last updated: 2025-02-22</i>
+"""
 # Standard library imports
 from __future__ import annotations
 import logging
@@ -17,6 +30,51 @@ READ_FORMAT = "{yymmdd} {hhmmss} {sample}  {pH}  {temperature}\n"
 pHData = NamedTuple('pHData', [('yymmdd',str),('hhmmss',str),('pH',float),('temperature',float), ('sample',str)])
 
 class SI600(Measurer):
+    """
+    Sentron pH meter
+    
+    ### Constructor:
+        `port` (str): Serial port
+        `stabilize_timeout` (float): Time to wait for the device to stabilize
+        `pH_tolerance` (float): Tolerance for pH
+        `temp_tolerance` (float): Tolerance for temperature
+        `baudrate` (int): Baudrate for serial communication
+        `verbose` (bool): Print verbose output
+        
+    ### Attributes and properties:
+        `pH_tolerance` (float): Tolerance for pH
+        `temp_tolerance` (float): Tolerance for temperature
+        `stabilize_timeout` (float): Time to wait for the device to stabilize
+        `buffer` (deque): data buffer for the device
+        `buffer_df` (pd.DataFrame): data buffer as a DataFrame
+        `records` (deque): records for the device
+        `records_df` (pd.DataFrame): records as a DataFrame
+        `record_event` (threading.Event): event for recording data
+        `program` (Program): program to run
+        `runs` (dict): dictionary of runs
+        `n_runs` (int): number of runs
+        `connection_details` (dict): connection details for the device
+        `device` (Device): device object that communicates with physical tool
+        `flags` (SimpleNamespace[str, bool]): flags for the class
+        `is_busy` (bool): whether the device is busy
+        `is_connected` (bool): whether the device is connected
+        `verbose` (bool): verbosity of class
+        
+    ### Methods:
+        `getData`: Get pH and temperature data
+        `atPH`: Check if the device is at the target pH
+        `atTemperature`: Check if the device is at the target temperature
+        `getPH`: Get pH
+        `getTemperature`: Get temperature
+        `record`: Record data
+        `stream`: Stream data
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `execute`: execute task
+        `resetFlags`: reset all flags to class attribute `_default_flags`
+        `run`: alias for `execute()`
+        `shutdown`: shutdown procedure for the device
+    """
     
     def __init__(self,
         port: str,
@@ -28,6 +86,17 @@ class SI600(Measurer):
         verbose: bool = False, 
         **kwargs
     ):
+        """ 
+        Initialize the Sentron pH meter
+        
+        Args:
+            port (str): Serial port
+            stabilize_timeout (float): Time to wait for the device to stabilize
+            pH_tolerance (float): Tolerance for pH
+            temp_tolerance (float): Tolerance for temperature
+            baudrate (int): Baudrate for serial communication
+            verbose (bool): Print verbose output
+        """
         super().__init__(
             port=port, baudrate=baudrate, verbose=verbose, 
             read_format=READ_FORMAT, data_type=pHData, **kwargs
@@ -41,7 +110,10 @@ class SI600(Measurer):
     
     def getData(self, *args, **kwargs) -> pHData|None:
         """
-        Get data from device
+        Get pH and temperature data
+        
+        Returns:
+            pHData: pH and temperature data
         """
         return super().getData(query='ACT', *args, **kwargs)
     
@@ -51,8 +123,16 @@ class SI600(Measurer):
         tolerance: float|None = None,
         stabilize_timeout: float = 0
     ) -> bool:
-        """
+        """ 
         Check if the device is at the target pH
+        
+        Args:
+            pH (float): Target pH
+            tolerance (float): Tolerance for pH
+            stabilize_timeout (float): Time to wait for the device to stabilize
+            
+        Returns:
+            bool: True if the device is at the target pH
         """
         data = self.getData()
         if data is None:
@@ -76,6 +156,14 @@ class SI600(Measurer):
     ) -> bool:
         """
         Check if the device is at the target temperature
+        
+        Args:
+            temperature (float): Target temperature
+            tolerance (float): Tolerance for temperature
+            stabilize_timeout (float): Time to wait for the device to stabilize
+            
+        Returns:
+            bool: True if the device is at the target temperature
         """
         data = self.getData()
         if data is None:
@@ -93,7 +181,10 @@ class SI600(Measurer):
     
     def getPH(self) -> float|None:
         """
-        Get temperature
+        Get pH
+        
+        Returns:
+            float: pH
         """
         data = self.getData()
         if data is None:
@@ -103,6 +194,9 @@ class SI600(Measurer):
     def getTemperature(self) -> float|None:
         """
         Get temperature
+        
+        Returns:
+            float: temperature
         """
         data = self.getData()
         if data is None:

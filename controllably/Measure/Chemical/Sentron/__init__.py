@@ -1,8 +1,3 @@
-"""
-This sub-package imports the classes for chemical measurement tools from Sentron.
-
-Classes:
-    pHMeter (Measurer)
-"""
-from .phmeter_utils import SentronProbe
+# -*- coding: utf-8 -*-
+"""Sub package for Sentron pH meter."""
 from .sentron import SI600

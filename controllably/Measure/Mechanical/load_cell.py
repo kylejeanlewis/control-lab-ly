@@ -1,4 +1,16 @@
 # -*- coding: utf-8 -*-
+""" 
+This module provides a class for the load cell.
+
+Attributes:
+    READ_FORMAT (str): Format for reading data
+    ValueData (NamedTuple): NamedTuple for value data
+    
+## Classes:
+    `LoadCell`: Load cell class
+    
+<i>Documentation last updated: 2025-02-22</i>
+"""
 # Standard library imports
 from __future__ import annotations
 from datetime import datetime
@@ -20,6 +32,54 @@ READ_FORMAT = "{value}\n"
 ValueData = NamedTuple('ValueData', [('value', int)])
 
 class LoadCell(Measurer):
+    """
+    Load cell
+    
+    ### Constructor:
+        `port` (str): Serial port
+        `stabilize_timeout` (float): Time to wait for the device to stabilize
+        `force_tolerance` (float): Tolerance for force
+        `calibration_factor` (float): counts per unit force
+        `correction_parameters` (tuple[float]): polynomial correction parameters, starting with highest order
+        `baudrate` (int): Baudrate for serial communication
+        `verbose` (bool): Print verbose output
+        
+    ### Attributes and properties:
+        `force_tolerance` (float): Tolerance for force
+        `stabilize_timeout` (float): Time to wait for the device to stabilize
+        `baseline` (int): Baseline value
+        `calibration_factor` (float): counts per unit force
+        `correction_parameters` (tuple[float]): polynomial correction parameters, starting with highest order
+        `buffer` (deque): data buffer for the device
+        `buffer_df` (pd.DataFrame): data buffer as a DataFrame
+        `records` (deque): records for the device
+        `records_df` (pd.DataFrame): records as a DataFrame
+        `record_event` (threading.Event): event for recording data
+        `program` (Program): program to run
+        `runs` (dict): dictionary of runs
+        `n_runs` (int): number of runs
+        `connection_details` (dict): connection details for the device
+        `device` (Device): device object that communicates with physical tool
+        `flags` (SimpleNamespace[str, bool]): flags for the class
+        `is_busy` (bool): whether the device is busy
+        `is_connected` (bool): whether the device is connected
+    
+    ### Methods:
+        `connect`: Connect to the device
+        `getAttributes`: Get attributes
+        `getData`: Get data from device
+        `getDataframe`: Get data as a DataFrame
+        `atForce`: Check if the device is at the target force
+        `getForce`: Get force
+        `getValue`: Get value
+        `reset`: Reset the device
+        `zero`: Set current reading as baseline
+        `disconnect`: disconnect from the device
+        `execute`: execute task
+        `resetFlags`: reset all flags to class attribute `_default_flags`
+        `run`: alias for `execute()`
+        `shutdown`: shutdown procedure for tool
+    """
     
     def __init__(self,
         port: str,
@@ -32,6 +92,18 @@ class LoadCell(Measurer):
         verbose: bool = False, 
         **kwargs
     ):
+        """ 
+        Initialize the LoadCell class
+        
+        Args:
+            port (str): Serial port
+            stabilize_timeout (float): Time to wait for the device to stabilize
+            force_tolerance (float): Tolerance for force
+            calibration_factor (float): counts per unit force
+            correction_parameters (tuple[float]): polynomial correction parameters, starting with highest order
+            baudrate (int): Baudrate for serial communication
+            verbose (bool): Print verbose output
+        """
         defaults = dict(
             init_timeout=3, 
             data_type=ValueData, 
@@ -66,12 +138,21 @@ class LoadCell(Measurer):
         return
     
     def getAttributes(self) -> dict:
+        """
+        Get attributes
+        
+        Returns:
+            dict: Attributes
+        """
         relevant = ['correction_parameters', 'baseline', 'calibration_factor', 'force_tolerance', 'stabilize_timeout']
         return {key: getattr(self, key) for key in relevant}
     
     def getData(self, *args, **kwargs) -> ValueData|None:
         """
         Get data from device
+        
+        Returns:
+            ValueData: Value data
         """
         return super().getData(*args, **kwargs)
     
@@ -89,6 +170,14 @@ class LoadCell(Measurer):
     ) -> bool:
         """
         Check if the device is at the target temperature
+        
+        Args:
+            force (float): Target force
+            tolerance (float): Tolerance for force
+            stabilize_timeout (float): Time to wait for the device to stabilize
+            
+        Returns:
+            bool: True if the device is at the target force
         """
         force_actual = self.getForce()
         if force_actual is None:
@@ -107,6 +196,9 @@ class LoadCell(Measurer):
     def getForce(self) -> float|None:
         """
         Get force
+        
+        Returns:
+            float: Force
         """
         data = self.getValue()
         if data is None:
@@ -115,7 +207,10 @@ class LoadCell(Measurer):
     
     def getValue(self) -> float|None:
         """
-        Get temperature
+        Get value
+        
+        Returns:
+            float: Value
         """
         data = self.getData()
         if data is None:
@@ -130,6 +225,9 @@ class LoadCell(Measurer):
     def zero(self, wait: float = 5.0):
         """
         Set current reading as baseline
+        
+        Args:
+            wait (float): Time to wait for the device to stabilize
         """
         self.record_event.clear()
         self.buffer.clear()
@@ -144,8 +242,26 @@ class LoadCell(Measurer):
         return
     
     def _calculate_force(self, value: float) -> float:
+        """
+        Calculate force from value
+        
+        Args:
+            value (float): Value
+            
+        Returns:
+            float: Force
+        """
         return (value-self.baseline)/self.calibration_factor
     
     def _correct_value(self, value: float) -> float:
+        """
+        Correct value
+        
+        Args:
+            value (float): Value
+            
+        Returns:
+            float: Corrected value
+        """
         return sum([param * (value**i) for i,param in enumerate(self.correction_parameters[::-1])])
     
