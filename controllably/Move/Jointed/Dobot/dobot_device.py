@@ -9,7 +9,7 @@ Attributes:
 ## Classes:
     `DobotDevice`: DobotDevice provides methods to connect and interface with Dobot's arms
     
-<i>Documentation last updated: 2024-11-23</i>
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard imports
 from __future__ import annotations

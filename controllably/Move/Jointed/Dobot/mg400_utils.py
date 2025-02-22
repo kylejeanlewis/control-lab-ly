@@ -8,14 +8,17 @@ Attributes:
 ## Classes:
     `MG400`: MG400 provides methods to control Dobot's MG400 robot arm
 
-<i>Documentation last updated: 2024-11-23</i>
+## Functions:
+    `within_volume`: checks whether a point is within the robot's workspace
+
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 from __future__ import annotations
 import logging
 import math
 from types import SimpleNamespace
-from typing import Sequence, final
+from typing import Sequence
 
 # Third party imports
 import numpy as np
@@ -30,6 +33,15 @@ logger.debug(f"Import: OK <{__name__}>")
 DEFAULT_SPEEDS = dict(max_speed_j1=300, max_speed_j2=300, max_speed_j3=300, max_speed_j4=300)
 
 def within_volume(point: Sequence[float]) -> bool:
+    """ 
+    Check whether a point is within the robot's workspace
+    
+    Args:
+        point (Sequence[float]): 3D coordinates of the point
+        
+    Returns:
+        bool: whether the point is within the robot's workspace
+    """
     assert len(point) == 3, f"Ensure point is a 3D coordinate"
     x,y,z = point
     # XY-plane
@@ -43,7 +55,6 @@ def within_volume(point: Sequence[float]) -> bool:
         return False
     return True
 
-@final
 class MG400(Dobot):
     """
     MG400 provides methods to control Dobot's MG400 robot arm

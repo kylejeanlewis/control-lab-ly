@@ -1,4 +1,17 @@
 # -*- coding: utf-8 -*-
+""" 
+This module provides a class to interact with the Marlin firmware.
+
+Attributes:
+    LOOP_INTERVAL (float): loop interval for checking status
+    MOVEMENT_TIMEOUT (int): timeout for movement
+    READ_FORMAT (str): read format for serial communication
+    WRITE_FORMAT (str): write format for serial communication
+    Data (NamedTuple): data structure for serial communication
+    
+## Classes:
+    `Marlin`: Marlin class provides methods to interact with the Marlin firmware.
+"""
 # Standard library imports
 from __future__ import annotations
 import logging
@@ -27,6 +40,41 @@ class Marlin(SerialDevice):
     """
     Marlin class provides methods to interact with the Marlin firmware.
     Refer to https://marlinfw.org/meta/gcode/ for more information on the Marlin firmware.
+    
+    ### Constructor:
+        `port` (str|None): Serial port to connect to. Defaults to None.
+        `baudrate` (int): baudrate for serial communication. Defaults to 115200.
+        `timeout` (int): timeout for serial communication. Defaults to 1.
+        `init_timeout` (int): timeout for initialization of serial communication. Defaults to 2.
+        `message_end` (str): message end character for serial communication. Defaults to '\n'.
+        `simulation` (bool): simulation mode for testing. Defaults to False.
+        
+    ### Attributes and properties:
+        `port` (str): device serial port
+        `baudrate` (int): device baudrate
+        `timeout` (int): device timeout
+        `connection_details` (dict): connection details for the device
+        `serial` (serial.Serial): serial object for the device
+        `init_timeout` (int): timeout for initialization
+        `message_end` (str): message end character
+        `flags` (SimpleNamespace[str, bool]): flags for the device
+        `is_connected` (bool): whether the device is connected
+        `verbose` (bool): verbosity of class
+        
+    ### Methods:
+        `getInfo`: Query device information
+        `getSettings`: Query device settings
+        `getStatus`: Query device status
+        `halt`: Halt the device
+        `home`: Home the device
+        `setSpeedFactor`: Set the speed factor in the device
+        `connect`: Connect to the device
+        `query`: Query the device (i.e. write and read data)
+        `clear`: clear the input and output buffers
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `read`: read data from the device
+        `write`: write data to the device
     """
     
     def __init__(self,
@@ -174,7 +222,12 @@ class Marlin(SerialDevice):
         return (status, current_position, self._home_offset)
     
     def halt(self) -> Position:         # TODO: Check if this is the correct implementation
-        """Halt the device"""
+        """
+        Halt the device
+        
+        Returns:
+            Position: current position of the device
+        """
         self.query('M410', multi_out=False)
         _,coordinates,_home_offset = self.getStatus()
         return Position(coordinates-_home_offset)
@@ -257,9 +310,10 @@ class Marlin(SerialDevice):
         Query the device (i.e. write and read data)
         
         Args:
-            data (Any): data to query
-            lines (bool): whether to read lines
-            wait (bool): whether to wait for the device to reach the status
+            data (Any): data to write to the device
+            multi_out (bool): whether to read multiple lines of data. Defaults to True.
+            timeout (int|float): timeout for reading data. Defaults to 1.
+            wait (bool): whether to wait for the device to be idle. Defaults to False.
             
         Returns:
             list[str]|None: response from the device

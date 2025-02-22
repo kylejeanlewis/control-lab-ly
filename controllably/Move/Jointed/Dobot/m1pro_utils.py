@@ -7,8 +7,11 @@ Attributes:
     
 ## Classes:
     `M1Pro`: M1Pro provides methods to control Dobot's M1Pro robot arm
+    
+## Functions:
+    `within_volume`: check if a point is within the robot's workspace
 
-<i>Documentation last updated: 2024-11-23</i>
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -16,7 +19,7 @@ import logging
 import math
 import time
 from types import SimpleNamespace
-from typing import Sequence, final
+from typing import Sequence
 
 # Third-party imports
 import numpy as np
@@ -31,6 +34,15 @@ logger.debug(f"Import: OK <{__name__}>")
 DEFAULT_SPEEDS = dict(max_speed_j1=180, max_speed_j2=180, max_speed_j3=1000, max_speed_j4=1000)
 
 def within_volume(point: Sequence[float]) -> bool:
+    """ 
+    Check whether a point is within the robot's workspace
+    
+    Args:
+        point (Sequence[float]): 3D coordinates of the point
+        
+    Returns:
+        bool: whether the point is within the robot's workspace
+    """
     assert len(point) == 3, f"Ensure point is a 3D coordinate"
     x,y,z = point
     # Z-axis
@@ -47,7 +59,6 @@ def within_volume(point: Sequence[float]) -> bool:
         return False
     return True
 
-@final
 class M1Pro(Dobot):
     """
     M1Pro provides methods to control Dobot's M1Pro robot arm

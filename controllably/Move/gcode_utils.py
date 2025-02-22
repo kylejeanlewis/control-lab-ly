@@ -3,7 +3,6 @@
 This module provides utilities for G-code based devices.
 
 Attributes:
-    LOOP_INTERVAL (float): loop interval for device
     MOVEMENT_BUFFER (int): buffer time after movement
     MOVEMENT_TIMEOUT (int): timeout for movement
     
@@ -11,7 +10,7 @@ Attributes:
     `GCodeDevice`: Protocol for G-code devices
     `GCode`: Interface to control a G-code based device.
 
-<i>Documentation last updated: 2024-11-14</i>
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -123,6 +122,8 @@ class GCode(Mover):
         `work_position` (Position): work position of the robot
         `worktool_position` (Position): work position of the tool end effector
         `position` (Position): work position of the tool end effector; alias for `worktool_position`
+        `max_accels` (np.ndarray): maximum accelerations of the robot
+        `max_speeds` (np.ndarray): maximum speeds of the robot
         
     ### Methods
         `query`: query the device

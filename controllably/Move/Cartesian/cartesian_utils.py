@@ -5,7 +5,7 @@ This module holds the base class for cartesian mover tools.
 ## Classes:
     `Gantry`: Gantry provides controls for a general cartesian robot.
 
-<i>Documentation last updated: 2024-11-14</i>
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 from __future__ import annotations

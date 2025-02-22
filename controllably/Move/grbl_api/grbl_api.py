@@ -5,13 +5,15 @@ Refer to https://github.com/gnea/grbl/tree/master/doc/markdown for more informat
 
 Attributes:
     LOOP_INTERVAL (float): loop interval for device
-    MOVEMENT_BUFFER (int): buffer time after movement
     MOVEMENT_TIMEOUT (int): timeout for movement
+    READ_FORMAT (str): read format for device
+    WRITE_FORMAT (str): write format for device
+    Data (NamedTuple): data for device
     
 ## Classes:
     `GRBL`: GRBL class for controlling CNC machines using the GRBL firmware.
     
-<i>Documentation last updated: 2024-11-14</i>
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -23,7 +25,6 @@ from typing import Any, Sequence, NamedTuple
 import numpy as np
 
 # Local application imports
-# from ...core.connection import SerialDevice
 from ...core.device import SerialDevice
 from ...core.position import Position
 from .grbl_lib import Alarm, Error, Setting, Status

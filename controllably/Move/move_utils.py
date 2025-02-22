@@ -5,7 +5,7 @@ This module provides the base class for mover tools.
 ## Classes:
     `Mover`: base class for mover tools
 
-<i>Documentation last updated: 2024-11-14</i>
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 from __future__ import annotations
