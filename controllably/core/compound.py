@@ -19,7 +19,7 @@ is presented in the table below:
     `Combined`: Combined class is an composition of multiple part tools
     `Multichannel`: Multichannel class is an composition of duplicate part tools to form multiple channels
     
-<i>Documentation last updated: 2024-11-12</i>
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -208,20 +208,28 @@ class Ensemble(Compound):
     Do not instantiate this class directly. Use the `factory` method to generate the desired class first.
     
     ## Constructor:
-        `parts` (dict[str,Part]): dictionary of parts
+        `channels` (Sequence[int] | None, optional): sequence of channels. Defaults to None.
+        `details` (dict | Sequence[dict] | None, optional): dictionary or sequence of dictionaries of part details. Defaults to None.
+        `parts` (dict[str,Part] | None, optional): dictionary of parts. Defaults to None.
         `verbose` (bool, optional): verbosity of class. Defaults to False.
         
     ## Attributes and properties:
         `channels` (dict[int,Part]): dictionary of channels
+        `connection_details` (dict): connection details of each part
+        `parts` (SimpleNamespace[str,Part]): namespace of parts
+        `flags` (SimpleNamespace[str,bool]): flags of class
+        `is_busy` (bool): whether any part is busy
+        `is_connected` (bool): whether all parts are connected
         `verbose` (bool): verbosity of class
         
     ## Class methods:
-        `create`: factory method to instantiate Ensemble from channels and part details
+        `createParts`: factory method to instantiate Ensemble from channels and part details
         `factory`: factory method to generate Ensemble class from parent class
         `fromConfig`: factory method to create Compound from configuration dictionary
         
     ## Methods:
-        `connect`: connect to each component Part
+        `parallel`: execute function in parallel on all channels
+        `connect`: connect to each component Part in parallel
         `disconnect`: disconnect from each component Part
         `resetFlags`: reset all flags to class attribute `_default_flags`
         `shutdown`: shutdown each component Part
@@ -241,6 +249,8 @@ class Ensemble(Compound):
         Initialise Ensemble class
 
         Args:
+            channels (Sequence[int]): sequence of channels
+            details (dict | Sequence[dict]): dictionary or sequence of dictionaries of part details
             parts (dict[str,Part]): dictionary of parts
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
@@ -260,7 +270,7 @@ class Ensemble(Compound):
             details (dict | Sequence[dict]): dictionary or sequence of dictionaries of part details
 
         Returns:
-            Type[Ensemble]: subclass of Ensemble class
+            dict[str,Part]: dictionary of parts
         """
         if isinstance(details,dict):
             details = [details]*len(channels)
@@ -298,7 +308,7 @@ class Ensemble(Compound):
         return {int(chn.replace(self._channel_prefix,"")):part for chn,part in self._parts.items()}
     
     def connect(self):
-        """Connect to each component Part"""
+        """Connect to each component Part in parallel"""
         self.parallel('connect', channels=list(self.channels.keys()))
         return
     
@@ -312,7 +322,20 @@ class Ensemble(Compound):
         stagger: int|float = 0.5,
         **kwargs
     ) -> dict[int,Any]:
-        """Execute function in parallel on all channels"""
+        """
+        Execute function in parallel on all channels
+        
+        Args:
+            method_name (str): method name to be executed
+            kwargs_generator (Callable[[int,int,Part], dict[str,Any]]): function to generate kwargs for each channel
+            channels (Iterable[int]): channels to execute on
+            max_workers (int, optional): maximum number of workers. Defaults to 4.
+            timeout (int|float, optional): timeout for each worker. Defaults to 120.
+            stagger (int|float, optional): time to wait between each worker. Defaults to 0.5.
+            
+        Returns:
+            dict[int,Any]: dictionary of outputs
+        """
         with ThreadPoolExecutor(max_workers=max_workers) as e:
             futures = {}
             for i,(key,part) in enumerate(self.channels.items()):
@@ -552,8 +575,9 @@ class Multichannel(Combined):
     Multichannel class is an composition of duplicate part tools to form multiple channels.
     
     ## Constructor:
-        `parts` (dict[str,Part]): dictionary of parts
-        `coupled` (bool, optional): whether channels are coupled. Defaults to False.
+        `channels` (Sequence[int] | None, optional): sequence of channels. Defaults to None.
+        `details` (dict | Sequence[dict] | None, optional): dictionary or sequence of dictionaries of part details. Defaults to None.
+        `parts` (dict[str,Part] | None, optional): dictionary of parts. Defaults to None.
         `verbose` (bool, optional): verbosity of class. Defaults to False.
         
     ## Attributes and properties:
@@ -561,7 +585,7 @@ class Multichannel(Combined):
         `verbose` (bool): verbosity of class
         
     ## Class methods:
-        `create`: factory method to instantiate Multichannel from channels and part details
+        `createParts`: factory method to instantiate Multichannel from channels and part details
         `factory`: factory method to generate Multichannel class from parent class
         `fromConfig`: factory method to create Combined from configuration dictionary
         
@@ -588,8 +612,9 @@ class Multichannel(Combined):
         Initialise Multichannel class
         
         Args:
-            parts (dict[str,Part]): dictionary of parts
-            coupled (bool, optional): whether channels are coupled. Defaults to False.
+            channels (Sequence[int] | None, optional): sequence of channels. Defaults to None.
+            details (dict | Sequence[dict] | None, optional): dictionary or sequence of dictionaries of part details. DEfaults to None.
+            parts (dict[str,Part] | None, optional): dictionary of parts. Defaults to None.
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
         logger.warning("Multichannel class and factory method is still under development")      # TODO: Remove this line
@@ -613,7 +638,7 @@ class Multichannel(Combined):
             details (dict | Sequence[dict]): dictionary or sequence of dictionaries of part details
             
         Returns:
-            Type[Multichannel]: subclass of Multichannel class
+            tuple[dict[str,Part],Device]: dictionary of parts and device
         """
         if isinstance(details,dict):
             details = [details]*len(channels)

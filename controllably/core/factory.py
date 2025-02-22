@@ -4,6 +4,7 @@ This module contains functions to create and manage objects.
 
 ## Functions:
     `create`: Create object of class with arguments and keyword arguments
+    `create_from_config`: Create object of class with dictionary
     `dict_to_named_tuple`: Creating named tuple from dictionary
     `dict_to_simple_namespace`: Convert dictionary to SimpleNamespace
     `get_class`: Retrieve the relevant class from the sub-package
@@ -16,7 +17,7 @@ This module contains functions to create and manage objects.
     `parse_configs`: Decode dictionary of configuration details to get tuples and `numpy.ndarray`
     `zip_kwargs_to_dict`: Checks and zips multiple keyword arguments of lists into dictionary
 
-<i>Documentation last updated: 2024-11-16</i>
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 import importlib

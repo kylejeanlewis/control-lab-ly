@@ -1,4 +1,23 @@
 # -*- coding: utf-8 -*-
+"""
+This module provides classes for a simple remote procedure call (RPC) framework.
+
+Attributes:
+    BYTE_SIZE (int): size of the byte.
+    
+## Classes:
+    `ClassMethods`: class to store methods of a class.
+    `TwoTierQueue`: a queue that can handle two types of items: normal and high-priority.
+    `Proxy`: a proxy class to handle remote method calls.
+    `Controller`: a class to control the flow of data and commands between models and views.
+    
+## Functions:
+    `handle_client`: handle a client connection.
+    `start_server`: start a server.
+    `start_client`: start a client.
+
+<i>Documentation last updated: 2025-02-22</i>
+"""
 # Standard library imports
 from __future__ import annotations
 import asyncio
@@ -24,10 +43,43 @@ logger.addHandler(handler)
 
 @dataclass
 class ClassMethods:
+    """ 
+    Class to store methods of a class.
+    
+    ### Attributes:
+        `name` (str): name of the class.
+        `methods` (dict[str, dict[str, str]]): dictionary of methods and their parameters.
+    """
     name: str
     methods: dict[str, dict[str, str]]
 
+
 class TwoTierQueue:
+    """
+    A queue that can handle two types of items: normal and high-priority.
+    
+    ### Attributes:
+        `normal_queue` (queue.Queue): queue for normal items.
+        `high_priority_queue` (queue.PriorityQueue): queue for high-priority items.
+        `last_used_queue_normal` (bool): flag to indicate the last used queue.
+        `priority_counter` (int): counter for high-priority items.
+        
+    ### Methods:
+        `qsize`: return the size of the queue
+        `empty`: check if the queue is empty
+        `full`: check if the queue is full
+        `put`: put an item in the queue
+        `put_nowait`: put an item in the queue without waiting
+        `get`: get an item from the queue
+        `get_nowait`: get an item from the queue without waiting
+        `task_done`: mark a task as done
+        `join`: wait for all tasks to be done
+        `put_first`: put an item at the front of the priority queue
+        `put_priority`: put a high-priority item in the queue
+        `put_queue`: put an item in the queue
+        `reset`: reset the queue
+    """
+    
     def __init__(self):
         self.normal_queue = queue.Queue()
         self.high_priority_queue = queue.PriorityQueue()
@@ -36,15 +88,28 @@ class TwoTierQueue:
         return
 
     def qsize(self):
+        """Return the size of the queue."""
         return self.normal_queue.qsize() + self.high_priority_queue.qsize()
     
     def empty(self):
+        """Check if the queue is empty."""
         return self.normal_queue.empty() and self.high_priority_queue.empty()
     
     def full(self):
+        """Check if the queue is full."""
         return self.normal_queue.full() or self.high_priority_queue.full()
     
     def put(self, item: Any, block: bool = True, timeout: float|None = None, *, priority: bool = False, rank: int|None = None):
+        """
+        Put an item in the queue.
+        
+        Args:
+            item (Any): item to put in the queue.
+            block (bool): flag to block the queue.
+            timeout (float): time to wait for the queue.
+            priority (bool): flag to indicate high-priority item.
+            rank (int): rank of the high-priority item.
+        """
         if priority or rank is not None:
             self.priority_counter += 1
             rank = self.priority_counter if rank is None else rank
@@ -54,9 +119,27 @@ class TwoTierQueue:
         return
     
     def put_nowait(self, item: Any, *, priority: bool = False, rank: int = None):
+        """ 
+        Put an item in the queue without waiting.
+        
+        Args:
+            item (Any): item to put in the queue.
+            priority (bool): flag to indicate high-priority item.
+            rank (int): rank of the high-priority item.
+        """
         return self.put(item, block=False, priority=priority, rank=rank)
     
     def get(self, block: bool = True, timeout: float|None = None) -> Any:
+        """
+        Get an item from the queue.
+        
+        Args:
+            block (bool): flag to block the queue.
+            timeout (float): time to wait for the queue.
+            
+        Returns:
+            Any: item from the queue.
+        """
         item = None
         start_time = time.perf_counter()
         while True:
@@ -75,29 +158,61 @@ class TwoTierQueue:
         return item
     
     def get_nowait(self) -> Any:
+        """ 
+        Get an item from the queue without waiting.
+        
+        Returns:
+            Any: item from the queue.
+        """
         return self.get(block=False)
     
     def task_done(self):
+        """Mark a task as done."""
         return self.normal_queue.task_done() if self.last_used_queue_normal else self.high_priority_queue.task_done()
     
     def join(self):
+        """Wait for all tasks to be done."""
         self.normal_queue.join()
         self.high_priority_queue.join()
         return
     
     def put_first(self, item: Any):
+        """ 
+        Put an item at the front of the priority queue.
+        
+        Args:
+            item (Any): item to put in the queue.
+        """
         self.put_priority(item, rank=0)
         return
     
     def put_priority(self, item: Any, rank: int, block: bool = True, timeout: float|None = None):
+        """
+        Put a high-priority item in the queue.
+        
+        Args:
+            item (Any): item to put in the queue.
+            rank (int): rank of the high-priority item.
+            block (bool): flag to block the queue.
+            timeout (float): time to wait for the queue.
+        """
         self.high_priority_queue.put((rank, item), block=block, timeout=timeout)
         return
     
     def put_queue(self, item: Any, block: bool = True, timeout: float|None = None):
+        """ 
+        Put an item in the queue.
+        
+        Args:
+            item (Any): item to put in the queue.
+            block (bool): flag to block the queue.
+            timeout (float): time to wait for the queue.
+        """
         self.normal_queue.put(item, block=block, timeout=timeout)
         return
 
     def reset(self):
+        """Reset the queue."""
         self.normal_queue = queue.Queue()
         self.high_priority_queue = queue.PriorityQueue()
         self.last_used_queue_normal = True
@@ -106,11 +221,39 @@ class TwoTierQueue:
 
 
 class Proxy:
+    """
+    A proxy class to handle remote method calls.
+    
+    ### Constructor:
+        `prime` (Callable): the object to create a proxy for
+        `object_id` (str|None, optional): the ID of the object. Defaults to None.
+        
+    ### Attributes:
+        `prime` (Callable): the object to create a proxy for
+        `object_id` (str): the ID of the object
+        `controller` (Controller): the controller bound to the proxy
+        `remote` (bool): flag to indicate remote method calls
+        
+    ### Methods:
+        `factory`: factory method to create a new class with methods and properties of the prime object
+        `createMethodEmitter`: create a method emitter for the proxy class
+        `createPropertyEmitter`: create a property emitter for the proxy class
+        `bindController`: bind a controller to the proxy
+        `releaseController`: release the controller from the proxy
+    """
+    
     def __new__(cls, prime:Callable, object_id:str|None = None):
         new_class = cls.factory(prime, object_id)
         return super(Proxy,cls).__new__(new_class)
     
     def __init__(self, prime:Callable, object_id:str|None = None):
+        """
+        Initialize the Proxy class.
+        
+        Args:
+            prime (Callable): the object to create a proxy for
+            object_id (str|None, optional): the ID of the object. Defaults to None.
+        """
         self.prime = prime
         self.object_id = object_id or id(prime)
         self.controller: Controller|None = None
@@ -119,6 +262,16 @@ class Proxy:
     
     @classmethod
     def factory(cls, prime:Callable, object_id:str|None = None) -> Type[Proxy]:
+        """
+        Factory method to create a new class with methods and properties of the prime object.
+        
+        Args:
+            prime (Callable): the object to create a proxy for
+            object_id (str|None, optional): the ID of the object
+            
+        Returns:
+            Type[Proxy]: the new class with methods and properties of the prime object
+        """
         name = prime.__name__ if inspect.isclass(prime) else prime.__class__.__name__
         object_id = object_id or id(prime)
         attrs = dict()
@@ -130,7 +283,16 @@ class Proxy:
         return new_class
     
     @staticmethod
-    def createMethodEmitter(method) -> Callable:
+    def createMethodEmitter(method: Callable) -> Callable:
+        """
+        Create a method emitter for the proxy class.
+        
+        Args:
+            method (Callable): the method to create an emitter for
+            
+        Returns:
+            Callable: the method emitter
+        """
         def methodEmitter(self, *args, **kwargs):
             if not self.remote:
                 if inspect.isclass(self.prime):
@@ -162,6 +324,15 @@ class Proxy:
     
     @staticmethod
     def createPropertyEmitter(attr_name:str) -> property:
+        """
+        Create a property emitter for the proxy class.
+        
+        Args:
+            attr_name (str): the name of the property to create an emitter for
+            
+        Returns:
+            property: the property emitter
+        """
         def getterEmitter(self) -> Any:
             if not self.remote:
                 if inspect.isclass(self.prime):
@@ -194,12 +365,24 @@ class Proxy:
         return property(getterEmitter, setterEmitter)
     
     def bindController(self, controller: Controller):
+        """
+        Bind a controller to the proxy.
+        
+        Args:
+            controller (Controller): the controller to bind to the proxy
+        """
         assert isinstance(controller, Controller), 'Controller must be an instance of Controller'
         self.controller = controller
         self.remote = True
         return
     
     def releaseController(self) -> Controller:
+        """
+        Release the controller from the proxy.
+        
+        Returns:
+            Controller: the controller that was bound to the proxy
+        """
         assert isinstance(self.controller, Controller), 'No controller is bound to this Proxy.'
         controller = self.controller
         self.controller = None
@@ -209,6 +392,13 @@ class Proxy:
 
 class Controller:
     def __init__(self, role: str, interpreter: Interpreter):
+        """
+        Initialize the Controller class.
+        
+        Args:
+            role (str): the role of the controller
+            interpreter (Interpreter): the interpreter to use
+        """
         assert role in ('model', 'view', 'both', 'relay'), f"Invalid role: {role}"
         assert isinstance(interpreter, Interpreter), f"Invalid interpreter: {interpreter}"
         self.role = role
@@ -233,6 +423,7 @@ class Controller:
     
     @property
     def registry(self) -> dict[str,str]:
+        """Object registry"""
         if self.role in ('model', 'both'):
             return self._registry
         
@@ -258,6 +449,12 @@ class Controller:
     
     # Model side
     def receiveRequest(self, request: Message):
+        """ 
+        Receive a request
+        
+        Args:
+            request (Message): the request to receive
+        """
         assert self.role in ('model', 'both'), "Only the model can receive requests"
         command = self.interpreter.decodeRequest(request)
         sender = command.get('address', {}).get('sender', [])
@@ -275,6 +472,14 @@ class Controller:
         metadata: Mapping[str, Any]|None = None, 
         status: Mapping[str, Any]|None = None
     ):
+        """
+        Transmit data
+        
+        Args:
+            data (Any): the data to transmit
+            metadata (Mapping[str, Any]|None, optional): the metadata to include. Defaults to None.
+            status (Mapping[str, Any]|None, optional): the status to include. Defaults to None.
+        """
         assert self.role in ('model', 'both', 'relay'), "Only the model can transmit data"
         response = dict()
         status = status or dict(status='completed')
@@ -286,7 +491,13 @@ class Controller:
         self.relayData(package)
         return
     
-    def broadcastRegistry(self, target: Iterable[int]|None = None):
+    def broadcastRegistry(self, target: Iterable[str]|None = None):
+        """ 
+        Broadcast the registry
+        
+        Args:
+            target (Iterable[str]|None, optional): the target addresses. Defaults to None.
+        """
         address = self.address or str(id(self))
         target = target if target is not None else []
         self.registry = {key: [address] for key in self.objects}
@@ -304,6 +515,13 @@ class Controller:
         return
     
     def register(self, new_object: Callable, object_id: str|None = None):
+        """
+        Register an object
+        
+        Args:
+            new_object (Callable): the object to register
+            object_id (str|None, optional): the ID of the object. Defaults to None.
+        """
         assert self.role in ('model', 'both'), "Only the model can register object"
         key =  str(id(new_object)) if object_id is None else object_id
         if key in self.object_methods:
@@ -315,6 +533,16 @@ class Controller:
         return
     
     def unregister(self, object_id:str|None = None, old_object: Callable|None = None) -> bool:
+        """
+        Unregister an object
+        
+        Args:
+            object_id (str|None, optional): the ID of the object. Defaults to None.
+            old_object (Callable|None, optional): the object to unregister. Defaults to None.
+            
+        Returns:
+            bool: flag indicating success
+        """
         assert self.role in ('model', 'both'), "Only the model can unregister object"
         assert (object_id is None) != (old_object is None), "Either object_id or object must be provided"
         key = str(id(old_object)) if object_id is None else object_id
@@ -331,7 +559,16 @@ class Controller:
         self.broadcastRegistry()
         return success
     
-    def extractMetadata(self, command: Mapping[str, Any]) -> Mapping[str, Any]:
+    def extractMetadata(self, command: Mapping[str, Any]) -> dict[str, Any]:
+        """
+        Extract metadata from a command
+        
+        Args:
+            command (Mapping[str, Any]): the command to extract metadata from
+            
+        Returns:
+            dict[str, Any]: the extracted metadata
+        """
         target = command.get('address', {}).get('sender', [])
         target.extend(self.relays)
         sender = [self.address or str(id(self))]
@@ -345,6 +582,15 @@ class Controller:
     
     @staticmethod
     def extractMethods(new_object: Callable) -> ClassMethods:
+        """
+        Extract methods from an object
+        
+        Args:
+            new_object (Callable): the object to extract methods from
+            
+        Returns:
+            ClassMethods: the extracted methods
+        """
         methods = {}
         for method in dir(new_object):
             if method.startswith('_'):
@@ -387,10 +633,12 @@ class Controller:
         )
     
     def exposeMethods(self):
+        """Expose methods of registered objects"""
         assert self.role in ('model', 'both'), "Only the model can expose methods"
         return {k:v.__dict__ for k,v in self.object_methods.items()}
     
     def start(self):
+        """Start the execution loop"""
         assert self.role in ('model', 'both'), "Only the model can start execution loop"
         self.execution_event.set()
         self.threads['execution'] = threading.Thread(target=self._loop_execution, daemon=True)
@@ -400,6 +648,7 @@ class Controller:
         return
     
     def stop(self):
+        """Stop the execution loop"""
         assert self.role in ('model', 'both'), "Only the model can stop execution loop"
         self.execution_event.clear()
         logger.info("Stopping execution loop")
@@ -408,6 +657,15 @@ class Controller:
         return
    
     def executeCommand(self, command: Mapping[str, Any]) -> tuple[Any, dict[str, Any]]:
+        """
+        Execute a command
+        
+        Args:
+            command (Mapping[str, Any]): the command to execute
+            
+        Returns:
+            tuple[Any, dict[str, Any]]: the result of the command and the status
+        """
         assert self.role in ('model', 'both'), "Only the model can execute commands"
         object_id = command.get('object_id', '')
         method_name = command.get('method', '')
@@ -469,6 +727,7 @@ class Controller:
         return out, dict(status='completed')
     
     def _loop_execution(self):
+        """Execution loop"""
         assert self.role in ('model', 'both'), "Only the model can execute commands"
         while self.execution_event.is_set():
             try:
@@ -511,6 +770,19 @@ class Controller:
         priority: bool = False, 
         rank: int = None
     ) -> str:
+        """
+        Transmit a request
+        
+        Args:
+            command (Mapping[str, Any]): the command to transmit
+            target (Iterable[int]|None, optional): the target addresses. Defaults to None.
+            private (bool, optional): flag to indicate private transmission. Defaults to True.
+            priority (bool, optional): flag to indicate high-priority transmission. Defaults to False.
+            rank (int, optional): rank of the high-priority transmission. Defaults to None.
+            
+        Returns:
+            str: the request ID
+        """
         assert self.role in ('view', 'both'), "Only the view can transmit requests"
         sender = [self.address or str(id(self))] if private else []
         target = target if target is not None else []
@@ -527,6 +799,12 @@ class Controller:
         return request_id
     
     def receiveData(self, package: Message):
+        """
+        Receive data
+        
+        Args:
+            package (Message): the package to receive
+        """
         assert self.role in ('view', 'both'), "Only the view can receive data"
         data = self.interpreter.decodeData(package)
         sender = data.get('address', {}).get('sender', [])
@@ -553,6 +831,21 @@ class Controller:
         data_only: bool = True,
         close_request: bool = True
     ) -> Any | dict[tuple[str,str], Any]:
+        """
+        Retrieve data
+        
+        Args:
+            request_id (str): the request ID
+            timeout (int|float, optional): the timeout. Defaults to 5.
+            min_count (int|None, optional): the minimum count. Defaults to 1.
+            max_count (int|None, optional): the maximum count. Defaults to 1.
+            default (Any|None, optional): the default value. Defaults to None.
+            data_only (bool, optional): flag to indicate data only. Defaults to True.
+            close_request (bool, optional): flag to indicate close request. Defaults to True.
+            
+        Returns:
+            Any | dict[tuple[str,str], Any]: the retrieved data
+        """
         assert self.role in ('view', 'both'), "Only the view can listen for data"
         all_data = dict()
         count = 0
@@ -589,6 +882,16 @@ class Controller:
         return all_data
     
     def getMethods(self, target: Iterable[int]|None = None, *, private: bool = True) -> dict:
+        """
+        Get methods
+        
+        Args:
+            target (Iterable[int]|None, optional): the target addresses. Defaults to None.
+            private (bool, optional): flag to indicate private transmission. Defaults to True.
+            
+        Returns:
+            dict: the methods
+        """
         assert self.role in ('view', 'both'), "Only the view can get methods"
         command = dict(method='exposeMethods')
         request_id = self.transmitRequest(command, target, private=private)
@@ -596,6 +899,14 @@ class Controller:
     
     # Controller side
     def relay(self, message: Message, callback_type:str, addresses: Iterable[int]|None = None):
+        """
+        Relay a message
+        
+        Args:
+            message (Message): the message to relay
+            callback_type (str): the callback type
+            addresses (Iterable[int]|None, optional): the target addresses. Defaults to None.
+        """
         assert callback_type in self.callbacks, f"Invalid callback type: {callback_type}"
         self_address = self.address or str(id(self))
         if self_address in addresses and self.role == 'relay':
@@ -612,6 +923,12 @@ class Controller:
         return
     
     def relayRequest(self, request: Message):
+        """
+        Relay a request
+        
+        Args:
+            request (Message): the request to relay
+        """
         content = self.interpreter.decodeRequest(request)
         addresses = content.get('address', {}).get('target', [])
         self.relay(request, 'request', addresses=addresses)
@@ -620,6 +937,12 @@ class Controller:
         return
     
     def relayData(self, package: Message):
+        """
+        Relay data
+        
+        Args:
+            package (Message): the package to relay
+        """
         content = self.interpreter.decodeData(package)
         if self.role == 'relay':
             if content.get('request_id', '') == 'registration':
@@ -642,6 +965,15 @@ class Controller:
         *, 
         relay: bool = False
     ):
+        """
+        Subscribe to a callback
+        
+        Args:
+            callback (Callable): the callback to subscribe
+            callback_type (str): the callback type
+            address (int|str|None, optional): the address. Defaults to None.
+            relay (bool, optional): flag to indicate relay. Defaults to False.
+        """
         assert callback_type in self.callbacks, f"Invalid callback type: {callback_type}"
         assert isinstance(callback, Callable), f"Invalid callback: {callback}"
         key = address
@@ -659,6 +991,13 @@ class Controller:
         return
     
     def unsubscribe(self, callback_type: str, address: int|str):
+        """
+        Unsubscribe from a callback
+        
+        Args:
+            callback_type (str): the callback type
+            address (int|str): the address
+        """
         assert callback_type in self.callbacks, f"Invalid callback type: {callback_type}"
         key = address
         key = str(key)
@@ -671,6 +1010,12 @@ class Controller:
         return
     
     def setAddress(self, address: int|str):
+        """
+        Set the address
+        
+        Args:
+            address (int|str): the address
+        """
         assert isinstance(address, (int,str)), f"Invalid address: {address}"
         self.address = address
         return
@@ -685,7 +1030,16 @@ def handle_client(
     *,
     terminate: threading.Event|None = None
 ):
-    """Handles communication with a single client."""
+    """
+    Handles communication with a single client
+    
+    Args:
+        client_socket (socket.socket): the client socket
+        client_addr (str): the client address
+        controller (Controller): the controller
+        client_role (str|None, optional): the client role. Defaults to None.
+        terminate (threading.Event|None, optional): the termination event. Defaults to None.
+    """
     relay = (controller.role == 'relay')
     receive_method = controller.receiveRequest
     if relay:
@@ -734,7 +1088,15 @@ def handle_client(
 
 
 def start_server(host:str, port:int, controller: Controller, *, terminate: threading.Event|None = None):
-    """Starts the server."""
+    """
+    Starts the server
+    
+    Args:
+        host (str): the host
+        port (int): the port
+        controller (Controller): the controller
+        terminate (threading.Event|None, optional): the termination event. Defaults to None
+    """
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
     server_socket.listen(5)  # Listen for up to 5 connections
@@ -777,7 +1139,16 @@ def start_server(host:str, port:int, controller: Controller, *, terminate: threa
 
 
 def start_client(host:str, port:int, controller: Controller, relay:bool = False, *, terminate: threading.Event|None = None):
-    """Starts the client."""
+    """
+    Starts the client
+    
+    Args:
+        host (str): the host
+        port (int): the port
+        controller (Controller): the controller
+        relay (bool, optional): flag to indicate relay. Defaults to False.
+        terminate (threading.Event|None, optional): the termination event. Defaults to None.
+    """
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     match controller.role:
         case 'model':

@@ -15,7 +15,7 @@ Attributes:
     `set_level`: Set the safety level for the safety measures
     `reset_level`: Reset the safety level to None
     
-<i>Documentation last updated: 2024-11-12</i>
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 from functools import wraps

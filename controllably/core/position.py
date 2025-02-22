@@ -12,13 +12,14 @@ Attributes:
     `Labware`: represents a single Labware object
     `Slot`: represents a single Slot object on a Deck object or another Labware object (for stackable Labware)
     `Deck`: represents a Deck object
+    `BoundingVolume`: represents a 3D bounding volume
     `BoundingBox`: represents a 3D bounding box
     
 ## Functions:
     `convert_to_position`: Convert a value to a `Position` object
     `get_transform`: Get transformation matrix from initial to final points, with the first point in each set being the center of rotation
 
-<i>Documentation last updated: 2024-11-15</i>
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -874,6 +875,7 @@ class Slot:
         `slot_below` (Slot|None): Slot below
         
     ### Methods:
+        `fromCenter`: offset from center of Slot
         `getAllPositions`: get all positions in Slot
         `loadLabware`: load Labware in Slot
         `loadLabwareFromConfigs`: load Labware from dictionary

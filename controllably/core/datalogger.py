@@ -1,4 +1,15 @@
 # -*- coding: utf-8 -*-
+"""
+This module provides functions to record and stream data from a streaming device.
+
+## Functions:
+    `get_dataframe`: Convert a list of tuples to a pandas DataFrame
+    `record`: Record data from a streaming device
+    `stream`: Stream data from a streaming device
+    `monitor_plot`: Monitor a data stream in real-time
+
+<i>Documentation last updated: 2025-02-22</i>
+"""
 # Standard library imports
 from __future__ import annotations
 from collections import deque
@@ -21,6 +32,17 @@ logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
 
 def get_dataframe(data_store:Iterable[tuple[NamedTuple,datetime]], fields:Iterable[str]) -> pd.DataFrame:
+    """ 
+    Convert a list of tuples to a pandas DataFrame.
+    The first element of each tuple is a NamedTuple, the second element is a datetime object.
+    
+    Args:
+        data_store (Iterable[tuple[NamedTuple,datetime]]): list of tuples
+        fields (Iterable[str]): list of field names
+        
+    Returns:
+        pd.DataFrame: DataFrame object
+    """
     try:
         data,timestamps = list([x for x in zip(*data_store)])
     except ValueError:
@@ -39,6 +61,18 @@ def record(
     query: Any|None = None,
     event: threading.Event|None = None
 ):
+    """ 
+    Record data from a streaming device.
+    
+    Args:
+        on (bool): start or stop recording
+        show (bool, optional): display the data as it is recorded. Defaults to False.
+        clear_cache (bool, optional): clear the data cache before starting. Defaults to False.
+        device (StreamingDevice): streaming device object
+        data_store (deque): data cache
+        query (Any|None, optional): query to pass to the streaming device. Defaults to None.
+        event (threading.Event | None, optional): event to set or clear. Defaults to None.
+    """
     if clear_cache:
         data_store.clear()
     if isinstance(event, threading.Event):
@@ -60,6 +94,17 @@ def stream(
     query: Any|None = None,
     event: threading.Event|None = None
 ):
+    """
+    Stream data from a streaming device.
+    
+    Args:
+        on (bool): start or stop streaming
+        show (bool, optional): display the data as it is streamed. Defaults to False.
+        device (StreamingDevice): streaming device object
+        data_store (deque): data cache
+        query (Any|None, optional): query to pass to the streaming device. Defaults to None.
+        event (threading.Event | None, optional): event to set or clear. Defaults to None.
+    """
     if on:
         device.startStream(data=device.processInput(query), buffer=data_store)
         device.showStream(show)
@@ -77,7 +122,22 @@ def monitor_plot(
     lapsed_counts: int = 100,
     stop_trigger: threading.Event|None = None,
     dataframe_maker: Callable|None = None
-):
+) -> threading.Event:
+    """
+    Monitor a data stream in real-time.
+    
+    Args:
+        data_store (Iterable[tuple[NamedTuple,datetime]]): list of tuples
+        y (str): y-axis field name
+        x (str, optional): x-axis field name. Defaults to 'timestamp'.
+        kind (str, optional): plot type. Defaults to 'line'.
+        lapsed_counts (int, optional): number of counts to wait before stopping. Defaults to 100.
+        stop_trigger (threading.Event | None, optional): event to stop the monitoring. Defaults to None.
+        dataframe_maker (Callable | None, optional): function to convert data_store to a DataFrame. Defaults to None.
+        
+    Returns:
+        threading.Event: event to stop the monitoring
+    """
     if not hasattr(sys,'ps1'):
         logger.warning("`monitor_plot` is intended for use in Python interactive sessions only.")
         return

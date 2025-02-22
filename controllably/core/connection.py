@@ -3,15 +3,16 @@
 This module provides classes for handling connections to serial and socket devices.
     
 ## Classes:
-    `Device`: Protocol for device connection classes
-    `SerialDevice`: Interface for handling serial devices
-    `SocketDevice`: Interface for handling socket devices
-    `DeviceFactory`: Factory class for creating devices
+    `SocketUtils`: Socket utility class for handling socket connections
+    `Server`: Server class for handling socket connections
+    `Client`: Client class for handling socket connections
     
 ## Functions:
     `get_addresses`: Get the appropriate addresses for current machine
+    `get_host`: Get the host IP address for current machine
     `get_node`: Get the unique identifier for current machine
     `get_ports`: Get available serial ports connected to current machine
+    `match_current_ip_address`: Match the current IP address of the machine
     
 <i>Documentation last updated: 2024-11-12</i>
 """
@@ -129,11 +130,33 @@ def match_current_ip_address(ip_address:str) -> bool:
     return success
 
 class SocketUtils:
+    """ 
+    Socket utility class for handling socket connections
+    
+    ### Methods:
+        `readAll`: read all data from the connection
+        `read`: read data from the connection
+        `write`: write data to the connection
+        `printer`: print data from the print queue
+    """
+    
     def __init__(self):
         return
     
     @staticmethod
     def readAll(connection: socket.socket, *, bytesize: int = BYTESIZE, encoder: str = ENCODER, ignore: bool = True) -> str|None:
+        """ 
+        Read all data from the connection
+        
+        Args:
+            connection (socket.socket): connection socket
+            bytesize (int, optional): bytesize for reading data. Defaults to BYTESIZE.
+            encoder (str, optional): encoder for reading data. Defaults to ENCODER.
+            ignore (bool, optional): whether to ignore errors. Defaults to True.
+            
+        Returns:
+            str|None: data read from the connection, if any
+        """
         data = ''
         flag = False
         while True:
@@ -160,6 +183,18 @@ class SocketUtils:
 
     @staticmethod
     def read(connection: socket.socket, *, bytesize: int = BYTESIZE, encoder: str = ENCODER, ignore: bool = True) -> str|None:
+        """
+        Read data from the connection
+        
+        Args:
+            connection (socket.socket): connection socket
+            bytesize (int, optional): bytesize for reading data. Defaults to BYTESIZE.
+            encoder (str, optional): encoder for reading data. Defaults to ENCODER.
+            ignore (bool, optional): whether to ignore errors. Defaults to True.
+            
+        Returns:
+            str|None: data read from the connection, if any
+        """
         out = ''
         try:
             out = connection.recv(bytesize).decode(encoder, "replace")
@@ -176,6 +211,16 @@ class SocketUtils:
 
     @staticmethod
     def write(data: str, connection: socket.socket, *, encoder: str = ENCODER, wait: bool = False, ignore: bool = False):
+        """
+        Write data to the connection
+        
+        Args:
+            data (str): data to write
+            connection (socket.socket): connection socket
+            encoder (str, optional): encoder for writing data. Defaults to ENCODER.
+            wait (bool, optional): whether to wait after writing data. Defaults to False.
+            ignore (bool, optional): whether to ignore errors. Defaults to False.
+        """
         try:
             connection.sendall(data.encode(encoder))
             if wait:
@@ -192,6 +237,13 @@ class SocketUtils:
 
     @staticmethod
     def printer(print_queue: queue.Queue, jam: threading.Event):
+        """
+        Print data from the print queue
+        
+        Args:
+            print_queue (queue.Queue): print queue
+            jam (threading.Event): jam event
+        """
         while not jam.is_set():
             try:
                 print(print_queue.get())
@@ -213,6 +265,49 @@ class SocketUtils:
 
 
 class Server:
+    """ 
+    Server class for handling socket connections
+    
+    ### Constructor:
+        `host` (str): host for the server
+        `port` (int): port for the server
+        `terminate` (threading.Event, optional): termination event. Defaults to threading.Event().
+        `print_queue` (queue.Queue|None, optional): print queue. Defaults to None.
+        `bytesize` (int, optional): bytesize for reading data. Defaults to 1024.
+        `encoder` (str, optional): encoder for reading data. Defaults to 'utf-8'.
+        `keywords` (Mapping[str,str]|None, optional): keywords for messages. Defaults to None.
+        
+    ### Attributes and properties:
+        `server` (socket.socket): server socket
+        `host` (str): server host
+        `port` (int): server port
+        `address` (str): server address
+        `use_external_printer` (bool): whether to use an external printer
+        `print_queue` (queue.Queue): print queue
+        `connections` (deque): list of active connections
+        `removal_list` (deque): list of connections to remove
+        `triggers` (dict[str, threading.Event]): triggers for the server
+        `bytesize` (int): bytesize for reading data
+        `encoder` (str): encoder for reading data
+        `keywords` (Mapping[str,str]): keywords for messages
+        `client_threads` (dict[str, threading.Thread]): client threads
+        `_printer_thread` (threading.Thread): printer thread
+        `_listener_thread` (threading.Thread): listener thread
+        
+    ### Methods:
+        `start`: start the server
+        `stop`: stop the server
+        `startServer`: start the server
+        `startPrinter`: start the printer thread
+        `listen`: listen for incoming connections
+        `handleClient`: handle client connections
+        
+    ### Static methods:
+        `read`: read data from the connection
+        `readAll`: read all data from the connection
+        `write`: write data to the connection
+        `printer`: print data from the print queue
+    """
     
     _default_keywords = dict(connect=CONNECT_MESSAGE, disconnect=DISCONNECT_MESSAGE, shutdown=SHUTDOWN_MESSAGE)
     def __init__(self, 
@@ -225,6 +320,18 @@ class Server:
         encoder: str = 'utf-8',
         keywords: Mapping[str]|None = None
     ):
+        """
+        Initialize Server class
+        
+        Args:
+            host (str): host for the server
+            port (int): port for the server
+            terminate (threading.Event, optional): termination event. Defaults to threading.Event().
+            print_queue (queue.Queue|None, optional): print queue. Defaults to None.
+            bytesize (int, optional): bytesize for reading data. Defaults to 1024.
+            encoder (str, optional): encoder for reading data. Defaults to 'utf-8'.
+            keywords (Mapping[str]|None, optional): keywords for messages. Defaults to None.
+        """
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.host = host
         self.port = port
@@ -357,6 +464,18 @@ class Server:
         threads: dict[str, threading.Thread], 
         **kwargs
     ):
+        """
+        Listen for incoming connections
+        
+        Args:
+            server (socket.socket): server socket
+            client_handler (Callable): client handler function
+            triggers (dict[str, threading.Event]): termination triggers
+            print_queue (queue.Queue): print queue
+            connections (deque): list of active connections
+            removal_list (deque): list of connections to remove
+            threads (dict[str, threading.Thread]): client threads
+        """
         while not triggers['terminate'].is_set():
             if triggers['update_connections'].is_set():
                 message = f'[CONNECTIONS] {len(connections)}\n'
@@ -424,6 +543,18 @@ class Server:
         keywords: Mapping[str,str],
         **kwargs
     ):
+        """ 
+        Handle client connections
+        
+        Args:
+            conn (socket.socket): connection socket
+            addr (str): connection address
+            triggers (dict[str, threading.Event]): termination triggers
+            print_queue (queue.Queue): print queue
+            connections (deque): list of active connections
+            removal_list (deque): list of connections to remove
+            keywords (Mapping[str,str]): keywords for messages
+        """
         bytesize = kwargs.get('bytesize', BYTESIZE)
         encoder = kwargs.get('encoder', ENCODER)
         connect_message = keywords.get('connect', CONNECT_MESSAGE)
@@ -476,6 +607,44 @@ class Server:
     
 
 class Client:
+    """
+    Client class for handling socket connections
+    
+    ### Constructor:
+        `host` (str): host for the client
+        `port` (int): port for the client
+        `terminate` (threading.Event, optional): termination event. Defaults to threading.Event().
+        `print_queue` (queue.Queue|None, optional): print queue. Defaults to None.
+        `bytesize` (int, optional): bytesize for reading data. Defaults to 1024.
+        `encoder` (str, optional): encoder for reading data. Defaults to 'utf-8'.
+        `keywords` (Mapping[str,str]|None, optional): keywords for messages. Defaults to None.
+        
+    ### Attributes and properties:
+        `conn` (socket.socket): client socket
+        `host` (str): client host
+        `port` (int): client port
+        `address` (str): client address
+        `_current_socket_ref` (int): current socket reference
+        `bytesize` (int): bytesize for reading data
+        `encoder` (str): encoder for reading data
+        `keywords` (Mapping[str,str]): keywords for messages
+        `use_external_printer` (bool): whether to use an external printer
+        `print_queue` (queue.Queue): print queue
+        `triggers` (dict[str, threading.Event]): triggers for the client
+        `_printer_thread` (threading.Thread): printer thread
+        `_listener_thread` (threading.Thread): listener thread
+        
+    ### Methods:
+        `connect`: connect to the client
+        `disconnect`: disconnect from the client
+        `shutdown`: shutdown the client
+        `startClient`: start the client
+        `startPrinter`: start the printer thread
+        `read`: read data from the client
+        `readAll`: read all data from the client
+        `query`: query the client (i.e. write and read data)
+        `write`: write data to the client
+    """
     
     _default_keywords = dict(connect=CONNECT_MESSAGE, disconnect=DISCONNECT_MESSAGE, shutdown=SHUTDOWN_MESSAGE)
     def __init__(self,
@@ -488,6 +657,18 @@ class Client:
         encoder: str = 'utf-8',
         keywords: Mapping[str, str]|None = None
     ):
+        """
+        Initialize Client class
+        
+        Args:
+            host (str): host for the client
+            port (int): port for the client
+            terminate (threading.Event, optional): termination event. Defaults to threading.Event().
+            print_queue (queue.Queue|None, optional): print queue. Defaults to None.
+            bytesize (int, optional): bytesize for reading data. Defaults to 1024.
+            encoder (str, optional): encoder for reading data. Defaults to 'utf-8'.
+            keywords (Mapping[str, str]|None, optional): keywords for messages. Defaults to None.
+        """
         self.conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.host = host
         self.port = port
@@ -514,6 +695,7 @@ class Client:
     
     @property
     def is_connected(self) -> bool:
+        """Whether the client is connected"""
         try:
             self.conn.sendall('\n'.encode())
             self.conn.sendall('\n'.encode())
@@ -522,12 +704,14 @@ class Client:
         return (self.conn.fileno() == self._current_socket_ref) and (self.conn.fileno() != -1)
     
     def connect(self):
+        """Connect to the client"""
         if self.is_connected:
             return
         self.startClient(self.host, self.port)
         return
     
     def disconnect(self):
+        """Disconnect from the client"""
         SocketUtils.write(self.keywords['disconnect'], self.conn, encoder=self.encoder, wait=True, ignore=True)
         self.triggers['terminate'].set()
         self.conn.close()
@@ -535,10 +719,18 @@ class Client:
         return
     
     def shutdown(self):
+        """Shutdown the client"""
         self.query(self.keywords['shutdown'])
         return
     
     def startClient(self, host:str, port:int):
+        """ 
+        Start the client
+        
+        Args:
+            host (str): host for the client
+            port (int): port for the client
+        """
         self.conn = socket.create_connection((host, port))
         success_message = f'{self.keywords["connect"]} {host}:{port}'
         self.print_queue.put(f'{self.keywords["connect"]} {host}:{port}')
@@ -566,18 +758,31 @@ class Client:
         return
     
     def startPrinter(self):
+        """Start the printer thread"""
         if not (isinstance(self._printer_thread, threading.Thread) and self._printer_thread.is_alive()):
             self._printer_thread = threading.Thread(target=SocketUtils.printer, args=(self.print_queue, self.triggers['terminate']), daemon=True)
             self._printer_thread.start()
         return
     
     def read(self) -> str:
+        """Read data from the client"""
         return SocketUtils.read(self.conn, bytesize=self.bytesize, encoder=self.encoder)
 
     def readAll(self) -> str:
+        """Read all data from the client"""
         return SocketUtils.readAll(self.conn, bytesize=self.bytesize, encoder=self.encoder)
 
     def query(self, data: str, multi_line: bool = False) -> str|None:
+        """
+        Query the client (i.e. write and read data)
+        
+        Args:
+            data (str): data to query
+            multi_line (bool, optional): whether to read multiple lines. Defaults to False.
+            
+        Returns:
+            str|None: data read from the client, if any
+        """
         assert isinstance(data, str), 'Data must be a string'
         assert self.is_connected, 'Client is not connected'
         
@@ -598,6 +803,15 @@ class Client:
         return data
     
     def write(self, data: str) -> bool:
+        """
+        Write data to the client
+        
+        Args:
+            data (str): data to write
+            
+        Returns:
+            bool: whether the write was successful
+        """
         try:
             SocketUtils.write(data, self.conn, encoder=self.encoder, wait=True)
         except OSError:

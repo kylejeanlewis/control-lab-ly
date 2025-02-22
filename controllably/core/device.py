@@ -1,4 +1,22 @@
 # -*- coding: utf-8 -*-
+""" 
+This module provides base classes for device connections.
+
+Attributes:
+    READ_FORMAT (str): default read format for device connections
+    WRITE_FORMAT (str): default write format for device connections
+    Data (NamedTuple): default data type for device connections
+
+## Classes:
+    `Device`: Protocol for device connection classes
+    `StreamingDevice`: Protocol for streaming device connection classes
+    `TimedDeviceMixin`: Mixin class for timed device operations
+    `BaseDevice`: Base class for device connections
+    `SerialDevice`: Class for serial device connections
+    `SocketDevice`: Class for socket device connections
+
+<i>Documentation last updated: 2025-02-22</i>
+"""
 # Standard library imports
 from __future__ import annotations
 from collections import deque
@@ -129,17 +147,43 @@ class StreamingDevice(Protocol):
 
 
 class TimedDeviceMixin:
+    """ 
+    Mixin class for timed device operations
+    
+    ### Methods:
+        `stopTimer`: stop a timer
+        `setValue`: set a value
+        `setValueDelayed`: set a value after a delay
+    """
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         return
     
     def stopTimer(self, timer: threading.Timer|None = None, event: threading.Event|None = None):
+        """ 
+        Stop a timer
+        
+        Args:
+            timer (threading.Timer|None, optional): timer to stop. Defaults to None.
+            event (threading.Event|None, optional): event to clear. Defaults to None
+        """
         if isinstance(timer, threading.Timer):
             timer.cancel()
         event.clear()
         return
         
     def setValue(self, value: Any, event: threading.Event|None = None) -> bool:
+        """ 
+        Set a value
+        
+        Args:
+            value (Any): value to set
+            event (threading.Event|None, optional): event to set or clear. Defaults to None.
+            
+        Returns:
+            bool: whether the value was set
+        """
         ...
         if isinstance(event, threading.Event):
             _ = event.clear() if event.is_set() else event.set()
@@ -153,6 +197,19 @@ class TimedDeviceMixin:
         *, 
         event: threading.Event|None = None
     ) -> threading.Timer|None:
+        """ 
+        Set a value after a delay
+        
+        Args:
+            duration (int|float): duration of the delay
+            initial (Any|None, optional): initial value. Defaults to None.
+            final (Any|None, optional): final value. Defaults to None.
+            blocking (bool, optional): whether to block the main thread. Defaults to True.
+            event (threading.Event|None, optional): event to set or clear. Defaults to None.
+            
+        Returns:
+            threading.Timer|None: timer object if blocking is False
+        """
         assert duration >= 0, "Ensure duration is a non-negative number"
         success = self.setValue(initial)
         if not success:
@@ -182,6 +239,18 @@ class BaseDevice:
         verbose:bool = False, 
         **kwargs
     ):
+        """
+        Initialize BaseDevice class
+        
+        Args:
+            connection_details (dict|None, optional): connection details for the device. Defaults to None.
+            init_timeout (int, optional): timeout for initialization. Defaults to 1.
+            data_type (NamedTuple, optional): data type for the device. Defaults to Data.
+            read_format (str, optional): read format for the device. Defaults to READ_FORMAT.
+            write_format (str, optional): write format for the device. Defaults to WRITE_FORMAT.
+            simulation (bool, optional): whether to simulate the device. Defaults to False.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
         # Connection attributes
         self.connection: Any|None = None
         self.connection_details = dict() if connection_details is None else connection_details
@@ -232,7 +301,12 @@ class BaseDevice:
     
     # Connection methods
     def checkDeviceConnection(self) -> bool:
-        """Check the connection to the device"""
+        """
+        Check the connection to the device
+        
+        Returns:
+            bool: whether the device is connected
+        """
         ...
         raise NotImplementedError
     
@@ -267,7 +341,12 @@ class BaseDevice:
     
     # IO methods
     def checkDeviceBuffer(self) -> bool:
-        """Check the connection buffer"""
+        """
+        Check the connection buffer
+        
+        Returns:
+            bool: whether there is data in the connection buffer
+        """
         ...
         raise NotImplementedError
     
@@ -282,7 +361,12 @@ class BaseDevice:
         return
 
     def read(self) -> str|None:
-        """Read data from the device"""
+        """
+        Read data from the device
+        
+        Returns:
+            str|None: data read from the device
+        """
         data = None
         try:
             data = ... # Replace with specific implementation
@@ -296,7 +380,12 @@ class BaseDevice:
         return data
     
     def readAll(self) -> list[str]|None:
-        """Read all data from the device"""
+        """
+        Read all data from the device
+        
+        Returns:
+            list[str]|None: data read from the device
+        """
         delimiter = self.read_format.replace(self.read_format.rstrip(), '')
         data = ''
         try:
@@ -316,7 +405,15 @@ class BaseDevice:
         return data.split(delimiter)
     
     def write(self, data:str) -> bool:
-        """Write data to the device"""
+        """
+        Write data to the device
+        
+        Args:
+            data (str): data to write to the device
+            
+        Returns:
+            bool: whether the data was written successfully
+        """
         assert isinstance(data, str), "Ensure data is a string"
         try:
             ... # Replace with specific implementation
@@ -327,6 +424,15 @@ class BaseDevice:
         return True
     
     def poll(self, data:str|None = None) -> str|None:
+        """
+        Poll the device
+        
+        Args:
+            data (str|None, optional): data to write to the device. Defaults to None.
+            
+        Returns:
+            str|None: data read from the device
+        """
         out = None
         if data is not None:
             ret = self.write(data)
@@ -339,7 +445,16 @@ class BaseDevice:
         format: str|None = None,
         **kwargs
     ) -> str|None:
-        """Process the input"""
+        """
+        Process the input
+        
+        Args:
+            data (Any, optional): data to process. Defaults to None.
+            format (str|None, optional): format for the data. Defaults to None.
+            
+        Returns:
+            str|None: processed input data
+        """
         if data is None:
             return None
         format = format or self.write_format
@@ -357,7 +472,19 @@ class BaseDevice:
         *,
         condition: Callable[[Any,datetime], bool]|None = None
     ) -> tuple[Any, datetime|None]:
-        """Process the output"""
+        """
+        Process the output
+        
+        Args:
+            data (str): data to process
+            format (str|None, optional): format for the data. Defaults to None.
+            data_type (NamedTuple|None, optional): data type for the data. Defaults to None.
+            timestamp (datetime|None, optional): timestamp for the data. Defaults to None.
+            condition (Callable[[Any,datetime], bool]|None, optional): condition to stop the stream. Defaults to None.
+            
+        Returns:
+            tuple[Any, datetime|None]: processed output data and timestamp
+        """
         format = format or self.read_format
         format = format.strip()
         data_type = data_type or self.data_type
@@ -399,7 +526,21 @@ class BaseDevice:
         timestamp: bool = False,
         **kwargs
     ) -> Any | None:
-        """Query the device"""
+        """
+        Query the device
+        
+        Args:
+            data (Any): data to query
+            multi_out (bool, optional): whether to return multiple outputs. Defaults to True.
+            timeout (int|float, optional): timeout for the query. Defaults to 1.
+            format_in (str|None, optional): format for the input data. Defaults to None.
+            format_out (str|None, optional): format for the output data. Defaults to None.
+            data_type (NamedTuple|None, optional): data type for the data. Defaults to None.
+            timestamp (bool, optional): whether to return the timestamp. Defaults to False.
+            
+        Returns:
+            Any | None: queried data
+        """
         data_type: NamedTuple = data_type or self.data_type
         # if self.flags.simulation:
         #     field_types = data_type.__annotations__
@@ -438,7 +579,12 @@ class BaseDevice:
 
     # Streaming methods
     def showStream(self, on: bool):
-        """Show the stream"""
+        """
+        Show the stream
+        
+        Args:
+            on (bool): whether to show the stream
+        """
         _ = self.show_event.set() if on else self.show_event.clear()
         return
     
@@ -451,7 +597,17 @@ class BaseDevice:
         show: bool = False,
         sync_start: threading.Barrier|None = None
     ):
-        """Start the stream"""
+        """
+        Start the stream
+        
+        Args:
+            data (str|None, optional): data to stream. Defaults to None.
+            buffer (deque|None, optional): buffer to store the streamed data. Defaults to None.
+            format (str|None, optional): format for the data. Defaults to None.
+            data_type (NamedTuple|None, optional): data type for the data. Defaults to None.
+            show (bool, optional): whether to show the stream. Defaults to False.
+            sync_start (threading.Barrier|None, optional): synchronization barrier. Defaults to None.
+        """
         sync_start = sync_start or threading.Barrier(2, timeout=2)
         assert isinstance(sync_start, threading.Barrier), "Ensure sync_start is a threading.Barrier"
         if self.stream_event.is_set():
@@ -489,7 +645,15 @@ class BaseDevice:
         sync_start:threading.Barrier|None = None,
         **kwargs
     ):
-        """Toggle the stream"""
+        """
+        Toggle the stream
+        
+        Args:
+            on (bool): whether to start or stop the stream
+            data (str|None, optional): data to stream. Defaults to None.
+            buffer (deque|None, optional): buffer to store the streamed data. Defaults to None.
+            sync_start (threading.Barrier|None, optional): synchronization barrier. Defaults to None.
+        """
         return self.startStream(data=data, buffer=buffer, sync_start=sync_start, **kwargs) if on else self.stopStream()
     
     def _loop_process_data(self, 
@@ -497,7 +661,16 @@ class BaseDevice:
         format:str|None = None, 
         data_type: NamedTuple|None = None, 
         sync_start:threading.Barrier|None = None
-    ) -> Any:
+    ):
+        """ 
+        Process the data
+        
+        Args:
+            buffer (deque|None, optional): buffer to store the streamed data. Defaults to None.
+            format (str|None, optional): format for the data. Defaults to None.
+            data_type (NamedTuple|None, optional): data type for the data. Defaults to None.
+            sync_start (threading.Barrier|None, optional): synchronization barrier. Defaults to None.
+        """
         if buffer is None:
             buffer = self.buffer
         assert isinstance(buffer, deque), "Ensure buffer is a deque"
@@ -537,7 +710,13 @@ class BaseDevice:
         data:str|None = None, 
         sync_start:threading.Barrier|None = None
     ):
-        """Stream loop"""
+        """
+        Stream loop
+        
+        Args:
+            data (str|None, optional): data to stream. Defaults to None.
+            sync_start (threading.Barrier|None, optional): synchronization barrier. Defaults to None.
+        """
         if isinstance(sync_start, threading.Barrier):
             sync_start.wait()
         

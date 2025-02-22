@@ -15,7 +15,7 @@ Attributes:
     `start_project_here`: Create new project in destination directory
     `zip_files`: Zip files and return zip file path
 
-<i>Documentation last updated: 2025-01-06</i>
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -69,6 +69,9 @@ def init(repository_name:str) -> str:
 
     Args:
         repository_name (str): name of current repository
+        
+    Returns:
+        str: target directory path
     """
     cwd = str(Path().absolute())
     assert repository_name in cwd, f"Repository name '{repository_name}' not found in current working directory: {cwd}"
