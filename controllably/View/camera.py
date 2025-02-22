@@ -1,4 +1,12 @@
 # -*- coding: utf-8 -*-
+""" 
+This module provides a Camera class for handling camera feed
+
+## Classes:
+    `Camera`: Camera class for handling camera feed
+    
+<i>Documentation last updated: 2025-02-22</i>
+"""
 # Standard library imports
 from __future__ import annotations
 from collections import deque
@@ -22,6 +30,59 @@ logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
 
 class Camera:
+    """ 
+    Camera class for handling camera feed
+    
+    ### Constructor:
+        `connection_details` (dict, optional): connection details for the device. Defaults to None.
+        `init_timeout` (int, optional): timeout for initialization. Defaults to 1.
+        `simulation` (bool, optional): whether to simulate the camera feed. Defaults to False.
+        `verbose` (bool, optional): verbosity of the class. Defaults to False.
+        
+    ### Attributes and properties:
+        `placeholder` (np.ndarray): Placeholder image
+        `transforms` (list[tuple[Callable[[np.ndarray,Any], np.ndarray], Iterable|None, Mapping|None]]): List of transformations
+        `callbacks` (list[tuple[Callable[[np.ndarray,Any], np.ndarray], Iterable|None, Mapping|None]]): List of callbacks
+        `connection` (Any|None): Connection to the device
+        `connection_details` (dict): Connection details for the device
+        `flags` (SimpleNamespace): Flags for the device
+        `init_timeout` (int): Timeout for initialization
+        `buffer` (deque): Buffer for storing frames
+        `data_queue` (queue.Queue): Queue for storing data
+        `show_event` (threading.Event): Event for showing the stream
+        `stream_event` (threading.Event): Event for streaming
+        `threads` (dict): Threads for streaming and processing data
+        `verbose` (bool): Verbosity of class
+        `feed` (cv2.VideoCapture): Video feed
+        `is_connected` (bool): Whether the device is connected
+        `verbose` (bool): Verbosity of class
+        `frame_rate` (int|float): Frame rate of camera feed
+        `frame_size` (tuple[int,int]): Frame size of camera feed
+        
+    ### Methods:
+        `checkDeviceConnection`: Check the connection to the device
+        `connect`: Connect to the device
+        `connectFeed`: Connect to the camera feed
+        `disconnect`: Disconnect from the device
+        `disconnectFeed`: Disconnect from the camera feed
+        `setFrameSize`: Set the resolution of camera feed
+        `decodeBytesToFrame`: Decode byte array of image
+        `encodeFrameToBytes`: Encode image into byte array
+        `loadImageFile`: Load an image from file
+        `saveFrame`: Save image to file
+        `transformFrame`: Transform the frame
+        `processFrame`: Process the frame
+        `getFrame`: Get image from camera feed
+        `show`: Show image in window
+        `checkDeviceBuffer`: Check the connection buffer
+        `clear`: Clear the input and output buffers
+        `read`: Read data from the device
+        `showStream`: Show the stream
+        `startStream`: Start the stream
+        `stopStream`: Stop the stream
+        `stream`: Toggle the stream
+    """
+    
     _default_flags: SimpleNamespace = SimpleNamespace(verbose=False, connected=False, simulation=False)
     def __init__(self, 
         *, 
@@ -31,6 +92,15 @@ class Camera:
         verbose:bool = False, 
         **kwargs
     ):
+        """ 
+        Initialize the camera object
+        
+        Args:
+            connection_details (dict, optional): connection details for the device. Defaults to None.
+            init_timeout (int, optional): timeout for initialization. Defaults to 1.
+            simulation (bool, optional): whether to simulate the camera feed. Defaults to False.
+            verbose (bool, optional): verbosity of the class. Defaults to False.
+        """
         # Camera attributes
         self._feed = cv2.VideoCapture()
         self.placeholder = self.decodeBytesToFrame(np.asarray(bytearray(PLACEHOLDER), dtype="uint8"))
@@ -66,6 +136,7 @@ class Camera:
     
     @property
     def feed(self) -> cv2.VideoCapture:
+        """Video feed"""
         return self._feed
     @feed.setter
     def feed(self, value: cv2.VideoCapture):
@@ -96,24 +167,32 @@ class Camera:
     
     @property
     def frame_rate(self) -> int|float:
+        """Frame rate of camera feed"""
         return self.feed.get(cv2.CAP_PROP_FPS)
     
     @property
     def frame_size(self) -> tuple[int,int]:
+        """Frame size of camera feed"""
         width = int(self.feed.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.feed.get(cv2.CAP_PROP_FRAME_HEIGHT))
         return (width,height)
     
     # Connection methods
     def checkDeviceConnection(self) -> bool:
-        """Check the connection to the device"""
+        """
+        Check the connection to the device
+        
+        Returns:
+            bool: whether the device is connected
+        """
         return self.feed.isOpened()
     
     def connect(self):
+        """Connect to the device"""
         return self.connectFeed()
     
     def connectFeed(self):
-        """Connect to the device"""
+        """Connect to the camera feed"""
         # if self.is_connected:
         #     return
         try:
@@ -134,10 +213,11 @@ class Camera:
         return
     
     def disconnect(self):
+        """Disconnect from the device"""
         return self.disconnectFeed()
     
     def disconnectFeed(self):
-        """Disconnect from the device"""
+        """Disconnect from the camera feed"""
         if not self.is_connected:
             return
         try:
@@ -227,7 +307,16 @@ class Camera:
         frame: np.ndarray,
         transforms: Iterable[tuple[Callable[[np.ndarray,Any], np.ndarray], Iterable|None, Mapping|None]]|None = None,
     ) -> np.ndarray:
-        """Process the output"""
+        """
+        Transform the frame
+        
+        Args:
+            frame (np.ndarray): image array to be transformed
+            transforms (list[tuple[Callable[[np.ndarray,Any], np.ndarray], Iterable|None, Mapping|None]], optional): list of transformations. Defaults to None.
+            
+        Returns:
+            np.ndarray: transformed image array
+        """
         transformed_frame = frame
         transforms = transforms or []
         for transform, args, kwargs in transforms:
@@ -241,7 +330,16 @@ class Camera:
         frame: np.ndarray,
         callbacks: Iterable[tuple[Callable[[np.ndarray,Any], np.ndarray], Iterable|None, Mapping|None]]|None = None,
     ) -> np.ndarray:
-        """Process the output"""
+        """ 
+        Process the frame
+        
+        Args:
+            frame (np.ndarray): image array to be processed
+            callbacks (list[tuple[Callable[[np.ndarray,Any], np.ndarray], Iterable|None, Mapping|None], optional): list of callbacks. Defaults to None.
+            
+        Returns:
+            np.ndarray: processed image array
+        """
         processed_frame = deepcopy(frame)
         callbacks = callbacks or []
         for callback, args, kwargs in callbacks:
@@ -255,8 +353,6 @@ class Camera:
         Get image from camera feed
 
         Args:
-            crosshair (bool, optional): whether to overlay crosshair on image. Defaults to False.
-            resize (bool, optional): whether to resize the image. Defaults to False.
             latest (bool, optional): whether to get the latest image. Default to False.
 
         Returns:
@@ -268,15 +364,12 @@ class Camera:
         transformed_frame = self.transformFrame(frame, self.transforms)
         return ret, transformed_frame
     
-    def show(self, 
-        transforms: list[Callable[[np.ndarray], np.ndarray]]|None = None
-    ):
+    def show(self, transforms: list[Callable[[np.ndarray], np.ndarray]]|None = None):
         """
         Show image in window
 
         Args:
-            frame (np.ndarray): image array to be displayed
-            window_name (str, optional): name of window. Defaults to 'Camera Feed'.
+            transforms (list[Callable[[np.ndarray], np.ndarray]], optional): list of transformations. Defaults to None.
         """
         self.transforms = transforms or []
         cv2.destroyAllWindows()
@@ -285,7 +378,12 @@ class Camera:
     
     # IO methods
     def checkDeviceBuffer(self) -> bool:
-        """Check the connection buffer"""
+        """
+        Check the connection buffer
+        
+        Returns:
+            bool: whether the device buffer is available
+        """
         ...
         raise NotImplementedError
     
@@ -297,7 +395,12 @@ class Camera:
         return
     
     def read(self) -> tuple[bool, np.ndarray]:
-        """Read data from the device"""
+        """
+        Read data from the device
+        
+        Returns:
+            tuple[bool, np.ndarray]: (whether data is received, data)
+        """
         ret = False
         frame = self.placeholder
         try:
@@ -316,7 +419,12 @@ class Camera:
 
     # Streaming methods
     def showStream(self, on: bool):
-        """Show the stream"""
+        """
+        Show the stream
+        
+        Args:
+            on (bool): whether to show the stream
+        """
         _ = self.show_event.set() if on else self.show_event.clear()
         return
     
@@ -326,7 +434,14 @@ class Camera:
         show: bool = False,
         sync_start: threading.Barrier|None = None
     ):
-        """Start the stream"""
+        """
+        Start the stream
+        
+        Args:
+            buffer (deque, optional): buffer to store frames. Defaults to None.
+            show (bool, optional): whether to show the stream. Defaults to False.
+            sync_start (threading.Barrier, optional): synchronization barrier. Defaults to
+        """
         sync_start = sync_start or threading.Barrier(2, timeout=2)
         assert isinstance(sync_start, threading.Barrier), "Ensure sync_start is a threading.Barrier"
         
@@ -361,10 +476,24 @@ class Camera:
         sync_start:threading.Barrier|None = None,
         **kwargs
     ):
-        """Toggle the stream"""
+        """
+        Toggle the stream
+        
+        Args:
+            on (bool): whether to start the stream
+            buffer (deque, optional): buffer to store frames. Defaults to None.
+            sync_start (threading.Barrier, optional): synchronization barrier. Defaults to None.
+        """
         return self.startStream(buffer=buffer, sync_start=sync_start, **kwargs) if on else self.stopStream()
     
-    def _loop_process_data(self, buffer: deque|None = None, sync_start:threading.Barrier|None = None) -> Any:
+    def _loop_process_data(self, buffer: deque|None = None, sync_start:threading.Barrier|None = None):
+        """ 
+        Process data loop
+        
+        Args:
+            buffer (deque, optional): buffer to store frames. Defaults to None.
+            sync_start (threading.Barrier, optional): synchronization barrier. Defaults to None.
+        """
         if buffer is None:
             buffer = self.buffer
         assert isinstance(buffer, deque), "Ensure buffer is a deque"
@@ -413,7 +542,12 @@ class Camera:
         return
     
     def _loop_stream(self, sync_start:threading.Barrier|None = None):
-        """Stream loop"""
+        """
+        Stream loop
+        
+        Args:
+            sync_start (threading.Barrier, optional): synchronization barrier. Defaults to None.
+        """
         if isinstance(sync_start, threading.Barrier):
             sync_start.wait()
         

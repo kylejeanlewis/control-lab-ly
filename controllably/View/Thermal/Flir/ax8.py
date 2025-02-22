@@ -1,4 +1,16 @@
 # -*- coding: utf-8 -*-
+""" 
+This module contains the AX8 camera class
+
+Attributes:
+    BYTE_SIZE (int): size of data packet
+    MODBUS_PORT (int): Modbus port
+    
+## Classes:
+    `AX8`: AX8 camera class
+    
+<i>Documentation last updated: 2025-02-22</i>
+"""
 # Standard library imports
 from __future__ import annotations
 import logging
@@ -24,6 +36,46 @@ logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
 
 class AX8(Camera):
+    """ 
+    AX8 camera class
+    
+    ### Constructor:
+        `host` (str): camera IP address
+        `port` (int, optional): Modbus port. Defaults to 502.
+        `encoding` (str, optional): feed encoding. Defaults to 'avc'.
+        `overlay` (bool, optional): whether to overlay data. Defaults to False.
+        `connection_details` (dict, optional): connection details. Defaults to None.
+        `init_timeout` (int, optional): initial timeout. Defaults to 1.
+        `simulation` (bool, optional): whether to simulate the camera. Defaults to False.
+        `verbose` (bool, optional): whether to print debug messages. Defaults to False.
+        
+    ### Attributes and properties:
+        `host` (str): camera IP address
+        `port` (int): Modbus port
+        `modbus` (ModbusClient): Modbus connection
+        `connection` (ModbusClient): Modbus connection
+        `spotmeter_parameters` (dict): spotmeter parameters
+        
+    ### Methods:
+        `checkDeviceConnection`: check if the camera and feed are connected
+        `connect`: connect to camera and feed
+        `connectCamera`: connect to camera
+        `connectFeed`: connect to feed
+        `disconnect`: disconnect from camera and feed
+        `disconnectCamera`: disconnect from camera
+        `disconnectFeed`: disconnect from feed
+        `configureSpotmeter`: set the temperature calculation parameters when enabling a spotmeter
+        `disableSpotmeter`: disable spotmeters with given instance IDs
+        `enableSpotmeter`: enable spotmeters with given instance IDs
+        `getCutline`: get a 1D array of temperature values along the given cutline
+        `getInternalTemperature`: get the internal temperature of the camera
+        `getSpotPositions`: get the positions for specified spotmeters
+        `getSpotTemperatures`: get temperature readings for specified spotmeters
+        `invertPalette`: invert the palette of the feed
+        `decodeModbus`: parse values from reading modbus holding registers
+        `encodeModbus`: format value to create data packet
+    """
+    
     def __init__(self, 
         host: str,
         *, 
@@ -36,6 +88,19 @@ class AX8(Camera):
         verbose:bool = False, 
         **kwargs
     ):
+        """ 
+        Initialize the AX8 object
+        
+        Args:
+            host (str): camera IP address
+            port (int, optional): Modbus port. Defaults to 502.
+            encoding (str, optional): feed encoding. Defaults to 'avc'.
+            overlay (bool, optional): whether to overlay data. Defaults to False.
+            connection_details (dict, optional): connection details. Defaults to None.
+            init_timeout (int, optional): initial timeout. Defaults to 1.
+            simulation (bool, optional): whether to simulate the camera. Defaults to False.
+            verbose (bool, optional): whether to print debug messages. Defaults to False.
+        """
         super().__init__(
             connection_details=connection_details, init_timeout=init_timeout,
             simulation=simulation, verbose=verbose,
@@ -53,6 +118,7 @@ class AX8(Camera):
 
     @property
     def host(self) -> str:
+        """Camera IP address"""
         return self.connection_details["host"]
     @host.setter
     def host(self, value: str):
@@ -61,6 +127,7 @@ class AX8(Camera):
     
     @property
     def port(self) -> int:
+        """Modbus port"""
         return self.connection_details["port"]
     @port.setter
     def port(self, value: int):
@@ -69,6 +136,7 @@ class AX8(Camera):
     
     @property
     def modbus(self) -> ModbusClient:
+        """Modbus connection"""
         return self.connection
     @modbus.setter
     def modbus(self, value: ModbusClient):
@@ -77,7 +145,6 @@ class AX8(Camera):
         return
     
     def checkDeviceConnection(self) -> bool:
-        """Check the connection to the device"""
         modbus_status = self.modbus.is_open
         feed_status = self.feed.isOpened()
         if not modbus_status:
@@ -92,6 +159,7 @@ class AX8(Camera):
         return
     
     def connectCamera(self):
+        """Connect to camera"""
         # Connect to camera via Modbus
         logger.info('Connecting to camera...')
         self.modbus.host = self.host
@@ -115,6 +183,7 @@ class AX8(Camera):
         return
     
     def disconnectCamera(self):
+        """Disconnect from camera"""
         logger.info('Disconnecting from camera...')
         self.modbus.close()
         return
@@ -202,7 +271,7 @@ class AX8(Camera):
             distance (float|None, optional): distance in metres, at least 0.2. Defaults to None.
 
         Returns:
-            Optional[np.ndarray]: array of temperature values along cutline
+            np.ndarray|None: array of temperature values along cutline
         """
         if not any([x,y]) or all([x,y]):
             print("Please only input value for one of 'x' or 'y'")
@@ -220,7 +289,12 @@ class AX8(Camera):
         return np.array(values)
     
     def getInternalTemperature(self) -> float:
-        """Get the internal temperature of the camera"""
+        """
+        Get the internal temperature of the camera
+        
+        Returns:
+            float: internal temperature in Kelvin
+        """
         self.modbus.unit_id = 1
         out = self.modbus.read_holding_registers(1017, 2)[:2]
         camera_temperature = self.decodeModbus(out, is_int=False)[0]
@@ -270,7 +344,12 @@ class AX8(Camera):
         return values
     
     def invertPalette(self, blue_cold:bool = True):
-        """Invert the palette of the feed"""
+        """
+        Invert the palette of the feed
+        
+        Args:
+            blue_cold (bool, optional): whether to set the palette to blue cold. Defaults to True.
+        """
         self.modbus.unit_id = int("67", base=16)
         base_reg_addr = 4000
         attr_id = 2
@@ -279,12 +358,6 @@ class AX8(Camera):
         data = self.encodeModbus(not is_blue_cold)
         self.modbus.write_multiple_registers(address, data)
         return
-
-    @staticmethod
-    def _get_rtsp_url(host:str, encoding:str='avc', overlay:bool=False) -> str:
-        assert encoding in ("avc", "mjpg", "mpeg4"), f"Choose encoding from 'avc', 'mjpg', 'mpeg4'"
-        overlay_tag = '' if overlay else "?overlay=off"
-        return f'rtsp://{host}/{encoding}{overlay_tag}'
 
     @staticmethod
     def decodeModbus(data: Sequence[int], is_int:bool) -> tuple:
@@ -296,7 +369,7 @@ class AX8(Camera):
             is_int (bool): whether the expected value is an integer (as opposed to a float)
 
         Returns:
-            tuple: _description_
+            tuple: unpacked values
         """
         form = ">i" if is_int else ">f"
         value = data[0].to_bytes(2, 'big') + data[1].to_bytes(2, 'big')
@@ -321,61 +394,19 @@ class AX8(Camera):
         little_endian = big_endian[::-1]
         return [BYTE_SIZE] + little_endian + [BYTE_SIZE] + big_endian
 
-
-
-
-
-
-
-
-
-    def _frame_queue_thread_worker(self):
-        while not self._frame_queue_thread_stop.is_set():
-            try:
-                frame = self._camera.get_frame()
-                self._frame_queue.put_nowait(frame)
-            except queue.Full:
-                logger.warning("Frame queue is full")
-            except Exception as e:
-                logger.error(f"Frame queue error: {e}")
-            time.sleep(self._frame_queue_timeout)
-
-    def _get_frame(self):
-        frame = self._frame_queue.get(timeout=self._frame_queue_timeout)
-        return frame
-
-    def get_frame(self):
-        with self._frame_lock:
-            frame = self._get_frame()
-            self._frame = frame
-        return frame
-
-    def open(self):
-        self._camera = PLACEHOLDER
-        self._camera.open()
-
-    def close(self):
-        self._camera.close()
-
-    def get_temperature(self, x: int, y: int) -> float:
-        frame = self.get_frame()
-        temperature = frame[y, x]
-        return temperature
-
-    def get_temperature_range(self) -> tuple[float, float]:
-        temperature_min = 0.0
-        temperature_max = 100.0
-        return temperature_min, temperature_max
-
-    def get_temperature_unit(self) -> str:
-        temperature_unit = "°C"
-        return temperature_unit
-
-    def get_temperature_resolution(self) -> float:
-        temperature_resolution = 0.1
-        return temperature_resolution
-    
-    def get_temperature_resolution_unit(self) -> str:
-        temperature_resolution_unit = "°C"
-        return temperature_resolution_unit
-
+    @staticmethod
+    def _get_rtsp_url(host:str, encoding:str='avc', overlay:bool=False) -> str:
+        """
+        Generate RTSP feed URL
+        
+        Args:
+            host (str): camera IP address
+            encoding (str, optional): feed encoding. Defaults to 'avc'.
+            overlay (bool, optional): whether to overlay data. Defaults to False.
+            
+        Returns:
+            str: RTSP feed URL
+        """
+        assert encoding in ("avc", "mjpg", "mpeg4"), f"Choose encoding from 'avc', 'mjpg', 'mpeg4'"
+        overlay_tag = '' if overlay else "?overlay=off"
+        return f'rtsp://{host}/{encoding}{overlay_tag}'

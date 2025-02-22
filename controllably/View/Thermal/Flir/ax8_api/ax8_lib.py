@@ -2,9 +2,11 @@
 """
 This module holds the references for AX8 cameras from FLIR.
 
-Classes:
-    BoxRegs (Enum)
-    SpotmeterRegs (Enum)
+## Classes:
+    `SpotmeterRegs`
+    `BoxRegs`
+    
+<i>Documentation last updated: 2025-02-22</i>
 """
 # Standard library imports
 from __future__ import annotations
