@@ -34,6 +34,8 @@ logger.debug(f"Import: OK <{__name__}>")
 
 MAX_SPEED = 0.375 # mm/s (22.5mm/min)
 READ_FORMAT = "{displacement},{end_stop},{value}\n"
+OUT_FORMAT = '{data}\n'
+Data = NamedTuple('Data', [('data',str)])
 MoveForceData = NamedTuple('MoveForceData', [('displacement', float),('value', int),('end_stop', bool)])
 
 class ActuatedSensor(LoadCell):
@@ -103,7 +105,7 @@ class ActuatedSensor(LoadCell):
         steps_per_second: int = 6400,
         calibration_factor: float = 1.0,
         correction_parameters: tuple[float] = (1.0,0.0),
-        baudrate: int = 9600,
+        baudrate: int = 115200,
         verbose: bool = False, 
         **kwargs
     ):
@@ -124,9 +126,15 @@ class ActuatedSensor(LoadCell):
             baudrate (int): Baudrate for serial communication
             verbose (bool): Print verbose output
         """
+        defaults = dict(
+            init_timeout=3, 
+            data_type=MoveForceData, 
+            read_format=READ_FORMAT, 
+        )
+        defaults.update(kwargs)
+        kwargs = defaults
         super().__init__(
-            port=port, baudrate=baudrate, init_timeout=3, 
-            data_type=MoveForceData, read_format=READ_FORMAT, 
+            port=port, baudrate=baudrate,
             stabilize_timeout=stabilize_timeout, force_tolerance=force_tolerance,
             calibration_factor=calibration_factor, correction_parameters=correction_parameters,
             verbose=verbose, **kwargs
@@ -215,8 +223,9 @@ class ActuatedSensor(LoadCell):
         Returns:
             bool: whether movement is successful
         """
-        if not self.device.write('H 0\n'):
-            return False
+        # if not self.device.write('H 0\n'):
+        #     return False
+        self.query('H 0')
         time.sleep(1)
         while not self.atDisplacement(self.home_displacement):
             time.sleep(0.1)
@@ -226,8 +235,9 @@ class ActuatedSensor(LoadCell):
         time.sleep(2)
         self.device.connect()
         time.sleep(2)
-        if not self.device.write('H 0\n'):
-            return False
+        self.query('H 0')
+        # if not self.device.write('H 0\n'):
+        #     return False
         time.sleep(1)
         while not self.atDisplacement(self.home_displacement):
             time.sleep(0.1)
@@ -277,18 +287,25 @@ class ActuatedSensor(LoadCell):
         speed = speed or self.max_speed
         to = round(to,2)
         rpm = int(speed * self._steps_per_second)
-        self.device.write(f'G {to} {rpm}')
+        self.query(f'G {to} {rpm}')
         
         success = True
+        data = self.getData()
         while not self.atDisplacement(to):
-            data = self.getData()
+            if data is None:
+                continue
             force = self._calculate_force(data.value)
             if force >= self.force_threshold:
                 success = False 
                 self._logger.info(f"[{data.displacement}] Force threshold reached: {force}")
                 break
-        self._logger.info(data.displacement)
-        self.device.write(f'G {data.displacement} {rpm}')
+            data = self.getData()
+        if data is not None:
+            self._logger.info(data.displacement)
+        # self.device.write(f'G {data.displacement} {rpm}')
+        if not success:
+            time.sleep(0.1)
+            self.moveTo(data.displacement, speed)
         self.displacement = self.getDisplacement()
         return success
     
@@ -312,11 +329,19 @@ class ActuatedSensor(LoadCell):
         """
         initial_force_threshold = self.force_threshold
         self.force_threshold = force_threshold
-        to = self.limits[0] if from_top else self.limits[1]
+        to = min(self.limits) if from_top else max(self.limits)
         displacement_threshold = displacement_threshold or to
         success = self.moveTo(displacement_threshold, speed=speed)
         self.force_threshold = initial_force_threshold
         return not success
+    
+    def query(self, *args, **kwargs):
+        out:Data = self.device.query(*args, multi_out=False, format_out=OUT_FORMAT, data_type=Data, **kwargs)
+        if out is None or len(out.data) == 0:
+            return None
+        if out.data[0] not in '-1234567890':
+            return None
+        return self.device.processOutput(out.data+'\n')
     
 Parallel_ActuatedSensor = Ensemble.factory(ActuatedSensor)
 
