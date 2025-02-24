@@ -134,6 +134,8 @@ class LoadCell(Measurer):
             time.sleep(0.1)
             out = self.device.query(None,multi_out=False)
             if out is not None:
+                time.sleep(1)
+                self.device.clear()
                 break
         return
     
