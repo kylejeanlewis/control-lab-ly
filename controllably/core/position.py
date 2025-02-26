@@ -38,6 +38,7 @@ import matplotlib.colors as mcolors
 import matplotlib.patches
 import matplotlib.pyplot as plt
 import numpy as np
+import parse
 from scipy.spatial.transform import Rotation
 
 # Local application imports
@@ -163,11 +164,31 @@ class Position:
         return
     
     def __str__(self):
-        return f"Position {self._coordinates} with ({self.rotation_type}) rotation {self.rotation}"
+        return f"{self.coordinates} | {self.rotation} ({self.rotation_type})"
     
     def __repr__(self):
         return f"{self.coordinates}|{self.rotation}"
     
+    @staticmethod
+    def fromJSON(value:str) -> Position:
+        """
+        Create a `Position` object from string
+
+        Args:
+            value (str): string representation of `Position`
+
+        Returns:
+            Position: `Position` object
+        """
+        assert isinstance(value, str), "Please input a valid string"
+        coord_str, quat_str = parse.parse("Position(({}), ({}) [wxyz])", value)
+        coord = tuple(map(float, coord_str.split(', ')))
+        quat = tuple(map(float, quat_str.split(', ')))
+        return Position(coord, Rotation.from_quat(quat, scalar_first=True))
+    
+    def toJSON(self) -> str:
+        return f"Position({tuple(self._coordinates)}, {tuple(self.Rotation.as_quat(scalar_first=True))} [wxyz])"
+        
     @property
     def coordinates(self) -> np.ndarray[float]:
         """X,Y,Z coordinates"""

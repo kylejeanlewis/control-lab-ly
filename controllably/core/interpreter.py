@@ -15,6 +15,9 @@ import json
 import pickle
 from typing import Protocol, Mapping, Any
 
+# Local application imports
+from .position import Position
+
 class Message(Protocol):
     ...
     
@@ -127,6 +130,9 @@ class JSONInterpreter(Interpreter):
         Returns:
             Message|str|bytes: encoded message
         """
+        for k,v in data.items():
+            if isinstance(v, Position):
+                data[k] = v.toJSON()
         try:
             package = json.dumps(data).encode('utf-8')
         except TypeError:
@@ -164,5 +170,9 @@ class JSONInterpreter(Interpreter):
         if 'data' not in data and 'pickled' in data:
             pickled = data.pop('pickled')
             data.update(dict(data = pickle.loads(ast.literal_eval(pickled))))
+        elif 'data' in data:
+            for k,v in data['data'].items():
+                if isinstance(v, str) and v.startswith('Position('):
+                    data['data'][k] = Position.fromJSON(v)
         return data
     
