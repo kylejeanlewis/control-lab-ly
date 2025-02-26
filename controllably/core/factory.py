@@ -61,11 +61,23 @@ def create(obj:Callable, *args, **kwargs) -> object:
     """
     assert inspect.isclass(obj), "Ensure object is a class"
     parents = [parent.__name__ for parent in obj.__mro__]
-    if 'Compound' in parents or 'Combined' in parents:
-        return obj.fromConfig(kwargs)
-    # elif 'Multichannel' in parents or 'Ensemble' in parents:
-    #     return obj.create(**kwargs)
-    return obj(*args, **kwargs)
+    try:
+        if 'Compound' in parents or 'Combined' in parents:
+            docs = inspect.getdoc(obj.fromConfig)
+            new_obj = obj.fromConfig(kwargs)
+        # elif 'Multichannel' in parents or 'Ensemble' in parents:
+        #     docs = inspect.getdoc(obj.create)
+        #     new_obj = obj.create(**kwargs)
+        else:
+            docs = inspect.getdoc(obj.__init__)
+            new_obj = obj(*args, **kwargs)
+    except TypeError as e:
+        logger.error(f"Error creating object: {obj.__name__}")
+        logger.error(docs)
+        logger.error(f"Received args: {args}")
+        logger.error(f"Received kwargs: {kwargs}")
+        raise e
+    return new_obj
 
 def create_from_config(config:dict) -> object:
     """
@@ -132,8 +144,15 @@ def get_class(module_name:str, class_name:str) -> Type[object]:
     Returns:
         Type: target Class
     """
-    _module = importlib.import_module(module_name)
-    _class = getattr(_module, class_name)
+    try:
+        _module = importlib.import_module(module_name)
+        _class = getattr(_module, class_name)
+    except ModuleNotFoundError as e:
+        logger.error(f"Module not found: {module_name}")
+        raise e
+    except AttributeError as e:
+        logger.error(f"Class not found: {class_name}")
+        raise e
     return _class
 
 def get_imported_modules(interested_modules:str|Sequence[str]|None = None) -> dict:
@@ -221,9 +240,14 @@ def get_setup(
         tuple|Any: named tuple or Platform object
     """
     platform: NamedTuple = load_setup_from_files(config_file=config_file, registry_file=registry_file, create_tuple=True)
+    n_errors = sum([int(isinstance(tool, Exception)) for tool in platform])
     if platform_type is None or len(platform_type.__annotations__) == 0:
-        return platform
-    return platform_type(**platform._asdict())
+        out = platform
+    else:
+        out = platform_type(**platform._asdict())
+    if n_errors:
+        raise SystemExit(f"{n_errors} error(s) during initialization", out)
+    return out
 
 def load_parts(configs:dict, **kwargs) -> dict:
     """
@@ -237,6 +261,7 @@ def load_parts(configs:dict, **kwargs) -> dict:
     """
     parts = {}
     configs.update(kwargs)
+    errors = []
     for name, details in configs.items():
         title = f'\n{name.upper()}'
         settings = details.get('settings', {})
@@ -247,9 +272,15 @@ def load_parts(configs:dict, **kwargs) -> dict:
         logger.debug(f'{pprint.pformat(details, indent=1, depth=4, sort_dicts=False)}\n')
         module_name = details.get('module')
         class_name = details.get('class')
-        _class = get_class(module_name, class_name)
         
-        parts[name] = create(_class, **settings)
+        try:
+            _class = get_class(module_name, class_name)
+            parts[name] = create(_class, **settings)
+        except Exception as e:
+            logger.error(f"Error loading {name}: {e}")
+            errors.append(e)
+            parts[name] = e
+            continue
         # parent = _class.__mro__[1].__name__
         # if parent in ('Compound','Combined'):
         #     parts[name] = _class.fromConfig(settings)
