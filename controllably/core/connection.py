@@ -479,7 +479,7 @@ class Server:
         while not triggers['terminate'].is_set():
             if triggers['update_connections'].is_set():
                 message = f'[CONNECTIONS] {len(connections)}\n'
-                message += f'{"\n".join([("- "+a) for a in connections])}'
+                message += "\n".join([("- "+a) for a in connections])
                 print_queue.put(message)
                 while len(removal_list):
                     del threads[removal_list.pop()]
@@ -497,7 +497,7 @@ class Server:
                 continue
             except KeyboardInterrupt:
                 break
-            addr = f'{":".join([str(a) for a in addr])}'
+            addr = ":".join([str(a) for a in addr])
             kwargs.update(
                 triggers=triggers, print_queue=print_queue, 
                 connections=connections, removal_list=removal_list
