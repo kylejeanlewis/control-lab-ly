@@ -1062,7 +1062,7 @@ def handle_client(
         try:
             data = ''
             while True:
-                fragment = client_socket.recv(BYTESIZE).decode("utf-8")  # Receive data (adjust buffer size if needed)
+                fragment = client_socket.recv(BYTESIZE).decode("utf-8", "replace").replace('\uFFFD', '?')  # Receive data (adjust buffer size if needed)
                 data += fragment
                 if len(fragment)==0 or len(fragment) < BYTESIZE:
                     break
@@ -1111,7 +1111,7 @@ def start_server(host:str, port:int, controller: Controller, *, terminate: threa
         logger.info(f"Client connected from {addr}")
         client_addr = f"{addr[0]}:{addr[1]}"
         client_socket.sendall(f"[CONNECTED] {client_addr}".encode("utf-8"))
-        handshake = client_socket.recv(BYTESIZE).decode("utf-8")  # Receive response" ")[1]
+        handshake = client_socket.recv(BYTESIZE).decode("utf-8", "replace").replace('\uFFFD', '?')  # Receive response" ")[1]
         print(handshake)
         if not handshake.startswith("[CONNECTED] "):
             raise ConnectionError(f"Invalid handshake: {handshake}")
@@ -1164,7 +1164,7 @@ def start_client(host:str, port:int, controller: Controller, relay:bool = False,
         client_socket.connect((host, port))  # Connect to the server
         logger.info(f"Connected to server at {host}:{port}")
         time.sleep(1)
-        handshake = client_socket.recv(BYTESIZE).decode("utf-8")  # Receive response" ")[1]
+        handshake = client_socket.recv(BYTESIZE).decode("utf-8","replace").replace('\uFFFD', '?')  # Receive response" ")[1]
         print(handshake)
         if not handshake.startswith("[CONNECTED] "):
             raise ConnectionError(f"Invalid handshake: {handshake}")
@@ -1177,7 +1177,7 @@ def start_client(host:str, port:int, controller: Controller, relay:bool = False,
             try:
                 data = ''
                 while True:
-                    fragment = client_socket.recv(BYTESIZE).decode("utf-8")  # Receive data (adjust buffer size if needed)
+                    fragment = client_socket.recv(BYTESIZE).decode("utf-8","replace").replace('\uFFFD', '?')  # Receive data (adjust buffer size if needed)
                     data += fragment
                     if len(fragment)==0 or len(fragment) < BYTESIZE:
                         break

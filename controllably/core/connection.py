@@ -162,7 +162,7 @@ class SocketUtils:
         while True:
             out = ''
             try:
-                out = connection.recv(bytesize).decode(encoder, "replace")
+                out = connection.recv(bytesize).decode(encoder, "replace").replace('\uFFFD', '?')
             except OSError as e:
                 if flag:
                     return None
@@ -197,7 +197,7 @@ class SocketUtils:
         """
         out = ''
         try:
-            out = connection.recv(bytesize).decode(encoder, "replace")
+            out = connection.recv(bytesize).decode(encoder, "replace").replace('\uFFFD', '?')
         except OSError as e:
             return None
         except TimeoutError:
@@ -1068,9 +1068,9 @@ class SerialDevice:
         try:
             if lines:
                 data = self.serial.readlines()
-                data = [d.decode("utf-8", "replace").strip() for d in data]
+                data = [d.decode("utf-8", "replace").strip().replace('\uFFFD', '?') for d in data]
             else:
-                data = self.serial.readline().decode("utf-8", "replace").strip()
+                data = self.serial.readline().decode("utf-8", "replace").strip().replace('\uFFFD', '?')
             self._logger.debug(f"Received: {data!r}")
             self.serial.reset_output_buffer()
         except serial.SerialException as e:
@@ -1249,7 +1249,7 @@ class SocketDevice:
         """
         data = []
         try:
-            data = self.socket.recv(1024).decode("utf-8", "replace").strip().split('\n')
+            data = self.socket.recv(1024).decode("utf-8", "replace").strip().replace('\uFFFD', '?').split('\n')
             self._logger.debug(f"Received: {data!r}")
         except socket.error as e:
             self._logger.debug(f"Failed to receive data")

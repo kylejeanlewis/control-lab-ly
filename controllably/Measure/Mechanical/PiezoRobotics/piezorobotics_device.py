@@ -282,7 +282,7 @@ class PiezoRoboticsDevice(Instrument):
         response = ''
         try:
             response = self.device.readline()
-            response = response.decode("utf-8",'replace').strip()
+            response = response.decode("utf-8",'replace').strip().replace('\uFFFD', '?')
         except AttributeError:
             pass
         except Exception as e:

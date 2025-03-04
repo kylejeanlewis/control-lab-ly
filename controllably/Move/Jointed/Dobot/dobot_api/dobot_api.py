@@ -153,6 +153,7 @@ class DobotApi:
                 data_str = data
             else:
                 data_str = str(data, encoding="utf-8", errors='replace')
+                data_str.replace('\uFFFD', '?')
                 self.log(f'Receive from {self.ip}:{self.port}: {data_str}')
             return data_str
 

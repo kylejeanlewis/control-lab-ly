@@ -197,7 +197,7 @@ def read_json(json_file:str, package:Optional[str] = None) -> dict:
         dict: dictionary loaded from JSON file
     """
     if package is not None:
-        jsn = pkgutil.get_data(package, json_file).decode('utf-8','replace')
+        jsn = pkgutil.get_data(package, json_file).decode('utf-8','replace').replace('\uFFFD', '?')
     else:
         with open(json_file) as file:
             jsn = file.read()
@@ -215,7 +215,7 @@ def read_yaml(yaml_file:str, package:Optional[str] = None) -> dict:
         dict: dictionary loaded from YAML file
     """
     if package is not None:
-        yml = pkgutil.get_data(package, yaml_file).decode('utf-8','replace')
+        yml = pkgutil.get_data(package, yaml_file).decode('utf-8','replace').replace('\uFFFD', '?')
     else:
         with open(yaml_file) as file:
             yml = file.read()
