@@ -40,7 +40,8 @@ handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
 
-READ_FORMAT = "{channel:1}{data}�\r"      # command template: <PRE><ADR><CODE><DATA><LRC><POST>
+# READ_FORMAT = "{channel:1}{data}�\r"      # command template: <PRE><ADR><CODE><DATA><LRC><POST>
+READ_FORMAT = "{channel:1}{data}\r"      # command template: <PRE><ADR><CODE><DATA><LRC><POST>
 WRITE_FORMAT = '{channel}{data}º\r'       # command template: <PRE><ADR><CODE><DATA><LRC><POST> # Typical timeout wait is 400ms
 Data = NamedTuple("Data", [("data", str), ("channel", int)])
 IntData = NamedTuple("IntData", [("data", int), ("channel", int)])
