@@ -263,7 +263,7 @@ class LoadCell(Measurer):
             if self.verbose:
                 print(e)
         else:
-            response = response.decode('utf-8','replace').strip().replace('\uFFFD', '?')
+            response = response.decode('utf-8','replace').strip().replace('\uFFFD', '')
             if self.verbose:
                 print(response)
         return response

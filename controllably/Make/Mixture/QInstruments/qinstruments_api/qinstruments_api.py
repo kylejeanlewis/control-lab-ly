@@ -1256,7 +1256,7 @@ class QInstrumentsDevice:
                 data = self.serial.read_all()       # response template: <response><\r><\n>
                 data = data.decode("utf-8", "replace").strip() 
             else:
-                data = self.serial.readline().decode("utf-8", "replace").strip().replace('\uFFFD', '?')
+                data = self.serial.readline().decode("utf-8", "replace").strip().replace('\uFFFD', '')
             self._logger.debug(f"Received: {data!r}")
             self.serial.reset_output_buffer()
         except serial.SerialException as e:

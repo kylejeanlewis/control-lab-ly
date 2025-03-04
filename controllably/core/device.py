@@ -897,7 +897,7 @@ class SerialDevice(BaseDevice):
         """Read data from the device"""
         data = None
         try:
-            data = self.serial.readline().decode("utf-8", "replace").replace('\uFFFD', '?')
+            data = self.serial.readline().decode("utf-8", "replace").replace('\uFFFD', '')
             data = data.strip()
             self._logger.debug(f"[{self.port}] Received: {data!r}")
         except serial.SerialException as e:
@@ -913,7 +913,7 @@ class SerialDevice(BaseDevice):
         data = ''
         try:
             while True:
-                out = self.serial.read_all().decode("utf-8", "replace").strip().replace('\uFFFD', '?')
+                out = self.serial.read_all().decode("utf-8", "replace").strip().replace('\uFFFD', '')
                 data += out
                 if not out:
                     break
@@ -1062,7 +1062,7 @@ class SocketDevice(BaseDevice):
         self._stream_buffer = ""
         while True:
             try:
-                self.socket.recv(self.byte_size).decode("utf-8", "replace").strip('\r\n').replace('\uFFFD', '?')
+                self.socket.recv(self.byte_size).decode("utf-8", "replace").strip('\r\n').replace('\uFFFD', '')
             except OSError:
                 break
         return
@@ -1106,7 +1106,7 @@ class SocketDevice(BaseDevice):
         data = self._stream_buffer
         self._stream_buffer = ''
         try:
-            out = self.socket.recv(self.byte_size).decode("utf-8", "replace").strip(delimiter).replace('\uFFFD', '?')
+            out = self.socket.recv(self.byte_size).decode("utf-8", "replace").strip(delimiter).replace('\uFFFD', '')
             data += out
             # if not out or delimiter in data:
             #     break
@@ -1130,7 +1130,7 @@ class SocketDevice(BaseDevice):
         self._stream_buffer = ''
         try:
             while True:
-                out = self.socket.recv(self.byte_size).decode("utf-8", "replace").replace('\uFFFD', '?')
+                out = self.socket.recv(self.byte_size).decode("utf-8", "replace").replace('\uFFFD', '')
                 data += out
                 if not out or len(data)>self.byte_size:
                     break

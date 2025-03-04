@@ -269,7 +269,7 @@ class MassBalance(Measurer):
                 print(e)
         else:
             try:
-                response = response.decode('utf-8','replace').strip().replace('\uFFFD', '?')
+                response = response.decode('utf-8','replace').strip().replace('\uFFFD', '')
             except UnicodeDecodeError:
                 response = ''
             if self.verbose:

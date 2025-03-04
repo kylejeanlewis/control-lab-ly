@@ -855,7 +855,7 @@ class TriContinent(Pump):
         """
         response = ''
         try:
-            response = self.device.read_until().decode('utf-8','replace').replace('\uFFFD', '?')
+            response = self.device.read_until().decode('utf-8','replace').replace('\uFFFD', '')
             response = response.split('\x03')[0]
         except AttributeError:
             pass
