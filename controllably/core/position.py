@@ -181,13 +181,20 @@ class Position:
             Position: `Position` object
         """
         assert isinstance(value, str), "Please input a valid string"
-        coord_str, quat_str = parse.parse("Position(({}), ({}) [wxyz])", value)
+        coord_str, quat_str, order = parse.parse("Position(({}), ({}) [{}])", value)
         coord = tuple(map(float, coord_str.split(', ')))
         quat = tuple(map(float, quat_str.split(', ')))
-        return Position(coord, Rotation.from_quat(quat, scalar_first=True))
+        if order == 'wxyz':
+            scalar_first = True
+        elif order == 'xyzw':
+            scalar_first = False
+        else:
+            raise ValueError(f"Invalid quaternion order: {order}")
+        return Position(coord, Rotation.from_quat(quat, scalar_first=scalar_first))
     
-    def toJSON(self) -> str:
-        return f"Position({tuple(self._coordinates)}, {tuple(self.Rotation.as_quat(scalar_first=True))} [wxyz])"
+    def toJSON(self, *, scalar_first: bool = False) -> str:
+        order = 'wxyz' if scalar_first else 'xyzw'
+        return f"Position({tuple(self._coordinates)}, {tuple(self.Rotation.as_quat(scalar_first=scalar_first))} [{order}])"
         
     @property
     def coordinates(self) -> np.ndarray[float]:
