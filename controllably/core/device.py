@@ -931,7 +931,7 @@ class SerialDevice(BaseDevice):
         """Write data to the device"""
         assert isinstance(data, str), "Ensure data is a string"
         try:
-            self.serial.write(data.encode())
+            self.serial.write(data.encode('utf-8'))
             self._logger.debug(f"[{self.port}] Sent: {data!r}")
         except serial.SerialException as e:
             self._logger.debug(f"[{self.port}] Failed to send: {data!r}")
@@ -1148,7 +1148,7 @@ class SocketDevice(BaseDevice):
         """Write data to the device"""
         assert isinstance(data, str), "Ensure data is a string"
         try:
-            self.socket.sendall(data.encode())
+            self.socket.sendall(data.encode('utf-8'))
             self._logger.debug(f"[{self.host}] Sent: {data!r}")
         except OSError as e:
             self._logger.debug(f"[{self.host}] Failed to send: {data!r}")
