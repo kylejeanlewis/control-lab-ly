@@ -164,6 +164,13 @@ class Mover:
         
         self._speed_factor = 1.0
         self._speed_max = speed_max
+        self._has_rotation = True
+        try:
+            self.rotate('a', 0)
+        except NotImplementedError:
+            self._has_rotation = False
+        except:
+            pass
         return
     
     def __del__(self):
@@ -955,11 +962,7 @@ class Mover:
             Position: new robot position
         """
         assert (by is None) != (to is None), f"Ensure input only for one of `by` or `to`"
-        rotation = True
-        try:
-            self.rotate('a',0)
-        except NotImplementedError:
-            rotation = False
+        rotation = self._has_rotation
         if isinstance(by, Position):
             self._robot_position.translate(by.coordinates)
             if rotation:
