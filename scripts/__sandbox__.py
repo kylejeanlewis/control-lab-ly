@@ -1,5 +1,13 @@
 # %%
 import test_init
+from controllably.Transfer.Liquid.Sartorius.sartorius_api import SartoriusDevice
+from controllably.Transfer.Liquid.Sartorius.sartorius_utils import Sartorius
+
+device = SartoriusDevice(port='COM35', verbose=True, simulation=True)
+# pipette = Sartorius('COM35',verbose=True)
+
+# %%
+import test_init
 from controllably.Measure.Mechanical.actuated_sesnor import ActuatedSensor, Parallel_ActuatedSensor
 from controllably.core.datalogger import monitor_plot
 
@@ -145,7 +153,7 @@ from controllably.core.connection import get_ports
 from controllably.Measure.Physical.balance import Balance
 from controllably.core import datalogger
 
-# get_ports()
+get_ports()
 # %%
 bal = Balance(port='COM21', baudrate=115200, timeout=1, verbose=True, simulation=True)
 bal.connect()
