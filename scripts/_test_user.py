@@ -17,7 +17,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # %%
-host = get_host()
+host = '10.3.13.116' #get_host()
 port = 12345 
 ui = Controller('view', JSONInterpreter())
 terminate = threading.Event()
