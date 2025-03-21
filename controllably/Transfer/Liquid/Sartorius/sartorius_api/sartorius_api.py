@@ -668,10 +668,10 @@ class SartoriusDevice(SerialDevice):
         Returns:
             str: response from the device
         """
-        self.eject()
         out: Data = self.query('RZ')
         self.position = 0
         time.sleep(2)
+        self.eject()
         return out.data
     
     def reset(self) -> str:
