@@ -636,7 +636,7 @@ class _QInstrumentsDevice(SerialDevice):
         self.query("shakeEmergencyOff")
         return
         
-    def shakeGoHome(self):
+    def shakeGoHome(self, timeout:int = 5):
         """
         Move shaker to the home position and locks in place
         
@@ -649,6 +649,8 @@ class _QInstrumentsDevice(SerialDevice):
         start_time = time.perf_counter()
         while self.getShakeState() != 3:
             time.sleep(0.1)
+            if time.perf_counter() - start_time > timeout:
+                break
         self.getShakeState()
         return
         
