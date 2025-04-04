@@ -13,7 +13,7 @@ import logging
 import time
 
 # Local application imports
-from ..liquid import LiquidHandler
+from ...liquid import LiquidHandler
 from .sartorius_api import SartoriusDevice, interpolate_speed
 
 _logger = logging.getLogger("controllably.Transfer")
