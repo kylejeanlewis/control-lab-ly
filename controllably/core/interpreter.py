@@ -130,6 +130,7 @@ class JSONInterpreter(Interpreter):
         Returns:
             Message|str|bytes: encoded message
         """
+        data = data.copy()
         for k,v in data.items():
             if isinstance(v, Position):
                 data[k] = v.toJSON()
@@ -171,8 +172,8 @@ class JSONInterpreter(Interpreter):
             pickled = data.pop('pickled')
             data.update(dict(data = pickle.loads(ast.literal_eval(pickled))))
         elif 'data' in data:
-            for k,v in data['data'].items():
+            for k,v in data.items():
                 if isinstance(v, str) and v.startswith('Position('):
-                    data['data'][k] = Position.fromJSON(v)
+                    data[k] = Position.fromJSON(v)
         return data
     
