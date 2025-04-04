@@ -82,8 +82,9 @@ class Notifier:
         """
         config_file = Path(config_file)
         configs = file_handler.read_config_file(config_file)
-        configs['credentials']['keyfile'] = config_file.parent / configs['credentials']['keyfile'].replace('~/', '')
-        return cls(configs)
+        keyfile = str(configs['credentials']['keyfile'])
+        configs['credentials']['keyfile'] = config_file.parent / keyfile.replace('~/', '')
+        return Notifier(configs)
     
     @classmethod
     def writeMessage(cls, message_config: dict, placeholders: dict|None = None, *args, **kwargs) -> Any:
