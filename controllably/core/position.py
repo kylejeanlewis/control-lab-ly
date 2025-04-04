@@ -127,7 +127,7 @@ class Position:
     ### Constructor:
         `_coordinates` (Sequence[float]|numpy.ndarray, optional): X,Y,Z coordinates. Defaults to (0,0,0).
         `Rotation` (Rotation, optional): scipy.spatial.transform.Rotation object. Defaults to Rotation.from_euler('zyx',(0,0,0),degrees=True).
-        `rotation_type` (str, optional): preferred representation of rotation (quaternion, matrix, angle_axis, euler, mrp, davenport). Defaults to 'euler'.
+        `rotation_type` (str, optional): preferred representation of rotation (quaternion, matrix, angle_axis, euler, mrp). Defaults to 'euler'.
         `degrees` (bool, optional): whether to use degrees for euler angles. Defaults to True.
 
     ### Attributes and properties:
@@ -158,7 +158,7 @@ class Position:
     
     def __post_init__(self):
         assert isinstance(self.Rotation, Rotation), "Please input a Rotation object"
-        assert self.rotation_type in ['quaternion','matrix','angle_axis','euler','mrp','davenport'], f"Invalid rotation type: {self.rotation_type}"
+        assert self.rotation_type in ['quaternion','matrix','angle_axis','euler','mrp'], f"Invalid rotation type: {self.rotation_type}"
         assert isinstance(self._coordinates,(Sequence,np.ndarray)) and len(self._coordinates) == 3, "Please input x,y,z coordinates"
         self._coordinates = tuple(self._coordinates)
         return
@@ -168,6 +168,11 @@ class Position:
     
     def __repr__(self):
         return f"{self.coordinates}|{self.rotation}"
+    
+    def __eq__(self, value: Position) -> bool:
+        if not isinstance(value, Position):
+            return False
+        return np.allclose(self.coordinates, value.coordinates) and np.allclose(self.Rotation.as_quat(), value.Rotation.as_quat())
     
     @staticmethod
     def fromJSON(value:str) -> Position:
@@ -219,8 +224,6 @@ class Position:
             return self.Rotation.as_euler('zyx', degrees=self.degrees)
         elif self.rotation_type == 'mrp':
             return self.Rotation.as_mrp()
-        elif self.rotation_type == 'davenport':
-            return self.Rotation.as_davenport()
         raise ValueError(f"Invalid rotation type: {self.rotation_type}")
     @rotation.setter
     def rotation(self, value: Rotation):
@@ -706,11 +709,8 @@ class Labware:
         return self._is_stackable
     @is_stackable.setter
     def is_stackable(self, value:bool):
-        if value == True and 'slotAbove' not in self._details:
-            logger.warning("No details for Slot above")
-            return
-        self._is_stackable = value
         _ = self._add_slot_above() if value else self._delete_slot_above()
+        self._is_stackable = value
         return
     
     def fromTop(self, offset:Sequence[float]|np.ndarray) -> np.ndarray:
