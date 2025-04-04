@@ -103,9 +103,7 @@ def read_config_file(filepath:Path|str) -> dict:
             return json.load(file)
         elif file_type in ('yml', 'yaml'):
             return yaml.safe_load(file)
-        else:
-            raise ValueError(f"Unsupported file type: {file_type}")
-    return
+    raise ValueError(f"Unsupported file type: {file_type}")
 
 def readable_duration(total_time:float) -> str:
     """
@@ -134,7 +132,7 @@ def resolve_repo_filepath(filepath:Path|str) -> Path:
     """
     filepath = str(filepath)
     if len(filepath) == 0 or filepath == '.':
-        return Path('')
+        return Path().absolute()
     if os.path.isabs(filepath):
         return Path(filepath)
     parent = [os.path.sep] + os.getcwd().split(os.path.sep)[1:]
