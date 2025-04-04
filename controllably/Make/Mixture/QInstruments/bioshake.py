@@ -35,68 +35,6 @@ logger.debug(f"Import: OK <{__name__}>")
 
 MAX_LEN = 100
 ACCELERATION_LIMIT = (1,30)
-"""
-BioShake provides methods to control the QInstruments BioShake device.
-
-### Constructor
-    `port` (str): serial port address
-    `verbose` (bool, optional): verbosity of class. Defaults to False.
-    `simulation` (bool, optional): whether to simulate. Defaults to False.
-
-### Attributes and properties
-    `buffer_df` (pd.DataFrame): buffer dataframe to store collected data
-    `limits` (dict[str, tuple]): hardware limits for device
-    `model` (str): device model description
-    `ranges` (dict[str, tuple]): user-defined ranges for controls
-    `acceleration` (float): acceleration / deceleration of the shaker in seconds
-    `speed` (float): actual speed of shake in rpm
-    `set_speed` (float): target speed
-    `at_speed` (bool): checks and returns whether target speed has been reached
-    `temperature` (float): actual temperature of the plate in °C 
-    `set_temperature` (float): target temperature
-    `tolerance` (float): fractional tolerance to be considered on target for speed and temperature
-    `at_temperature` (bool): checks and returns whether target temperature has been reached
-    `shake_time_left` (float): remaining time left on shaker
-    `is_counterclockwise` (bool): returns the current mixing direction
-    `is_locked` (bool): returns the current ELM state
-    `connection_details` (dict): connection details for the device
-    `device` (Device): device object that communicates with physical tool
-    `flags` (SimpleNamespace[str, bool]): flags for the class
-    `is_busy` (bool): whether the device is busy
-    `is_connected` (bool): whether the device is connected
-    `verbose` (bool): verbosity of class
-
-### Methods
-    `clearCache`: clears and remove data in buffer
-    `getAcceleration`: returns the acceleration/deceleration value
-    `getErrors`: returns a list with errors and warnings which can occur during processing
-    `getShakeTimeLeft`: returns the remaining shake time in seconds if device was started with the a defined duration
-    `getSpeed`: returns the set speed and current mixing speed in rpm
-    `getStatus`: retrieve the status of the device's ELM, shaker, and temperature control
-    `getTemperature`: returns the set temperature and current temperature in °C
-    `getUserLimits`: retrieve the user defined limits for speed and temperature
-    `holdTemperature`: hold target temperature for desired duration
-    `home`: move shaker to the home position and locks in place
-    `reset`: restarts the controller
-    `setAcceleration`: sets the acceleration/deceleration value in seconds
-    `setCounterClockwise`: sets the mixing direction to counter clockwise
-    `setSpeed`: set the target mixing speed
-    `setTemperature`: sets target temperature between TempMin and TempMax in 1/10°C increments
-    `shake`: shake the plate at target speed, for specified duration
-    `stop`: stop the shaker immediately at an undefined position, ignoring the defined deceleration time if in an emergency
-    `toggleECO`: toggle the economical mode to save energy and decrease abrasion 
-    `toggleFeedbackLoop`: start or stop feedback loop
-    `toggleGrip`: grip or release the object
-    `toggleRecord`: start or stop data recording
-    `toggleShake`: starts/stops shaking with defined speed with defined acceleration/deceleration time
-    `toggleTemperature`: switches on/off the temperature control feature and starts/stops heating/cooling
-    `connect`: connect to the device
-    `disconnect`: disconnect from the device
-    `execute`: Set target temperature, then shake the plate at target speed and hold target temperature for desired duration
-    `resetFlags`: reset all flags to class attribute `_default_flags`
-    `run`: alias for `execute()`
-    `shutdown`: shutdown procedure for tool
-"""
 
 class BioShake(Maker, HeaterMixin):
     """ 
