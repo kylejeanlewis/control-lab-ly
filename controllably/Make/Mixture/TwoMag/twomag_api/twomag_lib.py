@@ -8,7 +8,6 @@ class ErrorCode(Enum):
     er2 = "Manual Mode (Start, Stop not possible)"
     er3 = "Parameter out of range (set value not allowed)"
     
-    
 class MIXdrive(Enum):
     MTP6 = 6
     MTP12 = 12
