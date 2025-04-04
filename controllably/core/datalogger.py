@@ -105,12 +105,13 @@ def stream(
         query (Any|None, optional): query to pass to the streaming device. Defaults to None.
         event (threading.Event | None, optional): event to set or clear. Defaults to None.
     """
+    if isinstance(event, threading.Event):
+        _ = event.set() if on else event.clear()
     if on:
         device.startStream(data=device.processInput(query), buffer=data_store)
         device.showStream(show)
     else:
         device.stopStream()
-        event.clear()
     return
 
 def monitor_plot(
