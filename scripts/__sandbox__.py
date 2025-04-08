@@ -1,5 +1,119 @@
 # %%
 import test_init
+import socket
+import threading
+import time
+
+from controllably.core.control import Controller, Proxy, start_client, start_server
+from controllably.core.interpreter import JSONInterpreter
+from controllably.core.control import TwoTierQueue
+
+HOST = '127.0.0.1'
+PORT = 12345
+hub = Controller('relay', JSONInterpreter())
+hub_terminate = threading.Event()
+hub_thread = threading.Thread(target=start_server, args=[HOST,PORT,hub], kwargs={'terminate':hub_terminate}, daemon=True)
+hub_thread.start()
+time.sleep(1)
+
+worker = Controller('model', JSONInterpreter())
+worker.start()
+worker_terminate = threading.Event()
+worker_thread = threading.Thread(target=start_client, args=[HOST,PORT,worker,True], kwargs={'terminate':worker_terminate}, daemon=True)
+worker_thread.start()
+
+user = Controller('view', JSONInterpreter())
+user_terminate = threading.Event()
+user_thread = threading.Thread(target=start_client, args=[HOST,PORT,user,True], kwargs={'terminate':user_terminate}, daemon=True)
+user_thread.start()
+time.sleep(2)
+assert hub_thread.is_alive()
+assert worker_thread.is_alive()
+assert user_thread.is_alive()
+
+# %%
+q = TwoTierQueue()
+worker.register(q, 'TEST1')
+time.sleep(1)
+assert worker.registry == {'TEST1': [worker.address]}
+assert user.registry == {'TEST1': [worker.address]}
+
+# %%
+p = Proxy(TwoTierQueue, 'TEST1')
+p.bindController(user)
+p.put_nowait('12345')
+assert p.qsize() == 1
+assert p.get() == '12345'
+
+# %%
+user.callbacks['request'][f"{HOST}:{PORT}"](b'[EXIT]')
+worker.callbacks['data'][f"{HOST}:{PORT}"](b'[EXIT]')
+hub_terminate.set()
+user_thread.join()
+worker_thread.join()
+hub_thread.join()
+assert not user_thread.is_alive()
+assert not worker_thread.is_alive()
+assert not hub_thread.is_alive()
+
+# %%
+import test_init
+import socket
+import threading
+import time
+
+from controllably.core.control import Controller, Proxy, start_client, start_server
+from controllably.core.interpreter import JSONInterpreter
+from controllably.core.control import TwoTierQueue
+
+HOST = '127.0.0.1'
+PORT = 12345
+worker = Controller('model', JSONInterpreter())
+worker.start()
+worker_terminate = threading.Event()
+worker_thread = threading.Thread(target=start_server, args=[HOST,PORT,worker], kwargs={'terminate':worker_terminate}, daemon=True)
+worker_thread.start()
+time.sleep(1)
+
+user = Controller('view', JSONInterpreter())
+user_terminate = threading.Event()
+user_thread = threading.Thread(target=start_client, args=[HOST,PORT,user], kwargs={'terminate':user_terminate}, daemon=True)
+user_thread.start()
+assert worker_thread.is_alive()
+assert user_thread.is_alive()
+
+# %%
+q = TwoTierQueue()
+worker.register(q, 'TEST1')
+time.sleep(1)
+assert worker.registry == {'TEST1': [worker.address]}
+assert user.registry == {'TEST1': [worker.address]}
+
+# %%
+p = Proxy(TwoTierQueue, 'TEST1')
+p.bindController(user)
+p.put_nowait('12345')
+assert p.qsize() == 1
+assert p.get() == '12345'
+
+# %%
+user.callbacks['request'][f"{HOST}:{PORT}"](b'[EXIT]')
+worker_terminate.set()
+user_thread.join()
+worker_thread.join()
+assert not user_thread.is_alive()
+assert not worker_thread.is_alive()
+
+# %%
+import socket
+
+hn = socket.gethostname()
+print(hn)
+host = socket.gethostbyname(hn)
+print(host)
+
+# %%
+import test_init
 from controllably.Transfer.Liquid.Sartorius.sartorius_api import SartoriusDevice
 from controllably.Transfer.Liquid.Sartorius.sartorius_utils import Sartorius
 
@@ -88,14 +202,12 @@ app.show()
 import time
 
 import test_init
-from controllably.core.control import Controller, TwoTierQueue, JSONInterpreter, Interpreter
+from controllably.core.control import Controller, TwoTierQueue
+from controllably.core.interpreter import JSONInterpreter
 
 worker = Controller('model', JSONInterpreter())
 ui = Controller('view', JSONInterpreter())
 hub = Controller('relay', JSONInterpreter())
-q = TwoTierQueue()
-worker.register(q)
-worker.start()
 
 # %% Server-client version
 worker.subscribe(ui.receiveData,'data')
@@ -109,10 +221,18 @@ ui.subscribe(hub.relayRequest,'request', relay=True)
 hub.subscribe(worker.receiveRequest,'request')
 
 # %%
-ui.getMethods([id(worker)], private=True)
+q = TwoTierQueue()
+worker.register(q)
+worker.start()
+
+# %%
+ui.getMethods([str(id(worker)),str(id(worker))], private=True)
 
 # %%
 ui.getMethods(private=False)
+
+# %%
+ui.getAttributes()
 
 # %%
 command = dict(
@@ -706,11 +826,11 @@ from types import SimpleNamespace
 import test_init
 from controllably.core.position import Labware, Deck
 
-labware_file = Path('control-lab-le/tests/files/labware/corning_24_wellplate_3400ul.json')
-labware = Labware.fromFile(labware_file)
-labware.show()
+# labware_file = Path('control-lab-le/tests/core/examples/corning_24_wellplate_3400ul.json')
+# labware = Labware.fromFile(labware_file)
+# labware.show()
 
-deck_file = Path('control-lab-le/tests/files/deck/deck_pescador.json')
+deck_file = Path('control-lab-le/tests/core/examples/layout_main.json')
 deck = Deck.fromFile(deck_file)
 deck.show()
 deck
