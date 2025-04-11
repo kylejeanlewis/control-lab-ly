@@ -20,11 +20,12 @@ Attributes:
 """
 # Standard library imports
 from __future__ import annotations
-import asyncio
+import builtins
 from dataclasses import dataclass
 import inspect
 import logging
 import queue
+import select
 import socket
 import threading
 import time
@@ -197,6 +198,7 @@ class TwoTierQueue:
             timeout (float): time to wait for the queue.
         """
         self.high_priority_queue.put((rank, item), block=block, timeout=timeout)
+        
         return
     
     def put_queue(self, item: Any, block: bool = True, timeout: float|None = None):
@@ -257,7 +259,7 @@ class Proxy:
         self.prime = prime
         self.object_id = object_id or id(prime)
         self.controller: Controller|None = None
-        self.remote = True
+        self.remote = False
         return
     
     @classmethod
@@ -272,14 +274,15 @@ class Proxy:
         Returns:
             Type[Proxy]: the new class with methods and properties of the prime object
         """
-        name = prime.__name__ if inspect.isclass(prime) else prime.__class__.__name__
+        class_ = prime if inspect.isclass(prime) else prime.__class__
+        name = class_.__name__
         object_id = object_id or id(prime)
         attrs = dict()
         methods = {attr:cls.createMethodEmitter(getattr(prime,attr)) for attr in dir(prime) if callable(getattr(prime,attr)) and (attr not in dir(cls))}
         properties = {attr:cls.createPropertyEmitter(attr) for attr in dir(prime) if not callable(getattr(prime,attr)) and (attr not in dir(cls))}
         attrs.update(methods)
         attrs.update(properties)
-        new_class = type(f"{name}_Proxy-{object_id}", (cls,), attrs)
+        new_class = type(f"{name}_Proxy-{object_id}", (cls,class_), attrs)
         return new_class
     
     @staticmethod
@@ -314,7 +317,9 @@ class Proxy:
             response: dict = controller.retrieveData(request_id, data_only=False)
             data = response.get('data')
             if response.get('status', '') != 'completed':
-                exception = data if isinstance(data,Exception) else Exception(data)
+                error_type_name, message = data.split('!!', maxsplit=1)
+                error_type = getattr(builtins, error_type_name, Exception)
+                exception = error_type(message)
                 raise exception
             return data
         methodEmitter.__name__ = method.__name__
@@ -359,7 +364,7 @@ class Proxy:
             assert isinstance(self.controller, Controller), 'No controller is bound to this Proxy.'
             controller = self.controller
             target = self.controller.registry.get(self.object_id, [])
-            command = dict(method='getattr', args=[self.object_id, attr_name, value])
+            command = dict(method='setattr', args=[self.object_id, attr_name, value])
             request_id = controller.transmitRequest(command, target=target)
             return controller.retrieveData(request_id)
         return property(getterEmitter, setterEmitter)
@@ -374,6 +379,16 @@ class Proxy:
         assert isinstance(controller, Controller), 'Controller must be an instance of Controller'
         self.controller = controller
         self.remote = True
+        all_attributes = controller.getAttributes()
+        assert self.object_id in all_attributes, f"Object ID {self.object_id} not found in controller registry"
+        matching_attributes = all_attributes.get(self.object_id, ['',[]])
+        class_name = self.prime.__name__ if inspect.isclass(self.prime) else self.prime.__class__.__name__
+        assert class_name == matching_attributes[0], f"Class name {class_name} does not match remote class name {matching_attributes[0]}"
+        if not inspect.isclass(self.prime):
+            return
+        for attr in matching_attributes[1]:
+            if not hasattr(self.prime, attr):
+                setattr(self.__class__, attr, self.createPropertyEmitter(attr))
         return
     
     def releaseController(self) -> Controller:
@@ -391,6 +406,53 @@ class Proxy:
 
 
 class Controller:
+    """
+    A class to control the flow of data and commands between models and views.
+    
+    ### Constructor:
+        `role` (str): the role of the controller
+        `interpreter` (Interpreter): the interpreter to use
+        
+    ### Attributes and properties:
+        `role` (str): the role of the controller
+        `interpreter` (Interpreter): the interpreter to use
+        `address` (str|None): the address of the controller
+        `relays` (list): list of relays
+        `callbacks` (dict[str, dict[str, Callable]]): dictionary of callbacks
+        `command_queue` (TwoTierQueue): command queue
+        `data_buffer` (dict): data buffer
+        `objects` (dict): dictionary of objects
+        `object_methods` (dict[str, ClassMethods]): dictionary of object methods
+        `object_attributes` (dict[str, tuple[str]]): dictionary of object attributes
+        `execution_event` (threading.Event): event for execution loop
+        `registry` (dict[str, list[str]]): object registry
+        
+    ### Methods:
+        `receiveRequest`: receive a request
+        `transmitData`: transmit data
+        `broadcastRegistry`: broadcast the registry
+        `register`: register an object
+        `unregister`: unregister an object
+        `extractMetadata`: extract metadata from a command
+        `extractMethods`: extract methods from an object
+        `exposeAttributes`: expose attributes of registered objects
+        `exposeMethods`: expose methods of registered objects
+        `start`: start the execution loop
+        `stop`: stop the execution loop
+        `executeCommand`: execute a command
+        `transmitRequest`: transmit a request
+        `receiveData`: receive data
+        `retrieveData`: retrieve data
+        `getAttributes`: get attributes of the controller
+        `getMethods`: get methods of the controller
+        `relay`: relay a request or data
+        `relayRequest`: relay a request
+        `relayData`: relay data
+        `subscribe`: subscribe to a relay
+        `unsubscribe`: unsubscribe from a relay
+        `setAddress`: set the address of the controller
+    """
+    
     def __init__(self, role: str, interpreter: Interpreter):
         """
         Initialize the Controller class.
@@ -411,10 +473,11 @@ class Controller:
         self.data_buffer = dict()
         self.objects = {}
         self.object_methods: dict[str, ClassMethods] = dict()
+        self.object_attributes: dict[str, tuple[str]] = dict()
         self._registry: dict[str, list[str]] = dict()
         
         self.execution_event = threading.Event()
-        self.threads = {}
+        self._threads = {}
         
         if self.role in ('model', 'both'):
             # self.register(self)
@@ -431,6 +494,8 @@ class Controller:
         registration = self.data_buffer.get('registration', {})
         if not len(registration):
             return {}
+        
+        duplicates = []
         for _, reply in registration.items():
             objects = reply.get('data', {})
             for key, address in objects.items():
@@ -438,8 +503,13 @@ class Controller:
                     registry[key] = list(set(address))
                 elif set(registry[key]) != set(address):
                     logger.warning(f'Conflict in object_id {key} at multiple addresses: {[registry[key], address]}')
-                    logger.warning('Please resolve ID object_id conflict.')
+                    
                     registry[key] = list(set(registry[key] + address))
+                    duplicates.append(key)
+        duplicates = list(set(duplicates))
+        if duplicates:
+            logger.warning('Please resolve object_id conflict(s) above.')
+            raise LookupError(f"{len(duplicates)} object(s) with same ID: {duplicates}")
         return registry
     @registry.setter
     def registry(self, value: dict[str,str]):
@@ -448,15 +518,15 @@ class Controller:
         return
     
     # Model side
-    def receiveRequest(self, request: Message):
+    def receiveRequest(self, packet: Message):
         """ 
         Receive a request
         
         Args:
-            request (Message): the request to receive
+            packet (Message): the request to receive
         """
         assert self.role in ('model', 'both'), "Only the model can receive requests"
-        command = self.interpreter.decodeRequest(request)
+        command = self.interpreter.decodeRequest(packet)
         sender = command.get('address', {}).get('sender', [])
         if len(sender):
             logger.info(f"[{self.address or str(id(self))}] Received request from {sender}")
@@ -486,9 +556,9 @@ class Controller:
         response.update(dict(data=data))
         response.update(status)
         response.update(metadata)
-        package = self.interpreter.encodeData(response)
+        packet = self.interpreter.encodeData(response)
         logger.debug('Transmitted data')
-        self.relayData(package)
+        self.relayData(packet)
         return
     
     def broadcastRegistry(self, target: Iterable[str]|None = None):
@@ -513,7 +583,7 @@ class Controller:
             status = dict(status='completed')
         )
         return
-    
+
     def register(self, new_object: Callable, object_id: str|None = None):
         """
         Register an object
@@ -525,9 +595,10 @@ class Controller:
         assert self.role in ('model', 'both'), "Only the model can register object"
         key =  str(id(new_object)) if object_id is None else object_id
         if key in self.object_methods:
-            logger.warning(f"{new_object.__class__}_{key} already registered.")
+            logger.warning(f"{new_object.__class__.__name__}_{key} already registered.")
             return False
         self.object_methods[key] = self.extractMethods(new_object)
+        self.object_attributes[key] = tuple(set([attr for attr in dir(new_object) if not callable(getattr(new_object, attr)) and (not attr.startswith('_') and not attr.endswith('__'))]))
         self.objects[key] = new_object
         self.broadcastRegistry()
         return
@@ -549,11 +620,12 @@ class Controller:
         success = False
         try:
             self.object_methods.pop(key) 
+            self.object_attributes.pop(key)
             self.objects.pop(key)
             success = True
         except KeyError:
             if old_object is not None:
-                logger.warning(f"Object not found: {old_object.__class__} [{key}]")
+                logger.warning(f"Object not found: {old_object.__class__.__name__} [{key}]")
             else:
                 logger.warning(f"Object not found: {key}")
         self.broadcastRegistry()
@@ -632,6 +704,11 @@ class Controller:
             methods = methods
         )
     
+    def exposeAttributes(self):
+        """Expose attributes of registered objects"""
+        assert self.role in ('model', 'both'), "Only the model can expose attributes"
+        return {k: (self.objects[k].__class__.__name__, v) for k,v in self.object_attributes.items()}
+    
     def exposeMethods(self):
         """Expose methods of registered objects"""
         assert self.role in ('model', 'both'), "Only the model can expose methods"
@@ -641,9 +718,9 @@ class Controller:
         """Start the execution loop"""
         assert self.role in ('model', 'both'), "Only the model can start execution loop"
         self.execution_event.set()
-        self.threads['execution'] = threading.Thread(target=self._loop_execution, daemon=True)
+        self._threads['execution'] = threading.Thread(target=self._loop_execution, daemon=True)
         logger.info("Starting execution loop")
-        for thread in self.threads.values():
+        for thread in self._threads.values():
             thread.start()
         return
     
@@ -652,7 +729,7 @@ class Controller:
         assert self.role in ('model', 'both'), "Only the model can stop execution loop"
         self.execution_event.clear()
         logger.info("Stopping execution loop")
-        for thread in self.threads.values():
+        for thread in self._threads.values():
             thread.join()
         return
    
@@ -672,8 +749,8 @@ class Controller:
         
         # Implement the command execution logic here
         if object_id not in self.objects:
-            if method_name in ('exposeMethods',):
-                return self.exposeMethods(), dict(status='completed')
+            if method_name in ('exposeMethods','exposeAttributes'):
+                return getattr(self,method_name)(), dict(status='completed')
             elif method_name in ('getattr', 'setattr', 'delattr'):
                 args = command.get('args', [])
                 kwargs = command.get('kwargs', {})
@@ -682,7 +759,7 @@ class Controller:
                 this_object = self.objects.get(object_id)
                 if this_object is None:
                     logger.error(f"Object not found: {object_id}")
-                    return 'Object not found', dict(status='error')
+                    return f'KeyError!!Object not found: {object_id}', dict(status='error')
                 
                 if not isinstance(name, str):
                     assert isinstance(name, Iterable), "Invalid input for attribute(s)"
@@ -691,29 +768,29 @@ class Controller:
                 
                 if not hasattr(this_object, name):
                     logger.error(f"Attribute not found: {name}")
-                    return 'Attribute not found', dict(status='error')
+                    return f'AttributeError!!Attribute not found: {name}', dict(status='error')
                 if method_name == 'getattr':
                     return getattr(this_object, name), dict(status='completed')
                 elif method_name == 'setattr':
                     value = args[2] if len(args) > 2 else kwargs.get('value', None)
                     if value is None:
                         logger.error(f"Value not provided for attribute: {name}")
-                        return 'Value not provided', dict(status='error')
-                    setattr(this_object, name, args[2]), dict(status='completed')
+                        return f'ValueError!!Value not provided for attribute: {name}', dict(status='error')
+                    setattr(this_object, name, value), dict(status='completed')
                     return None, dict(status='completed')
                 elif method_name == 'delattr':
                     delattr(this_object, name)
                     return None, dict(status='completed')
             else:
                 logger.error(f"Object not found: {object_id}")
-                return 'Object not found', dict(status='error')
+                return 'KeyError!!Object not found', dict(status='error')
         
         this_object = self.objects[object_id]
         try:
             method: Callable = getattr(this_object, method_name)
         except AttributeError:
             logger.error(f"Method not found: {method_name}")
-            return 'Method not found', dict(status='error')
+            return f'AttributeError!!Method not found: {method_name}', dict(status='error')
         
         logger.info(f"Executing command: {command}")
         args = command.get('args', [])
@@ -721,8 +798,9 @@ class Controller:
         try:
             out = method(*args, **kwargs)
         except Exception as e:
-            logger.error(f"Error executing command: {e}")
-            return str(e), dict(status='error')
+            logger.error(f"Error executing command: {command} ({args}, {kwargs})")
+            logger.error(f"{e.__class__.__name__}: {e}")
+            return f"{e.__class__.__name__}!!{e}", dict(status='error')
         logger.info(f"Completed command: {command}")
         return out, dict(status='completed')
     
@@ -798,15 +876,15 @@ class Controller:
         self.relayRequest(request)
         return request_id
     
-    def receiveData(self, package: Message):
+    def receiveData(self, packet: Message):
         """
         Receive data
         
         Args:
-            package (Message): the package to receive
+            packet (Message): the packet to receive
         """
         assert self.role in ('view', 'both'), "Only the view can receive data"
-        data = self.interpreter.decodeData(package)
+        data = self.interpreter.decodeData(packet)
         sender = data.get('address', {}).get('sender', [])
         request_id = data.get('request_id', uuid.uuid4().hex)
         reply_id = data.get('reply_id', uuid.uuid4().hex)
@@ -868,7 +946,9 @@ class Controller:
                     if status != 'completed':
                         error_message = data if status == 'error' else "Unable to read response"
                         logger.warning(error_message)
-                        data = Exception(error_message)
+                        error_type_name, message = error_message.split('!!', maxsplit=1)
+                        error_type = getattr(builtins, error_type_name, Exception)
+                        data = error_type(message)
                     all_data.update({(sender,reply_id[-6:]): (data if data_only else response)})
                     count += 1
                     if count >= max_count:
@@ -880,6 +960,22 @@ class Controller:
         if max_count == 1:
             return (data if data_only else response)
         return all_data
+    
+    def getAttributes(self, target: Iterable[int]|None = None, *, private: bool = True) -> dict:
+        """
+        Get attributes
+        
+        Args:
+            target (Iterable[int]|None, optional): the target addresses. Defaults to None.
+            private (bool, optional): flag to indicate private transmission. Defaults to True.
+        
+        Returns:
+            dict: the attributes
+        """
+        assert self.role in ('view', 'both'), "Only the view can get attributes"
+        command = dict(method='exposeAttributes')
+        request_id = self.transmitRequest(command, target, private=private)
+        return self.retrieveData(request_id, default={})
     
     def getMethods(self, target: Iterable[int]|None = None, *, private: bool = True) -> dict:
         """
@@ -898,12 +994,12 @@ class Controller:
         return self.retrieveData(request_id, default={})
     
     # Controller side
-    def relay(self, message: Message, callback_type:str, addresses: Iterable[int]|None = None):
+    def relay(self, packet: Message, callback_type:str, addresses: Iterable[int]|None = None):
         """
         Relay a message
         
         Args:
-            message (Message): the message to relay
+            packet (Message): the message to relay
             callback_type (str): the callback type
             addresses (Iterable[int]|None, optional): the target addresses. Defaults to None.
         """
@@ -918,42 +1014,43 @@ class Controller:
                     logger.warning(f"Callback not found for address: {address}")
                 continue
             callback = self.callbacks[callback_type][address]
-            callback(message)
+            callback(packet)
         time.sleep(1)
         return
     
-    def relayRequest(self, request: Message):
+    def relayRequest(self, packet: Message):
         """
         Relay a request
         
         Args:
-            request (Message): the request to relay
+            packet (Message): the request to relay
         """
-        content = self.interpreter.decodeRequest(request)
+        content = self.interpreter.decodeRequest(packet)
         addresses = content.get('address', {}).get('target', [])
-        self.relay(request, 'request', addresses=addresses)
+        self.relay(packet, 'request', addresses=addresses)
         if self.role == 'relay':
             logger.debug('Relayed request')
         return
     
-    def relayData(self, package: Message):
+    def relayData(self, packet: Message):
         """
         Relay data
         
         Args:
-            package (Message): the package to relay
+            packet (Message): the packet to relay
         """
-        content = self.interpreter.decodeData(package)
-        if self.role == 'relay':
+        content = self.interpreter.decodeData(packet)
+        addresses = content.get('address', {}).get('target', [])
+        if self.role == 'relay' and len(addresses) == 0:
             if content.get('request_id', '') == 'registration':
                 if content.get('reply_id', '') != self.address:
                     if 'registration' not in self.data_buffer:
                         self.data_buffer['registration'] = dict()
                     sender = content.get('address', {}).get('sender', ['UNKNOWN'])[0]
                     self.data_buffer['registration'].update({sender: content})
-                    return self.broadcastRegistry()
-        addresses = content.get('address', {}).get('target', [])
-        self.relay(package, 'data', addresses=addresses)
+                    target = list(self.callbacks['data'].keys())
+                    return self.broadcastRegistry(target=target)
+        self.relay(packet, 'data', addresses=addresses)
         if self.role == 'relay':
             logger.debug('Relayed data')
         return
@@ -988,26 +1085,38 @@ class Controller:
             logger.warning(f"{callback} already subscribed to {callback_type}")
             return
         self.callbacks[callback_type][key] = callback
+        if callback_type == 'data' and self.role == 'model':    # Re-broadcast the registry to newly connected views
+            self.broadcastRegistry(target=[key])
+        elif callback_type == 'data' and self.role == 'relay':  # Prompt all connected models to re-broadcast their registry
+            request_keys = list(self.callbacks['request'].keys())
+            for key in request_keys:
+                _relay = key in self.relays
+                _callback = self.unsubscribe('request', key)
+                if _callback is not None:
+                    self.subscribe(_callback, 'request', key, relay=_relay)
         return
     
-    def unsubscribe(self, callback_type: str, address: int|str):
+    def unsubscribe(self, callback_type: str, address: int|str) -> Callable|None:
         """
         Unsubscribe from a callback
         
         Args:
             callback_type (str): the callback type
             address (int|str): the address
+        
+        Returns:
+            Callable|None: the unsubscribed callback
         """
         assert callback_type in self.callbacks, f"Invalid callback type: {callback_type}"
         key = address
         key = str(key)
-        _callback = self.callbacks[callback_type].pop(key, None)
-        if _callback is None:
+        callback = self.callbacks[callback_type].pop(key, None)
+        if callback is None:
             logger.warning(f"{key} was not subscribed to {callback_type}")
             return
         if key in self.relays:
             self.relays.remove(key)
-        return
+        return callback
     
     def setAddress(self, address: int|str):
         """
@@ -1042,20 +1151,12 @@ def handle_client(
     """
     relay = (controller.role == 'relay')
     receive_method = controller.receiveRequest
+    callback_type = 'data'
     if relay:
         if client_role not in ('model', 'view'):
             raise ValueError(f"Invalid role: {client_role}")
         callback_type = 'request' if client_role == 'model' else 'data'
         receive_method = controller.relayData if client_role == 'model' else controller.relayRequest
-        # match client_role:
-        #     case 'model':  # (i.e. client is a model)
-        #         receive_method = controller.relayData
-        #         callback_type = 'request'
-        #     case 'view':
-        #         receive_method = controller.relayRequest
-        #         callback_type = 'data'
-        #     case _:
-        #         raise ValueError(f"Invalid role: {client_role}")
     
     terminate = threading.Event() if terminate is None else terminate
     while not terminate.is_set():
@@ -1070,6 +1171,7 @@ def handle_client(
                 time.sleep(1)
                 continue
             if data == '[EXIT]':
+                client_socket.sendall("[EXIT]".encode("utf-8"))
                 break
             logger.debug(f"Received from client: {data}")
             logger.debug(data)
@@ -1087,7 +1189,7 @@ def handle_client(
     return
 
 
-def start_server(host:str, port:int, controller: Controller, *, terminate: threading.Event|None = None):
+def start_server(host:str, port:int, controller: Controller, *, n_connections:int = 5, terminate: threading.Event|None = None):
     """
     Starts the server
     
@@ -1095,11 +1197,12 @@ def start_server(host:str, port:int, controller: Controller, *, terminate: threa
         host (str): the host
         port (int): the port
         controller (Controller): the controller
+        n_connections (int, optional): the number of connections. Defaults to 5.
         terminate (threading.Event|None, optional): the termination event. Defaults to None
     """
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
-    server_socket.listen(5)  # Listen for up to 5 connections
+    server_socket.listen(n_connections)  # Listen for up to 5 connections (default)
 
     print(f"Server listening on {host}:{port}")
     controller.setAddress(f"{host}:{port}")
@@ -1107,7 +1210,17 @@ def start_server(host:str, port:int, controller: Controller, *, terminate: threa
     threads = []
     terminate = threading.Event() if terminate is None else terminate
     while not terminate.is_set():
-        client_socket, addr = server_socket.accept()  # Accept a connection
+        read_list, _, _ = select.select([server_socket], [], [], 1)
+        if server_socket not in read_list:
+            time.sleep(0.01)
+            continue
+        try:
+            client_socket, addr = server_socket.accept()
+        except TimeoutError:
+            time.sleep(0.01)
+            continue
+        
+        # client_socket, addr = server_socket.accept()  # Accept a connection
         logger.info(f"Client connected from {addr}")
         client_addr = f"{addr[0]}:{addr[1]}"
         client_socket.sendall(f"[CONNECTED] {client_addr}".encode("utf-8"))
@@ -1185,6 +1298,7 @@ def start_client(host:str, port:int, controller: Controller, relay:bool = False,
                     time.sleep(1)
                     continue
                 if data == '[EXIT]':
+                    client_socket.sendall("[EXIT]".encode("utf-8"))
                     break
                 logger.debug(f"Received from server: {data}")
                 logger.debug(data)
