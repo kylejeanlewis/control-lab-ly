@@ -244,7 +244,11 @@ def get_setup(
     if platform_type is None or len(platform_type.__annotations__) == 0:
         out = platform
     else:
-        out = platform_type(**platform._asdict())
+        try:
+            out = platform_type(**platform._asdict())
+        except TypeError as e:
+            logger.error(f"Error creating platform: {platform_type}") 
+            return platform
     if n_errors:
         raise SystemExit(f"{n_errors} error(s) during initialization", out)
     return out
@@ -374,7 +378,7 @@ def zip_kwargs_to_dict(primary_key:str, kwargs:dict) -> dict:
     """
     length = len(kwargs[primary_key])
     for key, value in kwargs.items():
-        if isinstance(value, Sequence):
+        if isinstance(value, (Sequence, np.ndarray)):
             continue
         if isinstance(value, set):
             kwargs[key] = list(value)
