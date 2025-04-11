@@ -23,6 +23,7 @@ Attributes:
 """
 # Standard library imports
 from __future__ import annotations
+from copy import deepcopy
 from dataclasses import dataclass, field
 import itertools
 import json
@@ -525,6 +526,7 @@ class Labware:
         
     ### Attributes and properties:
         `name` (str): name of Labware
+        `native` (Labware): native Labware object (i.e. without parent)
         `details` (dict[str, Any]): dictionary read from Labware file
         `parent` (Slot|None): parent `Slot` object
         `reference` (Position): reference point of `Slot`
@@ -633,9 +635,16 @@ class Labware:
         filepath = Path(labware_file) if not from_repo else file_handler.resolve_repo_filepath(labware_file)
         assert filepath.is_file(), "Please input a valid Labware filepath"
         details = file_handler.read_config_file(filepath)
+        details['labware_file'] = str(filepath)
         return cls.fromConfigs(details=details, parent=parent)
     
     # Properties
+    @property
+    def native(self) -> Labware:
+        """Native Labware object (i.e. without parent)"""
+        filepath = self._details.get('labware_file',None)
+        return Labware.fromFile(file_handler.resolve_repo_filepath(filepath)) if filepath else deepcopy(self)
+    
     @property
     def details(self) -> dict[str, str|float|tuple[float]]:
         """Dictionary read from Labware file"""
@@ -1143,6 +1152,7 @@ class Deck:
         
     ### Attributes and properties:
         `name` (str): name of Deck
+        `native` (Deck): native Deck object (i.e. without parent)
         `details` (dict[str, Any]): dictionary read from Deck file
         `parent` (Deck|None): parent `Deck` object
         `reference` (Position): reference point of `Deck`
@@ -1259,9 +1269,16 @@ class Deck:
         filepath = Path(deck_file) if not from_repo else file_handler.resolve_repo_filepath(deck_file)
         assert filepath.is_file(), "Please input a valid Deck filepath"
         details = file_handler.read_config_file(filepath)
+        details['deck_file'] = str(filepath)
         return cls.fromConfigs(details=details, parent=parent, _nesting_lineage=(filepath,))
     
     # Properties
+    @property
+    def native(self) -> Deck:
+        """Native Deck object (i.e. without parent)"""
+        filepath = self._details.get('deck_file',None)
+        return Deck.fromFile(file_handler.resolve_repo_filepath(filepath)) if filepath else deepcopy(self)
+    
     @property
     def reference(self) -> Position:
         """Reference point of `Deck`"""
@@ -1375,7 +1392,7 @@ class Deck:
             name (str): name of nested `Deck`
             details (dict): dictionary read from Deck file
         """
-        deck_file = Path(details.pop('deck_file',''))
+        deck_file = Path(details.get('deck_file',''))
         deck_file = file_handler.resolve_repo_filepath(deck_file) if not deck_file.is_absolute() else deck_file
         assert deck_file.is_file(), "Please input a valid Deck filepath"
         with open(deck_file, 'r') as file:
