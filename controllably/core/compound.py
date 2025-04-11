@@ -51,19 +51,15 @@ class Part(Protocol):
     verbose: bool
     def connect(self):
         """Connect to the device"""
-        raise NotImplementedError
     
     def disconnect(self):
         """Disconnect from the device"""
-        raise NotImplementedError
     
     def resetFlags(self):
         """Reset all flags to class attribute `_default_flags`"""
-        raise NotImplementedError
 
     def shutdown(self):
         """Shutdown the device"""
-        raise NotImplementedError
 
 
 class Compound:
@@ -235,7 +231,7 @@ class Ensemble(Compound):
         `shutdown`: shutdown each component Part
     """
     
-    _channel_class: Part = Part
+    _channel_class: type = Part
     _channel_prefix: str = "chn_"
     def __init__(self, 
         channels: Sequence[int]|None = None, 
@@ -309,7 +305,7 @@ class Ensemble(Compound):
     
     def connect(self):
         """Connect to each component Part in parallel"""
-        self.parallel('connect', channels=list(self.channels.keys()))
+        self.parallel('connect', lambda i,key,part: dict(), channels=list(self.channels.keys()))
         return
     
     def parallel(self, 
@@ -372,14 +368,14 @@ class Ensemble(Compound):
         if func_name.endswith("__") and not func_name.startswith("__"):
             return method
         def func(self, *args, channel: int|Sequence[int]|None = None, **kwargs) -> list|None:
-            outs = []
+            outs = dict()
             for chn,obj in cls._get_channel(self, channel).items():
                 obj_method: Callable = getattr(obj, func_name)
                 assert callable(obj_method), f"Ensure {func_name} is a callable method"
                 logger.info(f"Executing {func_name} on channel {chn}")
                 out = obj_method(*args, **kwargs)
-                outs.append(out)
-            if all([o is None for o in outs]):
+                outs[chn] = out
+            if all([o is None for o in outs.values()]):
                 return None
             return outs
         
@@ -421,14 +417,15 @@ class Ensemble(Compound):
             return self.channels
         elif isinstance(channel, int):
             if channel not in self.channels:
-                raise ValueError(f"Channel {channel} not found in {self.channels.keys()}")
+                raise KeyError(f"Channel {channel} not found in {self.channels.keys()}")
             return {channel:self.channels[channel]}
         elif isinstance(channel, Sequence):
-            not_found = [chn for chn in channel if chn not in self.channels]
+            not_found = [str(chn) for chn in channel if chn not in self.channels]
             if not_found:
-                raise ValueError(f"Channel(s) {', '.join(not_found)} not found in {self.channels.keys()}")
+                raise KeyError(f"Channel(s) {', '.join(not_found)} not found in {self.channels.keys()}")
             return {chn:self.channels[chn] for chn in channel}
-
+        raise ValueError(f"Invalid channel input: {channel}")
+    
 
 class Combined:
     """
@@ -597,7 +594,7 @@ class Multichannel(Combined):
         `shutdown`: shutdown the device
     """
     
-    _channel_class: Part = Part
+    _channel_class: type = Part
     _channel_prefix: str = "chn_"
     _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, verbose=False)
     def __init__(self, 
@@ -650,10 +647,11 @@ class Multichannel(Combined):
         parent = cls._channel_class
         parts_list: list[Part] = []
         for i,settings in enumerate(details):
-            parts_list.append(parent(**settings))
+            part: Part = parent(**settings)
             if i == 0:
-                device = parts_list[0].device
+                device = part.device
                 settings['device'] = device
+            parts_list.append(parent(**settings))
         # parts_list = [parent(**settings) for settings in details]
         parts = {chn:part for chn,part in zip(channels,parts_list)}
         assert len(channels) == len(parts), "Ensure the number of channels match the number of parts"
@@ -697,16 +695,14 @@ class Multichannel(Combined):
         if func_name.endswith("__") and not func_name.startswith("__"):
             return method
         def func(self, *args, channel: int|Sequence[int]|None = None, **kwargs) -> list|None:
-            # device = cls._get_device(self)
-            # kwargs['device'] = device
-            outs = []
+            outs = dict()
             for chn,obj in cls._get_channel(self, channel).items():
-                obj_method = getattr(obj, func_name)
+                obj_method: Callable = getattr(obj, func_name)
                 assert callable(obj_method), f"Ensure {func_name} is a callable method"
                 logger.info(f"Executing {func_name} on channel {chn}")
                 out = obj_method(*args, **kwargs)
-                outs.append(out)
-            if all([o is None for o in outs]):  # If all outputs are None
+                outs[chn] = out
+            if all([o is None for o in outs.values()]):  # If all outputs are None
                 return None # Return None
             return outs
         
@@ -748,12 +744,12 @@ class Multichannel(Combined):
             return self.channels
         elif isinstance(channel, int):
             if channel not in self.channels:
-                raise ValueError(f"Channel {channel} not found in {self.channels.keys()}")
+                raise KeyError(f"Channel {channel} not found in {self.channels.keys()}")
             return {channel:self.channels[channel]}
         elif isinstance(channel, Sequence):
-            not_found = [chn for chn in channel if chn not in self.channels]
+            not_found = [str(chn) for chn in channel if chn not in self.channels]
             if not_found:
-                raise ValueError(f"Channel(s) {', '.join(not_found)} not found in {self.channels.keys()}")
+                raise KeyError(f"Channel(s) {', '.join(not_found)} not found in {self.channels.keys()}")
             return {chn:self.channels[chn] for chn in channel}
         raise ValueError(f"Invalid channel input: {channel}")
     
@@ -768,7 +764,7 @@ class Multichannel(Combined):
             self.active_channel = list(self.channels.keys())[0]
             return
         if channel not in self.channels:
-            raise ValueError(f"Channel {channel} not found in {self.channels.keys()}")
+            raise KeyError(f"Channel {channel} not found in {self.channels.keys()}")
         self.active_channel = channel
         return
     
