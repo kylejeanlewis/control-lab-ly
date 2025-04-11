@@ -718,8 +718,13 @@ class Labware:
         return self._is_stackable
     @is_stackable.setter
     def is_stackable(self, value:bool):
-        _ = self._add_slot_above() if value else self._delete_slot_above()
+        old_value = self._is_stackable
         self._is_stackable = value
+        try:
+            _ = self._add_slot_above() if value else self._delete_slot_above()
+        except AssertionError as e:
+            self._is_stackable = old_value
+            raise e
         return
     
     def fromTop(self, offset:Sequence[float]|np.ndarray) -> np.ndarray:
