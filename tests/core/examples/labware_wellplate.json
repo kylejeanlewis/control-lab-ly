@@ -141,6 +141,7 @@
         "y": 0,
         "z": 0
     },
+    "exclusionBuffer": [[0, 0, 0], [0, 0, -15]],
     "slotAbove": {
         "name": "stackSlot",
         "dimensions": [127.53,85.47,0],
