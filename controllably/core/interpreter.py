@@ -26,27 +26,27 @@ class Interpreter:
     Abstract class for encoding and decoding messages.
     
     ### Methods:
-        `decodeRequest(request: Message) -> dict[str, Any]`: Decode a request message into a command dictionary.
-        `encodeData(data: Any) -> Message`: Encode data into a message.
-        `encodeRequest(command: Mapping[str, Any]) -> Message`: Encode a command dictionary into a request message.
-        `decodeData(package: Message) -> Any`: Decode a message into data.
+        `decodeRequest`: Decode a request message into a command dictionary.
+        `encodeData`: Encode data into a message.
+        `encodeRequest`: Encode a command dictionary into a request message.
+        `decodeData`: Decode a message into data.
     """
     
     def __init__(self):
         return
     
     @staticmethod
-    def decodeRequest(request: Message) -> dict[str, Any]:
+    def decodeRequest(packet: Message) -> dict[str, Any]:
         """
         Decode a request message into a command dictionary.
         
         Args:
-            request (Message): request message
+            packet (Message): request message
             
         Returns:
             dict[str, Any]: command dictionary
         """
-        command = request
+        command = packet
         return command
     
     @staticmethod
@@ -78,17 +78,17 @@ class Interpreter:
         return request
     
     @staticmethod
-    def decodeData(package: Message) -> Any:
+    def decodeData(packet: Message) -> Any:
         """
         Decode a message into data.
         
         Args:
-            package (Message): message to be decoded
+            packet (Message): message to be decoded
             
         Returns:
             Any: decoded data
         """
-        data = package
+        data = packet
         return data
     
     
@@ -97,26 +97,27 @@ class JSONInterpreter(Interpreter):
     Class for encoding and decoding messages in JSON format.
     
     ### Methods:
-        `decodeRequest(request: Message|str|bytes) -> dict[str, Any]`: Decode a request message into a command dictionary.
-        `encodeData(data: dict[str, Any]) -> Message|str|bytes`: Encode data into a message.
-        `encodeRequest(command: Mapping[str, Any]) -> Message|str|bytes`: Encode a command dictionary into a request message.
-        `decodeData(package: Message|str|bytes) -> Any`: Decode a message into data
+        `decodeRequest`: Decode a request message into a command dictionary.
+        `encodeData`: Encode data into a message.
+        `encodeRequest`: Encode a command dictionary into a request message.
+        `decodeData`: Decode a message into data
     """
+    
     def __init__(self):
         return
     
     @staticmethod
-    def decodeRequest(request: Message|str|bytes) -> dict[str, Any]:
+    def decodeRequest(packet: Message|str|bytes) -> dict[str, Any]:
         """
         Decode a request message into a command dictionary.
         
         Args:
-            request (Message|str|bytes): request message
+            packet (Message|str|bytes): request message
             
         Returns:
             dict[str, Any]: command dictionary
         """
-        command = json.loads(request)
+        command = json.loads(packet)
         return command
     
     @staticmethod
@@ -157,17 +158,17 @@ class JSONInterpreter(Interpreter):
         return request
     
     @staticmethod
-    def decodeData(package: Message|str|bytes) -> Any:
+    def decodeData(packet: Message|str|bytes) -> Any:
         """
         Decode a message into data.
         
         Args:
-            package (Message|str|bytes): message to be decoded
+            packet (Message|str|bytes): message to be decoded
             
         Returns:
             Any: decoded data
         """
-        data: dict[str, Any] = json.loads(package)
+        data: dict[str, Any] = json.loads(packet)
         if 'data' not in data and 'pickled' in data:
             pickled = data.pop('pickled')
             data.update(dict(data = pickle.loads(ast.literal_eval(pickled))))
