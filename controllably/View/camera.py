@@ -65,11 +65,13 @@ class Camera:
         `connectFeed`: Connect to the camera feed
         `disconnect`: Disconnect from the device
         `disconnectFeed`: Disconnect from the camera feed
+        `setFrameRate`: Set the frame rate of camera feed
         `setFrameSize`: Set the resolution of camera feed
         `decodeBytesToFrame`: Decode byte array of image
         `encodeFrameToBytes`: Encode image into byte array
         `loadImageFile`: Load an image from file
         `saveFrame`: Save image to file
+        `saveFramesToVideo`: Save frames to video file
         `transformFrame`: Transform the frame
         `processFrame`: Process the frame
         `getFrame`: Get image from camera feed
@@ -230,6 +232,18 @@ class Camera:
         self.flags.connected = False
         return
     
+    def setFrameRate(self, fps:int|float = 30.0):
+        """
+        Set the frame rate of camera feed
+        
+        Args:
+            fps (int|float, optional): frame rate in frames per second. Defaults to 30.0.
+        """
+        assert isinstance(fps, (int, float)), "Please provide a number for fps"
+        self.feed.set(cv2.CAP_PROP_FPS, fps)
+        self._logger.info(f"Set frame rate to {fps} fps")
+        return
+    
     def setFrameSize(self, size:Iterable[int] = (10_000,10_000)):
         """
         Set the resolution of camera feed
@@ -301,6 +315,30 @@ class Camera:
             now = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f'image-{now}.png'
         return cv2.imwrite(filename, frame)
+    
+    @staticmethod
+    def saveFramesToVideo(frames: Iterable[np.ndarray], fps:int|float, filename: str|None = None) -> bool:
+        """
+        Save frames to video file
+
+        Args:
+            frames (list[np.ndarray]): list of frames to be saved
+            fps (int|float): frame rate of video
+            filename (str, optional): filename to save to. Defaults to 'video.mp4'.
+
+        Returns:
+            bool: whether the video is successfully saved
+        """
+        if filename is None:
+            now = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f'video-{now}.mp4'
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        height, width, _ = frames[0].shape
+        out = cv2.VideoWriter(filename, fourcc, fps, (width, height))
+        for frame in frames:
+            out.write(frame)
+        out.release()
+        return True
     
     @staticmethod
     def transformFrame(
@@ -551,12 +589,16 @@ class Camera:
         if isinstance(sync_start, threading.Barrier):
             sync_start.wait()
         
+        time_step = 1/self.frame_rate
         while self.stream_event.is_set():
             try:
+                start_time = time.perf_counter()
                 ret,frame = self.read()
                 if ret:
                     now = datetime.now()
                     self.data_queue.put((frame, now), block=False)
+                    delay = time.perf_counter()-start_time
+                    time.sleep(max(time_step-delay, 0))       # match the frame rate
             except queue.Full:
                 time.sleep(0.01)
                 continue
