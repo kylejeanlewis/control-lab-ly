@@ -54,35 +54,27 @@ class Device(Protocol):
     verbose: bool
     def clear(self):
         """Clear the input and output buffers"""
-        raise NotImplementedError
 
     def connect(self):
         """Connect to the device"""
-        raise NotImplementedError
 
     def disconnect(self):
         """Disconnect from the device"""
-        raise NotImplementedError
     
     def processInput(self, data:Any, format:str, **kwargs) -> str|None:
         """Process the input"""
-        raise NotImplementedError
     
     def processOutput(self, data:str, format:str, data_type:NamedTuple, timestamp: datetime|None, **kwargs) -> tuple[Any, datetime]:
         """Process the output"""
-        raise NotImplementedError
 
     def query(self, data:Any, multi_out:bool = True, **kwargs) -> Any|None:
         """Query the device"""
-        raise NotImplementedError
 
     def read(self) -> str|None:
         """Read data from the device"""
-        raise NotImplementedError
 
     def write(self, data:str) -> bool:
         """Write data to the device"""
-        raise NotImplementedError
 
 
 class StreamingDevice(Protocol):
@@ -99,51 +91,39 @@ class StreamingDevice(Protocol):
     threads: dict
     def clear(self):
         """Clear the input and output buffers"""
-        raise NotImplementedError
 
     def connect(self):
         """Connect to the device"""
-        raise NotImplementedError
 
     def disconnect(self):
         """Disconnect from the device"""
-        raise NotImplementedError
     
     def processInput(self, data:Any, format:str, **kwargs) -> str|None:
         """Process the input"""
-        raise NotImplementedError
     
     def processOutput(self, data:str, format:str, data_type:NamedTuple, timestamp: datetime|None, **kwargs) -> tuple[Any, datetime]:
         """Process the output"""
-        raise NotImplementedError
 
     def query(self, data:Any, multi_out:bool = True, **kwargs) -> Any|None:
         """Query the device"""
-        raise NotImplementedError
 
     def read(self) -> str|None:
         """Read data from the device"""
-        raise NotImplementedError
 
     def write(self, data:str) -> bool:
         """Write data to the device"""
-        raise NotImplementedError
 
     def startStream(self, data:str|None = None, buffer:deque|None = None, **kwargs):
         """Start the stream"""
-        raise NotImplementedError
     
     def stopStream(self):
         """Stop the stream"""
-        raise NotImplementedError
     
     def stream(self, on:bool, data:str|None = None, buffer:deque|None = None, **kwargs):
         """Toggle the stream"""
-        raise NotImplementedError
     
     def showStream(self, on:bool):
         """Show the stream"""
-        raise NotImplementedError
 
 
 class TimedDeviceMixin:
@@ -170,7 +150,8 @@ class TimedDeviceMixin:
         """
         if isinstance(timer, threading.Timer):
             timer.cancel()
-        event.clear()
+        if isinstance(event, threading.Event):
+            event.clear()
         return
         
     def setValue(self, value: Any, event: threading.Event|None = None) -> bool:
@@ -307,16 +288,15 @@ class BaseDevice:
         Returns:
             bool: whether the device is connected
         """
-        ...
-        raise NotImplementedError
+        return self.connection.is_open() # Replace with specific implementation
     
     def connect(self):
         """Connect to the device"""
         if self.is_connected:
             return
         try:
-            ... # Replace with specific implementation
-        except ... as e:
+            self.connection.open() # Replace with specific implementation
+        except Exception as e: # Replace with specific exception
             self._logger.error(f"Failed to connect to {...}") # Replace with specific log message
             self._logger.debug(e)
         else:
@@ -330,8 +310,8 @@ class BaseDevice:
         if not self.is_connected:
             return
         try:
-            ... # Replace with specific implementation
-        except ... as e: # Replace with specific exception
+            self.connection.close() # Replace with specific implementation
+        except Exception as e: # Replace with specific exception
             self._logger.error(f"Failed to disconnect from {...}") # Replace with specific log message
             self._logger.debug(e)
         else:
@@ -347,8 +327,7 @@ class BaseDevice:
         Returns:
             bool: whether there is data in the connection buffer
         """
-        ...
-        raise NotImplementedError
+        return self.connection.in_waiting() # Replace with specific implementation
     
     def clear(self):
         """Clear the input and output buffers"""
@@ -570,7 +549,9 @@ class BaseDevice:
             if raw_out is None or raw_out.strip() == '':
                 continue
             start_time = time.perf_counter()
-            out, now = self.processOutput(raw_out, format_out, data_type)
+            out, now = self.processOutput(raw_out, format_out, data_type, now)
+            if not out:
+                continue
             data_out = (out, now) if timestamp else out
             all_data.append(data_out)
             if not self.checkDeviceBuffer():
@@ -1062,8 +1043,10 @@ class SocketDevice(BaseDevice):
         self._stream_buffer = ""
         while True:
             try:
-                self.socket.recv(self.byte_size).decode("utf-8", "replace").strip('\r\n').replace('\uFFFD', '')
+                out = self.socket.recv(self.byte_size).decode("utf-8", "replace").strip('\r\n').replace('\uFFFD', '')
             except OSError:
+                break
+            if not out:
                 break
         return
 
