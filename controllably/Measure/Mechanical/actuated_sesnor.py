@@ -290,22 +290,26 @@ class ActuatedSensor(LoadCell):
         self.query(f'G {to} {rpm}')
         
         success = True
+        displacement = self.displacement
         data = self.getData()
         while not self.atDisplacement(to):
             if data is None:
                 continue
+            displacement = data.displacement
             force = self._calculate_force(data.value)
             if force >= self.force_threshold:
                 success = False 
-                self._logger.info(f"[{data.displacement}] Force threshold reached: {force}")
+                self._logger.info(f"[{displacement}] Force threshold reached: {force}")
                 break
             data = self.getData()
-        if data is not None:
-            self._logger.info(data.displacement)
-        # self.device.write(f'G {data.displacement} {rpm}')
+        self._logger.info(displacement)
+        # self.device.write(f'G {displacement} {rpm}')
         if not success:
             time.sleep(0.1)
-            self.moveTo(data.displacement, speed)
+            self.moveTo(displacement, speed)
+            self.query(f'G {displacement} {rpm}')
+            while not self.atDisplacement(to):
+                time.sleep(0.1)
         self.displacement = self.getDisplacement()
         return success
     
