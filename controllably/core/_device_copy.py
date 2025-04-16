@@ -538,7 +538,7 @@ class BaseDevice:
         if not multi_out:
             raw_out = self.poll(data_in)
             if raw_out == '':
-                return ('', now) if timestamp else ''
+                return (None, now) if timestamp else None
             out, now = self.processOutput(raw_out, format_out, data_type, now)
             return (out, now) if timestamp else out
         
