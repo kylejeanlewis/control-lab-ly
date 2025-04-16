@@ -237,10 +237,10 @@ def test_base_device_query_other_format(base_device, monkeypatch):
 def test_base_device_query_single_out(base_device):
     assert not base_device.is_connected
     out = base_device.query('test_data', multi_out=False)
-    assert out is ''
+    assert out is None
     now = datetime.now()
     out = base_device.query('test_data', multi_out=False, timestamp=True)
-    assert out == ('', now)
+    assert out == (None, now)
     
     base_device.connect()
     assert base_device.is_connected
