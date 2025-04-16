@@ -339,26 +339,26 @@ class BaseDevice:
         ... # Replace with specific implementation to clear input and output buffers
         return
 
-    def read(self) -> str|None:
+    def read(self) -> str:
         """
         Read data from the device
         
         Returns:
             str|None: data read from the device
         """
-        data = None
+        data = ''
         try:
-            data = ... # Replace with specific implementation
+            data = self.connection.read().decode("utf-8", "replace") # Replace with specific implementation
             data = data.strip()
             self._logger.debug(f"Received: {data!r}")
-        except ... as e: # Replace with specific exception
+        except Exception as e: # Replace with specific exception
             self._logger.debug(f"Failed to receive data")
         except KeyboardInterrupt:
             self._logger.debug("Received keyboard interrupt")
             self.disconnect()
         return data
     
-    def readAll(self) -> list[str]|None:
+    def readAll(self) -> list[str]:
         """
         Read all data from the device
         
@@ -369,11 +369,11 @@ class BaseDevice:
         data = ''
         try:
             while True:
-                out = ... # Replace with specific implementation
+                out = self.connection.read_all().decode("utf-8", "replace") # Replace with specific implementation
                 data += out
                 if not out:
                     break
-        except ... as e: # Replace with specific exception
+        except Exception as e: # Replace with specific exception
             self._logger.debug(f"Failed to receive data")
             self._logger.debug(e)
         except KeyboardInterrupt:
@@ -381,7 +381,7 @@ class BaseDevice:
             self.disconnect()
         data = data.strip()
         self._logger.debug(f"Received: {data!r}")
-        return data.split(delimiter)
+        return [d for d in data.split(delimiter) if len(d)]
     
     def write(self, data:str) -> bool:
         """
@@ -395,14 +395,14 @@ class BaseDevice:
         """
         assert isinstance(data, str), "Ensure data is a string"
         try:
-            ... # Replace with specific implementation
+            self.connection.write(data.encode('utf-8')) # Replace with specific implementation
             self._logger.debug(f"Sent: {data!r}")
-        except ... as e: # Replace with specific exception
+        except Exception as e: # Replace with specific exception
             self._logger.debug(f"Failed to send: {data!r}")
             return False
         return True
     
-    def poll(self, data:str|None = None) -> str|None:
+    def poll(self, data:str|None = None) -> str:
         """
         Poll the device
         
@@ -412,7 +412,7 @@ class BaseDevice:
         Returns:
             str|None: data read from the device
         """
-        out = None
+        out = ''
         if data is not None:
             ret = self.write(data)
         if data is None or ret:
@@ -447,9 +447,9 @@ class BaseDevice:
         data: str, 
         format: str|None = None, 
         data_type: NamedTuple|None = None, 
-        timestamp: datetime|None = None,
-        *,
-        condition: Callable[[Any,datetime], bool]|None = None
+        timestamp: datetime|None = None
+        # *,
+        # condition: Callable[[Any,datetime], bool]|None = None
     ) -> tuple[Any, datetime|None]:
         """
         Process the output
@@ -470,7 +470,11 @@ class BaseDevice:
         fields = set([field for _, field, _, _ in Formatter().parse(format) if field and not field.startswith('_')])
         assert set(data_type._fields) == fields, "Ensure data type fields match read format fields"
         
-        parse_out = parse.parse(format, data)
+        try:
+            parse_out = parse.parse(format, data)
+        except TypeError:
+            self._logger.warning(f"Failed to parse data: {data!r}")
+            return None, timestamp
         if parse_out is None:
             self._logger.warning(f"Failed to parse data: {data!r}")
             return None, timestamp
@@ -490,8 +494,8 @@ class BaseDevice:
         
         if self.show_event.is_set():
             print(processed_data)
-        if callable(condition) and condition(processed_data, timestamp):
-            self.stopStream()
+        # if callable(condition) and condition(processed_data, timestamp):
+        #     self.stopStream()
         return processed_data, timestamp
     
     def query(self, 
@@ -530,11 +534,12 @@ class BaseDevice:
         #     return [response] if multi_out else response
         
         data_in = self.processInput(data, format_in, **kwargs)
+        now = datetime.now() if timestamp else None
         if not multi_out:
             raw_out = self.poll(data_in)
-            if raw_out is None:
+            if raw_out == '':
                 return (None, now) if timestamp else None
-            out, now = self.processOutput(raw_out, format_out, data_type)
+            out, now = self.processOutput(raw_out, format_out, data_type, now)
             return (out, now) if timestamp else out
         
         all_data = []
@@ -546,7 +551,8 @@ class BaseDevice:
             if time.perf_counter() - start_time > timeout:
                 break
             raw_out = self.read()
-            if raw_out is None or raw_out.strip() == '':
+            now = datetime.now() if timestamp else None
+            if raw_out == '' or raw_out.strip() == '':
                 continue
             start_time = time.perf_counter()
             out, now = self.processOutput(raw_out, format_out, data_type, now)
@@ -811,7 +817,7 @@ class SerialDevice(BaseDevice):
     @property
     def baudrate(self) -> int:
         """Device baudrate"""
-        return self.connection_details.get('baudrate', '')
+        return self.connection_details.get('baudrate', 0)
     @baudrate.setter
     def baudrate(self, value:int):
         assert isinstance(value, int), "Ensure baudrate is an integer"
@@ -823,7 +829,7 @@ class SerialDevice(BaseDevice):
     @property
     def timeout(self) -> int:
         """Device timeout"""
-        return self.connection_details.get('timeout', '')
+        return self.connection_details.get('timeout', 0)
     @timeout.setter
     def timeout(self, value:int):
         self.connection_details['timeout'] = value
@@ -874,9 +880,9 @@ class SerialDevice(BaseDevice):
         self.flags.connected = False
         return
     
-    def read(self) -> str|None:
+    def read(self) -> str:
         """Read data from the device"""
-        data = None
+        data = ''
         try:
             data = self.serial.readline().decode("utf-8", "replace").replace('\uFFFD', '')
             data = data.strip()
@@ -888,13 +894,13 @@ class SerialDevice(BaseDevice):
             self.disconnect()
         return data
     
-    def readAll(self) -> list[str]|None:
+    def readAll(self) -> list[str]:
         """Read all data from the device"""
         delimiter = self.read_format.replace(self.read_format.rstrip(), '')
         data = ''
         try:
             while True:
-                out = self.serial.read_all().decode("utf-8", "replace").strip().replace('\uFFFD', '')
+                out = self.serial.read_all().decode("utf-8", "replace").replace('\uFFFD', '')
                 data += out
                 if not out:
                     break
@@ -906,7 +912,7 @@ class SerialDevice(BaseDevice):
             self.disconnect()
         data = data.strip()
         self._logger.debug(f"[{self.port}] Received: {data!r}")
-        return data.split(delimiter)
+        return [d.strip() for d in data.split(delimiter) if len(d.strip())]
     
     def write(self, data:str) -> bool:
         """Write data to the device"""
@@ -1083,7 +1089,7 @@ class SocketDevice(BaseDevice):
         self.flags.connected = False
         return
     
-    def read(self) -> str|None:
+    def read(self) -> str:
         """Read data from the device"""
         delimiter = self.read_format.replace(self.read_format.rstrip(), '')
         data = self._stream_buffer
@@ -1106,7 +1112,7 @@ class SocketDevice(BaseDevice):
         self._logger.debug(f"[{self.host}] Received: {data!r}")
         return data
     
-    def readAll(self) -> list[str]|None:
+    def readAll(self) -> list[str]:
         """Read all data from the device"""
         delimiter = self.read_format.replace(self.read_format.rstrip(), '')
         data = self._stream_buffer
@@ -1125,7 +1131,7 @@ class SocketDevice(BaseDevice):
             self.disconnect()
         data = data.strip()
         self._logger.debug(f"[{self.host}] Received: {data!r}")
-        return data.split(delimiter)
+        return [d for d in data.split(delimiter) if len(d)]
     
     def write(self, data:str) -> bool:
         """Write data to the device"""
