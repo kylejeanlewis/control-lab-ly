@@ -309,6 +309,7 @@ class BaseDevice:
         """Disconnect from the device"""
         if not self.is_connected:
             return
+        self.stopStream()
         try:
             self.connection.close() # Replace with specific implementation
         except Exception as e: # Replace with specific exception
@@ -872,6 +873,7 @@ class SerialDevice(BaseDevice):
         """Disconnect from the device"""
         if not self.is_connected:
             return
+        self.stopStream()
         try:
             self.serial.close()
         except serial.SerialException as e:
@@ -1082,6 +1084,7 @@ class SocketDevice(BaseDevice):
         """Disconnect from the device"""
         if not self.is_connected:
             return
+        self.stopStream()
         try:
             self.socket.close()
             self._current_socket_ref = -1
