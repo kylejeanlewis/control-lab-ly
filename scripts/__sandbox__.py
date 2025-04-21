@@ -122,7 +122,7 @@ device = SartoriusDevice(port='COM35', verbose=True, simulation=True)
 
 # %%
 import test_init
-from controllably.Measure.Mechanical.actuated_sesnor import ActuatedSensor, Parallel_ActuatedSensor
+from controllably.Measure.Mechanical.actuated_sensor import ActuatedSensor, Parallel_ActuatedSensor
 from controllably.core.datalogger import monitor_plot
 
 fin = ActuatedSensor(
