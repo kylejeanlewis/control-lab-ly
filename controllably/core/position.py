@@ -150,6 +150,9 @@ class Position:
         `invert`: invert vector and rotation
         `orientate`: orientate self by a rotation
         `translate`: translate self by a vector
+    ### Static methods:
+        `fromJSON`: create a `Position` object from string
+        `toJSON`: convert `Position` to string
     """
     
     _coordinates: Sequence[float]|np.ndarray = (0,0,0)
