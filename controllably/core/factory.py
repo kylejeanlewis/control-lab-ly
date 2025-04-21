@@ -279,7 +279,10 @@ def load_parts(configs:dict, **kwargs) -> dict:
         
         try:
             _class = get_class(module_name, class_name)
-            parts[name] = create(_class, **settings)
+            part = create(_class, **settings)
+            parts[name] = part
+            if not part.is_connected:
+                part.connect()
         except Exception as e:
             logger.error(f"Error loading {name}: {e}")
             errors.append(e)
