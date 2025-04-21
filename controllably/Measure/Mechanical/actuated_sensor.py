@@ -169,20 +169,21 @@ class ActuatedSensor(LoadCell):
         df.drop(columns=['end_stop'], inplace=True)
         return df
     
-    def atDisplacement(self, displacement: float) -> bool:
+    def atDisplacement(self, displacement: float, current_displacement: float|None = None) -> bool:
         """
         Check if the device is at the target displacement
         
         Args:
             displacement (float): Target displacement
+            current_displacement (float|None): Current displacement. Defaults to None.
             
         Returns:
             bool: True if the device is at the target displacement
         """
-        data = self.getDisplacement()
-        if data is None:
+        current_displacement = current_displacement or self.getDisplacement()
+        if current_displacement is None:
             return False
-        return data == displacement
+        return current_displacement == displacement
     
     def getDisplacement(self) -> float|None:
         """
@@ -270,7 +271,7 @@ class ActuatedSensor(LoadCell):
             bool: whether movement is successful
         """
         speed = speed or self.max_speed
-        new_displacement = self.getDisplacement() + by
+        new_displacement = self.displacement + by
         return self.moveTo(new_displacement, speed)
     
     def moveTo(self, to: float, speed: float|None = None) -> bool:
@@ -292,25 +293,30 @@ class ActuatedSensor(LoadCell):
         
         success = True
         displacement = self.displacement
-        data = self.getData()
-        while not self.atDisplacement(to):
+        while not self.atDisplacement(to, self.displacement):
+            data = self.getData()
             if data is None:
                 continue
             displacement = data.displacement
+            self.displacement = displacement
             force = self._calculate_force(data.value)
             if force >= self.force_threshold:
                 success = False 
                 self._logger.info(f"[{displacement}] Force threshold reached: {force}")
                 break
-            data = self.getData()
         self._logger.info(displacement)
         # self.device.write(f'G {displacement} {rpm}')
         if not success:
             time.sleep(0.1)
-            self.moveTo(displacement, speed)
+            # self.moveTo(displacement, speed)
             self.query(f'G {displacement} {rpm}')
-            while not self.atDisplacement(to):
+            while not self.atDisplacement(displacement, self.displacement):
                 time.sleep(0.1)
+                data = self.getData()
+                if data is None:
+                    continue
+                self.displacement = displacement
+                
         self.displacement = self.getDisplacement()
         return success
     
