@@ -13,14 +13,11 @@ from __future__ import annotations
 import ast
 import json
 import pickle
-from typing import Protocol, Mapping, Any
+from typing import Mapping, Any
 
 # Local application imports
 from .position import Position
 
-class Message(Protocol):
-    ...
-    
 class Interpreter:
     """
     Abstract class for encoding and decoding messages.
@@ -36,12 +33,12 @@ class Interpreter:
         return
     
     @staticmethod
-    def decodeRequest(packet: Message) -> dict[str, Any]:
+    def decodeRequest(packet: str|bytes) -> dict[str, Any]:
         """
         Decode a request message into a command dictionary.
         
         Args:
-            packet (Message): request message
+            packet (str|bytes): request message to be decoded
             
         Returns:
             dict[str, Any]: command dictionary
@@ -50,7 +47,7 @@ class Interpreter:
         return command
     
     @staticmethod
-    def encodeData(data: Any) -> Message:
+    def encodeData(data: Any) -> bytes:
         """
         Encode data into a message.
         
@@ -58,13 +55,13 @@ class Interpreter:
             data (Any): data to be encoded
             
         Returns:
-            Message: encoded message
+            bytes: encoded message in bytes
         """
-        package = data
-        return package
+        packet = data
+        return packet
     
     @staticmethod
-    def encodeRequest(command: Mapping[str, Any]) -> Message:
+    def encodeRequest(command: Mapping[str, Any]) -> bytes:
         """
         Encode a command dictionary into a request message.
         
@@ -72,21 +69,21 @@ class Interpreter:
             command (Mapping[str, Any]): command dictionary
             
         Returns:
-            Message: request message
+            bytes: request message in bytes
         """
         request = command
         return request
     
     @staticmethod
-    def decodeData(packet: Message) -> Any:
+    def decodeData(packet: str|bytes) -> dict[str, Any]:
         """
         Decode a message into data.
         
         Args:
-            packet (Message): message to be decoded
+            packet (str|bytes): message to be decoded
             
         Returns:
-            Any: decoded data
+            dict[str, Any]: decoded data
         """
         data = packet
         return data
@@ -107,12 +104,12 @@ class JSONInterpreter(Interpreter):
         return
     
     @staticmethod
-    def decodeRequest(packet: Message|str|bytes) -> dict[str, Any]:
+    def decodeRequest(packet: str|bytes) -> dict[str, Any]:
         """
         Decode a request message into a command dictionary.
         
         Args:
-            packet (Message|str|bytes): request message
+            packet (str|bytes): request message
             
         Returns:
             dict[str, Any]: command dictionary
@@ -121,30 +118,30 @@ class JSONInterpreter(Interpreter):
         return command
     
     @staticmethod
-    def encodeData(data: dict[str, Any]) -> Message|str|bytes:
+    def encodeData(data: Mapping[str, Any]) -> bytes:
         """
         Encode data into a message.
         
         Args:
-            data (dict[str, Any]): data to be encoded
+            data (Mapping[str, Any]): data to be encoded
             
         Returns:
-            Message|str|bytes: encoded message
+            bytes: encoded message
         """
         data = data.copy()
         for k,v in data.items():
             if isinstance(v, Position):
                 data[k] = v.toJSON()
         try:
-            package = json.dumps(data).encode('utf-8')
+            packet = json.dumps(data).encode('utf-8')
         except TypeError:
             content = data.pop('data')
             data.update(dict(pickled = str(pickle.dumps(content))))
-            package = json.dumps(data).encode('utf-8')
-        return package
+            packet = json.dumps(data).encode('utf-8')
+        return packet
     
     @staticmethod
-    def encodeRequest(command: Mapping[str, Any]) -> Message|str|bytes:
+    def encodeRequest(command: Mapping[str, Any]) -> bytes:
         """
         Encode a command dictionary into a request message.
         
@@ -152,21 +149,21 @@ class JSONInterpreter(Interpreter):
             command (Mapping[str, Any]): command dictionary
             
         Returns:
-            Message|str|bytes: request message
+            bytes: request message
         """
         request = json.dumps(command).encode('utf-8')
         return request
     
     @staticmethod
-    def decodeData(packet: Message|str|bytes) -> Any:
+    def decodeData(packet: str|bytes) -> dict[str, Any]:
         """
         Decode a message into data.
         
         Args:
-            packet (Message|str|bytes): message to be decoded
+            packet (str|bytes): message to be decoded
             
         Returns:
-            Any: decoded data
+            dict[str, Any]: decoded data
         """
         data: dict[str, Any] = json.loads(packet)
         if 'data' not in data and 'pickled' in data:
