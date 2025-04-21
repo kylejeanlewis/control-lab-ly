@@ -847,6 +847,8 @@ class SerialDevice(BaseDevice):
     def clear(self):
         """Clear the input and output buffers"""
         super().clear()
+        if self.flags.simulation:
+            return
         self.serial.reset_input_buffer()
         self.serial.reset_output_buffer()
         return
@@ -1047,6 +1049,8 @@ class SocketDevice(BaseDevice):
         """Clear the input and output buffers"""
         super().clear()
         self._stream_buffer = ""
+        if self.flags.simulation:
+            return
         while True:
             try:
                 out = self.socket.recv(self.byte_size).decode("utf-8", "replace").strip('\r\n').replace('\uFFFD', '')
