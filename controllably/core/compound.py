@@ -328,7 +328,7 @@ class Ensemble(Compound):
     
     def parallel(self, 
         method_name: str, 
-        kwargs_generator: Callable[[int,int,Part], dict[str,Any]],
+        kwargs_generator: Callable[[int,int,Part], dict[str,Any]]|None = None,
         *args, 
         channels: Iterable[int],
         max_workers: int = 4,
@@ -341,7 +341,7 @@ class Ensemble(Compound):
         
         Args:
             method_name (str): method name to be executed
-            kwargs_generator (Callable[[int,int,Part], dict[str,Any]]): function to generate kwargs for each channel
+            kwargs_generator (Callable[[int,int,Part], dict[str,Any]]|None): function to generate kwargs for each channel. Defaults to None.
             channels (Iterable[int]): channels to execute on
             max_workers (int, optional): maximum number of workers. Defaults to 4.
             timeout (int|float, optional): timeout for each worker. Defaults to 120.
@@ -350,6 +350,8 @@ class Ensemble(Compound):
         Returns:
             dict[int,Any]: dictionary of outputs
         """
+        if kwargs_generator is None:
+            kwargs_generator = (lambda _i,_key,_part: dict())
         with ThreadPoolExecutor(max_workers=max_workers) as e:
             futures = {}
             for i,(key,part) in enumerate(self.channels.items()):
