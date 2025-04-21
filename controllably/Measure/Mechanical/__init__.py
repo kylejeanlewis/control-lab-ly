@@ -1,4 +1,4 @@
 # -*- coding: utf-8 -*-
 """Sub package for mechanical sensors."""
 from .load_cell import LoadCell
-from .actuated_sesnor import ActuatedSensor
+from .actuated_sensor import ActuatedSensor, Parallel_ActuatedSensor
