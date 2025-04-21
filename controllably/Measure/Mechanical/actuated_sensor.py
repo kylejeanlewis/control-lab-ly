@@ -139,7 +139,7 @@ class ActuatedSensor(LoadCell):
             calibration_factor=calibration_factor, correction_parameters=correction_parameters,
             verbose=verbose, **kwargs
         )
-        
+        self.displacement = None
         self.force_threshold = force_threshold
         self.home_displacement = home_displacement
         self.limits = (min(limits), max(limits))
@@ -241,6 +241,7 @@ class ActuatedSensor(LoadCell):
         time.sleep(1)
         while not self.atDisplacement(self.home_displacement):
             time.sleep(0.1)
+        self.displacement = self.home_displacement
         return True
     
     def move(self, by: float, speed: float|None = None) -> bool:
