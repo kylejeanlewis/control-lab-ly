@@ -298,6 +298,24 @@ class Ensemble(Compound):
         new_class = type(f"Multi_{parent.__name__}", (cls,), attrs)
         return new_class
     
+    @classmethod
+    def fromConfig(cls, config:dict) -> Ensemble:
+        """
+        Factory method to create Compound from configuration dictionary
+        
+        Args:
+            config (dict): configuration dictionary
+            
+        Returns:
+            Ensemble: instance of Compound (or its subclasses)
+        """
+        details = config.pop('details')
+        if all([isinstance(k,int) for k in details.keys()]):  # If keys are integers
+            details = [details[k]['settings'] for k in sorted(details.keys())]
+        config['details'] = details
+        # parts = factory.load_parts(details)
+        return cls(**config)
+    
     @property
     def channels(self) -> dict[int,Part]:
         """Dictionary of channels"""
@@ -674,6 +692,24 @@ class Multichannel(Combined):
         attrs.update({"_channel_class":parent})
         new_class = type(f"Multi_{parent.__name__}", (cls,), attrs)
         return new_class
+    
+    @classmethod
+    def fromConfig(cls, config:dict) -> Multichannel:
+        """
+        Factory method to create Compound from configuration dictionary
+        
+        Args:
+            config (dict): configuration dictionary
+            
+        Returns:
+            Multichannel: instance of Compound (or its subclasses)
+        """
+        details = config.pop('details')
+        if all([isinstance(k,int) for k in details.keys()]):  # If keys are integers
+            details = [details[k]['settings'] for k in sorted(details.keys())]
+        config['details'] = details
+        # parts = factory.load_parts(details)
+        return cls(**config)
     
     @property
     def channels(self) -> dict[int,Part]:
