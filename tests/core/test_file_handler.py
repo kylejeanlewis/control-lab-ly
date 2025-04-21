@@ -9,9 +9,9 @@ import yaml # pip install pyyaml
 
 from controllably.core.file_handler import (
     create_folder, init, read_config_file, readable_duration,
-    resolve_repo_filepath, start_logging, start_project_here, zip_files, TEMP_ZIP
-)
-    
+    resolve_repo_filepath, start_logging, start_project_here, zip_files, TEMP_ZIP)
+
+
 def test_create_folder(tmp_path):
     base = Path(tmp_path / "base")
     sub = "sub"
@@ -33,70 +33,65 @@ def test_init_unknown_repo(monkeypatch):
     with pytest.raises(AssertionError, match=f"'unknown' not found"):
         _ = init(repository_name)
 
-def test_read_config_file_json(tmp_path):
+@pytest.mark.parametrize("file_type", ["json", "yaml", "txt"])
+def test_read_config_file(file_type, tmp_path):
     config = {"key": "value"}
-    config_file = tmp_path / "config.json"
+    config_file = tmp_path / f"config.{file_type}"
     with open(config_file, 'w') as f:
-        json.dump(config, f)
-    result = read_config_file(config_file)
-    assert result == config
-
-def test_read_config_file_yaml(tmp_path):
-    config = {"key": "value"}
-    config_file = tmp_path / "config.yaml"
-    with open(config_file, 'w') as f:
-        yaml.dump(config, f)
-    result = read_config_file(config_file)
-    assert result == config
-
-def test_read_config_file_unknown_ext(tmp_path):
-    config = {"key": "value"}
-    txt_file = tmp_path / "file1.txt"
-    txt_file.write_text(json.dumps(config))
-    with pytest.raises(ValueError, match='Unsupported file type: txt'):
-        _ = read_config_file(txt_file)
+        if file_type == "json":
+            json.dump(config, f)
+        elif file_type == "yaml":
+            yaml.dump(config, f)
+        else:
+            f.write(json.dumps(config))
+    
+    if file_type == "txt":
+        with pytest.raises(ValueError, match='Unsupported file type: txt'):
+            _ = read_config_file(config_file)
+    else:
+        result = read_config_file(config_file)
+        assert result == config
 
 def test_readable_duration():
     duration = 3661  # 1 hour, 1 minute, 1 second
     result = readable_duration(duration)
     assert result == "1h 01min 01sec"
 
-def test_resolve_repo_filepath_relative():
+@pytest.mark.parametrize("path", [
+    Path().absolute() / "control-lab-le/some/file/path",
+    "control-lab-le/some/file/path",
+    "."
+])
+def test_resolve_repo_filepath(path):
     repo_name = "control-lab-le"
-    relative_path = f"{repo_name}/some/file/path"
     root = os.getcwd().split(repo_name)[0]
-    absolute_path = resolve_repo_filepath(relative_path)
+    absolute_path = resolve_repo_filepath(path)
     assert absolute_path.is_absolute()
-    assert absolute_path == Path(f"{root}/{relative_path}")
+    path = Path(path)
+    if path.is_absolute():
+        assert absolute_path == path
+    elif repo_name in path.parts:
+        assert absolute_path == Path(f"{root}/{path}")
+    else:
+        assert absolute_path == Path().absolute()
     
-def test_resolve_repo_filepath_absolute():
-    relative_path = "control-lab-le/some/file/path"
-    cwd = Path().absolute()
-    absolute_path = resolve_repo_filepath(cwd / relative_path)
-    assert absolute_path.is_absolute()
-    assert absolute_path == cwd / relative_path
-    
-def test_resolve_repo_filepath_empty():
-    relative_path = "."
-    absolute_path = resolve_repo_filepath(relative_path)
-    assert absolute_path.is_absolute()
-    assert absolute_path == Path().absolute()
-
-def test_start_logging(tmp_path):
+@pytest.mark.parametrize("logging_config", [
+    None,
+    {"log_level": "DEBUG"},
+])
+def test_start_logging(logging_config, tmp_path):
     log_dir = tmp_path / "logs"
     log_file = "test.log"
-    log_path = start_logging(log_dir, log_file)
-    assert log_path.exists()
-    assert log_path.is_file()
-    assert log_path == log_dir / log_file
+    log_path = start_logging(log_dir, log_file, logging_config)
+    if logging_config is None:
+        assert isinstance(log_path, Path)
+        assert log_path.exists()
+        assert log_path.is_file()
+        assert log_path == log_dir / log_file
+    else:
+        assert log_path is None
 
-def test_start_logging_with_config(tmp_path):
-    log_dir = tmp_path / "logs"
-    log_file = "test.log"
-    log_path = start_logging(log_dir, log_file, logging_config={"log_level": "DEBUG"})
-    assert log_path is None
-
-def test_start_project_here(tmp_path, monkeypatch, caplog):
+def test_start_project_here(caplog, monkeypatch, tmp_path):
     src = os.getcwd().split('control-lab-le')[0] + "control-lab-le/controllably"
     monkeypatch.setattr('importlib.resources.files', lambda _: Path(src))
     dst = tmp_path / "project"

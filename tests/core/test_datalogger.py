@@ -96,6 +96,7 @@ def test_stream():
     device.stopStream.assert_called_once()
     assert not event.is_set()
 
+@pytest.mark.skip(reason="Requires IPython environment")
 def test_monitor_plot(monkeypatch, caplog):
     Data = NamedTuple('Data', [('field1', int), ('field2', float)])
     data_store = [(Data(1, 2.0), datetime(2025, 3, 21, 10, 0, 0)), (Data(3, 4.0), datetime(2025, 3, 21, 10, 1, 0))]

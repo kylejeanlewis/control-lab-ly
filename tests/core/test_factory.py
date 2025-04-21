@@ -3,7 +3,6 @@ from dataclasses import dataclass
 import logging
 import sys
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
 
 import numpy as np
 import yaml
@@ -19,25 +18,34 @@ from controllably.core.device import SerialDevice, SocketDevice
 from .examples import mock_module
 import controllably
 
-            
-def test_create():
-    obj = create(mock_module.TestClass, 1, 2)
-    assert isinstance(obj, mock_module.TestClass)
-    assert obj.a == 1
-    assert obj.b == 2
-    
-def test_create_error():
-    with pytest.raises(TypeError):
-        obj = create(mock_module.TestClassError, 1, 2)
+@pytest.mark.parametrize("error, class_, kwargs", [
+    (True, mock_module.TestClassError, {'a':1, 'b':2}),
+    (False, mock_module.TestClass, {'a':1, 'b':2})
+])
+def test_create(error, class_, kwargs):
+    if error:
+        with pytest.raises(TypeError):
+            obj = create(class_, **kwargs)
+    else:
+        obj = create(class_, **kwargs)
+        assert isinstance(obj, mock_module.TestClass)
+        assert obj.a == 1
+        assert obj.b == 2
 
 def test_create_compound(monkeypatch):
-    new_modules = sys.modules
-    new_modules.update(dict(mock_module=mock_module))
-    monkeypatch.setattr('sys.modules', new_modules)
+    mock_modules = sys.modules
+    mock_modules.update(dict(mock_module=mock_module))
+    monkeypatch.setattr('sys.modules', mock_modules)
     kwargs = {
         'details': {
-            'part01': {'module':'mock_module', 'class':'TestClass','settings':{'ip_address':'192.0.0.1'}},
-            'part02': {'module':'mock_module', 'class':'TestClass','settings':{'setting_D':2}}
+            'part01': {
+                'module':'mock_module', 
+                'class':'TestClass',
+                'settings':{'ip_address':'192.0.0.1'}},
+            'part02': {
+                'module':'mock_module', 
+                'class':'TestClass',
+                'settings':{'setting_D':2}}
         }
     }
     obj = create(mock_module.TestCompoundClass, **kwargs)
@@ -50,27 +58,28 @@ def test_create_compound(monkeypatch):
     assert isinstance(obj.parts.part02, mock_module.TestClass)
     assert obj.parts.part02.setting_D == 2
 
-def test_create_from_config():
-    config = {'device_type': mock_module.TestClass, 'a': 1, 'b': 2}
+@pytest.mark.parametrize("config, class_", [
+    ({'device_type': mock_module.TestClass, 'a': 1, 'b': 2}, "TestClass"),
+    ({'baudrate': 9600, 'port': 'COM3', 'timeout': 1}, "SerialDevice"),
+    ({'host': 'localhost', 'port': 8080, 'timeout': 1}, "SocketDevice")
+])
+def test_create_from_config(config, class_):
     obj = create_from_config(config)
-    assert obj.a == 1
-    assert obj.b == 2
-    
-def test_create_serial_from_config():
-    config = {'baudrate': 9600, 'port': 'COM3', 'timeout': 1}
-    obj = create_from_config(config)
-    assert isinstance(obj, SerialDevice)
-    assert obj.port == 'COM3'
-    assert obj.baudrate == 9600
-    assert obj.timeout == 1
-
-def test_create_socket_from_config():
-    config = {'host': 'localhost', 'port': 8080, 'timeout': 1}
-    obj = create_from_config(config)
-    assert isinstance(obj, SocketDevice)
-    assert obj.host == 'localhost'
-    assert obj.port == 8080
-    assert obj.timeout == 1
+    match class_:
+        case "SerialDevice":
+            assert isinstance(obj, SerialDevice)
+            assert obj.port == 'COM3'
+            assert obj.baudrate == 9600
+            assert obj.timeout == 1
+        case "SocketDevice":
+            assert isinstance(obj, SocketDevice)
+            assert obj.host == 'localhost'
+            assert obj.port == 8080
+            assert obj.timeout == 1
+        case _:
+            assert isinstance(obj, mock_module.TestClass)
+            assert obj.a == 1
+            assert obj.b == 2
     
 def test_dict_to_named_tuple():
     d = {'a': 1, 'b': 2}
@@ -86,21 +95,24 @@ def test_dict_to_simple_namespace():
     assert ns.a == 1
     assert ns.b == 2
 
-def test_get_class():
-    with patch('importlib.import_module') as mock_import_module:
-        mock_import_module.return_value = mock_module
-        cls = get_class('mock_module', 'TestClass')
-        assert cls == mock_module.TestClass
-
-def test_get_class_with_error(monkeypatch,):
+@pytest.mark.parametrize("module, class_", [
+    ('mock_module', 'TestClass'),
+    ('mock_module_not_exist', 'TestClass'),
+    ('mock_module', 'TestClassNotExist')
+])
+def test_get_class(module, class_, monkeypatch):
     new_modules = sys.modules
     new_modules.update(dict(mock_module=mock_module))
     monkeypatch.setattr('sys.modules', new_modules)
-    with pytest.raises(ModuleNotFoundError):
-        _ = get_class('mock_module_not_exist', 'TestClass')
-    
-    with pytest.raises(AttributeError):
-        _ = get_class('mock_module', 'TestClassNotExist')
+    if module == 'mock_module_not_exist':
+        with pytest.raises(ModuleNotFoundError):
+            _ = get_class(module, class_)
+    elif class_ == 'TestClassNotExist':
+        with pytest.raises(AttributeError):
+            _ = get_class(module, class_)
+    else:
+        cls = get_class(module, class_)
+        assert cls == mock_module.TestClass
 
 def test_get_imported_modules():
     modules = get_imported_modules('controllably')
@@ -125,30 +137,28 @@ def test_get_plans():
     plans = get_plans(configs, registry)
     assert 'config1' in plans
 
-def test_get_setup():
-    test_classes = dict_to_named_tuple({'tool': mock_module.TestClass()}, 'TestClasses')
-    with patch('controllably.core.factory.load_setup_from_files') as mock_load_setup_from_files:
-        mock_load_setup_from_files.return_value = test_classes
-        setup = get_setup('config_file', 'registry_file')
-        assert setup.__class__.__name__ == 'TestClasses'
-        assert isinstance(setup[0], mock_module.TestClass)
-
-def test_get_setup_with_platform():
+@pytest.mark.parametrize("config, use_platform", [
+    ({'tool': mock_module.TestClass()}, False),
+    ({'tool': mock_module.TestClass()}, True),
+    ({'tool': mock_module.TestClass(), 'error':Exception('error')}, False)
+])
+def test_get_setup(config, use_platform, monkeypatch):
+    monkeypatch.setattr('controllably.core.factory.load_setup_from_files', lambda *args,**kwargs: dict_to_named_tuple(config, 'TestClasses'))
     @dataclass
     class Platform:
         tool: mock_module.TestClass
-    
-    test_classes = dict_to_named_tuple({'tool': mock_module.TestClass()}, 'TestClasses')
-    with patch('controllably.core.factory.load_setup_from_files') as mock_load_setup_from_files:
-        mock_load_setup_from_files.return_value = test_classes
-        setup = get_setup('config_file', 'registry_file', Platform)
-        assert isinstance(setup, Platform)
-        assert isinstance(setup.tool, mock_module.TestClass)
-        
-def test_get_setup_with_errors():
-    test_classes = dict_to_named_tuple({'Tool': mock_module.TestClass(), 'Error':Exception('error')}, 'TestClasses')
-    with patch('controllably.core.factory.load_setup_from_files') as mock_load_setup_from_files:
-        mock_load_setup_from_files.return_value = test_classes
+    platform = Platform if use_platform else None
+    if 'error' not in config:
+        setup = get_setup('config.yaml', 'registry.yaml', platform)
+        if use_platform:
+            assert isinstance(setup, Platform)
+            assert isinstance(setup.tool, mock_module.TestClass)
+        else:
+            assert setup.__class__.__name__ == 'TestClasses'
+            assert isinstance(setup[0], mock_module.TestClass)
+            assert 'tool' in setup._fields
+            assert isinstance(setup.tool, mock_module.TestClass)
+    else:
         with pytest.raises(SystemExit):
             _ = get_setup('config_file', 'registry_file')
 
