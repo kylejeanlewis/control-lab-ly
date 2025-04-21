@@ -297,8 +297,7 @@ class Measurer:
             pd.DataFrame: dataframe of data collected
         """
         return datalogger.stream(
-            on=on, show=show, data_store=self.buffer, 
-            device=self.device, event=self.record_event
+            on=on, show=show, data_store=self.buffer, device=self.device
         )
 
 
