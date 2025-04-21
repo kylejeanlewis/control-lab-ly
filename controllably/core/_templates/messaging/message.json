@@ -1,23 +1,21 @@
 {
     "request":{
+        "request_id": "",
+        "address": {"sender": [""], "target": [""]},
+        "priority": false,
+        "rank": null,
         "object_id": "",
         "method": "",
         "args": [""],
-        "kwargs": {"":""},
-
-        "address": {"sender": [""], "target": [""]},
-        "request_id": "",
-        "priority": false,
-        "rank": null
+        "kwargs": {"":""}
     },
     "reply": {
-        "data": null,
-        "status": "",
-
-        "address": {"sender": [""], "target": [""]},
-        "request_id": "",
         "reply_id": "",
+        "request_id": "",
+        "address": {"sender": [""], "target": [""]},
         "priority": false,
-        "rank": null
+        "rank": null,
+        "status": "",
+        "data": null
     }
 }

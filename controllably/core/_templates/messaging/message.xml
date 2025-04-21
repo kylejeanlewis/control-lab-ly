@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root>
+    <request>
+        <request_id type="int" value="123456789"/>
+        <address>
+            <sender>
+                <sender_id type="str" value="1"/>
+                <sender_id type="str" value="2"/>
+            </sender>
+            <target>
+                <target_id type="str" value="1"/>
+                <target_id type="str" value="2"/>
+            </target>
+        </address>
+        <priority type="bool" value="true"/>
+        <rank type="int" value="1"/>
+        <object_id type="str" value="object_id"/>
+        <method type="str" value="method_name"/>
+        <args>
+            <arg type="str" value="arg1"/>
+            <arg type="int" value="2"/>
+        </args>
+        <kwargs>
+            <kwarg1 type="str" value="value1"/>
+            <kwarg2 type="int" value="2"/>
+        </kwargs>
+     </request>
+     
+     <reply>
+        <reply_id type="int" value="987654321"/>
+        <request_id type="int" value="123456789"/>
+        <address>
+            <sender>
+                <sender_id type="str" value="1"/>
+                <sender_id type="str" value="2"/>
+            </sender>
+            <target>
+                <target_id type="str" value="1"/>
+                <target_id type="str" value="2"/>
+            </target>
+        </address>
+        <priority type="bool" value="true"/>
+        <rank type="int" value="1"/>
+        <status type="str" value="completed"/>
+        <data type="str" value="data_value"/>
+    </reply>
+</root>
