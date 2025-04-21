@@ -33,7 +33,7 @@ from typing import Callable, Mapping, Any, Iterable, Type
 import uuid
 
 # Local application imports
-from .interpreter import Interpreter, Message
+from .interpreter import Interpreter
 
 BYTESIZE = 1024
 
@@ -518,12 +518,12 @@ class Controller:
         return
     
     # Model side
-    def receiveRequest(self, packet: Message):
+    def receiveRequest(self, packet: str|bytes):
         """ 
         Receive a request
         
         Args:
-            packet (Message): the request to receive
+            packet (str|bytes): the request to receive
         """
         assert self.role in ('model', 'both'), "Only the model can receive requests"
         command = self.interpreter.decodeRequest(packet)
@@ -876,12 +876,12 @@ class Controller:
         self.relayRequest(request)
         return request_id
     
-    def receiveData(self, packet: Message):
+    def receiveData(self, packet: str|bytes):
         """
         Receive data
         
         Args:
-            packet (Message): the packet to receive
+            packet (str|bytes): the packet to receive
         """
         assert self.role in ('view', 'both'), "Only the view can receive data"
         data = self.interpreter.decodeData(packet)
@@ -994,12 +994,12 @@ class Controller:
         return self.retrieveData(request_id, default={})
     
     # Controller side
-    def relay(self, packet: Message, callback_type:str, addresses: Iterable[int]|None = None):
+    def relay(self, packet: str|bytes, callback_type:str, addresses: Iterable[int]|None = None):
         """
         Relay a message
         
         Args:
-            packet (Message): the message to relay
+            packet (str|bytes): the message to relay
             callback_type (str): the callback type
             addresses (Iterable[int]|None, optional): the target addresses. Defaults to None.
         """
@@ -1018,12 +1018,12 @@ class Controller:
         time.sleep(1)
         return
     
-    def relayRequest(self, packet: Message):
+    def relayRequest(self, packet: str|bytes):
         """
         Relay a request
         
         Args:
-            packet (Message): the request to relay
+            packet (str|bytes): the request to relay
         """
         content = self.interpreter.decodeRequest(packet)
         addresses = content.get('address', {}).get('target', [])
@@ -1032,12 +1032,12 @@ class Controller:
             logger.debug('Relayed request')
         return
     
-    def relayData(self, packet: Message):
+    def relayData(self, packet: str|bytes):
         """
         Relay data
         
         Args:
-            packet (Message): the packet to relay
+            packet (str|bytes): the packet to relay
         """
         content = self.interpreter.decodeData(packet)
         addresses = content.get('address', {}).get('target', [])
