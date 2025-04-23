@@ -27,6 +27,7 @@ import logging
 from pathlib import Path
 import pprint
 import sys
+import time
 from types import SimpleNamespace
 from typing import Callable, Sequence, NamedTuple, Type, Any
 
@@ -59,15 +60,12 @@ def create(obj:Callable, *args, **kwargs) -> object:
     Returns:
         object: object of target class
     """
-    assert inspect.isclass(obj), "Ensure object is a class"
+    assert inspect.isclass(obj), f"Ensure object is a class: {obj} | {type(obj)}"
     parents = [parent.__name__ for parent in obj.__mro__]
     try:
         if 'Compound' in parents or 'Combined' in parents:
             docs = inspect.getdoc(obj.fromConfig)
             new_obj = obj.fromConfig(kwargs)
-        # elif 'Multichannel' in parents or 'Ensemble' in parents:
-        #     docs = inspect.getdoc(obj.create)
-        #     new_obj = obj.create(**kwargs)
         else:
             docs = inspect.getdoc(obj.__init__)
             new_obj = obj(*args, **kwargs)
@@ -116,7 +114,6 @@ def dict_to_named_tuple(d:dict, tuple_name:str = 'Setup') -> tuple:
         field_list.append((k, type(v)))
         object_list.append(v)
     
-    # named_tuple = namedtuple(tuple_name, field_list)
     named_tuple = NamedTuple(tuple_name, field_list)
     logger.info(f"\nObjects created: {', '.join([f[0] for f in field_list])}")
     return named_tuple(*object_list)
@@ -267,6 +264,7 @@ def load_parts(configs:dict, **kwargs) -> dict:
     configs.update(kwargs)
     errors = []
     for name, details in configs.items():
+        time.sleep(2)
         title = f'\n{name.upper()}'
         settings = details.get('settings', {})
         simulated = settings.get('simulation', False)
@@ -288,13 +286,6 @@ def load_parts(configs:dict, **kwargs) -> dict:
             errors.append(e)
             parts[name] = e
             continue
-        # parent = _class.__mro__[1].__name__
-        # if parent in ('Compound','Combined'):
-        #     parts[name] = _class.fromConfig(settings)
-        # elif parent in ('Ensemble','Multichannel'):
-        #     parts[name] = _class.create(**settings)
-        # else:
-        #     parts[name] = _class(**settings)
     return parts
 
 def load_setup_from_files(
