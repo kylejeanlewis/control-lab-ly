@@ -130,12 +130,15 @@ class LoadCell(Measurer):
         if not self.is_connected:
             return
         self.device.clear()
+        start_time = time.perf_counter()
         while True:
             time.sleep(0.1)
             out = self.device.query(None,multi_out=False)
             if out is not None:
                 time.sleep(1)
                 self.device.clear()
+                break
+            if (time.perf_counter()-start_time) > 5:
                 break
         return
     
@@ -224,20 +227,22 @@ class LoadCell(Measurer):
         self.baseline = 0
         return
     
-    def zero(self, wait: float = 5.0):
+    def zero(self, timeout: int = 5):
         """
         Set current reading as baseline
         
         Args:
-            wait (float): Time to wait for the device to stabilize
+            timeout (int): Time to wait for the device to stabilize. Defaults to 5.
         """
         self.record_event.clear()
         self.buffer.clear()
         if not self.device.stream_event.is_set():
            self.device.startStream(buffer=self.buffer)
+        start_time = time.perf_counter()
         while not len(self.buffer) == 100:
             time.sleep(0.1)
-        time.sleep(wait)
+            if (time.perf_counter()-start_time) > timeout:
+                break
         self.baseline = sum([d[0] for d,_ in self.buffer])/len(self.buffer)
         self.device.stopStream()
         self.buffer.clear()
