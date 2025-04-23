@@ -69,6 +69,7 @@ class LED(Maker, TimedDeviceMixin):
         self.target_power = 0
         self.timer_event = threading.Event()
         self.threads = dict()
+        self._parent = self
         return
     
     def getAttributes(self) -> dict:
@@ -156,7 +157,9 @@ class LED(Maker, TimedDeviceMixin):
     
     def updatePower(self):
         """Update the power level of the LED"""
-        all_power = self.getPower()
+        all_power = self._parent.getPower()
+        if isinstance(all_power, dict):
+            all_power = list(all_power.values())
         all_power = all_power if isinstance(all_power, list) else [all_power]
         data = ';'.join([str(v) for v in all_power])
         self.device.write(self.device.processInput(data))
@@ -165,12 +168,12 @@ class LED(Maker, TimedDeviceMixin):
     # Overwritten method(s)
     def execute(self, dark_time:int|float = 0, power:int = 255, light_time:int|float = 1, blocking:bool = True, *args, **kwargs):
         """
-        Execute the dark and spin steps
+        Execute the dark and light steps
 
         Args:
             dark_time (int, optional): dark time. Defaults to 0.
             power (int, optional): power level. Defaults to 255.
-            light_time (int, optional): spin time. Defaults to 1.
+            light_time (int, optional): light time. Defaults to 1.
             blocking (bool, optional): whether to block the thread. Defaults to True.
         """
         def inner(dark_time:int|float, power:int, light_time:int|float):
@@ -200,6 +203,4 @@ class LED(Maker, TimedDeviceMixin):
         return super().shutdown()
 
 Multi_LED = Multichannel.factory(LED)
-# Couple the getPower method to the Multi_LED class
-Multi_LED.getPower = lambda self: [led.target_power for led in self.channels]
-Multi_LED._channel_class.getPower = Multi_LED.getPower
+Multi_LED.updatePower = LED.updatePower
