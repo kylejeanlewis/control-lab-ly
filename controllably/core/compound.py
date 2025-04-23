@@ -253,6 +253,8 @@ class Ensemble(Compound):
         if parts is None:
             parts = self.createParts(channels, details, *args, **kwargs)
         parts = {f"{self._channel_prefix}{chn}":part for chn,part in parts.items()}
+        for part in parts.values():
+            part._parent = self
         super().__init__(*args, parts=parts, verbose=verbose, **kwargs)
         return
     
@@ -634,11 +636,12 @@ class Multichannel(Combined):
             parts (dict[str,Part] | None, optional): dictionary of parts. Defaults to None.
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
-        logger.warning("Multichannel class and factory method is still under development")      # TODO: Remove this line
         if parts is None:
             parts, device = self.createParts(channels, details, *args, **kwargs)
             kwargs['device'] = device
         parts = {f"{self._channel_prefix}{chn}":part for chn,part in parts.items()}
+        for part in parts.values():
+            part._parent = self
         super().__init__(*args, parts=parts, verbose=verbose, **kwargs)
         
         self.active_channel = None
@@ -646,17 +649,18 @@ class Multichannel(Combined):
         return
     
     @classmethod
-    def createParts(cls, channels: Sequence[int], details:dict|Sequence[dict], *args, **kwargs) -> tuple[dict[str,Part],Device]:
+    def createParts(cls, channels: Sequence[int], details:dict|Sequence[dict]|None, *args, **kwargs) -> tuple[dict[str,Part],Device]:
         """
         Factory method to instantiate Multichannel from channels and part details
         
         Args:
             channels (Sequence[int]): sequence of channels
-            details (dict | Sequence[dict]): dictionary or sequence of dictionaries of part details
+            details (dict | Sequence[dict]|None): dictionary or sequence of dictionaries of part details
             
         Returns:
             tuple[dict[str,Part],Device]: dictionary of parts and device
         """
+        details = dict() if details is None else details
         if isinstance(details,dict):
             details = [details]*len(channels)
         elif isinstance(details,Sequence) and len(details) == 1:
@@ -688,7 +692,6 @@ class Multichannel(Combined):
         Returns:
             Type[Multichannel]: subclass of Multichannel class
         """
-        logger.warning("Multichannel class and factory method is still under development")      # TODO: Remove this line
         assert inspect.isclass(parent), "Ensure the argument for `parent` is a class"
         attrs = {attr:cls._make_multichannel(getattr(parent,attr)) for attr in dir(parent) if callable(getattr(parent,attr)) and (attr not in dir(cls))}
         attrs.update({"_channel_class":parent})
