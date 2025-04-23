@@ -16,6 +16,7 @@ from typing import Sequence
 import matplotlib.patches
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.spatial.transform import Rotation
 
 # Local application imports
 from ...core.position import BoundingBox, Position, Deck
@@ -194,6 +195,9 @@ class Gantry(GCode):
     def limits(self) -> np.ndarray:
         """Lower and upper limits of gantry"""
         return self.workspace.buffer
+    
+    def updateRobotPosition(self, by: Position|Rotation|None = None, to: Position|Rotation|None = None) -> Position:
+        return super().updateRobotPosition(to=self.robot_position)
     
     def _draw_workspace(self, ax: plt.Axes, **kwargs) -> matplotlib.patches.Patch:
         """
