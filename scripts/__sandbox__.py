@@ -156,8 +156,8 @@ print(host)
 
 # %%
 import test_init
-from controllably.Transfer.Liquid.Sartorius.sartorius_api import SartoriusDevice
-from controllably.Transfer.Liquid.Sartorius.sartorius_utils import Sartorius
+from controllably.Transfer.Liquid.Pipette.Sartorius.sartorius_api import SartoriusDevice
+from controllably.Transfer.Liquid.Pipette.Sartorius import Sartorius
 
 device = SartoriusDevice(port='COM35', verbose=True, simulation=True)
 # pipette = Sartorius('COM35',verbose=True)
