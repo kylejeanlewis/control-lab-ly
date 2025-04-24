@@ -113,6 +113,8 @@ setenv =
     PYTHONPATH = {toxinidir}
 deps =
     -r{toxinidir}/dev/requirements_dev.txt
+allowlist_externals =
+    cp
 commands =
     cp -r {toxworkdir}/tests/core/examples {toxworkdir}/control-lab-le/tests/core/
     pytest --cov=controllably -n auto {posargs}
