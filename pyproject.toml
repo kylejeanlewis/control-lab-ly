@@ -10,7 +10,8 @@ readme = "docs/README.md"
 authors = [
     {name="Chang Jie Leong", email="changjie.leong@outlook.com"}
 ]
-license = {file = "LICENSE.md"}
+license = "MIT"
+license-files = ["LICEN[CS]E.*"]
 keywords = [
     "python",
     "lab automation"
@@ -44,7 +45,7 @@ dependencies = [
     "tkhtmlview>=0.2"
 ]
 
-[project.project_urls]
+[project.urls]
 Homepage = "https://github.com/kylejeanlewis/control-lab-le"
 GitHub = "https://github.com/kylejeanlewis/control-lab-le"
 Documentation = "https://github.com/kylejeanlewis/control-lab-le/blob/main/docs/README.md"
