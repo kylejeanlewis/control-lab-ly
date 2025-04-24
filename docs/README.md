@@ -1,6 +1,8 @@
 # Control.lab.ly
 Lab Equipment Automation Package
 
+![Tests](https://github.com/kylejeanlewis/control-lab-le/actions/workflows/tests.yml/badge.svg)
+
 ## Description
 User-friendly package that enables flexible automation an reconfigurable setups for high-throughput experimentation and machine learning.
 
