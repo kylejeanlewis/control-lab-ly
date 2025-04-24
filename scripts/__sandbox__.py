@@ -1,5 +1,47 @@
 # %%
 import test_init
+from controllably.Move.Jointed.Dobot import M1Pro
+
+m1pro = M1Pro(host='127.0.0.1')
+
+# %%
+import test_init
+from controllably.Make.Light import LED, Multi_LED
+
+led = LED(port='COM1', baudrate=9600, timeout=1, verbose=True, simulation=True)
+mled = Multi_LED(
+    channels=[1,2,3,4],
+    port='COM0', baudrate=9600, timeout=1, verbose=True, simulation=True
+)
+mled.device.verbose = True
+
+# %%
+import test_init
+from controllably.Transfer.Liquid.Pump.TriContinent import TriContinent, Multi_TriContinent, Parallel_TriContinent
+
+pump = TriContinent(port='COM1', baudrate=9600, timeout=1, verbose=True, simulation=True)
+pump.device.verbose = True
+pump.connect()
+
+mpump = Multi_TriContinent(
+    channels=[1,2,3,4],
+    details=dict(port='COM1', baudrate=9600, timeout=1),
+    port='COM1', baudrate=9600, timeout=1, verbose=True, simulation=True
+)
+mpump.device.verbose = True
+
+ppump = Parallel_TriContinent(
+    channels=[1,2,3,4],
+    details=[
+        dict(port='COM1', baudrate=9600, timeout=1, verbose=True, simulation=True),
+        dict(port='COM2', baudrate=9600, timeout=1, verbose=True, simulation=True),
+        dict(port='COM3', baudrate=9600, timeout=1, verbose=True, simulation=True),
+        dict(port='COM4', baudrate=9600, timeout=1, verbose=True, simulation=True)
+    ]
+)
+
+# %%
+import test_init
 import socket
 import threading
 import time
