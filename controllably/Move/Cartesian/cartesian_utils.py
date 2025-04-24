@@ -197,7 +197,9 @@ class Gantry(GCode):
         return self.workspace.buffer
     
     def updateRobotPosition(self, by: Position|Rotation|None = None, to: Position|Rotation|None = None) -> Position:
-        return super().updateRobotPosition(to=self.robot_position)
+        if by is None and to is None:
+            return super().updateRobotPosition(to=self.robot_position)
+        return super().updateRobotPosition(by=by, to=to)
     
     def _draw_workspace(self, ax: plt.Axes, **kwargs) -> matplotlib.patches.Patch:
         """
