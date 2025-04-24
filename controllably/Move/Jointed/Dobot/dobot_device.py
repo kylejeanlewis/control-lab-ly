@@ -21,7 +21,7 @@ from typing import Any
 
 # Local imports
 from ....core import connection
-from .dobot_api import DobotApiDashboard, DobotApiMove
+from ....external.Dobot_Arm import DobotApiDashboard, DobotApiMove
 
 logger = logging.getLogger("controllably.Move")
 logger.setLevel(logging.DEBUG)
