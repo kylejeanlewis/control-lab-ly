@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 from scipy.spatial.transform import Rotation
 
+from ..context import controllably
 from controllably.core.interpreter import Interpreter, JSONInterpreter
 from controllably.core.position import Position
 

@@ -2,6 +2,8 @@ import pytest
 import socket
 import logging
 import uuid
+
+from ..context import controllably
 from controllably.core.connection import get_addresses, get_host, get_node, get_ports, match_current_ip_address
 
 registry = {

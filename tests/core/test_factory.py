@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import numpy as np
 import yaml
 
+from ..context import controllably
 from controllably.core.factory import (
     create, create_from_config, dict_to_named_tuple, dict_to_simple_namespace, get_class,
     get_imported_modules, get_method_names, get_plans, get_setup, load_parts,

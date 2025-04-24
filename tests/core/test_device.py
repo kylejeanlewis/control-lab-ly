@@ -5,10 +5,11 @@ import socket
 import threading
 import time
 from typing import NamedTuple
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import serial
 
+from ..context import controllably
 from controllably.core.device import (
     BaseDevice, SerialDevice, SocketDevice, TimedDeviceMixin, Data, READ_FORMAT, WRITE_FORMAT)
 

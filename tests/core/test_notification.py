@@ -6,6 +6,7 @@ from pathlib import Path
 import smtplib
 from unittest.mock import MagicMock
 
+from ..context import controllably
 from controllably.core.notification import Notifier, EmailNotifier
 
 configs = {

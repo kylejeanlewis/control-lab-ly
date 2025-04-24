@@ -3,6 +3,8 @@ import time
 from unittest.mock import MagicMock
 
 import serial
+
+from ..context import controllably
 from controllably.core.compound import Compound, Ensemble, Combined, Multichannel
 from controllably.core.device import BaseDevice, SerialDevice
 
