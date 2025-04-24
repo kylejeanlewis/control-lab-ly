@@ -10,7 +10,7 @@ readme = "docs/README.md"
 authors = [
     {name="Chang Jie Leong", email="changjie.leong@outlook.com"}
 ]
-license = {text = "MIT License", file = "LICENSE.md"}
+license = {file = "LICENSE.md"}
 keywords = [
     "python",
     "lab automation"
