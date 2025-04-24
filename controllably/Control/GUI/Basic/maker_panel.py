@@ -159,6 +159,7 @@ class MakerPanel(MultiChannelPanel):
         """
         updates = {}
         channel_id = values.get(self._mangle('-TABS-'), self.tool.channel)
+        channel_id = int(channel_id)
         
         # 1. Start process
         if event == self._mangle('-Run-'):
