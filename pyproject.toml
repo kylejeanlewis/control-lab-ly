@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "control-lab-ly"
 version = "1.4.0-a0"
 description = "Lab Equipment Automation Package"
-readme = ["docs/README.md", "docs/CHANGELOG.md"]
+readme = "docs/README.md"
 authors = [
     {name="Chang Jie Leong", email="changjie.leong@outlook.com"}
 ]
