@@ -37,12 +37,10 @@ dependencies = [
     "PyMeasure>=0.15",
     "pyModbusTCP>=0.2",
     "pyserial>=3.5",
-    "PySimpleGUI~=4.60",
     "PyVISA>=1.12",
     "PyVISA-py>=0.7",
     "PyYAML>=6.0",
-    "scipy>=1.14",
-    "tkhtmlview>=0.2"
+    "scipy>=1.14"
 ]
 
 [project.urls]
