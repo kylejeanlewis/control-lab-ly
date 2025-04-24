@@ -5,8 +5,8 @@ Lab Equipment Automation Package
 User-friendly package that enables flexible automation an reconfigurable setups for high-throughput experimentation and machine learning.
 
 ## Package Structure
-1. Compound
-2. Control
+1. core
+2. external
 3. Make
 4. Measure
 5. Move
@@ -21,10 +21,6 @@ User-friendly package that enables flexible automation an reconfigurable setups 
     - Multi-channel spin-coater
     - Peltier device
 - Measure
-  - (Keithley)
-    - SMU 2450 Source Measure Unit Instrument
-    - DAQ 6510 Data Acquisition and Multimeter System
-  - (PiezoRobotics) Dynamic Mechanical Analyser (DMA)
   - (Sentron) SI series pH meters
   - (Arduino-based device) 
     - Precision mass balance
@@ -55,25 +51,21 @@ Simple start-up guide for basic usage of the package.
 
 ### Import desired class
 ```python
-from controllably.Move.Cartesian import Ender
-mover = Ender(...)
+from controllably.Move.Cartesian import Gantry
+mover = Gantry(...)
 mover.safeMoveTo((x,y,z))
 ```
 
 ### View documentation
-Use the built-in guide to read the documentation for the package.
+Details for each class / module / package can be explored by using the `help` function.
 ```python
-from controllably import guide_me
-guide_me()
-```
-![Screenshot of the documentation guide](https://raw.githubusercontent.com/kylejeanlewis/repo-readme-assets/main/control-lab-le/v1-1-0/assets/Documentation%20guide.png)
-
-Alternatively, details for each class / module / package can be explored by using the `help` function.
-```python
-help(Ender)
+help(Gantry)
 ```
 
 For basic usage, this is all you need to know. Check the documentation for more details on each class and function.
+
+---
+>Content below is still work in progress
 
 ---
 
@@ -111,36 +103,35 @@ lab.create_setup(setup_name = "MySetup")
 This file stores the configuration and calibration values for your devices.
 ```yaml
 MyDevice:                                       # device name
-  module: Move                                  # top-level category
-  class: Cartesian.Ender                        # device class
+  module: controllably.Move.Cartesian                     # top-level category
+  class: Gantry                        # device class
   settings:
     port: COM1                                  # serial port address
     setting_A: {'tuple': [300,0,200]}           # use keys to define the type of iterable
     setting_B: {'array': [[0,1,0],[-1,0,0]]}    # only tuple and np.array supported
 ```
 > Each device configuration starts with the device name, then the following parameters:\
-> `module`: top-level category (such as Make, Measure, Move,Transfer, View)\
-> `class`: point to specific subclass using dot notation\
+> `module`: module/sub-package dotnotation\
+> `class`: object class\
 > `settings`: various initialisation settings\
-> *See the* [**guide**](#view-documentation) *for more details on these parameters*
 
 Compound devices are similarly configured. 
 ```yaml
 MyCompoundDevice:                         # compound device name
-  module: Compound
-  class: LiquidMover.LiquidMoverSetup
+  module: controllably.Compound.LiquidMover
+  class: LiquidMover
   settings:                               # settings for your compound device
     setting_C: True
-    component_config:                     # nest component configuration settings here
-      MyFirstDevice:                      # component device name
-        module: Transfer
-        class: Liquid.SyringeAssembly
+    details:                     # nest component configuration settings here
+      liquid:                      # component device name
+        module: controllably.Transfer.Liquid.Pipette.Sartorius
+        class: Sartorius
         settings:                         # settings for your component device
           port: COM22
           setting_D: 2                    
-      MySecondDevice:                     # component device name
-        module: Mover
-        class: Jointed.Dobot.M1Pro
+      mover:                     # component device name
+        module: controllably.Mover.Jointed.Dobot
+        class: M1Pro
         settings:                         # settings for your compound device
           ip_address: '192.0.0.1'
 ```
@@ -149,8 +140,8 @@ MyCompoundDevice:                         # compound device name
 Lastly, you can define shortcuts (or nicknames) to quickly access the components of compound devices.
 ```yaml
 SHORTCUTS:
-  First: 'MyCompoundDevice.MyFirstDevice'
-  Second: 'MyCompoundDevice.MySecondDevice'
+  First: 'MyCompoundDevice.liquid'
+  Second: 'MyCompoundDevice.mover'
 ```
 > A different serial port address or camera index may be used by different machines for the same device.\
 *See* [**Section 3**](#3-creating-a-new-project) *to find out how to manage the different addresses used by different machines.*
@@ -166,33 +157,43 @@ This file stores the layout configuration of your physical workspace, also known
 
 ```json
 {
-  "reference_points":{
-    "1": [11.1,22.2,33.3],
-    "2": [44.4,55.5,66.6],
-    "3": [77.7,88.8,99.9]
-  },
-  "slots":{
-    "1": {
-      "name": "MyLabware01",
-      "exclusion_height": -1,
-      "filepath": "MyREPO/.../MyLabware01.json"
+    "metadata": {
+        "displayName": "Example Layout (sub)",
+        "displayCategory": "deck",
+        "displayVolumeUnits": "µL",
+        "displayLengthUnits": "mm",
+        "tags": []
     },
-    "2": {
-      "name": "MyLabware02",
-      "exclusion_height": 0,
-      "filepath": "MyREPO/.../MyLabware02.json"
+    "dimensions": [600,300,0],
+    "cornerOffset": [0,0,0],
+    "orientation": [0,0,0],
+    "slots": {
+        "1": {
+            "name": "slotOne",
+            "dimensions": [127.76,85.48,0],
+            "cornerOffset": [160.5,6.5,0],
+            "orientation": [0,0,0]
+        },
+        "2": {
+            "name": "slotTwo",
+            "dimensions": [127.76,85.48,0],
+            "cornerOffset": [310.5,6.5,0],
+            "orientation": [0,0,0],
+            "labware_file": "control-lab-le/tests/core/examples/labware_wellplate.json"
+        },
+        "3": {
+            "name": "slotThree",
+            "dimensions": [127.76,85.48,0],
+            "cornerOffset": [460.5,6.5,0],
+            "orientation": [0,0,0]
+        }
     },
-    "3": {
-      "name": "MyLabware03",
-      "exclusion_height": 10,
-      "filepath": "MyREPO/.../MyLabware03.json"
-    }
-  }
+    "zones":{}
 }
 ```
-> In `reference_points`, the bottom-left coordinates of each slot on the deck are defined. Slots are positions where Labware blocks may be placed.
+> In `cornerOffset`, the bottom-left coordinates of each slot on the deck are defined. Slots are positions where Labware blocks may be placed.
 
-> In `slots`, the `name` of the Labware and the `filepath` to the JSON file containing Labware details are defined. The filepath starts with the name of the repository's base folder.\
+> In `slots`, the `name` of the Labware and the `labware_file` path to the JSON file containing Labware details are defined. The filepath starts with the name of the repository's base folder.\
 >\
 > The `exclusion_height` is the height (in mm) above the dimensions of the Labware block to steer clear from when performing movement actions. Values less than 0 means the Labware is not avoided.\
 >\
@@ -224,7 +225,7 @@ setup.First
 To load a `Deck` from the layout file, use the `loadDeck()` function of a `Mover` object (or its subclasses).
 ```python
 from configs.MySetup import setup, LAYOUT_FILE
-setup.Mover.loadDeck(LAYOUT_FILE)
+setup.Mover.loadDeckFromFile(LAYOUT_FILE)
 ``` 
 > `LAYOUT_FILE` contains the details that has been defined in `layout.json` (see [**Section 1.2**](#12-layoutjson))
 
@@ -261,8 +262,8 @@ Afterwards, change the value for the serial port address in the `config.yaml` fi
 ```yaml
 ### config.yaml ###
 MyDevice:
-  module: Move
-  class: Cartesian.Ender
+  module: controllably.Move.Cartesian
+  class: Gantry
   settings:
     port: __MyDevice__          # serial port address
 ```
@@ -309,17 +310,14 @@ from my_module import MyClass, my_function
 ---
 
 ## Dependencies
-- Markdown (>=3.3.4)
 - numpy (>=1.19.5)
 - opencv-python (>=4.5.4.58)
 - pandas (>=1.2.4)
 - pyModbusTCP (>=0.2.0)
 - pyserial (>=3.5)
-- PySimpleGUI (>=4.60.5)
 - PyVISA (>=1.12.0)
 - PyVISA-py (>=0.7)
 - PyYAML (>=6.0)
-- tkhtmlview (>=0.2.0)
 
 ## Contributors
 [@kylejeanlewis](https://github.com/kylejeanlewis)\
