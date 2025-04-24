@@ -4,6 +4,7 @@ numpy==2.1.0
 opencv_python==4.7.0.68
 pandas==1.2.4
 parse==1.20.2
+PyMeasure==0.15.0
 pyModbusTCP==0.2.0
 pyserial==3.5
 PySimpleGUI==4.60.5
