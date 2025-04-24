@@ -76,9 +76,6 @@ exclude = ["tests*"]
 "docs" = ["*.md", "*.rst"]
 "docs.assets.images" = ["*.png", "*.jpg", "*.jpeg", "*.gif"]
 
-[tool.setuptools.bdist_wheel]
-universal = true
-
 
 [tool.pytest.ini_options]
 addopts = "-v"
