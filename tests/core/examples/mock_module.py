@@ -6,9 +6,23 @@ class TestClass:
         self.b = b
         for key, value in kwargs.items():
             setattr(self, key, value)
-            
+        self.device = None
+        self.connection_details= {}
+        self.is_busy = False
+        self.is_connected = False
+        self.verbose = False
+        
+    def connect(self):
+        """Connect to the device"""
+    
+    def disconnect(self):
+        """Disconnect from the device"""
+    
+    def resetFlags(self):
+        """Reset all flags to class attribute `_default_flags`"""
+
     def shutdown(self):
-        pass
+        """Shutdown the device"""
 
 class TestClassError:
     def __init__(self, a=0, b=1, *args, **kwargs):
