@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "control-lab-ly"
-version = "1.4.0-a0"
+version = "2.0.0-a0"
 description = "Lab Equipment Automation Package"
 readme = "docs/README.md"
 authors = [
@@ -101,23 +101,26 @@ legacy_tox_ini = """
 minversion = 3.10.0
 envlist = py310, py311, py312, mypy
 isolated_build = true
+
+[gh-actions]
+python =
+    3.10: py310
+    3.11: py311
+    3.12: py312, mypy
+
+[testenv]
+setenv =
+    PYTHONPATH = {toxinidir}
+deps =
+    -r{toxinidir}/dev/requirements_dev.txt
+commands =
+    pytest --cov=controllably -n auto {posargs}
+
+
+[testenv:mypy]
+basepython = python3.10
+deps =
+    -r{toxinidir}/dev/requirements_dev.txt
+commands = 
+    mypy controllably
 """
-
-[tool.tox.testenv]
-passenv = ["HOME", "CI_*"]
-deps = [
-    "pytest",
-    "pytest-cov",
-    "pytest-xdist",
-    "tox",
-    "tox-coverage"
-]
-commands = ["pytest -n=auto --cov=controllably {posargs}"]
-
-[tool.tox.testenv.setenv]
-PYTHONPATH = "{toxinidir}"
-COVERAGE_FILE = "{toxinidir}/.coverage.{envname}"
-
-[tool.tox.testenv.style]
-deps = ["mypy"]
-commands = ["mypy ."]
