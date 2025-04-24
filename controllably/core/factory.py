@@ -29,7 +29,7 @@ import pprint
 import sys
 import time
 from types import SimpleNamespace
-from typing import Callable, Sequence, NamedTuple, Type, Any
+from typing import Callable, Sequence, NamedTuple, Type, Any, Protocol
 
 # Third party imports
 import numpy as np
@@ -47,6 +47,26 @@ logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
+
+class Part(Protocol):
+    """Protocol for Part (i.e. component tools)"""
+    device: Any
+    connection_details: dict
+    is_busy: bool
+    is_connected: bool
+    verbose: bool
+    def connect(self):
+        """Connect to the device"""
+    
+    def disconnect(self):
+        """Disconnect from the device"""
+    
+    def resetFlags(self):
+        """Reset all flags to class attribute `_default_flags`"""
+
+    def shutdown(self):
+        """Shutdown the device"""
+
 
 def create(obj:Callable, *args, **kwargs) -> object:
     """
@@ -277,7 +297,7 @@ def load_parts(configs:dict, **kwargs) -> dict:
         
         try:
             _class = get_class(module_name, class_name)
-            part = create(_class, **settings)
+            part: Part = create(_class, **settings)
             parts[name] = part
             if not part.is_connected:
                 part.connect()
