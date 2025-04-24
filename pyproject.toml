@@ -114,8 +114,8 @@ setenv =
 deps =
     -r{toxinidir}/dev/requirements_dev.txt
 commands =
+    cp -r {toxworkdir}/tests/core/examples {toxworkdir}/control-lab-le/tests/core/
     pytest --cov=controllably -n auto {posargs}
-
 
 [testenv:mypy]
 basepython = python3.10
