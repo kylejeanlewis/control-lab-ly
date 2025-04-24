@@ -11,7 +11,7 @@ authors = [
     {name="Chang Jie Leong", email="changjie.leong@outlook.com"}
 ]
 license = "MIT"
-license-files = ["LICEN[CS]E.*"]
+# license-files = ["LICEN[CS]E.*"]
 keywords = [
     "python",
     "lab automation"
@@ -65,13 +65,11 @@ zip-safe = false
 
 [tool.setuptools.packages.find]
 # where = ["src"]
-include = ["controllably*"]
+include = ["controllably*", "docs*"]
 exclude = ["tests*"]
 
 [tool.setuptools.package-data]
-"controllably" = ["*.json", "*.yaml", "*.png"]
-"docs" = ["*.md", "*.rst"]
-"docs.assets.images" = ["*.png", "*.jpg", "*.jpeg", "*.gif"]
+"*" = ["*.json", "*.yaml", "*.png", "*.md", "*.rst"]
 
 
 [tool.pytest.ini_options]
