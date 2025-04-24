@@ -141,10 +141,9 @@ class LEDArray(Maker):
         self.channels = {chn: LED(chn) for chn in channels}
         self._threads = {}
         self._timed_channels = []
-        
         self.connect()
         return
-    
+
     def getPower(self, channel:int|None = None) -> list[int]:
         """
         Get power level(s) of channel(s)
@@ -158,8 +157,10 @@ class LEDArray(Maker):
         power = []
         if channel is None:
             power = [chn.power for chn in self.channels.values()]
-        else:
+        elif isinstance(channel, int) and channel in self.channels:
             power = [self.channels[channel].power]
+        elif isinstance(channel, Sequence):
+            power = [self.channels[chn].power for chn in channel]
         return power
     
     def getTimedChannels(self) -> list[int]:
