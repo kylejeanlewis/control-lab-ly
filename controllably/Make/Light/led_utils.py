@@ -15,7 +15,7 @@ import logging
 from threading import Thread
 import time
 from types import SimpleNamespace
-from typing import final
+from typing import final, Sequence
 
 # Local application imports
 from .. import Maker
