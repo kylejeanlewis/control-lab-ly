@@ -173,7 +173,7 @@ class TestPosition:
 @pytest.fixture
 def main_deck(monkeypatch):
     monkeypatch.setattr('os.getcwd', lambda : str(HERE))
-    deck_file_main = 'control-lab-le/tests/core/examples/layout_main.json'
+    deck_file_main = 'tests/core/examples/layout_main.json'
     return Deck.fromFile(deck_file_main)
 
 @pytest.fixture
@@ -250,7 +250,7 @@ class TestDeck:
         
     def test_recursive(self, caplog, monkeypatch):
         monkeypatch.setattr('os.getcwd', lambda : str(HERE))
-        deck_file_main = 'control-lab-le/tests/core/examples/layout_recursive_1.json'
+        deck_file_main = 'tests/core/examples/layout_recursive_1.json'
         with caplog.at_level(logging.ERROR):
             with pytest.raises(ValueError):
                 _ = Deck.fromFile(deck_file_main)
@@ -298,7 +298,7 @@ def labware(slot_loaded):
 @pytest.fixture
 def labware_stackable(slot_empty, monkeypatch):
     monkeypatch.setattr('os.getcwd', lambda : str(HERE))
-    labware_file = 'control-lab-le/tests/core/examples/labware_wellplate.json'
+    labware_file = 'tests/core/examples/labware_wellplate.json'
     slot_empty.loadLabwareFromFile(labware_file)
     return slot_empty.loaded_labware
 
