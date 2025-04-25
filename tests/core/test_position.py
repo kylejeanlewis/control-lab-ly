@@ -13,7 +13,7 @@ from controllably.core.position import (
     convert_to_position, get_transform, Position, Well, Labware, Slot, Deck, BoundingVolume, BoundingBox)
 
 _position = Position([1, 2, 3], Rotation=Rotation.from_euler('zyx', [4, 5, 6], degrees=True))
-HERE = os.environ.get("REPO_ROOT") or Path(__file__).parent.absolute()
+HERE = os.environ.get("REPO_ROOT") or Path(__file__).parent.parent.absolute()
 
 @pytest.fixture
 def position():

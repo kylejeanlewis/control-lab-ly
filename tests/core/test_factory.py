@@ -20,7 +20,7 @@ from controllably.core.device import SerialDevice, SocketDevice
 
 from .examples import mock_module
 
-HERE = os.environ.get("REPO_ROOT") or Path(__file__).parent.absolute()
+HERE = os.environ.get("REPO_ROOT") or Path(__file__).parent.parent.absolute()
 
 @pytest.mark.parametrize("error, class_, kwargs", [
     (True, mock_module.TestClassError, {'a':1, 'b':2}),

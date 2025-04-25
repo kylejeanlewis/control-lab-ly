@@ -12,7 +12,7 @@ from controllably.core.file_handler import (
     create_folder, init, read_config_file, readable_duration,
     resolve_repo_filepath, start_logging, start_project_here, zip_files, TEMP_ZIP)
 
-HERE = os.environ.get("REPO_ROOT") or Path(__file__).parent.absolute()
+HERE = os.environ.get("REPO_ROOT") or Path(__file__).parent.parent.parent.absolute()
 
 def test_create_folder(tmp_path):
     base = Path(tmp_path / "base")
@@ -95,8 +95,9 @@ def test_start_logging(logging_config, tmp_path):
 
 def test_start_project_here(caplog, monkeypatch, tmp_path):
     monkeypatch.setattr('os.getcwd', lambda : str(HERE))
-    src = os.getcwd().split('control-lab-le')[0] + "control-lab-le/controllably"
-    monkeypatch.setattr('importlib.resources.files', lambda _: Path(src))
+    monkeypatch.setattr('importlib.resources.files', lambda _: HERE/"controllably")
+    # src = os.getcwd().split('control-lab-le')[0] + "control-lab-le/controllably"
+    # monkeypatch.setattr('importlib.resources.files', lambda _: Path(src))
     dst = tmp_path / "project"
     registry = dst / "tools/registry.yaml"
     start_project_here(dst)
