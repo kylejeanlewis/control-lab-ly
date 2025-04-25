@@ -13,7 +13,7 @@ from controllably.core.position import (
     convert_to_position, get_transform, Position, Well, Labware, Slot, Deck, BoundingVolume, BoundingBox)
 
 _position = Position([1, 2, 3], Rotation=Rotation.from_euler('zyx', [4, 5, 6], degrees=True))
-HERE = str(Path(__file__).parent.absolute())
+HERE = Path(__file__).parent.absolute()
 
 @pytest.fixture
 def position():
@@ -171,8 +171,9 @@ class TestPosition:
 
 
 @pytest.fixture
-def main_deck():
-    deck_file_main = os.path.join(HERE, 'examples/layout_main.json')
+def main_deck(monkeypatch):
+    monkeypatch.setattr('os.getcwd', lambda : str(HERE))
+    deck_file_main = 'control-lab-le/tests/core/examples/layout_main.json'
     return Deck.fromFile(deck_file_main)
 
 @pytest.fixture
@@ -247,7 +248,8 @@ class TestDeck:
         sub_deck.loadLabware(sub_deck.slots['slot_01'], this_labware)
         assert isinstance(sub_deck.slots['slot_01'].loaded_labware, Labware)
         
-    def test_recursive(self, caplog):
+    def test_recursive(self, caplog, monkeypatch):
+        monkeypatch.setattr('os.getcwd', lambda : str(HERE))
         deck_file_main = 'control-lab-le/tests/core/examples/layout_recursive_1.json'
         with caplog.at_level(logging.ERROR):
             with pytest.raises(ValueError):
@@ -294,8 +296,10 @@ def labware(slot_loaded):
     return slot_loaded.loaded_labware
 
 @pytest.fixture
-def labware_stackable(slot_empty):
-    slot_empty.loadLabwareFromFile('control-lab-le/tests/core/examples/labware_wellplate.json')
+def labware_stackable(slot_empty, monkeypatch):
+    monkeypatch.setattr('os.getcwd', lambda : str(HERE))
+    labware_file = 'control-lab-le/tests/core/examples/labware_wellplate.json'
+    slot_empty.loadLabwareFromFile(labware_file)
     return slot_empty.loaded_labware
 
 class TestLabware:

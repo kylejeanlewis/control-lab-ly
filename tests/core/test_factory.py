@@ -148,6 +148,7 @@ def test_get_plans():
 ])
 def test_get_setup(config, use_platform, monkeypatch):
     monkeypatch.setattr('controllably.core.factory.load_setup_from_files', lambda *args,**kwargs: dict_to_named_tuple(config, 'TestClasses'))
+    monkeypatch.setattr('os.getcwd', lambda : str(HERE))
     @dataclass
     class Platform:
         tool: mock_module.TestClass
@@ -170,8 +171,9 @@ def test_load_parts(monkeypatch, caplog):
     new_modules = sys.modules
     new_modules.update(dict(mock_module=mock_module))
     monkeypatch.setattr('sys.modules', new_modules)
-    config_file = os.path.join(HERE, 'examples/tool.yaml')
-    # config_file = controllably.core.file_handler.resolve_repo_filepath(config_file)
+    monkeypatch.setattr('os.getcwd', lambda : str(HERE))
+    config_file = 'tests/core/examples/tool.yaml'
+    config_file = controllably.core.file_handler.resolve_repo_filepath(config_file)
     with open(config_file, 'r') as f:
         configs = yaml.safe_load(f)
     with caplog.at_level(logging.ERROR):
@@ -183,11 +185,12 @@ def test_load_setup_from_files(monkeypatch, caplog):
     new_modules = sys.modules
     new_modules.update(dict(mock_module=mock_module))
     monkeypatch.setattr('sys.modules', new_modules)
+    monkeypatch.setattr('os.getcwd', lambda : str(HERE))
     monkeypatch.setattr('controllably.core.connection.get_node', lambda: '012345678901234')
-    config_file = os.path.join(HERE,'examples/tool.yaml')
-    # config_file = controllably.core.file_handler.resolve_repo_filepath(config_file)
-    registry_file = os.path.join(HERE,'examples/registry.yaml')
-    # registry_file = controllably.core.file_handler.resolve_repo_filepath(registry_file)
+    config_file = 'tests/core/examples/tool.yaml'
+    config_file = controllably.core.file_handler.resolve_repo_filepath(config_file)
+    registry_file = 'tests/core/examples/registry.yaml'
+    registry_file = controllably.core.file_handler.resolve_repo_filepath(registry_file)
     
     with caplog.at_level(logging.WARNING):
         setup = load_setup_from_files(config_file, registry_file, create_tuple=False)
@@ -224,11 +227,12 @@ def test_load_setup_from_files(monkeypatch, caplog):
     assert device4.parts.part01.name == 'part1'
     assert device4.parts.part02.name == 'part2'
     
-def test_parse_configs():
-    config_file = os.path.join(HERE,'examples/tool.yaml')
-    # config_file = controllably.core.file_handler.resolve_repo_filepath(config_file)
-    registry_file = os.path.join(HERE,'examples/registry.yaml')
-    # registry_file = controllably.core.file_handler.resolve_repo_filepath(registry_file)
+def test_parse_configs(monkeypatch):
+    monkeypatch.setattr('os.getcwd', lambda : str(HERE))
+    config_file = 'tests/core/examples/tool.yaml'
+    config_file = controllably.core.file_handler.resolve_repo_filepath(config_file)
+    registry_file = 'tests/core/examples/registry.yaml'
+    registry_file = controllably.core.file_handler.resolve_repo_filepath(registry_file)
     with open(config_file, 'r') as f:
         configs = yaml.safe_load(f)
     with open(registry_file, 'r') as f:
