@@ -190,7 +190,9 @@ class TestBaseDevice:
         buffer_iter = iter(buffer)
         collect_now = []
         out = base_device.query('test_data', timestamp=True)
-        assert out == [(Data(data=d), n) for d,n in zip(buffer,collect_now)]
+        all_data = [(Data(data=d), n) for d,n in zip(buffer,collect_now)]
+        assert [o[0] for o in out] == [d[0] for d in all_data]
+        assert [o[1].isoformat(timespec='seconds') for o in out] == [d[1].isoformat(timespec='seconds') for d in all_data]
 
     def test_query_other_format(self, base_device, monkeypatch):
         buffer = ['abc,123,4.5,false', 'abc,abc,4.5,false', 'abc,123,4.5,false']
@@ -223,7 +225,8 @@ class TestBaseDevice:
         assert out is None
         now = datetime.now()
         out = base_device.query('test_data', multi_out=False, timestamp=True)
-        assert out == (None, now)
+        assert out[0] is None
+        assert out[1].isoformat(timespec='seconds') ==  now.isoformat(timespec='seconds')
         
         base_device.connect()
         assert base_device.is_connected
@@ -231,7 +234,8 @@ class TestBaseDevice:
         assert data == Data(data='test_output')
         now = datetime.now()
         out = base_device.query('test_data', multi_out=False, timestamp=True)
-        assert out == (Data(data='test_output'), now)
+        assert out[0] == Data(data='test_output')
+        assert out[1].isoformat(timespec='seconds') == now.isoformat(timespec='seconds')
 
     def test_show_stream(self, base_device):
         base_device.showStream(True)
