@@ -4,6 +4,9 @@ on:
   - push
   - pull_request
 
+env:
+  REPO_ROOT: ${{ github.workspace }}
+
 jobs:
   test:
     runs-on: ${{ matrix.os }}
@@ -24,5 +27,4 @@ jobs:
         pip install tox tox-gh-actions
     - name: Test with tox
       run: |
-        export REPO_ROOT="$GITHUB_WORKSPACE"
         tox
