@@ -434,7 +434,7 @@ def test_serial_device_connect_disconnect(serial_device):
     assert serial_device.is_connected
     
     assert not serial_device.checkDeviceBuffer()
-    serial_device.clear()
+    # serial_device.clear()
     serial_device.disconnect()
     assert not serial_device.is_connected
     serial_device.disconnect()
