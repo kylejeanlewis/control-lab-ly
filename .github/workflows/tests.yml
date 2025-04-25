@@ -23,4 +23,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install tox tox-gh-actions
     - name: Test with tox
-      run: tox
+      run: |
+        export REPO_ROOT="$GITHUB_WORKSPACE"
+        tox
