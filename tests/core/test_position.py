@@ -13,7 +13,7 @@ from controllably.core.position import (
     convert_to_position, get_transform, Position, Well, Labware, Slot, Deck, BoundingVolume, BoundingBox)
 
 _position = Position([1, 2, 3], Rotation=Rotation.from_euler('zyx', [4, 5, 6], degrees=True))
-HERE = str(Path(__file__).parent.parent.parent.absolute())
+HERE = str(Path(__file__).parent.absolute())
 
 @pytest.fixture
 def position():
@@ -172,7 +172,7 @@ class TestPosition:
 
 @pytest.fixture
 def main_deck():
-    deck_file_main = os.path.join(HERE, 'tests/core/examples/layout_main.json')
+    deck_file_main = os.path.join(HERE, 'examples/layout_main.json')
     return Deck.fromFile(deck_file_main)
 
 @pytest.fixture
