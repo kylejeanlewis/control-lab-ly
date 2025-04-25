@@ -26,9 +26,6 @@ import uuid
 # Third party imports
 import serial                       # pip install pyserial
 
-# Local application imports
-from .archives._connection import *
-
 _logger = logging.getLogger("controllably.core")
 _logger.debug(f"Import: OK <{__name__}>")
 
