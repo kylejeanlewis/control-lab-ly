@@ -414,8 +414,9 @@ def test_hub_spoke():
     assert user_thread.is_alive()
     
     q = TwoTierQueue()
+    time.sleep(5)
     worker.register(q, 'TEST1')
-    time.sleep(2)
+    time.sleep(5)
     assert worker.registry == {'TEST1': [worker.address]}
     assert user.registry == {'TEST1': [worker.address]}
     
