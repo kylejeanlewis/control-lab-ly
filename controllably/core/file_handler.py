@@ -140,7 +140,6 @@ def resolve_repo_filepath(filepath:Path|str) -> Path:
     index = parent.index(path[0])
     index = [i for i,value in enumerate(parent) if value == path[0]][-1]
     full_path = os.path.abspath(os.path.join(*parent[:index], *path))
-    print(full_path)
     return Path(full_path)
 
 def start_logging(log_dir:Path|str|None = None, log_file:Path|str|None = None, logging_config:dict|None = None) -> Path|None:
