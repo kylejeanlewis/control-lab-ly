@@ -408,15 +408,14 @@ def test_hub_spoke():
     user_terminate = threading.Event()
     user_thread = threading.Thread(target=start_client, args=[HOST,PORT,user,True], kwargs={'terminate':user_terminate}, daemon=True)
     user_thread.start()
-    time.sleep(5)
+    time.sleep(2)
     assert hub_thread.is_alive()
     assert worker_thread.is_alive()
     assert user_thread.is_alive()
     
     q = TwoTierQueue()
-    time.sleep(5)
     worker.register(q, 'TEST1')
-    time.sleep(5)
+    time.sleep(1)
     assert worker.registry == {'TEST1': [worker.address]}
     assert user.registry == {'TEST1': [worker.address]}
     
