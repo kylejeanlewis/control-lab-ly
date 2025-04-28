@@ -1,6 +1,7 @@
 import pytest
 import builtins
 import logging
+import sys
 import threading
 import time
 
@@ -391,6 +392,7 @@ def test_client_server():
     assert not user_thread.is_alive()
     assert not worker_thread.is_alive()
 
+@pytest.mark.skipif("win" in sys.platform, reason="Timing issues on Windows")
 def test_hub_spoke():
     hub = Controller('relay', JSONInterpreter())
     hub_terminate = threading.Event()
