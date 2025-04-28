@@ -1176,6 +1176,7 @@ def handle_client(
                 break
             logger.debug(f"Received from client: {data}")
             logger.debug(data)
+            print(data)
             data = data.encode("utf-8") if relay else data
             receive_method(data)
         except Exception as e:
@@ -1306,6 +1307,7 @@ def start_client(host:str, port:int, controller: Controller, relay:bool = False,
                     break
                 logger.debug(f"Received from server: {data}")
                 logger.debug(data)
+                print(data)
                 receive_method(data)
             except Exception as e:
                 logger.error(f"Error listening server: {e}")
