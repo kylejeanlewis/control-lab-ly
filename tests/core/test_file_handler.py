@@ -64,16 +64,17 @@ def test_readable_duration():
     "control-lab-le/some/file/path",
     "."
 ])
-def test_resolve_repo_filepath(path):
+def test_resolve_repo_filepath(path, monkeypatch):
+    monkeypatch.setattr('os.getcwd', lambda : str(Path(HERE).parent))
     repo_name = "control-lab-le"
-    root = os.getcwd().split(repo_name)[0]
+    root = Path(os.getcwd()).parent
     absolute_path = resolve_repo_filepath(path)
     assert absolute_path.is_absolute()
     path = Path(path)
     if path.is_absolute():
         assert absolute_path == path
     elif repo_name in path.parts:
-        assert absolute_path == Path(f"{root}/{path}")
+        assert absolute_path == (Path(root)/path)
     else:
         assert absolute_path == Path().absolute()
     
@@ -95,9 +96,6 @@ def test_start_logging(logging_config, tmp_path):
 
 def test_start_project_here(caplog, monkeypatch, tmp_path):
     monkeypatch.setattr('os.getcwd', lambda : str(HERE))
-    # monkeypatch.setattr('importlib.resources.files', lambda _: HERE/"controllably")
-    # src = os.getcwd().split('control-lab-le')[0] + "control-lab-le/controllably"
-    # monkeypatch.setattr('importlib.resources.files', lambda _: Path(src))
     dst = tmp_path / "project"
     registry = dst / "tools/registry.yaml"
     start_project_here(dst)
