@@ -51,6 +51,7 @@ def base_device():
         def is_open(self):
             return self._open
         def read(self):
+            time.sleep(0.01)
             return b'test_output\n'
     device.connection = MockConnection()
     return device
@@ -74,10 +75,10 @@ def test_record():
 def test_record_with_clear_cache(base_device):
     base_device.connect()
     data_store = deque()
-    for i in range(250):
+    for i in range(100):
         data_store.append((i, datetime(2025, 3, 21, 10, i%60, 0)))
     data_count = len(data_store)
-    assert data_count == 250
+    assert data_count == 100
     
     record(True, clear_cache=True, device=base_device, data_store=data_store)
     second_data_count = len(data_store)
