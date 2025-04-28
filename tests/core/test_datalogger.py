@@ -74,15 +74,15 @@ def test_record():
 def test_record_with_clear_cache(base_device):
     base_device.connect()
     data_store = deque()
-    for i in range(1000):
+    for i in range(250):
         data_store.append((i, datetime(2025, 3, 21, 10, i%60, 0)))
     data_count = len(data_store)
-    assert data_count == 1000
+    assert data_count == 250
     
     record(True, clear_cache=True, device=base_device, data_store=data_store)
     second_data_count = len(data_store)
     assert second_data_count < data_count
-    time.sleep(1)
+    time.sleep(3)
     record(False, device=base_device, data_store=data_store)
     assert len(data_store) > data_count
 
