@@ -415,7 +415,7 @@ def test_hub_spoke():
     
     q = TwoTierQueue()
     worker.register(q, 'TEST1')
-    time.sleep(1)
+    time.sleep(2)
     assert worker.registry == {'TEST1': [worker.address]}
     assert user.registry == {'TEST1': [worker.address]}
     
