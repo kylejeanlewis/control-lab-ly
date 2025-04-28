@@ -138,6 +138,7 @@ def resolve_repo_filepath(filepath:Path|str) -> Path:
     parent = [os.path.sep] + os.getcwd().split(os.path.sep)[1:]
     path = os.path.normpath(filepath).split(os.path.sep)
     full_path = os.path.abspath(os.path.join(*parent[:parent.index(path[0])], *path))
+    print(full_path)
     return Path(full_path)
 
 def start_logging(log_dir:Path|str|None = None, log_file:Path|str|None = None, logging_config:dict|None = None) -> Path|None:
