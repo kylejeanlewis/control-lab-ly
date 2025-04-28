@@ -137,7 +137,9 @@ def resolve_repo_filepath(filepath:Path|str) -> Path:
         return Path(filepath)
     parent = [os.path.sep] + os.getcwd().split(os.path.sep)[1:]
     path = os.path.normpath(filepath).split(os.path.sep)
-    full_path = os.path.abspath(os.path.join(*parent[:parent.index(path[0])], *path))
+    index = parent.index(path[0])
+    index = [i for i,value in enumerate(parent) if value == path[0]][-1]
+    full_path = os.path.abspath(os.path.join(*parent[:index], *path))
     print(full_path)
     return Path(full_path)
 
