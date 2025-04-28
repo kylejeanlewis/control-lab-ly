@@ -392,7 +392,7 @@ def test_client_server():
     assert not user_thread.is_alive()
     assert not worker_thread.is_alive()
 
-@pytest.mark.skipif("win" in sys.platform, reason="Timing issues on Windows")
+# @pytest.mark.skipif("win" in sys.platform, reason="Timing issues on Windows")
 def test_hub_spoke():
     hub = Controller('relay', JSONInterpreter())
     hub_terminate = threading.Event()
@@ -405,12 +405,13 @@ def test_hub_spoke():
     worker_terminate = threading.Event()
     worker_thread = threading.Thread(target=start_client, args=[HOST,PORT,worker,True], kwargs={'terminate':worker_terminate}, daemon=True)
     worker_thread.start()
+    time.sleep(1)
 
     user = Controller('view', JSONInterpreter())
     user_terminate = threading.Event()
     user_thread = threading.Thread(target=start_client, args=[HOST,PORT,user,True], kwargs={'terminate':user_terminate}, daemon=True)
     user_thread.start()
-    time.sleep(2)
+    time.sleep(1)
     assert hub_thread.is_alive()
     assert worker_thread.is_alive()
     assert user_thread.is_alive()
