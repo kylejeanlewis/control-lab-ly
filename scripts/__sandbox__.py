@@ -338,12 +338,12 @@ bal.stream(False)
 # %%
 import test_init
 from controllably.core.connection import get_ports
-from controllably.Make.Mixture.QInstruments.orbital_shaker_utils import _BioShake
-from controllably.Make.Mixture.QInstruments.qinstruments_api.qinstruments_api import _QInstrumentsDevice
+from controllably.Make.Mixture.QInstruments import BioShake
+from controllably.Make.Mixture.QInstruments.qinstruments_api import QInstrumentsDevice
 get_ports()
-bio = _BioShake('COM34', temp_tolerance=1.0)
+bio = BioShake('COM34', temp_tolerance=1.0)
 # %%
-qin = _QInstrumentsDevice('COM34')
+qin = QInstrumentsDevice('COM34')
 qin.connect()
 print(qin.getSerial())
 print(qin.getDescription())
@@ -382,7 +382,7 @@ print(qin.getElmState())
 print(qin.getElmStateAsString())
 
 # %%
-bio = _BioShake('COM34', temp_tolerance=0.1)
+bio = BioShake('COM34', temp_tolerance=0.1)
 
 
 # %%
