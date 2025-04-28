@@ -1168,11 +1168,11 @@ def handle_client(
                 if len(fragment)==0 or len(fragment) < BYTESIZE:
                     break
             if not data:  # Client disconnected
-                time.sleep(0.1)
+                time.sleep(1)
                 continue
             if data == '[EXIT]':
                 client_socket.sendall("[EXIT]".encode("utf-8"))
-                time.sleep(0.1)
+                time.sleep(0.5)
                 break
             logger.debug(f"Received from client: {data}")
             logger.debug(data)
@@ -1298,11 +1298,11 @@ def start_client(host:str, port:int, controller: Controller, relay:bool = False,
                     if len(fragment)==0 or len(fragment) < BYTESIZE:
                         break
                 if not data:  # Client disconnected
-                    time.sleep(0.1)
+                    time.sleep(1)
                     continue
                 if data == '[EXIT]':
                     client_socket.sendall("[EXIT]".encode("utf-8"))
-                    time.sleep(0.1)
+                    time.sleep(0.5)
                     break
                 logger.debug(f"Received from server: {data}")
                 logger.debug(data)
