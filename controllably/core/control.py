@@ -1171,7 +1171,8 @@ def handle_client(
                 time.sleep(1)
                 continue
             if data == '[EXIT]':
-                client_socket.sendall("[EXIT]\n".encode("utf-8"))
+                client_socket.sendall("[EXIT]".encode("utf-8"))
+                time.sleep(0.5)
                 break
             logger.debug(f"Received from client: {data}")
             logger.debug(data)
@@ -1223,7 +1224,8 @@ def start_server(host:str, port:int, controller: Controller, *, n_connections:in
         # client_socket, addr = server_socket.accept()  # Accept a connection
         logger.info(f"Client connected from {addr}")
         client_addr = f"{addr[0]}:{addr[1]}"
-        client_socket.sendall(f"[CONNECTED] {client_addr}\n".encode("utf-8"))
+        client_socket.sendall(f"[CONNECTED] {client_addr}".encode("utf-8"))
+        time.sleep(0.5)
         handshake = client_socket.recv(BYTESIZE).decode("utf-8", "replace").replace('\uFFFD', '')  # Receive response" ")[1]
         print(handshake)
         if not handshake.startswith("[CONNECTED] "):
@@ -1282,7 +1284,8 @@ def start_client(host:str, port:int, controller: Controller, relay:bool = False,
         if not handshake.startswith("[CONNECTED] "):
             raise ConnectionError(f"Invalid handshake: {handshake}")
         controller.setAddress(handshake.replace('[CONNECTED] ',''))
-        client_socket.sendall(f"[CONNECTED] {controller.role}\n".encode("utf-8"))
+        client_socket.sendall(f"[CONNECTED] {controller.role}".encode("utf-8"))
+        time.sleep(0.5)
         controller.subscribe(client_socket.sendall, callback_type, f"{host}:{port}", relay=relay)
         
         terminate = threading.Event() if terminate is None else terminate
@@ -1298,7 +1301,8 @@ def start_client(host:str, port:int, controller: Controller, relay:bool = False,
                     time.sleep(1)
                     continue
                 if data == '[EXIT]':
-                    client_socket.sendall("[EXIT]\n".encode("utf-8"))
+                    client_socket.sendall("[EXIT]".encode("utf-8"))
+                    time.sleep(0.5)
                     break
                 logger.debug(f"Received from server: {data}")
                 logger.debug(data)
