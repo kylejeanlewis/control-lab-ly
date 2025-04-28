@@ -20,7 +20,7 @@ from controllably.core.device import SerialDevice, SocketDevice
 
 from .examples import mock_module
 
-HERE = os.environ.get("REPO_ROOT") or Path(__file__).parent.parent.absolute()
+HERE = os.environ.get("REPO_ROOT") or Path(__file__).parent.parent.parent.absolute()
 
 @pytest.mark.parametrize("error, class_, kwargs", [
     (True, mock_module.TestClassError, {'a':1, 'b':2}),
@@ -172,7 +172,7 @@ def test_load_parts(monkeypatch, caplog):
     new_modules.update(dict(mock_module=mock_module))
     monkeypatch.setattr('sys.modules', new_modules)
     monkeypatch.setattr('os.getcwd', lambda : str(HERE))
-    config_file = 'tests/core/examples/tool.yaml'
+    config_file = 'control-lab-le/tests/core/examples/tool.yaml'
     config_file = controllably.core.file_handler.resolve_repo_filepath(config_file)
     with open(config_file, 'r') as f:
         configs = yaml.safe_load(f)
@@ -187,9 +187,9 @@ def test_load_setup_from_files(monkeypatch, caplog):
     monkeypatch.setattr('sys.modules', new_modules)
     monkeypatch.setattr('os.getcwd', lambda : str(HERE))
     monkeypatch.setattr('controllably.core.connection.get_node', lambda: '012345678901234')
-    config_file = 'tests/core/examples/tool.yaml'
+    config_file = 'control-lab-le/tests/core/examples/tool.yaml'
     config_file = controllably.core.file_handler.resolve_repo_filepath(config_file)
-    registry_file = 'tests/core/examples/registry.yaml'
+    registry_file = 'control-lab-le/tests/core/examples/registry.yaml'
     registry_file = controllably.core.file_handler.resolve_repo_filepath(registry_file)
     
     with caplog.at_level(logging.WARNING):
@@ -229,9 +229,9 @@ def test_load_setup_from_files(monkeypatch, caplog):
     
 def test_parse_configs(monkeypatch):
     monkeypatch.setattr('os.getcwd', lambda : str(HERE))
-    config_file = 'tests/core/examples/tool.yaml'
+    config_file = 'control-lab-le/tests/core/examples/tool.yaml'
     config_file = controllably.core.file_handler.resolve_repo_filepath(config_file)
-    registry_file = 'tests/core/examples/registry.yaml'
+    registry_file = 'control-lab-le/tests/core/examples/registry.yaml'
     registry_file = controllably.core.file_handler.resolve_repo_filepath(registry_file)
     with open(config_file, 'r') as f:
         configs = yaml.safe_load(f)
