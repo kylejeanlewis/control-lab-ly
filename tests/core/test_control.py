@@ -431,6 +431,8 @@ def test_hub_spoke():
     user.callbacks['request'][f"{HOST}:{PORT}"](b'[EXIT]')
     worker.callbacks['data'][f"{HOST}:{PORT}"](b'[EXIT]')
     hub_terminate.set()
+    worker_terminate.set()
+    user_terminate.set()
     user_thread.join()
     worker_thread.join()
     hub_thread.join()
