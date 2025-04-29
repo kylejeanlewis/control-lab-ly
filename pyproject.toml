@@ -116,7 +116,7 @@ deps =
     -r {toxinidir}/dev/requirements_dev.txt
 commands =
     pytest --cov=controllably/core -n auto -m "not socket" {posargs}
-    pytest --cov=controllably/core -n 1 -m socket {posargs}
+    pytest -n 1 -m socket {posargs}
 
 [testenv:mypy]
 basepython = python3.10
