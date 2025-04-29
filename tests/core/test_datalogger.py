@@ -83,7 +83,11 @@ def test_record_with_clear_cache(base_device):
     record(True, clear_cache=True, device=base_device, data_store=data_store)
     second_data_count = len(data_store)
     assert second_data_count < data_count
-    time.sleep(3)
+    start_time = time.perf_counter()
+    while len(data_store) < data_count:
+        time.sleep(0.1)
+        if time.perf_counter() - start_time > 60:
+            break
     record(False, device=base_device, data_store=data_store)
     assert len(data_store) > data_count
 
