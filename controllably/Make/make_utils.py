@@ -15,7 +15,6 @@ from types import SimpleNamespace
 
 # Local application imports
 from ..core import factory
-# from ..core.connection import Device
 from ..core.device import Device, StreamingDevice
 
 logger = logging.getLogger("controllably.Make")
