@@ -76,6 +76,9 @@ exclude = ["tests*"]
 addopts = "-v"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+markers = [
+    "socket: mark test socket connection"
+]
 
 
 [tool.mypy]
@@ -112,7 +115,8 @@ setenv =
 deps =
     -r {toxinidir}/dev/requirements_dev.txt
 commands =
-    pytest --cov=controllably -n auto {posargs}
+    pytest --cov=controllably -n auto -m "not socket" {posargs}
+    pytest --cov=controllably -m socket {posargs}
 
 [testenv:mypy]
 basepython = python3.10

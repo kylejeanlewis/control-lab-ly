@@ -357,6 +357,7 @@ def test_controller_execute_property(method_name, args, kwargs, outcome, mock_co
         assert not hasattr(test_obj, 'prop1')
     worker.stop()
 
+@pytest.mark.socket
 def test_client_server():
     worker = Controller('model', JSONInterpreter())
     worker.start()
@@ -392,7 +393,7 @@ def test_client_server():
     assert not user_thread.is_alive()
     assert not worker_thread.is_alive()
 
-# @pytest.mark.skipif("win" in sys.platform, reason="Timing issues on Windows")
+@pytest.mark.socket
 def test_hub_spoke():
     hub = Controller('relay', JSONInterpreter())
     hub_terminate = threading.Event()
