@@ -22,8 +22,8 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 
 # Local application imports
-from ..core.connection import Device
 from ..core import factory
+from ..core.device import Device
 from ..core.position import Deck, Labware, Position, BoundingVolume, get_transform, convert_to_position
 
 logger = logging.getLogger("controllably.Move")
@@ -828,15 +828,15 @@ class Mover:
         
         # Move laterally to safe height above target position
         if rotation and rotation_before_lateral:
-            self.rotateTo(to=to.Rotation, speed_factor=speed_factor_lateral, robot=robot)
+            self.rotateTo(to=move_to.Rotation, speed_factor=speed_factor_lateral, robot=robot)
         
         current_coordinates = self.robot_position.coordinates if robot else self.worktool_position.coordinates
-        target_coordinates = to.coordinates if isinstance(to,Position) else to
+        target_coordinates = move_to.coordinates #if isinstance(to,Position) else to
         safe_target_coordinates = np.array([*target_coordinates[:2], current_coordinates[2]])
         self.moveTo(to=safe_target_coordinates, speed_factor=speed_factor_lateral, robot=robot)
         
         if rotation and not rotation_before_lateral:
-            self.rotateTo(to=to.Rotation, speed_factor=speed_factor_lateral, robot=robot)
+            self.rotateTo(to=move_to.Rotation, speed_factor=speed_factor_lateral, robot=robot)
         
         # Move down to target position
         self.moveTo(to=to, speed_factor=speed_factor_down, robot=robot)
