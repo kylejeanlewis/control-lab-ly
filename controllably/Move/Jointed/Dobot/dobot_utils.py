@@ -469,7 +469,7 @@ class Dobot(RobotArm):
         # joint_position = [*self.joint_position[:3],*rotate_to.as_euler('zyx', degrees=True)]
         # self.jointMoveTo(joint_position, speed_factor=speed_factor, jog=jog, robot=True)
         self.device.MovJ(*self.robot_position.coordinates, rotate_to.as_euler('zyx', degrees=True)[0])
-        time.sleep(2)
+        time.sleep(2/self.speed_factor)
         # rotate_by = rotate_to * self.robot_position.Rotation.inv()
         # self.rotateBy(rotate_by, speed_factor=speed_factor, jog=jog, robot=True)
 
