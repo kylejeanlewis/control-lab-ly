@@ -606,7 +606,7 @@ class SartoriusDevice(SerialDevice):
         Returns:
             str: response from the device
         """
-        return self.moveTo(self.home_position)
+        return self.zero()
     
     def move(self, steps:int) -> str:
         """
@@ -682,7 +682,7 @@ class SartoriusDevice(SerialDevice):
             str: response from the device
         """
         self.zero()
-        return self.home()
+        return
 
 
 def interpolate_speed(
