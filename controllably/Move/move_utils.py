@@ -827,7 +827,7 @@ class Mover:
             self.moveToSafeHeight(speed_factor=speed_factor_up)
         
         # Move laterally to safe height above target position
-        if rotation and rotation_before_lateral:
+        if self._has_rotation and rotation and rotation_before_lateral:
             self.rotateTo(to=move_to.Rotation, speed_factor=speed_factor_lateral, robot=robot)
         
         current_coordinates = self.robot_position.coordinates if robot else self.worktool_position.coordinates
@@ -835,7 +835,7 @@ class Mover:
         safe_target_coordinates = np.array([*target_coordinates[:2], current_coordinates[2]])
         self.moveTo(to=safe_target_coordinates, speed_factor=speed_factor_lateral, robot=robot)
         
-        if rotation and not rotation_before_lateral:
+        if self._has_rotation and rotation and not rotation_before_lateral:
             self.rotateTo(to=move_to.Rotation, speed_factor=speed_factor_lateral, robot=robot)
         
         # Move down to target position
