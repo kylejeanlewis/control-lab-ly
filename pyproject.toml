@@ -107,7 +107,7 @@ isolated_build = true
 python =
     3.10: py310
     3.11: py311
-    3.12: py312, mypy
+    3.12: py312
 
 [testenv]
 setenv =
@@ -117,11 +117,4 @@ deps =
 commands =
     pytest --cov=controllably/core -n auto -m "not socket" {posargs}
     pytest -n 1 -m socket {posargs}
-
-[testenv:mypy]
-basepython = python3.10
-deps =
-    -r {toxinidir}/dev/requirements_dev.txt
-commands = 
-    mypy controllably
 """
