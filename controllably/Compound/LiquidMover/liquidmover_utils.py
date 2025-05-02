@@ -58,11 +58,11 @@ class LiquidMover(Compound):
     
     ### Constructor
         `parts` (dict[str,Part]): dictionary of parts
-        `tip_approach_distance` (float, optional): distance in mm from top to travel down to pick tip. Defaults to 20.
-        `speed_factor_pick_tip` (float, optional): speed factor to pick up tip. Defaults to 0.01.
         `speed_factor_lateral` (float, optional): speed factor for lateral movement. Defaults to None.
         `speed_factor_up` (float, optional): speed factor for upward movement. Defaults to 0.2.
         `speed_factor_down` (float, optional): speed factor for downward movement. Defaults to 0.2.
+        `speed_factor_pick_tip` (float, optional): speed factor to pick up tip. Defaults to 0.01.
+        `tip_approach_distance` (float, optional): distance in mm from top to travel down to pick tip. Defaults to 20.
         `verbose` (bool, optional): verbosity of output. Defaults to False.
         
     ### Attributes and properties
@@ -109,11 +109,11 @@ class LiquidMover(Compound):
     def __init__(self, 
         *args, 
         parts: dict[str,Part], 
-        tip_approach_distance: float = 20,
-        speed_factor_pick_tip: float = 0.01,
         speed_factor_lateral: float|None = None,
         speed_factor_up: float = 0.2,
         speed_factor_down: float = 0.2,
+        speed_factor_pick_tip: float = 0.01,
+        tip_approach_distance: float = 20,
         verbose = False, 
         **kwargs
     ):
@@ -122,22 +122,22 @@ class LiquidMover(Compound):
         
         Args:
             parts (dict[str,Part]): dictionary of parts
-            tip_approach_distance (float, optional): distance in mm from top to travel down to pick tip. Defaults to 20.
-            speed_factor_pick_tip (float, optional): speed factor to pick up tip. Defaults to 0.01.
             speed_factor_lateral (float, optional): speed factor for lateral movement. Defaults to None.
             speed_factor_up (float, optional): speed factor for upward movement. Defaults to 0.2.
             speed_factor_down (float, optional): speed factor for downward movement. Defaults to 0.2.
+            speed_factor_pick_tip (float, optional): speed factor to pick up tip. Defaults to 0.01.
+            tip_approach_distance (float, optional): distance in mm from top to travel down to pick tip. Defaults to 20.
             verbose (bool, optional): verbosity of output. Defaults to False.
         """
         super().__init__(*args, parts=parts, verbose=verbose, **kwargs)
-        self.tip_approach_distance = tip_approach_distance
-        self.speed_factor_pick_tip = speed_factor_pick_tip
         self.speed_factor_lateral = speed_factor_lateral
         self.speed_factor_up = speed_factor_up
         self.speed_factor_down = speed_factor_down
         
         # For liquid handlers with replaceable tips
         if hasattr(self.liquid, 'eject'):
+            self.tip_approach_distance = tip_approach_distance
+            self.speed_factor_pick_tip = speed_factor_pick_tip
             self.bin_slots: dict[int, Labware] = {}
             self.tip_racks: dict[int, Labware] = {}
             self.tip_lists: dict[int, list[str]] = {}
