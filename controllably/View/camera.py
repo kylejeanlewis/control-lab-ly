@@ -36,6 +36,7 @@ class Camera:
     ### Constructor:
         `connection_details` (dict, optional): connection details for the device. Defaults to None.
         `init_timeout` (int, optional): timeout for initialization. Defaults to 1.
+        `buffer_size` (int, optional): size of the buffer. Defaults to 2000.
         `simulation` (bool, optional): whether to simulate the camera feed. Defaults to False.
         `verbose` (bool, optional): verbosity of the class. Defaults to False.
         
@@ -88,8 +89,9 @@ class Camera:
     _default_flags: SimpleNamespace = SimpleNamespace(verbose=False, connected=False, simulation=False)
     def __init__(self, 
         *, 
-        connection_details:dict|None = None, 
-        init_timeout:int = 1, 
+        connection_details: dict|None = None, 
+        init_timeout: int = 1, 
+        buffer_size: int = 2000,
         simulation:bool = False, 
         verbose:bool = False, 
         **kwargs
@@ -100,6 +102,7 @@ class Camera:
         Args:
             connection_details (dict, optional): connection details for the device. Defaults to None.
             init_timeout (int, optional): timeout for initialization. Defaults to 1.
+            buffer_size (int, optional): size of the buffer. Defaults to 2000.
             simulation (bool, optional): whether to simulate the camera feed. Defaults to False.
             verbose (bool, optional): verbosity of the class. Defaults to False.
         """
@@ -120,7 +123,7 @@ class Camera:
         self.flags.simulation = simulation
         
         # Streaming attributes
-        self.buffer = deque()
+        self.buffer = deque(maxlen=buffer_size)
         self.data_queue = queue.Queue()
         self.show_event = threading.Event()
         self.stream_event = threading.Event()
@@ -212,6 +215,7 @@ class Camera:
             height = int(self.feed.get(cv2.CAP_PROP_FRAME_HEIGHT))
             self.setFrameSize((width,height))
         self.flags.connected = success
+        self.getFrame(latest=True)
         return
     
     def disconnect(self):
@@ -409,7 +413,7 @@ class Camera:
         Args:
             transforms (list[Callable[[np.ndarray], np.ndarray]], optional): list of transformations. Defaults to None.
         """
-        self.transforms = transforms or []
+        self.transforms = transforms or self.transforms
         cv2.destroyAllWindows()
         self.startStream(show=True, buffer=self.buffer)
         return
@@ -554,8 +558,9 @@ class Camera:
             else:
                 if not self.show_event.is_set():
                     continue
-                cv2.imshow('output', transformed_frame)  
+                cv2.imshow('output', cv2.cvtColor(transformed_frame, cv2.COLOR_RGB2BGR))  
                 if (cv2.waitKey(1) & 0xFF) == ord('q'):
+                    self.stream_event.clear()
                     break
         time.sleep(1)
         
@@ -575,6 +580,7 @@ class Camera:
                     continue
                 cv2.imshow('output', cv2.cvtColor(transformed_frame, cv2.COLOR_RGB2BGR))
                 if (cv2.waitKey(1) & 0xFF) == ord('q'):
+                    self.stream_event.clear()
                     break
         self.data_queue.join()
         return
