@@ -107,6 +107,8 @@ def create_from_config(config:dict) -> object:
     Returns:
         object: object of target class
     """
+    if 'device' in config:
+        return config['device']
     device_type = config.pop('device_type', None)
     if device_type is not None:
         assert inspect.isclass(device_type), "Ensure device_type is a callable class"
