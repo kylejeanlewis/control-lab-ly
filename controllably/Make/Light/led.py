@@ -162,7 +162,7 @@ class LED(Maker, TimedDeviceMixin):
             all_power = list(all_power.values())
         all_power = all_power if isinstance(all_power, list) else [all_power]
         data = ';'.join([str(v) for v in all_power])
-        self.device.write(self.device.processInput(data))
+        self.device.query(data)
         return
     
     # Overwritten method(s)
