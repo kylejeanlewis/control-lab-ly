@@ -1,6 +1,6 @@
 # %%
 from init import library
-from controllably.Transfer.Liquid.Pumps.TriContinent import TriContinent
+from controllably.Transfer.Liquid.Pump.TriContinent import TriContinent
 from controllably import Helper, Factory
 
 details = Factory.get_details(Helper.read_yaml(library['configs']['tricontinent_pumps']))
