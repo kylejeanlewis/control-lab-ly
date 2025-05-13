@@ -210,7 +210,7 @@ class TriContinentDevice(SerialDevice):
             format_in=format_in, timestamp=timestamp,
             channel=self.channel
         )
-        print(repr(responses))
+        # print(repr(responses))
         if multi_out and not len(responses):
             return None
         responses = responses if multi_out else [responses]
@@ -458,7 +458,7 @@ class TriContinentDevice(SerialDevice):
         return
     
     # Actions
-    def initialize(self, output_right: bool, *, immediate: bool = True):
+    def initialize(self, output_right: bool|None = None, *, immediate: bool = True):
         """
         Initialize the pump.
         
@@ -466,6 +466,8 @@ class TriContinentDevice(SerialDevice):
             output_right (bool): Whether the output is on the right side.
             immediate (bool, optional): Whether to execute the command immediately. Defaults to True.
         """
+        output_right = output_right or self.output_right
+        assert output_right is not None, "Provide a boolean value for 'output_right"
         mode = 'Z' if output_right else 'Y'
         if immediate:
             self.run(mode)
