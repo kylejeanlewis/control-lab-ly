@@ -67,6 +67,7 @@ class TriContinent(LiquidHandler):
         port: str,
         capacity: float = 1000.0,  # uL
         *,
+        output_right: bool,
         channel: int = 1,
         verbose: bool = False,
         simulation: bool = False,
@@ -78,6 +79,7 @@ class TriContinent(LiquidHandler):
         Args:
             port (str): The port of the pump.
             capacity (float, optional): The capacity of the pump. Defaults to 1000.0.
+            output_right (bool): Whether the output valve is to the right.
             channel (int, optional): The channel of the pump. Defaults to 1.
             verbose (bool, optional): Whether to output extra information. Defaults to False.
             simulation (bool, optional): Whether to simulate the pump. Defaults to False.
@@ -97,6 +99,7 @@ class TriContinent(LiquidHandler):
         
         self.speed_in = self.device.speed
         self.speed_out = self.device.speed
+        self.output_right = output_right
         return
     
     @property
@@ -294,6 +297,7 @@ class TriContinent(LiquidHandler):
         """Set the channel of the pump."""
         if self.channel != self.device.channel:
             self.device.setChannel(self.channel)
+            self.device.output_right = self.output_right
         return
     
 Multi_TriContinent = Multichannel.factory(TriContinent)
