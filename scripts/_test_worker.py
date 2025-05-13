@@ -56,12 +56,8 @@ worker.register(pipette, 'PIPETTE')
 pipette.aspirate(400)
 
 # %%
-# pump_device = TriContinentDevice('COM11', simulation=True, verbose=True)
-# pump_device.connect()
-# pump_device.getInfo()
-pump = TriContinent('COM11', 1000, simulation=False, verbose=True)
+pump = TriContinent('COM11', 1000, output_right=False, simulation=False, verbose=True)
 pump.connect()
 worker.register(pump, 'PUMP')
-# pump.dispense(400) 
 
 # %%
