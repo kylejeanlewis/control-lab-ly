@@ -29,7 +29,7 @@ from typing import NamedTuple, Any
 
 # Local application imports
 from ......core.device import SerialDevice
-from .tricontinent_lib import ErrorCode
+from .tricontinent_lib import ErrorCode, StatusCode
 
 _logger = logging.getLogger("controllably.Transfer")
 _logger.debug(f"Import: OK <{__name__}>")
@@ -42,8 +42,8 @@ logger.addHandler(handler)
 
 MAX_CHANNELS = 15
 ACCEL_MULTIPLIER = 2500
-BUSY = '@ABCDEFGHIJKO'
-IDLE = '`abcdefghijko'
+BUSY = StatusCode.Busy.value
+IDLE = StatusCode.Idle.value
 
 READ_FORMAT = "/{channel:1}{data}\x03\r"        # response template: <PRE><CHANNEL><STATUS><STRING><POST>
 WRITE_FORMAT = '/{channel}{data}\r'             # command template: <PRE><ADR><STRING><POST>
@@ -195,6 +195,7 @@ class TriContinentDevice(SerialDevice):
         timestamp: bool = False
     ):
         data_type: NamedTuple = data_type or self.data_type
+        format_in = format_in or self.write_format
         format_out = format_out or self.read_format
         if self.flags.simulation:
             field_types = data_type.__annotations__
@@ -226,12 +227,6 @@ class TriContinentDevice(SerialDevice):
             out: Data = out
             
             status, content = (out.data[0],out.data[1:]) if len(out.data) > 1 else (out.data,'0')
-            # Check channel
-            # if out.channel != str(self.channel):
-            #     self._logger.warning(f"Channel mismatch: self={self.channel} | response={out.channel}")
-            #     all_output.append(('', now) if timestamp else '')
-            #     continue
-            
             # Check status code
             if status not in BUSY + IDLE:
                 raise RuntimeError(f"Unknown status code: {status!r}")
@@ -390,7 +385,7 @@ class TriContinentDevice(SerialDevice):
         self.init_status = out.data
         return self.init_status
     
-    # def getPumpConfig(self) -> str:     #TODO
+    # def getPumpConfig(self) -> str:     #TODO     out --> '/0`10,75,14,62,0,1,20,10,48,210,2130001,0,0,0,0,0,25,20,15,5,60\x03'
     #     out: Data = self.query('?76')
     #     self.pump_config = out.data
     #     return self.pump_config
@@ -536,6 +531,7 @@ class TriContinentDevice(SerialDevice):
             self.getStatus()
         self.getStatus()
         self.getPosition()
+        self.getInitStatus()
         return
     
     def stop(self):
