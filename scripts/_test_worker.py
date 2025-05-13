@@ -2,21 +2,21 @@
 import threading
 
 import test_init
-from controllably.core.connection import get_host
+from controllably.core.connection import get_host, get_ports
 from controllably.core.control import Controller, start_server, start_client
 from controllably.core.interpreter import JSONInterpreter
 
 from controllably.core.control import TwoTierQueue
 from controllably.Move.Cartesian import Gantry
 
-from controllably.Transfer.Liquid.Sartorius.sartorius import Sartorius
-from controllably.Transfer.Liquid.Sartorius.sartorius_api.sartorius_api import SartoriusDevice
-from controllably.Transfer.Liquid.Pumps.TriContinent.tricontinent import TriContinent
-from controllably.Transfer.Liquid.Pumps.TriContinent.tricontinent_api.tricontinent_api import TriContinentDevice
+from controllably.Transfer.Liquid.Pipette.Sartorius.sartorius import Sartorius
+from controllably.Transfer.Liquid.Pipette.Sartorius.sartorius_api.sartorius_api import SartoriusDevice
+from controllably.Transfer.Liquid.Pump.TriContinent.tricontinent import TriContinent
+from controllably.Transfer.Liquid.Pump.TriContinent.tricontinent_api.tricontinent_api import TriContinentDevice
 
 import logging
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 # %%
 host = get_host()
@@ -56,11 +56,12 @@ worker.register(pipette, 'PIPETTE')
 pipette.aspirate(400)
 
 # %%
-pump_device = TriContinentDevice('COM0', simulation=True, verbose=True)
-pump_device.connect()
-pump_device.getInfo()
-pump = TriContinent('COM0', 5000, simulation=True, device=pump_device, verbose=True)
+# pump_device = TriContinentDevice('COM11', simulation=True, verbose=True)
+# pump_device.connect()
+# pump_device.getInfo()
+pump = TriContinent('COM11', 1000, simulation=False, verbose=True)
+pump.connect()
 worker.register(pump, 'PUMP')
-pump.dispense(400) 
+# pump.dispense(400) 
 
 # %%
