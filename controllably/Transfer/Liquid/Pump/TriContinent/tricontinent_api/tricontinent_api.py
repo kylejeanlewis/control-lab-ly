@@ -433,6 +433,8 @@ class TriContinentDevice(SerialDevice):
             valve (str): The valve position of the pump.
             immediate (bool, optional): Whether to execute the command immediately. Defaults to True.
         """
+        assert isinstance(valve,str)
+        valve = valve.upper()
         assert len(valve)==1 and (valve in 'IOBE'), f"Valve must be one of 'I', 'O', 'B', or 'E'"
         if immediate:
             self.run(valve)
@@ -466,7 +468,7 @@ class TriContinentDevice(SerialDevice):
             output_right (bool): Whether the output is on the right side.
             immediate (bool, optional): Whether to execute the command immediately. Defaults to True.
         """
-        output_right = output_right or self.output_right
+        output_right = output_right if output_right is not None else self.output_right
         assert output_right is not None, "Provide a boolean value for 'output_right"
         mode = 'Z' if output_right else 'Y'
         if immediate:
@@ -552,7 +554,7 @@ class TriContinentDevice(SerialDevice):
             immediate (bool, optional): Whether to execute the command immediately. Defaults to True.
         """
         steps = round(steps)
-        assert steps >= 0, "Ensure non-negative steps!"
+        assert steps >= 0, f"Ensure non-negative steps! [received: {steps}]"
         self.setValvePosition('I', immediate=False)
         self.moveBy(steps, blocking=blocking, immediate=False)
         if immediate:
@@ -569,7 +571,7 @@ class TriContinentDevice(SerialDevice):
             immediate (bool, optional): Whether to execute the command immediately. Defaults to True.
         """
         steps = round(steps)
-        assert steps >= 0, "Ensure non-negative steps!"
+        assert steps >= 0, f"Ensure non-negative steps! [received: {steps}]"
         self.setValvePosition('O', immediate=False)
         self.moveBy(-steps, blocking=blocking, immediate=False)
         if immediate:
@@ -597,7 +599,7 @@ class TriContinentDevice(SerialDevice):
             immediate (bool, optional): Whether to execute the command immediately. Defaults to True.
         """
         steps = round(steps)
-        assert (0<=(self.position+steps)<=self.max_position), "Range limits reached!"
+        assert (0<=(self.position+steps)<=self.max_position), f"Range limits [0,{self.max_position}] reached! [received: {self.position}+{steps}]"
         prefix = 'p' if steps >= 0 else 'd'
         prefix = prefix.upper() if blocking else prefix.lower()
         command = f'{prefix}{abs(steps)}'
@@ -618,7 +620,7 @@ class TriContinentDevice(SerialDevice):
             immediate (bool, optional): Whether to execute the command immediately. Defaults to True.
         """
         position = round(position)
-        assert (0<=position<=self.max_position), f"Position must be an integer between 0 and {self.max_position}"
+        assert (0<=position<=self.max_position), f"Position must be an integer between 0 and {self.max_position} [received: {position}]"
         prefix = 'A' if blocking else 'a'
         command = f'{prefix}{position}'
         if immediate:
