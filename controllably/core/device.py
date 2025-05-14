@@ -40,7 +40,7 @@ _logger.debug(f"Import: OK <{__name__}>")
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
+# handler = logging.StreamHandler()
 
 READ_FORMAT = "{data}\n"
 WRITE_FORMAT = "{data}\n"
@@ -60,7 +60,7 @@ class Device(Protocol):
 
     def disconnect(self):
         """Disconnect from the device"""
-    
+
     def processInput(self, data:Any, format:str, **kwargs) -> str|None:
         """Process the input"""
     
@@ -257,6 +257,10 @@ class BaseDevice:
         self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
         self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
+        return
+    
+    def __del__(self):
+        self.disconnect()
         return
     
     @property
@@ -789,10 +793,6 @@ class SerialDevice(BaseDevice):
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
-        return
-    
-    def __del__(self):
-        self.disconnect()
         return
     
     @property
