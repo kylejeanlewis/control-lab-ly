@@ -671,11 +671,15 @@ class Multichannel(Combined):
         parent = cls._channel_class
         parts_list: list[Part] = []
         for i,settings in enumerate(details):
-            part: Part = parent(**settings)
             if i == 0:
+                print(settings)
+                part: Part = parent(**settings)
                 device = part.device
+            else:
                 settings['device'] = device
-            parts_list.append(parent(**settings))
+                print(settings)
+                part: Part = parent(**settings)
+            parts_list.append(part)
         # parts_list = [parent(**settings) for settings in details]
         parts = {chn:part for chn,part in zip(channels,parts_list)}
         assert len(channels) == len(parts), "Ensure the number of channels match the number of parts"
