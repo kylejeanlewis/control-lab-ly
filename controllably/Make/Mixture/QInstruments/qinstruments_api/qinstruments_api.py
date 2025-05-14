@@ -229,6 +229,8 @@ class QInstrumentsDevice(SerialDevice):
             str|float|None: response (string / float)
         """
         data_type: NamedTuple = data_type or self.data_type
+        format_in = format_in or self.write_format
+        format_out = format_out or self.read_format
         if self.flags.simulation:
             field_types = data_type.__annotations__
             data_defaults = data_type._field_defaults
@@ -241,7 +243,7 @@ class QInstrumentsDevice(SerialDevice):
             data, multi_out=multi_out, timeout=timeout,
             format_in=format_in, timestamp=timestamp
         )
-        print(repr(responses))
+        self._logger.debug(repr(responses))
         if multi_out and not len(responses):
             return None
         responses = responses if multi_out else [responses]
@@ -891,15 +893,24 @@ class QInstrumentsDevice(SerialDevice):
             self._logger.info(ELMStateString[out.data].value)
         return out.data
     
-    def setElmLockPos(self, timeout:int = 5):
+    def setElmLockPos(self, timeout:int = 5) -> bool:
         """
         Close the ELM
         
         Args:
             timeout (int, optional): number of seconds to wait before aborting. Defaults to 5.
+        
+        Returns:
+            bool: whether the ELM was successfully closed
         """
-        self.query("setElmLockPos", timeout=timeout)
-        return
+        out = self.query("setElmLockPos", timeout=timeout)
+        while out is None:
+            if self.flags.simulation:
+                break
+            out = self.read().strip()
+        if out == 'ok':
+            return True
+        return False
     
     def setElmSelftest(self, enable:bool):
         """
@@ -921,7 +932,7 @@ class QInstrumentsDevice(SerialDevice):
         self.query(f"setElmStartupPosition{int(unlock)}")
         return
     
-    def setElmUnlockPos(self, timeout:int = 5):
+    def setElmUnlockPos(self, timeout:int = 5) -> bool:
         """
         Open the ELM
         
@@ -929,7 +940,16 @@ class QInstrumentsDevice(SerialDevice):
         
         Args:
             timeout (int, optional): number of seconds to wait before aborting. Defaults to 5.
+        
+        Returns:
+            bool: whether the ELM was successfully opened
         """
-        self.query("setElmUnlockPos", timeout=timeout)
-        return
+        out = self.query("setElmUnlockPos", timeout=timeout)
+        while out is None:
+            if self.flags.simulation:
+                break
+            out = self.read().strip()
+        if out == 'ok':
+            return True
+        return False
  
