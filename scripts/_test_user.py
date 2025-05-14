@@ -9,15 +9,15 @@ from controllably.core.interpreter import JSONInterpreter
 from controllably.GUI import MovePanel, Panel, LiquidPanel
 
 from controllably.Move.Cartesian import Gantry
-from controllably.Transfer.Liquid.Sartorius.sartorius import Sartorius
-from controllably.Transfer.Liquid.Pumps.TriContinent.tricontinent import TriContinent
+from controllably.Transfer.Liquid.Pipette.Sartorius.sartorius import Sartorius
+from controllably.Transfer.Liquid.Pump.TriContinent.tricontinent import TriContinent
 
 import logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # %%
-host = get_host()
+host = '192.109.209.100' #get_host()
 port = 12345 
 ui = Controller('view', JSONInterpreter())
 terminate = threading.Event()
@@ -108,7 +108,7 @@ liquid_gui.bindObject(pipette)
 liquid_gui.show()
 
 # %%
-liquid_gui.bindObject(pipette)
+liquid_gui.bindObject(pump)
 liquid_gui.show()
 
 # %%
