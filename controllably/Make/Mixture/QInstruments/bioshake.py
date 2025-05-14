@@ -456,8 +456,8 @@ class BioShake(Maker, HeaterMixin):
             return False
         speed = speed if speed is not None else self.getTargetSpeed()
         tolerance = tolerance or self.speed_tolerance
-        
-        return (abs(data.data - speed) <= tolerance) 
+        logger.debug(f"abs({data.data}-{speed}) = {tolerance*speed}")
+        return (abs(data.data - speed) <= tolerance*speed) 
     
     def getTargetSpeed(self) -> float|None:
         """
@@ -468,12 +468,12 @@ class BioShake(Maker, HeaterMixin):
         """
         return self.device.getShakeTargetSpeed()
     
-    def getSpeed(self) -> tuple[float]:
+    def getSpeed(self) -> float:
         """
-        Returns the set speed and current mixing speed in rpm
+        Returns current mixing speed in rpm
 
         Returns:
-            tuple[float]: set speed, current mixing speed
+            float: current mixing speed
         """
         return self.device.getShakeActualSpeed()
     
@@ -569,7 +569,12 @@ class BioShake(Maker, HeaterMixin):
         Args:
             timeout (int, optional): number of seconds to wait before aborting. Defaults to 5.
         """
-        return self.device.shakeGoHome(timeout=timeout)
+        gripping = self.is_locked
+        if not gripping:
+            self.grip(on=True)
+        out = self.device.shakeGoHome(timeout=timeout)
+        self.grip(on=gripping)
+        return out
     
     def stop(self, emergency:bool = True):
         """
@@ -590,6 +595,7 @@ class BioShake(Maker, HeaterMixin):
             duration (int|None, optional): shake runtime. Defaults to None.
             home (bool, optional): whether to return to home when shaking stops. Defaults to True.
         """
+        duration = duration if duration is not None else 0
         if not on:
             return self.device.shakeOff() if home else self.device.shakeOffNonZeroPos()
         if duration > 0:
@@ -633,7 +639,7 @@ class BioShake(Maker, HeaterMixin):
         tolerance = tolerance or self.temp_tolerance
         stabilize_timeout = stabilize_timeout if stabilize_timeout is not None else self.stabilize_timeout
         
-        if abs(data.data - temperature) > tolerance:
+        if abs(data.data - temperature) > tolerance*temperature:
             self._stabilize_start_time = None
             return False
         self._stabilize_start_time = self._stabilize_start_time or time.perf_counter()
