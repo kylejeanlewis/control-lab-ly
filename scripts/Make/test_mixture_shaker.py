@@ -54,3 +54,11 @@ me.getTempMax()
 # %%
 me.getTempMin()
 # %%
+from controllably.Make.Mixture.QInstruments import BioShake
+PORT = 'COM33'
+
+shaker = BioShake(**{
+    'port': PORT,
+    'verbose': True,
+})
+# %%
