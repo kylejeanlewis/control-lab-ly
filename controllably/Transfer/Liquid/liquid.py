@@ -165,12 +165,14 @@ class LiquidHandler:
     
     def connect(self):
         """Connect to the device"""
-        self.device.connect()
+        if not self.device.is_connected:
+            self.device.connect()
         return
     
     def disconnect(self):
         """Disconnect from the device"""
-        self.device.disconnect()
+        if self.device.is_connected:
+            self.device.disconnect()
         return
     
     def resetFlags(self):
