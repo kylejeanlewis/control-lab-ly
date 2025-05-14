@@ -1,6 +1,5 @@
 import pytest
-import time
-from controllably.Transfer.Liquid.Pump.TriContinent import TriContinent, Multi_TriContinent
+from controllably.Transfer.Liquid.Pump.TriContinent import TriContinent
 from controllably.core.connection import get_ports
 
 PORT = 'COM11'
@@ -12,66 +11,48 @@ def pump():
     pmp = TriContinent(**{
         'port': PORT,
         'capacity': 1000,
-        'output_right': False,
+        'output_right': True,
         'verbose': True
     })
-    pmp.connect()
+    pmp.home()
     return pmp
 
 def test_initialize(pump):
-    pump.device.initialize(False)
+    pump.home()
     assert pump.init_status == True
-    assert pump.device.output_right == False
+    assert pump.device.output_right == True
 
 def test_aspirate(pump):
     assert pump.volume == 0
     pump.aspirate(100)
     assert pump.volume == 100
+    pump.aspirate(900)
+    assert pump.volume == 1000
     pump.home()
 
 def test_dispense(pump):
+    assert pump.volume == 0
     pump.aspirate(100)
     assert pump.volume == 100
-    pump.dispense(100)
-    assert pump.volume == 0
+    pump.dispense(200)
+    assert pump.volume == 800
     pump.home()
 
+def test_reverse(pump):
+    pump.reverse()
+    assert pump.output_right == True
+    assert pump.device.output_right == False
+    pump.aspirate(500)
+    assert pump.volume == 500
+    pump.device.setValvePosition('I')
+    pump.device.moveTo(0)
+    assert pump.volume == 0
 
-# @pytest.fixture(scope='session')
-# def pumps():
-#     pmps = Multi_TriContinent(**{
-#         'channels': (1,2),
-#         'details': {
-#             'port': PORT,
-#             'capacity': 1000,
-#             'output_right': False,
-#             'verbose': True
-#         }
-#     })
-#     pmps.connect()
-#     return pmps
-
-# def test_multi_initialize(pumps):
-#     for channel in (1,2):
-#         pumps.setActiveChannel(channel)
-#         # print(pumps.device.output_right)
-#         # pumps.device.initialize()
-#         # assert pumps.init_status == True
-#         # assert pumps.device.output_right == False
-
-# def test_multi_aspirate(pumps):
-#     for channel in (1,2):
-#         pumps.setActiveChannel(channel)
-#         assert pumps.volume == 0
-#         pumps.aspirate(100)
-#         assert pumps.volume == 100
-#         pumps.home()
-
-# def test_multi_dispense(pumps):
-#     for channel in (1,2):
-#         pumps.setActiveChannel(channel)
-#         pumps.aspirate(100)
-#         assert pumps.volume == 100
-#         pumps.dispense(100)
-#         assert pumps.volume == 0
-#         pumps.home()
+    pump.home()
+    assert pump.output_right == True
+    assert pump.device.output_right == True
+    pump.aspirate(1000)
+    assert pump.volume == 1000
+    pump.dispense(1000)
+    assert pump.volume == 0
+    pump.home()
