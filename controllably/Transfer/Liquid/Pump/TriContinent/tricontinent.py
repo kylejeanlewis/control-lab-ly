@@ -100,7 +100,13 @@ class TriContinent(LiquidHandler):
         self.speed_in = self.device.speed
         self.speed_out = self.device.speed
         self.output_right = output_right
+
+        self.connect()
         return
+    
+    @property
+    def volume(self) -> float:
+        return self.device.position * self.volume_resolution
     
     @property
     def start_speed(self):
@@ -187,7 +193,7 @@ class TriContinent(LiquidHandler):
         # Update values
         time.sleep(delay)
         # self.volume = min(self.volume + volume, self.capacity)
-        self.volume = self.device.position * self.volume_resolution
+        # self.volume = self.device.position * self.volume_resolution
         if pause:
             input("Press 'Enter' to proceed.")
         return True
@@ -250,7 +256,7 @@ class TriContinent(LiquidHandler):
         # Update values
         time.sleep(delay)
         # self.volume = max(self.volume - volume, 0)
-        self.volume = self.device.position * self.volume_resolution
+        # self.volume = self.device.position * self.volume_resolution
         if pause:
             input("Press 'Enter' to proceed.")
         return True
@@ -273,7 +279,7 @@ class TriContinent(LiquidHandler):
         """Home the pump."""
         self.setChannel()
         self.device.initialize(self.device.output_right)
-        self.volume = self.device.position * self.volume_resolution
+        # self.volume = self.device.position * self.volume_resolution
         return
     
     def setSpeed(self, speed: float):
@@ -295,9 +301,11 @@ class TriContinent(LiquidHandler):
     
     def setChannel(self):
         """Set the channel of the pump."""
-        if self.channel != self.device.channel:
-            self.device.setChannel(self.channel)
-            self.device.output_right = self.output_right
+        self.device.setChannel(self.channel)
+        self.device.output_right = self.output_right
+        # if self.channel != self.device.channel:
+        #     self.device.setChannel(self.channel)
+        #     self.device.output_right = self.output_right
         return
     
 Multi_TriContinent = Multichannel.factory(TriContinent)
