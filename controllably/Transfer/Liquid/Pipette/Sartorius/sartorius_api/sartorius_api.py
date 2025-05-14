@@ -253,6 +253,7 @@ class SartoriusDevice(SerialDevice):
         timestamp: bool = False
     ):
         data_type: NamedTuple = data_type or self.data_type
+        format_in = format_in or self.write_format
         format_out = format_out or self.read_format
         if self.flags.simulation:
             field_types = data_type.__annotations__
