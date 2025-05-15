@@ -1,14 +1,12 @@
 import pytest
-import time
 from typing import Sequence
 
 from controllably.Transfer.Substrate import GripperMixin
-from controllably.Make.Vacuum import VacuumMixin
 from controllably.Move.Jointed.Dobot import M1Pro
 from controllably.core.connection import match_current_ip_address
 from controllably.core.position import Position, Deck
 
-IP_ADDRESS = '127.0.0.1'
+HOST = '192.109.209.21'
 
 class DobotGrip(GripperMixin, M1Pro):    
     def __init__(self, 
@@ -51,13 +49,25 @@ class DobotGrip(GripperMixin, M1Pro):
         channel = self.gripper_channels.get("on" if on else "off", 20)
         return self.device.DOExecute(channel, int(on))
 
+configs = {
+    'host': HOST,
+    'home_position': [[300,0,240],[-33,0,0]],
+    'calibrated_offset': [[-374,496.75,254.2],[-89.11611149,0,0]],
+    'scale': 1.0,
+    'tool_offset': [[0,0,-232],[122.11611149,0,0]],
+    'safe_height': 240,
+    'verbose': True,
+    'simulation': True,
+}
 
 @pytest.fixture(scope="session")
 def m1pro_grip():
-    mg = DobotGrip(host=IP_ADDRESS)
+    mg = DobotGrip(**configs)
     return mg
 
-
-@pytest.mark.skipif((not match_current_ip_address(IP_ADDRESS)), reason="Requires connection to local lab network")
-def test_m1pro_grip(m1pro_grip):
-    ...
+@pytest.mark.skipif((not match_current_ip_address(HOST)), reason="Requires connection to local lab network")
+def test_m1pro_em_grip(m1pro_grip,capsys):
+    m1pro_grip.grab(5)
+    assert f'Receive from {HOST}:29999: DOExecute(20,1)' in capsys.readouterr().out
+    m1pro_grip.drop(5)
+    assert f'Receive from {HOST}:29999: DOExecute(20,0)' in capsys.readouterr().out
