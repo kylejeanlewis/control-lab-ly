@@ -386,7 +386,7 @@ def test_client_server():
     assert p.qsize() == 1
     assert p.get() == '12345'
     
-    user.callbacks['request'][f"{HOST}:{PORT}"](b'[EXIT]')
+    user.callbacks['request'][f"{HOST}:{PORT}"]('[EXIT]')
     worker_terminate.set()
     user_thread.join()
     worker_thread.join()
@@ -428,8 +428,8 @@ def test_hub_spoke():
     assert p.qsize() == 1
     assert p.get() == '12345'
     
-    user.callbacks['request'][f"{HOST}:{PORT}"](b'[EXIT]')
-    worker.callbacks['data'][f"{HOST}:{PORT}"](b'[EXIT]')
+    user.callbacks['request'][f"{HOST}:{PORT}"]('[EXIT]')
+    worker.callbacks['data'][f"{HOST}:{PORT}"]('[EXIT]')
     hub_terminate.set()
     worker_terminate.set()
     user_terminate.set()
