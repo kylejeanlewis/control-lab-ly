@@ -1176,7 +1176,7 @@ def handle_client(
                 break
             logger.debug(f"Received from client: {data}")
             logger.debug(data)
-            data = data.encode("utf-8") if relay else data
+            # data = data.encode("utf-8") if relay else data
             receive_method(data)
         except Exception as e:
             logger.error(f"Error handling client: {e}")
