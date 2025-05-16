@@ -119,14 +119,14 @@ class TwoTierQueue:
             self.put_queue(item, block=block, timeout=timeout)
         return
     
-    def put_nowait(self, item: Any, *, priority: bool = False, rank: int = None):
+    def put_nowait(self, item: Any, *, priority: bool = False, rank: int|None = None):
         """ 
         Put an item in the queue without waiting.
         
         Args:
             item (Any): item to put in the queue.
             priority (bool): flag to indicate high-priority item.
-            rank (int): rank of the high-priority item.
+            rank (int|None): rank of the high-priority item.
         """
         return self.put(item, block=False, priority=priority, rank=rank)
     
@@ -846,7 +846,7 @@ class Controller:
         *, 
         private:bool = True, 
         priority: bool = False, 
-        rank: int = None
+        rank: int|None = None
     ) -> str:
         """
         Transmit a request
@@ -863,10 +863,11 @@ class Controller:
         """
         assert self.role in ('view', 'both'), "Only the view can transmit requests"
         sender = [self.address or str(id(self))] if private else []
-        target = target if target is not None else []
+        target = list(target) if target is not None else []
         target.extend(self.relays)
         request_id = uuid.uuid4().hex
         self.data_buffer[request_id] = dict()
+        command = dict(command)
         command['address'] = dict(sender=sender, target=target)
         command['request_id'] = request_id
         command['priority'] = priority
@@ -1232,7 +1233,7 @@ def start_server(host:str, port:int, controller: Controller, *, n_connections:in
         if client_role not in ('model', 'view'):
             raise ValueError(f"Invalid role: {client_role}")
         callback_type = 'request' if client_role == 'model' else 'data'
-        controller.subscribe(client_socket.sendall, callback_type, client_addr)
+        controller.subscribe(lambda content: client_socket.sendall(content.encode("utf-8")), callback_type, client_addr)
         if client_role == 'view':
             controller.broadcastRegistry(target=[client_addr])
 
@@ -1283,7 +1284,7 @@ def start_client(host:str, port:int, controller: Controller, relay:bool = False,
             raise ConnectionError(f"Invalid handshake: {handshake}")
         controller.setAddress(handshake.replace('[CONNECTED] ',''))
         client_socket.sendall(f"[CONNECTED] {controller.role}".encode("utf-8"))
-        controller.subscribe(client_socket.sendall, callback_type, f"{host}:{port}", relay=relay)
+        controller.subscribe(lambda content: client_socket.sendall(content.encode("utf-8")), callback_type, f"{host}:{port}", relay=relay)
         
         terminate = threading.Event() if terminate is None else terminate
         while not terminate.is_set():
