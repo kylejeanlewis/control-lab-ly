@@ -154,7 +154,7 @@ class TimedDeviceMixin:
             event.clear()
         return
         
-    def setValue(self, value: Any, event: threading.Event|None = None) -> bool:
+    def setValue(self, value: Any, event: threading.Event|None = None, **kwargs) -> bool:
         """ 
         Set a value
         
@@ -176,7 +176,8 @@ class TimedDeviceMixin:
         final: Any|None = None,
         blocking: bool = True, 
         *, 
-        event: threading.Event|None = None
+        event: threading.Event|None = None,
+        **kwargs
     ) -> threading.Timer|None:
         """ 
         Set a value after a delay
@@ -192,16 +193,16 @@ class TimedDeviceMixin:
             threading.Timer|None: timer object if blocking is False
         """
         assert duration >= 0, "Ensure duration is a non-negative number"
-        success = self.setValue(initial)
+        success = self.setValue(initial, **kwargs)
         if not success:
             return
         event.set()
         if blocking:
             time.sleep(duration)
             self.stopTimer(event=event)
-            self.setValue(final)
+            self.setValue(final, **kwargs)
             return
-        timer = threading.Timer(duration, self.setValue, args=(final,event))
+        timer = threading.Timer(duration, self.setValue, args=(final,event), kwargs=kwargs)
         timer.start()
         return timer
     
