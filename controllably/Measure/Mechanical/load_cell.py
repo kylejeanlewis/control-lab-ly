@@ -123,6 +123,7 @@ class LoadCell(Measurer):
         self.baseline = 0
         self.calibration_factor = calibration_factor        # counts per unit force
         self.correction_parameters = correction_parameters  # polynomial correction parameters, starting with highest order
+        self.connect()
         return
     
     def connect(self):
