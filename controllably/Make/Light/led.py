@@ -10,6 +10,7 @@ This module contains the LED class.
 """
 # Standard Library imports
 from __future__ import annotations
+import logging
 import threading
 import time
 
@@ -17,6 +18,9 @@ import time
 from ...core.compound import Multichannel
 from ...core.device import TimedDeviceMixin
 from .. import Maker
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 class LED(Maker, TimedDeviceMixin):
     """ 
@@ -79,10 +83,10 @@ class LED(Maker, TimedDeviceMixin):
         Returns:
             dict: relevant attributes
         """
-        relevant = ['targer_power', 'timer_event', 'threads']
+        relevant = ['target_power', 'timer_event', 'threads']
         return {key: getattr(self, key) for key in relevant}
     
-    def dark(self, duration: int|float, blocking: bool = True):
+    def dark(self, duration: int|float, blocking: bool = True, **kwargs):
         """
         Darken the LED for a given duration
         
@@ -90,9 +94,11 @@ class LED(Maker, TimedDeviceMixin):
             duration (int|float): duration to darken the LED
             blocking (bool, optional): whether to block the thread. Defaults to True.
         """
-        return self.light(0, duration, blocking)
+        if self.channel != self._parent.channel:
+            return
+        return self.light(0, duration, blocking, **kwargs)
     
-    def light(self, power: int, duration: int|float, blocking: bool = True):
+    def light(self, power: int, duration: int|float, blocking: bool = True, **kwargs):
         """
         Light up the LED at a given power level for a given duration
         
@@ -101,14 +107,21 @@ class LED(Maker, TimedDeviceMixin):
             duration (int|float): duration to light up the LED
             blocking (bool, optional): whether to block the thread. Defaults to
         """
-        timer = self.setValueDelayed(duration, power, 0, blocking, event=self.timer_event)
+        if self.channel != self._parent.channel:
+            logger.debug(f'{self.channel=} != {self._parent.channel=}, not lighting')
+            return
+        timer = self.setValueDelayed(duration, power, 0, blocking, event=self.timer_event, **kwargs)
         if isinstance(timer, threading.Timer):
             self.threads['timer'] = timer
         return
     
-    def stop(self):
+    def stop(self, **kwargs):
         """Stop the LED from emitting light"""
+        if self.channel != self._parent.channel:
+            logger.debug(f'{self.channel=} != {self._parent.channel=}, not stopping')
+            return False
         self.stopTimer(self.threads.get('timer', None), event=self.timer_event)
+        self.setPower(0, **kwargs)
         return
     
     def getPower(self) -> int:
@@ -120,7 +133,7 @@ class LED(Maker, TimedDeviceMixin):
         """
         return self.target_power
     
-    def setPower(self, power: int, event: threading.Event|None = None) -> bool:
+    def setPower(self, power: int, event: threading.Event|None = None, **kwargs) -> bool:
         """
         Set power level of LED
         
@@ -131,18 +144,41 @@ class LED(Maker, TimedDeviceMixin):
         Returns:
             bool: whether the power level was set
         """
+        channel = kwargs.get('channel', self.channel)
+        if isinstance(channel,int):
+            self._parent.channel = channel
+        if self.channel != self._parent.channel:
+            logger.debug(f'{self.channel=} != {self._parent.channel=}, not setting power')
+            return False
+        ret = self.setTargetPower(power)
+        self.updatePower()
+        if isinstance(event, threading.Event):
+            _ = event.clear() if event.is_set() else event.set()
+        return ret
+    
+    def setTargetPower(self, power: int) -> bool:
+        """
+        Set power level of LED
+        
+        Args:
+            power (int): power level
+            event (threading.Event, optional): event to set. Defaults to None.
+            
+        Returns:
+            bool: whether the power level was set
+        """
+        if self.channel != self._parent.channel:
+            logger.debug(f'{self.channel=} != {self._parent.channel=}, not setting target power')
+            return False
         assert power >= 0, "Ensure the power level is a non-negative number"
         if self.timer_event.is_set() and power != 0:
             self._logger.info(f"[BUSY] LED {self.channel} is currently in use")
             return False
         self._logger.info(f"[LED {self.channel}] {power}")
         self.target_power = power
-        self.updatePower()
-        if isinstance(event, threading.Event):
-            _ = event.clear() if event.is_set() else event.set()
         return True
     
-    def setValue(self, value: int, event: threading.Event|None = None) -> bool:
+    def setValue(self, value: int, event: threading.Event|None = None, **kwargs) -> bool:
         """ 
         Set the power level of the LED
         
@@ -153,16 +189,19 @@ class LED(Maker, TimedDeviceMixin):
         Returns:
             bool: whether the power level was set
         """
-        return self.setPower(value, event)
+        return self.setPower(value, event, **kwargs)
     
     def updatePower(self):
         """Update the power level of the LED"""
+        channel = self._parent.channel
         all_power = self._parent.getPower()
+        self._parent.channel = channel
         if isinstance(all_power, dict):
             all_power = list(all_power.values())
         all_power = all_power if isinstance(all_power, list) else [all_power]
         data = ';'.join([str(v) for v in all_power])
-        self.device.query(data)
+        self.device.clear()
+        self.device.query(data, multi_out=False)
         return
     
     # Overwritten method(s)
@@ -176,6 +215,8 @@ class LED(Maker, TimedDeviceMixin):
             light_time (int, optional): light time. Defaults to 1.
             blocking (bool, optional): whether to block the thread. Defaults to True.
         """
+        if self.channel != self._parent.channel:
+            return False
         def inner(dark_time:int|float, power:int, light_time:int|float):
             if self.timer_event.is_set():
                 self._logger.info("[BUSY] LED is currently in use")
