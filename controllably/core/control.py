@@ -1006,7 +1006,7 @@ class Controller:
         """
         assert callback_type in self.callbacks, f"Invalid callback type: {callback_type}"
         self_address = self.address or str(id(self))
-        if self_address in addresses and self.role == 'relay':
+        if self_address in addresses and self.role in ('relay','both'):
             addresses.remove(self_address)
         addresses = addresses or self.callbacks[callback_type].keys()
         for address in set(addresses):
@@ -1029,7 +1029,7 @@ class Controller:
         content = self.interpreter.decodeRequest(packet)
         addresses = content.get('address', {}).get('target', [])
         self.relay(packet, 'request', addresses=addresses)
-        if self.role == 'relay':
+        if self.role in ('relay', 'both'):
             logger.debug('Relayed request')
         return
     
@@ -1042,7 +1042,7 @@ class Controller:
         """
         content = self.interpreter.decodeData(packet)
         addresses = content.get('address', {}).get('target', [])
-        if self.role == 'relay' and len(addresses) == 0:
+        if self.role in ('relay', 'both') and len(addresses) == 0:
             if content.get('request_id', '') == 'registration':
                 if content.get('reply_id', '') != self.address:
                     if 'registration' not in self.data_buffer:
@@ -1052,7 +1052,7 @@ class Controller:
                     target = list(self.callbacks['data'].keys())
                     return self.broadcastRegistry(target=target)
         self.relay(packet, 'data', addresses=addresses)
-        if self.role == 'relay':
+        if self.role in ('relay', 'both'):
             logger.debug('Relayed data')
         return
     
