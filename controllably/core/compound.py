@@ -662,7 +662,9 @@ class Multichannel(Combined):
         """
         details = dict() if details is None else details
         if isinstance(details,dict):
-            details = [details]*len(channels)
+            details = [details.copy() for _ in range(len(channels))]
+            for d,c in zip(details,channels):
+                d['channel'] = c
         elif isinstance(details,Sequence) and len(details) == 1:
             details = details*len(channels)
         assert len(channels) == len(details), "Ensure the number of channels match the number of part details"
@@ -672,12 +674,10 @@ class Multichannel(Combined):
         parts_list: list[Part] = []
         for i,settings in enumerate(details):
             if i == 0:
-                print(settings)
                 part: Part = parent(**settings)
                 device = part.device
             else:
                 settings['device'] = device
-                print(settings)
                 part: Part = parent(**settings)
             parts_list.append(part)
         # parts_list = [parent(**settings) for settings in details]
@@ -721,6 +721,15 @@ class Multichannel(Combined):
         return cls(**config)
     
     @property
+    def channel(self) -> int:
+        """Active channel"""
+        return self.active_channel
+    @channel.setter
+    def channel(self, value:int):
+        self.setActiveChannel(value)
+        return
+    
+    @property
     def channels(self) -> dict[int,Part]:
         """Dictionary of channels"""
         return {int(chn.replace(self._channel_prefix,"")):part for chn,part in self._parts.items()}
@@ -742,11 +751,13 @@ class Multichannel(Combined):
         def func(self, *args, channel: int|Sequence[int]|None = None, **kwargs) -> list|None:
             outs = dict()
             for chn,obj in cls._get_channel(self, channel).items():
+                cls.setActiveChannel(self, chn)
                 obj_method: Callable = getattr(obj, func_name)
                 assert callable(obj_method), f"Ensure {func_name} is a callable method"
                 logger.info(f"Executing {func_name} on channel {chn}")
                 out = obj_method(*args, **kwargs)
                 outs[chn] = out
+                time.sleep(0.1)
             if all([o is None for o in outs.values()]):  # If all outputs are None
                 return None # Return None
             return outs
