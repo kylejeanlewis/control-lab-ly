@@ -210,6 +210,10 @@ class GRBL(SerialDevice):
         """
         self.clear()
         responses = self.query('$$')
+        while len(responses)==0 or 'ok' not in responses[-1]:
+            time.sleep(1)
+            chunk = self.readAll()
+            responses.extend(chunk)
         settings = {}
         if self.flags.simulation:
             return settings
