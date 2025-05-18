@@ -1,35 +1,90 @@
 # %%
 import requests
 import json
-from controllably.core.control import Controller, TwoTierQueue, Proxy
+from threading import Thread
+import time
+from typing import Any, Callable
+from controllably.core.control import Controller, TwoTierQueue
 from controllably.core.interpreter import JSONInterpreter
 
-def send_reply(reply):
-    """
-    Send a reply to the hub.
-    """
-    url = "http://localhost:8000/reply"
-    response = requests.post(url, json=json.loads(reply))
-    out = response.json()
-    print(out)
-    return out
+HOST = 'http://localhost:8000'
 
-def get_command(target):
+workers = dict()
+
+def update_registry(worker: Controller, workers:dict[str, Controller]) -> dict[str, Any]:
+    """
+    Register a worker with the hub.
+    """
+    url = f"{HOST}/register/model?target={worker.address}"
+    response = requests.post(url)
+    registry = response.json()
+    print(registry)
+    if response.status_code == 200:
+        workers[worker.address] = worker
+        worker.subscribe(send_reply, 'data', 'HUB')
+        worker.subscribe(lambda: json.dumps(get_command(worker.address)), 'listen', HOST)
+        worker.receiveRequest(sender=HOST)
+    return registry
+
+def create_listen_loop(worker: Controller, sender:str|None = None) -> Callable:
+    def loop():
+        while True:
+            time.sleep(0.1)
+            worker.receiveRequest(sender=sender)
+    return loop
+
+def get_command(target: str) -> dict[str, Any]:
     """
     Get a reply from the hub.
     """
-    url = f"http://localhost:8000/command/{target}"
-    response = requests.get(url)
-    out = response.json()
-    print(out)
-    return out
+    url = f"{HOST}/command/{target}"
+    while True:
+        response = requests.get(url)
+        if response.status_code == 200:
+            break
+        time.sleep(0.1)
+    command = response.json()
+    command['address']['sender'].append('HUB')
+    print(command)
+    return command
+
+def send_reply(reply: str|bytes) -> str:
+    """
+    Send a reply to the hub.
+    """
+    reply_json = json.loads(reply)
+    url = f"{HOST}/reply"
+    response = requests.post(url, json=reply_json)
+    reply_id = response.json()
+    print(reply_id)
+    return reply_id
 
 # %%
-worker = Controller('model', JSONInterpreter())
-worker.subscribe(send_reply, 'request')
+worker1 = Controller('model', JSONInterpreter())
+worker1.setAddress('WORKER1')
+worker1.start()
 
 # %%
-data = dict(object_id='999', method='qsize')
+worker2 = Controller('model', JSONInterpreter())
+worker2.setAddress('WORKER2')
+worker2.start()
+
 # %%
-worker.transmitData(data)
+queue = TwoTierQueue()
+queue1 = TwoTierQueue()
+worker1.register(queue, 'QUEUE')
+worker1.register(queue1, 'QUEUE1')
+update_registry(worker1, workers)
+
+# %%
+queue2 = TwoTierQueue()
+worker2.register(queue, 'QUEUE2')
+update_registry(worker2, workers)
+
+# %%
+thread1 = Thread(target=create_listen_loop(worker1, sender=HOST))
+thread2 = Thread(target=create_listen_loop(worker2, sender=HOST))
+thread1.start()
+thread2.start()    
+
 # %%
