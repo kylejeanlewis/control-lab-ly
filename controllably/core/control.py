@@ -475,6 +475,7 @@ class Controller:
         self.relay_delay = relay_delay
         self.relays = []
         self.callbacks: dict[str, dict[str,Callable]] = dict(request={}, data={}, listen={})
+        self.events: dict[str, threading.Event] = dict()
         self.command_queue = TwoTierQueue()
         self.data_buffer = dict()
         self.objects = {}
@@ -485,9 +486,9 @@ class Controller:
         self.execution_event = threading.Event()
         self._threads = {}
         
-        if self.role in ('model', 'both'):
-            # self.register(self)
-            pass
+        # if self.role in ('model', 'both'):
+        #     # self.register(self)
+        #     pass
         return
     
     @property
