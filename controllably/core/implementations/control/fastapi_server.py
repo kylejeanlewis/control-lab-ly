@@ -197,14 +197,17 @@ def clear_replies_target(request_id: str):
         raise HTTPException(status_code=404, detail=f"No pending replies to request: {request_id}")
 
 
-# Start the server if not yet running
-if __name__ == "__main__":
+def start_server(host: str = HOST, port: int = PORT):
     try:
-        response = requests.get(f'{HOST}:{PORT}/')
+        response = requests.get(f'{host}:{port}/')
         if response.status_code == 200:
             print("Server is running")
         else:
             print("Server is not running or returned an error status code")
     except requests.ConnectionError:
         print("Server is not running")
-        uvicorn.run(app, host='0.0.0.0', port=PORT)
+        uvicorn.run(app, host='0.0.0.0', port=port)
+    
+# Start the server if not yet running
+if __name__ == "__main__":
+    start_server()
