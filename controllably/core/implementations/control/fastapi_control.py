@@ -16,6 +16,7 @@ Attributes:
 from __future__ import annotations
 import json
 import requests
+import threading
 import time
 from typing import Any, Callable
 
@@ -69,9 +70,10 @@ class FastAPIWorkerClient:
         return reply_id
     
     @staticmethod
-    def create_listen_loop(worker: Controller, sender:str|None = None) -> Callable:
+    def create_listen_loop(worker: Controller, sender:str|None = None, terminate:threading.Event|None = None) -> Callable:
+        terminate = terminate if terminate is not None else threading.Event()
         def loop():
-            while True:
+            while not terminate.is_set():
                 time.sleep(0.1)
                 worker.receiveRequest(sender=sender)
         return loop
