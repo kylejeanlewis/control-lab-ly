@@ -15,6 +15,7 @@ Attributes:
 # Standard library imports
 from __future__ import annotations
 import json
+import logging
 import requests
 import threading
 import time
@@ -24,44 +25,70 @@ import urllib3
 # Local application imports
 from ...control import Controller
 
-CONNECTION_ERRORS = (Exception,)#(ConnectionRefusedError, ConnectionError, urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError)
+CONNECTION_ERRORS = (ConnectionRefusedError, ConnectionError, urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError)
+
+logger = logging.getLogger(__name__)
 
 class FastAPIWorkerClient:
+    instances: dict[str, FastAPIWorkerClient] = dict()
+    def __new__(cls, host:str, port:int=8000):
+        url = f"{host}:{port}"
+        if url in cls.instances:
+            return cls.instances[url]
+        instance = super().__new__(cls)
+        instance.workers = dict()
+        instance.terminate_events = dict()
+        instance.pause_events = dict()
+        cls.instances[url] = instance
+        return instance
+    
     def __init__(self, host:str, port:int=8000):
         self.url = f"{host}:{port}"
-        self.workers = dict()
+        self.workers: dict[str, Controller] = self.workers
+        self.terminate_events: dict[str, threading.Event] = self.terminate_events
+        self.pause_events: dict[str, threading.Event] = self.pause_events
+        return
     
-    def update_registry(self, worker: Controller) -> dict[str, Any]:
+    def update_registry(self, worker: Controller, terminate: threading.Event|None = None) -> dict[str, Any]:
         """
         Register a worker with the hub.
         """
+        
         response = requests.post(f"{self.url}/register/model?target={worker.address}")
         registry = response.json()
-        print(registry)
+        logger.debug(registry)
         if response.status_code == 200:
+            if worker.address in self.pause_events:
+                self.pause_events[worker.address].set()
             self.workers[worker.address] = worker
+            terminate = terminate if terminate is not None else threading.Event()
+            worker.events[self.url] = terminate
             worker.subscribe(lambda reply: FastAPIWorkerClient.send_reply(reply, self.url), 'data', 'HUB')
-            worker.subscribe(lambda: json.dumps(FastAPIWorkerClient.get_command(worker.address, self.url)), 'listen', self.url)
-            worker.receiveRequest(sender=self.url)
+            worker.subscribe(lambda: json.dumps(FastAPIWorkerClient.get_command(worker.address, self.url, terminate)), 'listen', self.url)
+            if worker.address in self.pause_events:
+                self.pause_events[worker.address].clear()
         return registry
     
     @staticmethod
-    def get_command(target: str, url: str) -> dict[str, Any]:
+    def get_command(target: str, url: str, terminate: threading.Event|None = None) -> dict[str, Any]:
         """
         Get a reply from the hub.
         """
-        while True:
+        terminate = terminate if terminate is not None else threading.Event()
+        while not terminate.is_set():
             try:
                 response = requests.get(f"{url}/command/{target}")
-            except CONNECTION_ERRORS as e:
-                print('Connection Error')
+            except Exception as e:
+                logger.error('Connection Error')
                 raise ConnectionError
             if response.status_code == 200:
                 break
             time.sleep(0.1)
+        if terminate.is_set():
+            raise InterruptedError
         command = response.json()
         command['address']['sender'].append('HUB')
-        print(command)
+        logger.debug(command)
         return command
 
     @staticmethod
@@ -72,32 +99,60 @@ class FastAPIWorkerClient:
         reply_json = json.loads(reply)
         try:
             response = requests.post(f"{url}/reply", json=reply_json)
-        except CONNECTION_ERRORS as e:
-            print('Connection Error')
+        except Exception as e:
+            logger.error('Connection Error')
             raise ConnectionError
         reply_id = response.json()
-        print(reply_id)
+        logger.debug(reply_id)
         return reply_id
     
     @staticmethod
-    def create_listen_loop(worker: Controller, sender:str|None = None, terminate:threading.Event|None = None) -> Callable:
+    def create_listen_loop(
+        worker: Controller, 
+        sender: str|None = None, 
+        terminate: threading.Event|None = None,
+        pause: threading.Event|None = None
+    ) -> Callable:
         terminate = terminate if terminate is not None else threading.Event()
+        pause = pause if pause is not None else threading.Event()
         def loop():
             while not terminate.is_set():
+                if pause.is_set():
+                    time.sleep(0.1)
+                    logger.debug('PAUSED')
+                    continue
                 try:
                     time.sleep(0.1)
                     worker.receiveRequest(sender=sender)
                 except CONNECTION_ERRORS as e:
-                    print(f'Connection Error: {worker.address}')
+                    logger.error(f'Connection Error: {worker.address}')
                     break
+                except InterruptedError:
+                    logger.error(f'Interrupted: {worker.address}')
+                    break
+            if terminate.is_set():
+                logger.debug(f'Interrupted: {worker.address}')
+            return
         return loop
 
 
 class FastAPIUserClient:
+    instances: dict[str, FastAPIUserClient] = dict()
+    def __new__(cls, host:str, port:int=8000):
+        url = f"{host}:{port}"
+        if url in cls.instances:
+            return cls.instances[url]
+        instance = super().__new__(cls)
+        instance.users = dict()
+        instance.request_ids = dict()
+        cls.instances[url] = instance
+        return instance
+    
     def __init__(self, host:str, port:int=8000):
         self.url = f"{host}:{port}"
-        self.users: dict[str, Controller] = dict()
-        self.request_ids: dict[str, Controller] = dict()
+        self.users: dict[str, Controller] = self.users
+        self.request_ids: dict[str, Controller] = self.request_ids
+        return
     
     def join_hub(self, user: Controller) -> dict[str, Any]:
         """
@@ -105,15 +160,17 @@ class FastAPIUserClient:
         """
         try:
             response = requests.get(f"{self.url}/registry")
-        except CONNECTION_ERRORS as e:
-            print('Connection Error')
+        except Exception as e:
+            logger.error('Connection Error')
             raise ConnectionError
         registry = response.json()
-        print(registry)
+        logger.debug(registry)
         self.users[user.address] = user
-        for worker in registry:
-            user.subscribe(lambda command: FastAPIUserClient.send_command(command, self.url, self.request_ids, self.users), 'request', worker)
-            user.subscribe(lambda request_id: json.dumps(FastAPIUserClient.get_reply(request_id, self.url)), 'listen', worker)
+        for worker_address in registry:
+            terminate = threading.Event()
+            user.events[worker_address] = terminate
+            user.subscribe(lambda command: FastAPIUserClient.send_command(command, self.url, self.request_ids, self.users), 'request', worker_address)
+            user.subscribe(lambda request_id: json.dumps(FastAPIUserClient.get_reply(request_id, self.url, terminate)), 'listen', worker_address)
         user.data_buffer['registration'] = {k:{'data':v} for k,v in registry.items()}
         return registry
 
@@ -125,30 +182,31 @@ class FastAPIUserClient:
         command_json = json.loads(command)
         try:
             response = requests.post(f"{url}/command", json=command_json)
-        except CONNECTION_ERRORS as e:
-            print('Connection Error')
+        except Exception as e:
+            logger.error('Connection Error')
             raise ConnectionError
         request_id = response.json()
-        print(request_id)
-        print(command_json)
         user_id = command_json.get('address', {}).get('sender', [None])[0]
         request_ids[request_id['request_id']] = users[user_id]
         return request_id
 
     @staticmethod
-    def get_reply(request_id: str, url: str) -> dict[str, Any]:
+    def get_reply(request_id: str, url: str, terminate: threading.Event|None = None) -> dict[str, Any]:
         """
         Get a reply from the hub.
         """
-        while True:
+        terminate = terminate if terminate is not None else threading.Event()
+        while not terminate.is_set():
             try:
                 response = requests.get(f"{url}/reply/{request_id}")
-            except CONNECTION_ERRORS as e:
-                print('Connection Error')
+            except Exception as e:
+                logger.error('Connection Error')
                 raise ConnectionError
             if response.status_code == 200:
                 break
             time.sleep(0.1)
+        if terminate.is_set():
+            raise InterruptedError
         reply = response.json()
-        print(reply)
+        logger.debug(reply)
         return reply
