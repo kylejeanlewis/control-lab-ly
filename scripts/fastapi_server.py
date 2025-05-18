@@ -1,31 +1,30 @@
+# -*- coding: utf-8 -*-
+# Key imports
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+
+# Standard library imports
+import json
 from typing import Any
 
+# Local application imports
 from controllably.core.control import Controller
 from controllably.core.interpreter import JSONInterpreter
-import json
 
 app = FastAPI()
 outbound_replies = dict()
 outbound_commands = dict()
 worker_registry = dict()
-hub = Controller('both', JSONInterpreter())
+hub = Controller('both', JSONInterpreter(), relay_delay=0)
 hub.setAddress('HUB')
 
-class Address(BaseModel):
-    """
-    Address model for the FastAPI server.
-    """
-    sender: list[str]
-    target: list[str]
 
 class Command(BaseModel):
     """
     Request model for the FastAPI server.
     """
     request_id: str
-    address: Address
+    address: dict[str, list[str]]
     priority: bool = False
     rank: int|None = None
     object_id: str = ''
@@ -39,54 +38,41 @@ class Reply(BaseModel):
     """
     reply_id: str
     request_id: str
-    address: Address
+    address: dict[str, list[str]]
     priority: bool = False
     rank: int|None = None
     status: str
     data: Any
 
-
 def place_command(command: Command) -> str:
     """
     Place a command in the outbound queue.
     """
-    for target in command.address.target:
+    targets = command.address.get('target',[])
+    targets = targets or list(worker_registry.keys())
+    for target in targets:
         if target not in outbound_commands:
             outbound_commands[target] = dict()
         outbound_commands[target][command.request_id] = command
-    return 
-
-def place_command_json(command_json_str: str) -> str:
-    """
-    Place a command (JSON) in the outbound queue.
-    """
-    command_dict = json.loads(command_json_str)
-    command_dict['address'] = Address(**command_dict.pop('address', {'sender':[],'target':[]}))
-    command = Command(**command_dict)
-    return place_command(command)
+    return command.request_id
 
 def place_reply(reply: Reply) -> str:
     """
     Place a reply in the outbound queue.
     """
+    targets = reply.address.get('target',[])
+    if reply.request_id == 'registration':
+        targets.append('HUB')
     outbound_replies[reply.request_id] = reply
-    if reply.address.sender == 'HUB':
-        for target in reply.address.target:
-            if target not in worker_registry:
-                worker_registry[target] = dict()
-            worker_registry[target]['methods'] = reply.data
-    return 
+    if 'HUB' in targets and reply.request_id == 'registration':
+        for worker in reply.address.get('sender',[]):
+            if worker not in worker_registry:
+                worker_registry[worker] = dict()
+            worker_registry[worker] = reply.data
+    return reply.reply_id
 
-def place_reply_json(reply_json_str: str) -> str:
-    """
-    Place a reply (JSON) in the outbound queue.
-    """
-    reply_dict = json.loads(reply_json_str)
-    reply_dict['address'] = Address(**reply_dict.pop('address', {'sender':[],'target':[]}))
-    reply = Reply(**reply_dict)
-    return place_reply(reply)
 
-# APP
+# Main
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
@@ -105,19 +91,30 @@ def register_model(target: str):
     """
     if target not in worker_registry:
         worker_registry[target] = dict()
-    outbound_commands[target] = dict()
+    if target not in outbound_commands:
+        outbound_commands[target] = dict()
     if target not in hub.callbacks['request']:
-        hub.subscribe(place_command_json, 'request', target)
-    hub.getMethods([target])
-    return {"target": target}
+        hub.subscribe(lambda content: place_command(Command(**json.loads(content))), 'request', target)
+    get_methods_command = dict(method='exposeMethods')
+    hub.transmitRequest(get_methods_command, [target])
+    return {'workers': [k for k in worker_registry]}
+
+
+# Commands
+@app.get("/commands")
+def commands():
+    """
+    Get the commands in the outbound queue.
+    """
+    return outbound_commands
 
 @app.post("/command")
 def send_command(command: Command):
     """
     Send a command to the hub.
     """
-    place_command(command)
-    return command.request_id
+    request_id = place_command(command)
+    return {"request_id": request_id}
     
 @app.get("/command/{target}")
 def get_command(target: str):
@@ -130,13 +127,41 @@ def get_command(target: str):
         raise HTTPException(status_code=404, detail=f"No pending requests for target: {target}")
     return outbound_commands[target].pop(request_id)
 
+@app.get("/command/clear")
+def clear_commands():
+    """
+    Clear the commands in the outbound queue.
+    """
+    outbound_commands.clear()
+    return {"status": "cleared"}
+
+@app.get("/command/clear/{target}")
+def clear_commands_target(target: str):
+    """
+    Clear the commands in the outbound queue for a specific target.
+    """
+    if target in outbound_commands:
+        outbound_commands[target].clear()
+        return {"status": "cleared"}
+    else:
+        raise HTTPException(status_code=404, detail=f"No pending requests for target: {target}")
+
+
+# Replies
+@app.get("/replies")
+def replies():
+    """
+    Get the replies in the outbound queue.
+    """
+    return outbound_replies
+
 @app.post("/reply")
 def send_reply(reply: Reply):
     """
     Send a command to the hub.
     """
-    place_reply(reply)
-    return reply.reply_id
+    reply_id = place_reply(reply)
+    return {"reply_id": reply_id}
     
 @app.get("/reply/{request_id}")
 def get_reply(request_id: str):
@@ -147,3 +172,22 @@ def get_reply(request_id: str):
         raise HTTPException(status_code=404, detail=f"No pending replies to request: {request_id}")
     return outbound_replies[request_id]
  
+@app.get("/reply/clear")
+def clear_replies():
+    """
+    Clear the replies in the outbound queue.
+    """
+    outbound_replies.clear()
+    return {"status": "cleared"}
+
+@app.get("/reply/clear/{request_id}")
+def clear_replies_target(request_id: str):
+    """
+    Clear the replies in the outbound queue for a specific request_id.
+    """
+    if request_id in outbound_replies:
+        outbound_replies.pop(request_id)
+        return {"status": "cleared"}
+    else:
+        raise HTTPException(status_code=404, detail=f"No pending replies to request: {request_id}")
+    
