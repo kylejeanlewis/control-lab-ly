@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import threading
+import time
 from typing import Any
 
 from ...control import Controller
@@ -54,6 +55,7 @@ def create_socket_user(host:str, port:int, address:str|None = None, relay:bool =
     kwargs = dict(terminate=terminate, relay=relay)
     user_thread = threading.Thread(target=SocketClient.start_client, args=args, kwargs=kwargs, daemon=True)
     user_thread.start()
+    time.sleep(3)
     return user, {
         'terminate': terminate,
         'user_thread': user_thread
