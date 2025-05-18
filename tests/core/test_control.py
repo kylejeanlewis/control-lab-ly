@@ -1,16 +1,11 @@
 import pytest
 import builtins
 import logging
-import sys
 import threading
-import time
 
 from ..context import controllably
-from controllably.core.control import (
-    ClassMethods, TwoTierQueue, Proxy, Controller, handle_client, start_server, start_client, BYTESIZE
-)
+from controllably.core.control import ClassMethods, TwoTierQueue, Proxy, Controller
 from controllably.core.interpreter import JSONInterpreter
-from controllably.core.connection import get_host
 
 HOST = '127.0.0.1'
 PORT = 12345
@@ -136,8 +131,10 @@ def test_two_tier_queue_delayed_get():
 def mock_controllers():
     worker = Controller('model', JSONInterpreter())
     user = Controller('view', JSONInterpreter())
-    worker.subscribe(user.receiveData, 'data')
-    user.subscribe(worker.receiveRequest, 'request')
+    worker.setAddress('WORKER')
+    user.setAddress('USER')
+    worker.subscribe(user.receiveData, 'data', 'USER')
+    user.subscribe(worker.receiveRequest, 'request', 'WORKER')
     return worker, user
 
 @pytest.fixture
@@ -145,22 +142,25 @@ def mock_controllers_hub():
     hub = Controller('relay', JSONInterpreter())
     worker = Controller('model', JSONInterpreter())
     user = Controller('view', JSONInterpreter())
-    worker.subscribe(hub.relayData,'data', relay=True)
-    hub.subscribe(user.receiveData,'data')
-    user.subscribe(hub.relayRequest,'request', relay=True)
-    hub.subscribe(worker.receiveRequest,'request')
+    hub.setAddress('HUB')
+    worker.setAddress('WORKER')
+    user.setAddress('USER')
+    worker.subscribe(hub.relayData,'data', 'HUB', relay=True)
+    hub.subscribe(user.receiveData,'data', 'USER')
+    user.subscribe(hub.relayRequest,'request', 'HUB', relay=True)
+    hub.subscribe(worker.receiveRequest,'request', 'WORKER')
     return worker, user, hub
 
 def test_proxy_with_instance(mock_controllers):
     worker, user = mock_controllers
     # with instance
     test_obj_worker = MyClass(0)
-    worker.register(test_obj_worker)
+    object_id = 'OBJECT1'
+    worker.register(test_obj_worker, object_id)
     worker.start()
     assert len(worker.registry) == 1
     
     test_obj_user = MyClass(1)
-    object_id = str(id(test_obj_worker))
     proxy1 = Proxy(test_obj_user, object_id)
     assert proxy1.object_id == object_id
     assert proxy1.prime == test_obj_user
@@ -265,17 +265,19 @@ def test_controller(mock_controllers_hub,caplog):
     with caplog.at_level(logging.WARNING):
         worker.register(test_obj, 'TEST1')
         assert "MyClass_TEST1 already registered" in caplog.text
-    registry = {'TEST1': [str(id(worker))]}
+    registry = {'TEST1': [worker.address]}
     assert worker.registry == registry
     assert user.registry == registry
     assert hub.registry == {}
     
     other_worker = Controller('model', JSONInterpreter())
-    other_worker.subscribe(hub.relayData,'data', relay=True)
+    other_worker.setAddress('OTHER_WORKER')
+    other_worker.subscribe(hub.relayData,'data','HUB',relay=True)
     hub.subscribe(other_worker.receiveRequest,'request')
     test_obj_other = MyClass(10)
     other_worker.register(test_obj_other, 'TEST1')
     with pytest.raises(LookupError):
+        print(user.registry)
         _ = user.registry
 
     with caplog.at_level(logging.WARNING):
@@ -302,7 +304,7 @@ def test_controller_execute_method(object_id, method_name, args, kwargs, outcome
         args = args,
         kwargs = kwargs
     )
-    request_id = user.transmitRequest(command, target=[str(id(worker))])
+    request_id = user.transmitRequest(command, target=[worker.address])
     response: dict = user.retrieveData(request_id, data_only=False)
     data = response.get('data')
     if response.get('status', '') != 'completed':
@@ -341,7 +343,7 @@ def test_controller_execute_property(method_name, args, kwargs, outcome, mock_co
         args = args,
         kwargs = kwargs
     )
-    request_id = user.transmitRequest(command, target=[str(id(worker))])
+    request_id = user.transmitRequest(command, target=[worker.address])
     response: dict = user.retrieveData(request_id, data_only=False)
     data = response.get('data')
     if response.get('status', '') != 'completed':
