@@ -19,10 +19,12 @@ import requests
 import threading
 import time
 from typing import Any, Callable
+import urllib3
 
 # Local application imports
 from ...control import Controller
 
+CONNECTION_ERRORS = (Exception,)#(ConnectionRefusedError, ConnectionError, urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError)
 
 class FastAPIWorkerClient:
     def __init__(self, host:str, port:int=8000):
@@ -49,7 +51,11 @@ class FastAPIWorkerClient:
         Get a reply from the hub.
         """
         while True:
-            response = requests.get(f"{url}/command/{target}")
+            try:
+                response = requests.get(f"{url}/command/{target}")
+            except CONNECTION_ERRORS as e:
+                print('Connection Error')
+                raise ConnectionError
             if response.status_code == 200:
                 break
             time.sleep(0.1)
@@ -64,7 +70,11 @@ class FastAPIWorkerClient:
         Send a reply to the hub.
         """
         reply_json = json.loads(reply)
-        response = requests.post(f"{url}/reply", json=reply_json)
+        try:
+            response = requests.post(f"{url}/reply", json=reply_json)
+        except CONNECTION_ERRORS as e:
+            print('Connection Error')
+            raise ConnectionError
         reply_id = response.json()
         print(reply_id)
         return reply_id
@@ -74,8 +84,12 @@ class FastAPIWorkerClient:
         terminate = terminate if terminate is not None else threading.Event()
         def loop():
             while not terminate.is_set():
-                time.sleep(0.1)
-                worker.receiveRequest(sender=sender)
+                try:
+                    time.sleep(0.1)
+                    worker.receiveRequest(sender=sender)
+                except CONNECTION_ERRORS as e:
+                    print(f'Connection Error: {worker.address}')
+                    break
         return loop
 
 
@@ -89,7 +103,11 @@ class FastAPIUserClient:
         """
         Join a hub.
         """
-        response = requests.get(f"{self.url}/registry")
+        try:
+            response = requests.get(f"{self.url}/registry")
+        except CONNECTION_ERRORS as e:
+            print('Connection Error')
+            raise ConnectionError
         registry = response.json()
         print(registry)
         self.users[user.address] = user
@@ -105,7 +123,11 @@ class FastAPIUserClient:
         Send a command to the hub.
         """
         command_json = json.loads(command)
-        response = requests.post(f"{url}/command", json=command_json)
+        try:
+            response = requests.post(f"{url}/command", json=command_json)
+        except CONNECTION_ERRORS as e:
+            print('Connection Error')
+            raise ConnectionError
         request_id = response.json()
         print(request_id)
         print(command_json)
@@ -119,7 +141,11 @@ class FastAPIUserClient:
         Get a reply from the hub.
         """
         while True:
-            response = requests.get(f"{url}/reply/{request_id}")
+            try:
+                response = requests.get(f"{url}/reply/{request_id}")
+            except CONNECTION_ERRORS as e:
+                print('Connection Error')
+                raise ConnectionError
             if response.status_code == 200:
                 break
             time.sleep(0.1)
