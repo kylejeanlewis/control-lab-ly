@@ -4,7 +4,7 @@ from typing import Any
 from controllably.core.control import Controller
 from controllably.core.interpreter import JSONInterpreter
 from controllably.core.implementations.control.fastapi_control import FastAPIUserClient, FastAPIWorkerClient
-from controllably.core.implementations.control.socket_control import SocketClient
+from controllably.core.implementations.control.socket_control import SocketClient, SocketServer
 
 def create_fastapi_user(host:str, port:int, address:str|None = None) -> tuple[Controller, dict[str,Any]]:
     """
@@ -41,7 +41,7 @@ def create_fastapi_worker(host:str, port:int, address:str|None = None) -> tuple[
         'client': client
     }
 
-def create_socket_user(host:str, port:int, address:str|None = None) -> tuple[Controller, dict[str,Any]]:
+def create_socket_user(host:str, port:int, address:str|None = None, relay:bool = True) -> tuple[Controller, dict[str,Any]]:
     """
     Create a Socket client instance.
     """
@@ -50,7 +50,7 @@ def create_socket_user(host:str, port:int, address:str|None = None) -> tuple[Con
         user.setAddress(address)
     terminate = threading.Event()
     args = [host, port, user]
-    kwargs = dict(terminate=terminate, relay=True)
+    kwargs = dict(terminate=terminate, relay=relay)
     user_thread = threading.Thread(target=SocketClient.start_client, args=args, kwargs=kwargs, daemon=True)
     user_thread.start()
     return user, {
@@ -58,7 +58,7 @@ def create_socket_user(host:str, port:int, address:str|None = None) -> tuple[Con
         'user_thread': user_thread
     }
     
-def create_socket_worker(host:str, port:int, address:str|None = None) -> tuple[Controller, dict[str,Any]]:
+def create_socket_worker(host:str, port:int, address:str|None = None, relay:bool = True) -> tuple[Controller, dict[str,Any]]:
     """
     Create a Socket client instance.
     """
@@ -68,10 +68,31 @@ def create_socket_worker(host:str, port:int, address:str|None = None) -> tuple[C
     worker.start()
     terminate = threading.Event()
     args = [host, port, worker]
-    kwargs = dict(terminate=terminate, relay=True)
-    worker_thread = threading.Thread(target=SocketClient.start_client, args=args, kwargs=kwargs, daemon=True)
+    kwargs = dict(terminate=terminate)
+    target_func = SocketServer.start_server
+    if relay:
+        kwargs['relay'] = relay
+        target_func = SocketClient.start_client
+    worker_thread = threading.Thread(target=target_func, args=args, kwargs=kwargs, daemon=True)
     worker_thread.start()
     return worker, {
         'terminate': terminate,
         'worker_thread': worker_thread
+    }
+
+def create_socket_hub(host:str, port:int, address:str|None = None, relay:bool = True) -> tuple[Controller, dict[str,Any]]:
+    """
+    Create a Socket client instance.
+    """
+    hub = Controller('relay', JSONInterpreter())
+    if address is not None:
+        hub.setAddress(address)
+    terminate = threading.Event()
+    args = [host, port, hub]
+    kwargs = dict(terminate=terminate)
+    hub_thread = threading.Thread(target=SocketServer.start_server, args=args, kwargs=kwargs, daemon=True)
+    hub_thread.start()
+    return hub, {
+        'terminate': terminate,
+        'hub_thread': hub_thread
     }
