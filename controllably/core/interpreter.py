@@ -47,7 +47,7 @@ class Interpreter:
         return command
     
     @staticmethod
-    def encodeData(data: Any) -> Any:
+    def encodeData(data: Any) -> bytes:
         """
         Encode data into a message.
         
@@ -55,13 +55,13 @@ class Interpreter:
             data (Any): data to be encoded
             
         Returns:
-            Any: encoded data message
+            bytes: encoded message in bytes
         """
         packet = data
         return packet
     
     @staticmethod
-    def encodeRequest(command: Mapping[str, Any]) -> Any:
+    def encodeRequest(command: Mapping[str, Any]) -> bytes:
         """
         Encode a command dictionary into a request message.
         
@@ -69,7 +69,7 @@ class Interpreter:
             command (Mapping[str, Any]): command dictionary
             
         Returns:
-            Any: encoded request message
+            bytes: request message in bytes
         """
         request = command
         return request
@@ -118,7 +118,7 @@ class JSONInterpreter(Interpreter):
         return command
     
     @staticmethod
-    def encodeData(data: Mapping[str, Any]) -> str:
+    def encodeData(data: Mapping[str, Any]) -> bytes:
         """
         Encode data into a message.
         
@@ -126,22 +126,22 @@ class JSONInterpreter(Interpreter):
             data (Mapping[str, Any]): data to be encoded
             
         Returns:
-            str: encoded data message in JSON string
+            bytes: encoded message
         """
         data = data.copy()
         for k,v in data.items():
             if isinstance(v, Position):
                 data[k] = v.toJSON()
         try:
-            packet = json.dumps(data)#.encode('utf-8')
+            packet = json.dumps(data).encode('utf-8')
         except TypeError:
             content = data.pop('data')
             data.update(dict(pickled = str(pickle.dumps(content))))
-            packet = json.dumps(data)#.encode('utf-8')
+            packet = json.dumps(data).encode('utf-8')
         return packet
     
     @staticmethod
-    def encodeRequest(command: Mapping[str, Any]) -> str:
+    def encodeRequest(command: Mapping[str, Any]) -> bytes:
         """
         Encode a command dictionary into a request message.
         
@@ -149,9 +149,9 @@ class JSONInterpreter(Interpreter):
             command (Mapping[str, Any]): command dictionary
             
         Returns:
-            str: encoded request message in JSON string
+            bytes: request message
         """
-        request = json.dumps(command)#.encode('utf-8')
+        request = json.dumps(command).encode('utf-8')
         return request
     
     @staticmethod
