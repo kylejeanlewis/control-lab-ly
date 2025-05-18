@@ -831,6 +831,8 @@ class Controller:
             except KeyboardInterrupt:
                 self.execution_event.clear()
                 break
+            except ConnectionError:
+                break
         time.sleep(1)
         
         while self.command_queue.qsize() > 0:
@@ -844,6 +846,8 @@ class Controller:
             except queue.Empty:
                 break
             except KeyboardInterrupt:
+                break
+            except ConnectionError:
                 break
         self.command_queue.join()
         return
