@@ -3,8 +3,9 @@ import threading
 
 import test_init
 from controllably.core.connection import get_host, get_ports
-from controllably.core.control import Controller, start_server, start_client
+from controllably.core.control import Controller
 from controllably.core.interpreter import JSONInterpreter
+from controllably.core.implementations.control.socket_control import SocketClient, SocketServer
 
 from controllably.core.control import TwoTierQueue
 from controllably.Move.Cartesian import Gantry
@@ -28,12 +29,12 @@ kwargs = dict(terminate=terminate)
 worker.start()
 
 # %% Client-server version
-worker_thread = threading.Thread(target=start_server, args=args, kwargs=kwargs, daemon=True)
+worker_thread = threading.Thread(target=SocketServer.start_server, args=args, kwargs=kwargs, daemon=True)
 worker_thread.start()
 
 # %% Hub-spoke version
 args.append(True)
-worker_thread = threading.Thread(target=start_client, args=args, kwargs=kwargs, daemon=True)
+worker_thread = threading.Thread(target=SocketClient.start_client, args=args, kwargs=kwargs, daemon=True)
 worker_thread.start()
 
 # %%
