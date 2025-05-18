@@ -7,7 +7,7 @@ from controllably.core.connection import get_host
 from controllably.core.control import Controller, Proxy, TwoTierQueue
 from controllably.core.interpreter import JSONInterpreter
 from controllably.core.implementations.control.socket_control import SocketClient
-from controllably.GUI import MovePanel, Panel, LiquidPanel
+from controllably.core.implementations.gui import MovePanel, Panel, LiquidPanel
 
 from controllably.Move.Cartesian import Gantry
 from controllably.Transfer.Liquid.Pipette.Sartorius.sartorius import Sartorius
@@ -21,9 +21,9 @@ logger.setLevel(logging.INFO)
 host = '192.109.209.100' #get_host()
 host = get_host()
 port = 12345 
-ui = Controller('view', JSONInterpreter())
+user = Controller('view', JSONInterpreter())
 terminate = threading.Event()
-args = [host, port, ui]
+args = [host, port, user]
 kwargs = dict(terminate=terminate)
 
 # %% Server-client version
@@ -31,17 +31,17 @@ ui_thread = threading.Thread(target=SocketClient.start_client, args=args, kwargs
 ui_thread.start()
     
 # %% Hub-spoke version
-args.append(True)
+kwargs['relay'] = True
 ui_thread = threading.Thread(target=SocketClient.start_client, args=args, kwargs=kwargs, daemon=True)
 ui_thread.start()
 
 # %%
-methods = ui.getMethods(private=True)
+methods = user.getMethods(private=True)
 methods
 
 # %%
 p = Proxy(TwoTierQueue(),list(methods.keys())[0])
-p.bindController(ui)
+p.bindController(user)
 p.get_nowait()
 
 # %%
@@ -50,7 +50,7 @@ proxy = Proxy(Gantry, 'MOVER')
 gui = MovePanel()
 
 # %%
-proxy.bindController(ui)
+proxy.bindController(user)
 gui.bindObject(proxy)
 gui.show()
 
@@ -92,11 +92,11 @@ liquid_gui.show()
 
 # %%
 pipette = Proxy(Sartorius, 'PIPETTE')
-pipette.bindController(ui)
+pipette.bindController(user)
 
 # %%
 pump = Proxy(TriContinent, 'PUMP')
-pump.bindController(ui)
+pump.bindController(user)
 
 # %%
 liquid_gui.bindObject(pipette)
