@@ -33,7 +33,7 @@ worker_thread = threading.Thread(target=SocketServer.start_server, args=args, kw
 worker_thread.start()
 
 # %% Hub-spoke version
-args.append(True)
+kwargs['relay'] = True
 worker_thread = threading.Thread(target=SocketClient.start_client, args=args, kwargs=kwargs, daemon=True)
 worker_thread.start()
 
