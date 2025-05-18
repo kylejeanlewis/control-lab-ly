@@ -293,7 +293,9 @@ class BaseDevice:
         Returns:
             bool: whether the device is connected
         """
-        return self.connection.is_open() # Replace with specific implementation
+        if hasattr(self.connection, 'is_open'):
+            return self.connection.is_open() # Replace with specific implementation
+        return self.flags.connected # Replace with specific implementation
     
     def connect(self):
         """Connect to the device"""
