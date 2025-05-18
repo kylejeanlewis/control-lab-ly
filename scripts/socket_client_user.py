@@ -2,12 +2,13 @@
 from controllably.core.control import TwoTierQueue, Proxy
 from control_utils import create_socket_user
 from controllably.core.connection import get_host
-
 import time
 
+HUB = False
+
 # %%
-user, user_pack = create_socket_user(get_host(), 12345, 'USER', relay=True)
-time.sleep(1)
+user, user_pack = create_socket_user(get_host(), 12345, 'USER', relay=HUB)
+time.sleep(3)
 
 # %%
 queue = Proxy(TwoTierQueue(), 'QUEUE')
