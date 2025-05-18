@@ -22,8 +22,6 @@ from typing import Any, Callable
 # Local application imports
 from ...control import Controller
 
-HOST = 'http://localhost:8000'
-
 
 class FastAPIWorkerClient:
     def __init__(self, host:str, port:int=8000):
