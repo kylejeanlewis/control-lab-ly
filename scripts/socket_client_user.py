@@ -1,6 +1,6 @@
 # %%
 from controllably.core.control import TwoTierQueue, Proxy
-from control_utils import create_socket_user
+from controllably.core.implementations.control import create_socket_user
 from controllably.core.connection import get_host
 import time
 

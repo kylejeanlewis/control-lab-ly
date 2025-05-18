@@ -1,6 +1,6 @@
 # %%
 from controllably.core.control import TwoTierQueue
-from control_utils import create_fastapi_worker
+from controllably.core.implementations.control import create_fastapi_worker
 
 # %%
 worker1, worker1_pack = create_fastapi_worker('http://localhost', 8000, 'WORKER1')

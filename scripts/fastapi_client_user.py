@@ -1,6 +1,6 @@
 # %%
 from controllably.core.control import TwoTierQueue, Proxy
-from control_utils import create_fastapi_user
+from controllably.core.implementations.control import create_fastapi_user
 
 # %%
 user, user_pack = create_fastapi_user('http://localhost', 8000, 'USER')
