@@ -211,6 +211,8 @@ class GRBL(SerialDevice):
         self.clear()
         responses = self.query('$$')
         while len(responses)==0 or 'ok' not in responses[-1]:
+            if self.flags.simulation:
+                break
             time.sleep(1)
             chunk = self.readAll()
             responses.extend(chunk)
@@ -328,12 +330,12 @@ class GRBL(SerialDevice):
         self.clear()
         self.query(command)
         while True:
-            time.sleep(LOOP_INTERVAL)
-            responses = self.read()
             if self.flags.simulation:
                 break
             if not self.is_connected:
                 break
+            time.sleep(LOOP_INTERVAL)
+            responses = self.read()
             if len(responses) and 'Home' not in responses:
                 break
         # self.query(command)
@@ -380,6 +382,8 @@ class GRBL(SerialDevice):
         if self.flags.simulation:
             return True
         while status not in statuses:
+            if self.flags.simulation:
+                break
             time.sleep(LOOP_INTERVAL)
             status,_,_ = self.getStatus()
             if status == 'Hold':
