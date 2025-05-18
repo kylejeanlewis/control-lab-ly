@@ -16,7 +16,7 @@ import tkinter.messagebox as msgbox
 from typing import Any, Callable, Iterable
 
 # Local application imports
-from ..core.control import Proxy
+from ...control import Proxy
 
 logger = logging.getLogger(__name__)
 
