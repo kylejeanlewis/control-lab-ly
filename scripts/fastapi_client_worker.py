@@ -1,41 +1,28 @@
 # %%
-from threading import Thread
-
-from controllably.core.control import Controller, TwoTierQueue
-from controllably.core.interpreter import JSONInterpreter
-from controllably.core.implementations.control.fastapi_control import FastAPIWorkerClient
-
-client = FastAPIWorkerClient('http://localhost', 8000)
+from controllably.core.control import TwoTierQueue
+from control_utils import create_fastapi_worker
 
 # %%
-worker1 = Controller('model', JSONInterpreter())
-worker1.setAddress('WORKER1')
-worker1.start()
-
-# %%
-worker2 = Controller('model', JSONInterpreter())
-worker2.setAddress('WORKER2')
-worker2.start()
+worker1, worker1_pack = create_fastapi_worker('http://localhost', 8000, 'WORKER1')
+worker2, worker2_pack = create_fastapi_worker('http://localhost', 8000, 'WORKER2')
+worker1_pack['client'] == worker2_pack['client']
 
 # %%
 queue = TwoTierQueue()
 queue1 = TwoTierQueue()
 worker1.register(queue, 'QUEUE')
 worker1.register(queue1, 'QUEUE1')
-client.update_registry(worker1)
+worker1_pack['client'].update_registry(worker1)
 
 # %%
 queue2 = TwoTierQueue()
 worker2.register(queue, 'QUEUE2')
-client.update_registry(worker2)
-
-# %%
-thread1 = Thread(target=client.create_listen_loop(worker1, sender=client.url))
-thread2 = Thread(target=client.create_listen_loop(worker2, sender=client.url))
-thread1.start()
-thread2.start()
+worker2_pack['client'].update_registry(worker2)
 
 # %%
 queue.put(12345)
+
+# %%
+queue.qsize()
 
 # %%
