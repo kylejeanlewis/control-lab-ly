@@ -1,10 +1,11 @@
+# -*- coding: utf-8 -*-
 import threading
 from typing import Any
 
-from controllably.core.control import Controller
-from controllably.core.interpreter import JSONInterpreter
-from controllably.core.implementations.control.fastapi_control import FastAPIUserClient, FastAPIWorkerClient
-from controllably.core.implementations.control.socket_control import SocketClient, SocketServer
+from ...control import Controller
+from ...interpreter import JSONInterpreter
+from .fastapi_control import FastAPIUserClient, FastAPIWorkerClient
+from .socket_control import SocketClient, SocketServer
 
 def create_fastapi_user(host:str, port:int, address:str|None = None) -> tuple[Controller, dict[str,Any]]:
     """
