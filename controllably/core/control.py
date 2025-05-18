@@ -307,6 +307,7 @@ class Proxy:
             assert isinstance(self.controller, Controller), 'No controller is bound to this Proxy.'
             controller = self.controller
             target = self.controller.registry.get(self.object_id, [])
+            sender = target[0] if len(target) else None
             command = dict(
                 object_id = self.object_id,
                 method = method.__name__,
@@ -314,7 +315,7 @@ class Proxy:
                 kwargs = kwargs
             )
             request_id = controller.transmitRequest(command, target=target)
-            response: dict = controller.retrieveData(request_id, data_only=False)
+            response: dict = controller.retrieveData(request_id, sender=sender, data_only=False)
             data = response.get('data')
             if response.get('status', '') != 'completed':
                 error_type_name, message = data.split('!!', maxsplit=1)
@@ -348,9 +349,10 @@ class Proxy:
             assert isinstance(self.controller, Controller), 'No controller is bound to this Proxy.'
             controller = self.controller
             target = self.controller.registry.get(self.object_id, [])
+            sender = target[0] if len(target) else None
             command = dict(method='getattr', args=[self.object_id, attr_name])
             request_id = controller.transmitRequest(command, target=target)
-            return controller.retrieveData(request_id)
+            return controller.retrieveData(request_id, sender=sender)
         getterEmitter.__name__ = attr_name
         getterEmitter.__doc__ = f"Property {attr_name}"
         
@@ -364,9 +366,10 @@ class Proxy:
             assert isinstance(self.controller, Controller), 'No controller is bound to this Proxy.'
             controller = self.controller
             target = self.controller.registry.get(self.object_id, [])
+            sender = target[0] if len(target) else None
             command = dict(method='setattr', args=[self.object_id, attr_name, value])
             request_id = controller.transmitRequest(command, target=target)
-            return controller.retrieveData(request_id)
+            return controller.retrieveData(request_id, sender=sender)
         return property(getterEmitter, setterEmitter)
     
     def bindController(self, controller: Controller):
@@ -380,7 +383,7 @@ class Proxy:
         self.controller = controller
         self.remote = True
         all_attributes = controller.getAttributes()
-        assert self.object_id in all_attributes, f"Object ID {self.object_id} not found in controller registry"
+        assert self.object_id in all_attributes, f"Object ID {self.object_id} not found in controller registry: {list(all_attributes.keys())}"
         matching_attributes = all_attributes.get(self.object_id, ['',[]])
         class_name = self.prime.__name__ if inspect.isclass(self.prime) else self.prime.__class__.__name__
         assert class_name == matching_attributes[0], f"Class name {class_name} does not match remote class name {matching_attributes[0]}"
@@ -412,6 +415,7 @@ class Controller:
     ### Constructor:
         `role` (str): the role of the controller
         `interpreter` (Interpreter): the interpreter to use
+        `relay_delay` (int, optional): delay for relaying data. Defaults to 1.
         
     ### Attributes and properties:
         `role` (str): the role of the controller
@@ -453,13 +457,14 @@ class Controller:
         `setAddress`: set the address of the controller
     """
     
-    def __init__(self, role: str, interpreter: Interpreter):
+    def __init__(self, role: str, interpreter: Interpreter, *, relay_delay: int = 1):
         """
         Initialize the Controller class.
         
         Args:
             role (str): the role of the controller
             interpreter (Interpreter): the interpreter to use
+            relay_delay (int, optional): delay for relaying data. Defaults to 1.
         """
         assert role in ('model', 'view', 'both', 'relay'), f"Invalid role: {role}"
         assert isinstance(interpreter, Interpreter), f"Invalid interpreter: {interpreter}"
@@ -467,8 +472,9 @@ class Controller:
         self.interpreter = interpreter
         self.address = None
         
+        self.relay_delay = relay_delay
         self.relays = []
-        self.callbacks: dict[str, dict[str,Callable]] = dict(request={}, data={})
+        self.callbacks: dict[str, dict[str,Callable]] = dict(request={}, data={}, listen={})
         self.command_queue = TwoTierQueue()
         self.data_buffer = dict()
         self.objects = {}
@@ -518,7 +524,7 @@ class Controller:
         return
     
     # Model side
-    def receiveRequest(self, packet: str|bytes):
+    def receiveRequest(self, packet: str|bytes|None = None, *, sender: str|None = None, **kwargs):
         """ 
         Receive a request
         
@@ -526,6 +532,9 @@ class Controller:
             packet (str|bytes): the request to receive
         """
         assert self.role in ('model', 'both'), "Only the model can receive requests"
+        if packet is None:
+            sender = sender or 'main'
+            packet = self.callbacks['listen'][sender](**kwargs)
         command = self.interpreter.decodeRequest(packet)
         sender = command.get('address', {}).get('sender', [])
         if len(sender):
@@ -569,7 +578,7 @@ class Controller:
             target (Iterable[str]|None, optional): the target addresses. Defaults to None.
         """
         address = self.address or str(id(self))
-        target = target if target is not None else []
+        target = list(target) if target is not None else []
         self.registry = {key: [address] for key in self.objects}
         metadata = self.extractMetadata(dict(method='registration'))
         metadata.update(dict(
@@ -867,7 +876,6 @@ class Controller:
         target.extend(self.relays)
         request_id = uuid.uuid4().hex
         self.data_buffer[request_id] = dict()
-        command = dict(command)
         command['address'] = dict(sender=sender, target=target)
         command['request_id'] = request_id
         command['priority'] = priority
@@ -877,7 +885,7 @@ class Controller:
         self.relayRequest(request)
         return request_id
     
-    def receiveData(self, packet: str|bytes):
+    def receiveData(self, packet: str|bytes|None = None, *, sender: str|None = None, **kwargs):
         """
         Receive data
         
@@ -885,6 +893,9 @@ class Controller:
             packet (str|bytes): the packet to receive
         """
         assert self.role in ('view', 'both'), "Only the view can receive data"
+        if packet is None:
+            sender = sender or 'main'
+            packet = self.callbacks['listen'][sender](**kwargs)
         data = self.interpreter.decodeData(packet)
         sender = data.get('address', {}).get('sender', [])
         request_id = data.get('request_id', uuid.uuid4().hex)
@@ -904,6 +915,7 @@ class Controller:
         request_id: str, 
         timeout: int|float = 5, 
         *, 
+        sender: str|None = None,
         min_count: int|None = 1, 
         max_count: int|None = 1,
         default: Any|None = None,
@@ -928,6 +940,7 @@ class Controller:
         assert self.role in ('view', 'both'), "Only the view can listen for data"
         all_data = dict()
         count = 0
+        data = default
         start_time = time.perf_counter()
         while request_id in self.data_buffer:
             time.sleep(0.1)
@@ -956,8 +969,10 @@ class Controller:
                         break
                     start_time = time.perf_counter()
                 continue
+            else:
+                self.receiveData(sender=sender, request_id=request_id)
         if close_request:
-            self.data_buffer.pop(request_id)
+            self.data_buffer.pop(request_id, None)
         if max_count == 1:
             return (data if data_only else response)
         return all_data
@@ -975,8 +990,21 @@ class Controller:
         """
         assert self.role in ('view', 'both'), "Only the view can get attributes"
         command = dict(method='exposeAttributes')
+        target = target or list(self.callbacks['request'].keys())
+        target = tuple(set(target))
         request_id = self.transmitRequest(command, target, private=private)
-        return self.retrieveData(request_id, default={})
+        attributes = dict()
+        for worker in target:
+            data = self.retrieveData(
+                request_id, 
+                sender=worker,
+                default={},
+                close_request=False
+            )
+            time.sleep(0.1)
+            if isinstance(data, dict):
+                attributes.update(data)
+        return attributes
     
     def getMethods(self, target: Iterable[int]|None = None, *, private: bool = True) -> dict:
         """
@@ -991,8 +1019,21 @@ class Controller:
         """
         assert self.role in ('view', 'both'), "Only the view can get methods"
         command = dict(method='exposeMethods')
+        target = target or list(self.callbacks['request'].keys())
+        target = tuple(set(target))
         request_id = self.transmitRequest(command, target, private=private)
-        return self.retrieveData(request_id, default={})
+        methods = dict()
+        for worker in target:
+            data = self.retrieveData(
+                request_id, 
+                sender=worker,
+                default={},
+                close_request=False
+            )
+            time.sleep(0.1)
+            if isinstance(data, dict):
+                methods.update(data)
+        return methods
     
     # Controller side
     def relay(self, packet: str|bytes, callback_type:str, addresses: Iterable[int]|None = None):
@@ -1006,6 +1047,7 @@ class Controller:
         """
         assert callback_type in self.callbacks, f"Invalid callback type: {callback_type}"
         self_address = self.address or str(id(self))
+        addresses = list(set(addresses))
         if self_address in addresses and self.role in ('relay','both'):
             addresses.remove(self_address)
         addresses = addresses or self.callbacks[callback_type].keys()
@@ -1016,16 +1058,19 @@ class Controller:
                 continue
             callback = self.callbacks[callback_type][address]
             callback(packet)
-        time.sleep(1)
+        if self.relay_delay > 0:
+            time.sleep(self.relay_delay)
         return
     
-    def relayRequest(self, packet: str|bytes):
+    def relayRequest(self, packet: str|bytes|None = None, **kwargs):
         """
         Relay a request
         
         Args:
             packet (str|bytes): the request to relay
         """
+        # if packet is None:
+        #     packet = self.callbacks['listen'](**kwargs)
         content = self.interpreter.decodeRequest(packet)
         addresses = content.get('address', {}).get('target', [])
         self.relay(packet, 'request', addresses=addresses)
@@ -1033,13 +1078,15 @@ class Controller:
             logger.debug('Relayed request')
         return
     
-    def relayData(self, packet: str|bytes):
+    def relayData(self, packet: str|bytes|None = None, **kwargs):
         """
         Relay data
         
         Args:
             packet (str|bytes): the packet to relay
         """
+        # if packet is None:
+        #     packet = self.callbacks['listen'](**kwargs)
         content = self.interpreter.decodeData(packet)
         addresses = content.get('address', {}).get('target', [])
         if self.role in ('relay', 'both') and len(addresses) == 0:
@@ -1132,6 +1179,32 @@ class Controller:
 
 
 # --- Socket Communication Implementation ---
+def create_listen_socket_callback(client_socket: socket.socket, relay: bool) -> Callable[[Any], str]:
+    def listen_socket(**kwargs) -> str:
+        """
+        Listen for incoming communications
+        """
+        try:
+            data = ''
+            while True:
+                fragment = client_socket.recv(BYTESIZE).decode("utf-8", "replace").replace('\uFFFD', '')  # Receive data (adjust buffer size if needed)
+                data += fragment
+                if len(fragment)==0 or len(fragment) < BYTESIZE:
+                    break
+            if not data:  # Client disconnected
+                time.sleep(1)
+                raise EOFError
+            if data == '[EXIT]':
+                client_socket.sendall("[EXIT]".encode("utf-8"))
+                raise InterruptedError
+            logger.debug(f"Received from client: {data}")
+            logger.debug(data)
+        except Exception as e:
+            logger.error(f"Error handling client: {e}")
+            raise e
+        return data.encode("utf-8") if relay else data
+    return listen_socket
+
 def handle_client(
     client_socket: socket.socket, 
     client_addr:str, 
@@ -1158,37 +1231,28 @@ def handle_client(
             raise ValueError(f"Invalid role: {client_role}")
         callback_type = 'request' if client_role == 'model' else 'data'
         receive_method = controller.relayData if client_role == 'model' else controller.relayRequest
+    listen_socket = create_listen_socket_callback(client_socket=client_socket, relay=relay)
+    listen_key = client_addr #if relay else 'main'
+    controller.callbacks['listen'][listen_key] = listen_socket
     
     terminate = threading.Event() if terminate is None else terminate
     while not terminate.is_set():
         try:
-            data = ''
-            while True:
-                fragment = client_socket.recv(BYTESIZE).decode("utf-8", "replace").replace('\uFFFD', '')  # Receive data (adjust buffer size if needed)
-                data += fragment
-                if len(fragment)==0 or len(fragment) < BYTESIZE:
-                    break
-            if not data:  # Client disconnected
-                time.sleep(1)
-                continue
-            if data == '[EXIT]':
-                client_socket.sendall("[EXIT]".encode("utf-8"))
-                break
-            logger.debug(f"Received from client: {data}")
-            logger.debug(data)
-            # data = data.encode("utf-8") if relay else data
-            receive_method(data)
-        except Exception as e:
-            logger.error(f"Error handling client: {e}")
+            data = listen_socket()
+            receive_method(data, sender=listen_key)
+        except EOFError:
+            continue
+        except (InterruptedError, Exception):
             break
+    
     client_socket.close()
     logger.warning(f"Disconnected from client [{client_addr}]")
     
     # Clean up
     controller.unsubscribe(callback_type, client_addr)
+    controller.unsubscribe('listen', listen_key)
     controller.data_buffer.get('registration', {}).pop(client_addr, None)
     return
-
 
 def start_server(host:str, port:int, controller: Controller, *, n_connections:int = 5, terminate: threading.Event|None = None):
     """
@@ -1233,7 +1297,7 @@ def start_server(host:str, port:int, controller: Controller, *, n_connections:in
         if client_role not in ('model', 'view'):
             raise ValueError(f"Invalid role: {client_role}")
         callback_type = 'request' if client_role == 'model' else 'data'
-        controller.subscribe(lambda content: client_socket.sendall(content.encode("utf-8")), callback_type, client_addr)
+        controller.subscribe(client_socket.sendall, callback_type, client_addr)
         if client_role == 'view':
             controller.broadcastRegistry(target=[client_addr])
 
@@ -1250,7 +1314,6 @@ def start_server(host:str, port:int, controller: Controller, *, n_connections:in
         thread.join()
     logger.warning(f"Server [{host}:{port}] stopped.")
     return
-
 
 def start_client(host:str, port:int, controller: Controller, relay:bool = False, *, terminate: threading.Event|None = None):
     """
@@ -1276,39 +1339,36 @@ def start_client(host:str, port:int, controller: Controller, relay:bool = False,
 
     try:
         client_socket.connect((host, port))  # Connect to the server
-        logger.info(f"Connected to server at {host}:{port}")
+        host_addr = f"{host}:{port}"
+        logger.info(f"Connected to server at {host_addr}")
         time.sleep(1)
-        handshake = client_socket.recv(BYTESIZE).decode("utf-8","replace").replace('\uFFFD', '')  # Receive response" ")[1]
+        handshake = client_socket.recv(BYTESIZE).decode("utf-8","replace").replace('\uFFFD', '')  # Receive data (adjust buffer size if needed)
         print(handshake)
         if not handshake.startswith("[CONNECTED] "):
             raise ConnectionError(f"Invalid handshake: {handshake}")
         controller.setAddress(handshake.replace('[CONNECTED] ',''))
         client_socket.sendall(f"[CONNECTED] {controller.role}".encode("utf-8"))
-        controller.subscribe(lambda content: client_socket.sendall(content.encode("utf-8")), callback_type, f"{host}:{port}", relay=relay)
+        controller.subscribe(client_socket.sendall, callback_type, host_addr, relay=relay)
+        listen_socket = create_listen_socket_callback(client_socket=client_socket, relay=relay)
+        listen_key = host_addr # if relay else 'main'
+        controller.callbacks['listen'][listen_key] = listen_socket
         
         terminate = threading.Event() if terminate is None else terminate
         while not terminate.is_set():
             try:
-                data = ''
-                while True:
-                    fragment = client_socket.recv(BYTESIZE).decode("utf-8","replace").replace('\uFFFD', '')  # Receive data (adjust buffer size if needed)
-                    data += fragment
-                    if len(fragment)==0 or len(fragment) < BYTESIZE:
-                        break
-                if not data:  # Client disconnected
-                    time.sleep(1)
-                    continue
-                if data == '[EXIT]':
-                    client_socket.sendall("[EXIT]".encode("utf-8"))
-                    break
-                logger.debug(f"Received from server: {data}")
-                logger.debug(data)
-                receive_method(data)
-            except Exception as e:
-                logger.error(f"Error listening server: {e}")
+                data = listen_socket()
+                receive_method(data, sender=listen_key)
+            except EOFError:
+                continue
+            except (InterruptedError, Exception):
                 break
+        
     except Exception as e:
         logger.error(f"Error connecting to server: {e}")
     else:
         logger.warning(f"Disconnected from server [{host}:{port}]")
+    
+    # Clean up
+    controller.unsubscribe(callback_type, host_addr)
+    controller.unsubscribe('listen', listen_key)
     return
