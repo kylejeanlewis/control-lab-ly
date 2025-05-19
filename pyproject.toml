@@ -31,14 +31,12 @@ dependencies = [
     "matplotlib>=3.9",
     "numpy>=2.0",
     "opencv_python>=4.5.0",
-    "pandas>=1.2",
+    "pandas>=2.0",
     "parse>=1.20",
     "PyMeasure>=0.15",
     "pyModbusTCP>=0.2",
     "pyserial>=3.5",
-    "PyVISA>=1.12",
-    "PyVISA-py>=0.7",
-    "PyYAML>=6.0",
+    "PyYAML>=6.0.1",
     "scipy>=1.14"
 ]
 
@@ -51,9 +49,10 @@ Tracker = "https://github.com/kylejeanlewis/control-lab-le/issues"
 
 [project.optional-dependencies]
 testing = [
-    "mypy>=0.910",
+    # "mypy>=0.910",
     "pytest>=6.2",
     "pytest-cov>=2.11",
+    "pytest-rerunfailures>=15.0",
     "pytest-xdist>=3.6",
     "tox>=3.24"
 ]
