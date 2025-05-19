@@ -20,8 +20,8 @@ from types import SimpleNamespace
 from typing import Any
 
 # Local imports
-from ....core import connection
-from ....external.Dobot_Arm import DobotApiDashboard, DobotApiMove
+from .....core import connection
+from .....external.Dobot_Arm import DobotApiDashboard, DobotApiMove
 
 logger = logging.getLogger("controllably.Move")
 logger.setLevel(logging.DEBUG)
