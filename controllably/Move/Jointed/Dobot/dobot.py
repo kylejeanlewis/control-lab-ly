@@ -25,7 +25,7 @@ from scipy.spatial.transform import Rotation
 # Local application imports
 from ....core.position import Position
 from .. import RobotArm
-from .dobot_api.dobot_api import DobotDevice
+from .dobot_api import DobotDevice
 
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
