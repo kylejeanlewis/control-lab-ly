@@ -205,7 +205,7 @@ def start_server(host: str = HOST, port: int = PORT):
         else:
             print("Server is not running or returned an error status code")
     except requests.ConnectionError:
-        print("Server is not running")
+        print("Server was not running, starting server now...")
         uvicorn.run(app, host='0.0.0.0', port=port)
     
 # Start the server if not yet running
