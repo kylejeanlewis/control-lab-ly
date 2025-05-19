@@ -7,7 +7,7 @@ from typing import Sequence
 # Local application imports
 from ...core.position import Position, Deck
 from ...Make.Heat import HeaterMixin
-from .cartesian_utils import Gantry
+from .cartesian import Gantry
 
 logger = logging.getLogger("controllably.Move")
 logger.debug(f"Import: OK <{__name__}>")

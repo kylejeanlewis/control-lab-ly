@@ -20,7 +20,7 @@ from scipy.spatial.transform import Rotation
 
 # Local application imports
 from ...core.position import BoundingBox, Position, Deck
-from ..gcode_utils import GCode
+from .. import GCode
 
 logger = logging.getLogger("controllably.Move")
 logger.debug(f"Import: OK <{__name__}>")
