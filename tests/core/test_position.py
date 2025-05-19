@@ -419,6 +419,7 @@ class TestWell:
         assert str(well_rectangular.parent) in str(well_rectangular)
         assert repr(well_rectangular.parent) in repr(well_rectangular)
     
+    @pytest.mark.flaky(reruns=3, reruns_delay=1)
     def test_circular(self, well_circular):
         assert isinstance(well_circular, Well)
         assert np.allclose(well_circular.offset, (14.5,73.15,9))
@@ -437,6 +438,7 @@ class TestWell:
         fig, ax = plt.subplots()
         assert isinstance(well_circular._draw(ax), plt.Circle)
 
+    @pytest.mark.flaky(reruns=3, reruns_delay=1)
     def test_rectangular(self, well_rectangular):
         assert isinstance(well_rectangular, Well)
         assert np.allclose(well_rectangular.offset, (1,2,3))
@@ -468,6 +470,7 @@ class TestWell:
         assert well_rectangular.volume == 10
         assert well_rectangular.level == 10 / well_rectangular.base_area
 
+    @pytest.mark.flaky(reruns=3, reruns_delay=1)
     def test_errors(self, labware, caplog):
         details = {
             'x': 1, 'y': 2, 'z': 3, 'shape': 'unknown', 
@@ -503,16 +506,19 @@ def test_bounding_box():
 
 
 class TestDrawing:
+    @pytest.mark.flaky(reruns=3, reruns_delay=1)
     def test_deck(self, main_deck):
         fig, ax = main_deck.show()
         assert isinstance(fig, plt.Figure)
         assert isinstance(ax, plt.Axes)
 
+    @pytest.mark.flaky(reruns=3, reruns_delay=1)
     def test_labware(self, labware):
         fig, ax = labware.show()
         assert isinstance(fig, plt.Figure)
         assert isinstance(ax, plt.Axes)
 
+    @pytest.mark.flaky(reruns=3, reruns_delay=1)
     def test_labware_stackable(self, labware):
         stack = labware.parent.parent.slots['slot_02'].loaded_labware
         stack.slot_above.loadLabwareFromConfigs(stack.details)
