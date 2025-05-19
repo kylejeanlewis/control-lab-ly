@@ -18,7 +18,7 @@ from scipy.spatial.transform import Rotation
 
 # Local application imports
 from ...core.position import Position
-from ..move_utils import Mover
+from .. import Mover
 
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
