@@ -1,5 +1,6 @@
 mypy>=0.910
 pytest>=6.2
 pytest-cov>=2.11
+pytest-rerunfailures>=15.0
 pytest-xdist>=3.6
 tox>=3.24
