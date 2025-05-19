@@ -26,7 +26,7 @@ import numpy as np
 
 # Local application imports
 from ....core.position import Position, Deck, BoundingVolume
-from .dobot_utils import Dobot
+from . import Dobot
 
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
