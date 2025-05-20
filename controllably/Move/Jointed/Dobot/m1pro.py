@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-This module provides methods to control Dobot's MG400 robot arm
+This module provides methods to control Dobot's M1Pro robot arm
 
 Attributes:
     DEFAULT_SPEEDS (dict): default speeds of the robot
     
 ## Classes:
-    `MG400`: MG400 provides methods to control Dobot's MG400 robot arm
-
+    `M1Pro`: M1Pro provides methods to control Dobot's M1Pro robot arm
+    
 ## Functions:
-    `within_volume`: checks whether a point is within the robot's workspace
+    `within_volume`: check if a point is within the robot's workspace
 
 <i>Documentation last updated: 2025-02-22</i>
 """
@@ -17,20 +17,21 @@ Attributes:
 from __future__ import annotations
 import logging
 import math
+import time
 from types import SimpleNamespace
 from typing import Sequence
 
-# Third party imports
+# Third-party imports
 import numpy as np
 
 # Local application imports
 from ....core.position import Position, Deck, BoundingVolume
-from .dobot_utils import Dobot
+from . import Dobot
 
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
 
-DEFAULT_SPEEDS = dict(max_speed_j1=300, max_speed_j2=300, max_speed_j3=300, max_speed_j4=300)
+DEFAULT_SPEEDS = dict(max_speed_j1=180, max_speed_j2=180, max_speed_j3=1000, max_speed_j4=1000)
 
 def within_volume(point: Sequence[float]) -> bool:
     """ 
@@ -44,39 +45,43 @@ def within_volume(point: Sequence[float]) -> bool:
     """
     assert len(point) == 3, f"Ensure point is a 3D coordinate"
     x,y,z = point
-    # XY-plane
-    j1 = round(math.degrees(math.atan(x/(y + 1E-6))), 3)
-    if y < 0:
-        j1 += (180 * math.copysign(1, x))
-    if abs(j1) > 160:
-        return False
     # Z-axis
-    if not (-150 < z < 230):
+    if not (5 <= z <= 245):
+        return False
+    # XY-plane
+    if x >= 0:                                  # main working space
+        r = (x**2 + y**2)**0.5
+        if not (153 <= r <= 400):
+            return False
+    elif abs(y) < 230/2:                        # behind the robot
+        return False
+    elif (x**2 + (abs(y)-200)**2)**0.5 > 200:
         return False
     return True
 
-class MG400(Dobot):
+class M1Pro(Dobot):
     """
-    MG400 provides methods to control Dobot's MG400 robot arm
-
+    M1Pro provides methods to control Dobot's M1Pro robot arm
+    
     ### Constructor
         `host` (str): IP address of Dobot
         `joint_limits` (Sequence[Sequence[float]]|None, optional): joint limits of the robot. Defaults to None.
+        `right_handed` (bool, optional): whether the robot is in right-handed mode (i.e elbow bends to the right). Defaults to True.
         `robot_position` (Position, optional): current position of the robot. Defaults to Position().
         `home_waypoints` (Sequence[Position], optional): home waypoints for the robot. Defaults to list().
-        `home_position` (Position, optional): home position of the robot in terms of robot coordinate system. Defaults to Position((0,300,0)).
+        `home_position` (Position, optional): home position of the robot in terms of robot coordinate system. Defaults to Position((300,0,240)).
         `tool_offset` (Position, optional): tool offset from robot to end effector. Defaults to Position().
         `calibrated_offset` (Position, optional): calibrated offset from robot to work position. Defaults to Position().
         `scale` (float, optional): factor to scale the basis vectors by. Defaults to 1.0.
         `deck` (Deck|None, optional): Deck object for workspace. Defaults to None.
-        `safe_height` (float|None, optional): safe height in terms of robot coordinate system. Defaults to 75.
+        `safe_height` (float|None, optional): safe height in terms of robot coordinate system. Defaults to 240.
         `saved_positions` (dict, optional): dictionary of saved positions. Defaults to dict().
         `speed_max` (float|None, optional): maximum speed of robot in mm/min. Defaults to None.
         `movement_buffer` (int|None, optional): buffer time for movement. Defaults to None.
         `movement_timeout` (int|None, optional): timeout for movement. Defaults to None.
         `verbose` (bool, optional): whether to output logs. Defaults to False.
         `simulation` (bool, optional): whether to simulate the robot. Defaults to False.
-    
+        
     ### Attributes and properties
         `movement_buffer` (int): buffer time for movement
         `movement_timeout` (int): timeout for movement
@@ -108,9 +113,9 @@ class MG400(Dobot):
         `work_position` (Position): work position of the robot
         `worktool_position` (Position): work position of the tool end effector
         `position` (Position): work position of the tool end effector; alias for `worktool_position`
-    
+        
     ### Methods
-        `retractArm`: retract arm, rotate about base, then extend again
+        `setHandedness`: set the handedness of the robot
         `isFeasibleJoint`: checks and returns whether the target joint angles are feasible
         `jointMoveBy`: move the robot by target joint angles
         `jointMoveTo`: move the robot to target joint position
@@ -152,20 +157,21 @@ class MG400(Dobot):
         `calibrate`: calibrate the internal and external coordinate systems
     """
     
-    _default_flags = SimpleNamespace(busy=False, connected=False, right_handed=False, stretched=False)
+    _default_flags = SimpleNamespace(busy=False, connected=False, right_handed=False)
     _default_speeds = DEFAULT_SPEEDS
     def __init__(self, 
         host: str,
         joint_limits: Sequence[Sequence[float]]|None = None,
+        right_handed: bool = True, 
         *,
         robot_position: Position = Position(),
         home_waypoints: Sequence[Position]|None = None,
-        home_position: Position = Position((0,300,0)),                # in terms of robot coordinate system
+        home_position: Position = Position((300,0,240)),                # in terms of robot coordinate system
         tool_offset: Position = Position(),
         calibrated_offset: Position = Position(),
         scale: float = 1.0,
         deck: Deck|None = None,
-        safe_height: float|None = 75,                                  # in terms of robot coordinate system
+        safe_height: float|None = 240,                                  # in terms of robot coordinate system
         saved_positions: dict|None = None,                                 # in terms of robot coordinate system
         speed_max: float|None = None,                                   # in mm/min
         movement_buffer: int|None = None,
@@ -175,19 +181,20 @@ class MG400(Dobot):
         **kwargs
     ):
         """
-        Initialize MG400 class
+        Initialize M1Pro class
         
         Args:
             host (str): IP address of Dobot
             joint_limits (Sequence[Sequence[float]]|None, optional): joint limits of the robot. Defaults to None.
+            right_handed (bool, optional): whether the robot is in right-handed mode (i.e elbow bends to the right). Defaults to True.
             robot_position (Position, optional): current position of the robot. Defaults to Position().
             home_waypoints (Sequence[Position], optional): home waypoints for the robot. Defaults to list().
-            home_position (Position, optional): home position of the robot in terms of robot coordinate system. Defaults to Position((0,300,0)).
+            home_position (Position, optional): home position of the robot in terms of robot coordinate system. Defaults to Position((300,0,240)).
             tool_offset (Position, optional): tool offset from robot to end effector. Defaults to Position().
             calibrated_offset (Position, optional): calibrated offset from robot to work position. Defaults to Position().
             scale (float, optional): factor to scale the basis vectors by. Defaults to 1.0.
             deck (Deck|None, optional): Deck object for workspace. Defaults to None.
-            safe_height (float|None, optional): safe height in terms of robot coordinate system. Defaults to 75.
+            safe_height (float|None, optional): safe height in terms of robot coordinate system. Defaults to 240.
             saved_positions (dict, optional): dictionary of saved positions. Defaults to dict().
             speed_max (float|None, optional): maximum speed of robot in mm/min. Defaults to None.
             movement_buffer (int|None, optional): buffer time for movement. Defaults to None.
@@ -209,39 +216,76 @@ class MG400(Dobot):
         )
         self._speed_max = max(self._default_speeds.values()) if speed_max is None else speed_max
         self.settings.update(self._default_speeds)
-        self.retractArm()
+        self.setHandedness(right_handed=right_handed, stretch=False)
         self.home()
         return
     
-    def retractArm(self, target:Sequence[float]|None = None) -> Position:
+    def isFeasible(self, coordinates: Sequence[float]|np.ndarray, external: bool = True, tool_offset:bool = True) -> bool:
         """
-        Retract arm, rotate about base, then extend again
+        Checks and returns whether the target coordinates is feasible. Also sets the handedness of the robot if necessary.
+        
+        Args:
+            coordinates (Sequence[float]|np.ndarray): target coordinates
+            external (bool, optional): whether the target coordinates are in external coordinates. Defaults to True.
+            tool_offset (bool, optional): whether to consider the tool offset. Defaults to True.
+            
+        Returns:
+            bool: whether the target coordinates are feasible
+        """
+        feasible = super().isFeasible(coordinates=coordinates, external=external, tool_offset=tool_offset)
+        if not feasible:
+            return False
+        position = Position(coordinates)
+        in_pos = position
+        if external:
+            in_pos = self.transformWorkToRobot(position, self.calibrated_offset, self.scale)
+            in_pos = self.transformToolToRobot(in_pos, self.tool_offset) if tool_offset else in_pos
+        x,y,_ = position.coordinates
+        
+        grad = abs(y/(x+1E-6))
+        gradient_threshold = 0.25
+        if grad > gradient_threshold or x < 0:
+            right_handed = (y>0)
+            # stretch = (self.robot_position.y/y) > 0
+            self.setHandedness(right_handed=right_handed, stretch=False) 
+        return feasible
+
+    def setHandedness(self, right_handed:bool, stretch:bool = False) -> bool:
+        """
+        Set the handedness of the robot
 
         Args:
-            target (tuple[float]|None, optional): x,y,z coordinates of destination. Defaults to None.
+            right_handed (bool): whether to select right-handedness
+            stretch (bool, optional): whether to stretch the arm. Defaults to False.
 
         Returns:
-            Position: current position of the robot
+            bool: whether movement is successful
         """
-        safe_radius = 225
-        x,y,_ = self.robot_position.coordinates
-        if any((x,y)):
-            w = ( (safe_radius**2)/(x**2 + y**2) )**0.5
-            x,y = (x*w,y*w)
-        else:
-            x,y = (0,safe_radius)
+        if right_handed == self.flags.right_handed:
+            return False
+        
+        self.device.SetArmOrientation(right_handed)
+        time.sleep(2)
+        self.flags.right_handed = right_handed
+        if stretch:
+            self.stretchArm()
+        return True
+            
+    def stretchArm(self) -> bool:
+        """
+        Extend the arm to full reach
+        
+        Returns:
+            bool: whether movement is successful
+        """
+        x,y,z = self.robot_position.coordinates
+        y_stretch = math.copysign(240, y)
+        self.moveToSafeHeight()
+        self.moveTo((320,y_stretch,self.safe_height))
         self.moveTo((x,y,self.safe_height))
-
-        if target is not None and len(target) == 3:
-            x1,y1,_ = target
-            if any((x1,y1)):
-                w1 = ( (safe_radius**2)/(x1**2 + y1**2) )**0.5
-                x1,y1 = (x1*w1,y1*w1)
-            else:
-                x1,y1 = (0,safe_radius)
-            self.moveTo((x1,y1,self.safe_height))
-        return self.robot_position
-    
+        self.moveTo((x,y,z))
+        return True
+   
     # Protected method(s)
     def _convert_cartesian_to_angles(self, src_point:np.ndarray, dst_point: np.ndarray) -> np.ndarray:
         """
@@ -256,8 +300,26 @@ class MG400(Dobot):
         """
         assert len(src_point) == 3 and len(dst_point) == 3, f"Ensure both points are 3D coordinates"
         assert isinstance(src_point, np.ndarray) and isinstance(dst_point, np.ndarray), f"Ensure both points are numpy arrays"
-        distances = abs(dst_point - src_point)
-        dx,dy,dz = distances[:3]
-        j1_angle = abs( math.degrees(math.atan2(dy, dx)) )                    # joint 1
-        j2_angle = math.degrees(math.atan2(dz, np.linalg.norm([dx,dy])))      # joint 2
-        return np.array((j1_angle, j2_angle, dz))
+        right_handed = 2*(int(self.flags.right_handed)-0.5) # 1 if right-handed; -1 if left-handed
+        x1,y1,z1 = src_point
+        x2,y2,z2 = dst_point
+        r1 = (x1**2 + y1**2)**0.5
+        r2 = (x2**2 + y2**2)**0.5
+        
+        assert r1<=400, f"Check values for {r1=}, {x1=}, {y1=}"
+        assert r2<=400, f"Check values for {r2=}, {x2=}, {y2=}"
+        theta1 = math.degrees(math.atan2(y1, x1))
+        theta2 = math.degrees(math.atan2(y2, x2))
+        phi1 = math.degrees(math.acos(r1/400)) * (-right_handed)
+        phi2 = math.degrees(math.acos(r2/400)) * (-right_handed)
+        
+        src_j1_angle = theta1 + phi1
+        dst_j1_angle = theta2 + phi2
+        j1_angle = abs(dst_j1_angle - src_j1_angle)
+        
+        src_j2_angle = 2*phi1 * right_handed
+        dst_j2_angle = 2*phi2 * right_handed
+        j2_angle = abs(dst_j2_angle - src_j2_angle)
+        
+        z_travel = abs(z2 - z1)
+        return np.array((j1_angle, j2_angle, z_travel))

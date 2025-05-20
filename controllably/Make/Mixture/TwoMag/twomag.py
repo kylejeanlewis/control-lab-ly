@@ -11,7 +11,7 @@ This module contains the TwoMagStirrer class, which is a wrapper for the TwoMagD
 from __future__ import annotations
 
 # Local application imports
-from ...make_utils import Maker
+from ... import Maker
 from .twomag_api import TwoMagDevice, MIXdrive
 
 class TwoMagStirrer(Maker):

@@ -846,7 +846,8 @@ class SerialDevice(BaseDevice):
     
     def checkDeviceConnection(self):
         """Check the connection to the device"""
-        return self.serial.is_open
+        self.flags.connected = self.serial.is_open
+        return self.flags.connected
     
     def clear(self):
         """Clear the input and output buffers"""
@@ -1047,8 +1048,10 @@ class SocketDevice(BaseDevice):
             self.socket.sendall('\n'.encode('utf-8'))
             self.socket.sendall('\n'.encode('utf-8'))
         except OSError:
+            self.flags.connected = False
             return False
-        return (self.socket.fileno() == self._current_socket_ref) and (self.socket.fileno() != -1)
+        self.flags.connected =(self.socket.fileno() == self._current_socket_ref) and (self.socket.fileno() != -1)
+        return self.flags.connected
     
     def clear(self):
         """Clear the input and output buffers"""

@@ -24,7 +24,7 @@ import pandas as pd
 import threading
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, NamedTuple, Iterable
+from typing import Any, NamedTuple, Iterable, Callable
 
 # Local application imports
 from ..core import datalogger, factory
@@ -95,7 +95,7 @@ class Measurer:
         self.record_event = threading.Event()
         
         # Measurer specific attributes
-        self.program: Program|None = None
+        self.program: Program|Any|None = None
         self.runs = dict()
         self.n_runs = 0
         self._threads = dict()
@@ -145,7 +145,7 @@ class Measurer:
     def records_df(self) -> pd.DataFrame:
         """Records as a DataFrame"""
         return self.getDataframe(data_store=self.records)
-    
+
     def connect(self):
         """Connect to the device"""
         self.device.connect()
@@ -205,7 +205,7 @@ class Measurer:
         new_run.run(*args, **kwargs)
         return new_run.data_df
         
-    def loadProgram(self, program: Program):
+    def loadProgram(self, program: Program, docstring_parser: Callable[[Any,bool],ProgramDetails]|None = None):
         """
         Load a program to the Measurer
         
@@ -214,7 +214,10 @@ class Measurer:
         """
         assert issubclass(program, Program), "Ensure program type is a subclass of Program"
         self.program = program
-        self.measure.__func__.__doc__ = program.parseDocstring(program, verbose=self.verbose)
+        if docstring_parser is None and hasattr(program, 'parseDocstring'):
+            docstring_parser = program.parseDocstring
+        if docstring_parser is not None:
+            self.measure.__func__.__doc__ = docstring_parser(program, verbose=self.verbose)
         return
         
     def clearCache(self):
@@ -237,6 +240,7 @@ class Measurer:
             Any|None: data from device
         """
         if not self.device.stream_event.is_set():
+            self.device.clear()
             return self.device.query(query, multi_out=False)
         
         data_store = self.records if self.record_event.is_set() else self.buffer
@@ -460,7 +464,9 @@ class ProgramDetails:
             text += f"\n\nArgs:"
             for k,v in self.parameter_descriptions.items():
                 parameter = self.signature.parameters[k]
-                text += f"\n    {parameter.name} ({parameter.annotation}): {v}."
+                text += f"\n    {parameter.name} ({parameter.annotation}): {v}"
+                if not v.endswith('.'):
+                    text += "."
                 if parameter.default != inspect.Parameter.empty:
                     text += f" Defaults to {parameter.default}."
         if len(self.return_descriptions):
