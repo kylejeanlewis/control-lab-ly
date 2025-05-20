@@ -1,13 +1,13 @@
 # %%
 import test_init
-from controllably.core.implementations.control import create_socket_user
+from controllably.examples.control.socket import create_socket_user
 from controllably.core.connection import get_host
 
 from controllably.core.control import Proxy, TwoTierQueue
 from controllably.Move.Cartesian import Gantry
 from controllably.Transfer.Liquid.Pipette.Sartorius.sartorius import Sartorius
 from controllably.Transfer.Liquid.Pump.TriContinent.tricontinent import TriContinent
-from controllably.core.implementations.gui import MovePanel, LiquidPanel
+from controllably.examples.gui.tkinter import MovePanel, LiquidPanel
 
 import logging
 logger = logging.getLogger()

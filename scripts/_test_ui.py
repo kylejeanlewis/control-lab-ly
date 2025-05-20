@@ -2,10 +2,10 @@
 import tkinter as tk
 
 import test_init
-from controllably.core.implementations.gui import gui
-from controllably.core.implementations.gui import move_gui
-from controllably.core.implementations.gui import transfer_gui
-from controllably.core.implementations.gui import view_gui
+from controllably.examples.gui.tkinter import gui
+from controllably.examples.gui.tkinter import move_gui
+from controllably.examples.gui.tkinter import transfer_gui
+from controllably.examples.gui.tkinter import view_gui
 
 # %%
 # import importlib

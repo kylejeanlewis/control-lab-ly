@@ -1,6 +1,6 @@
 # %%
 from controllably.core.control import TwoTierQueue
-from controllably.core.implementations.control.control_utils import create_socket_worker
+from controllably.examples.control.socket import create_socket_worker
 from controllably.core.connection import get_host
 
 # %%
