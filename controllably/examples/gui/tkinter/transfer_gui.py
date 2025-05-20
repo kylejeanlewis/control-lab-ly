@@ -22,7 +22,7 @@ from tkinter import ttk
 from typing import Protocol
 
 # Local application imports
-from ....control import Proxy
+from ....core.control import Proxy
 from .gui import Panel
 
 logger = logging .getLogger(__name__)

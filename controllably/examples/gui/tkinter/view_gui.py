@@ -30,7 +30,7 @@ import numpy as np
 from PIL import Image, ImageTk
 
 # Local application imports
-from ....control import Proxy
+from ....core.control import Proxy
 from .gui import Panel
 
 logger = logging .getLogger(__name__)

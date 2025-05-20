@@ -22,8 +22,8 @@ import time
 from typing import Callable, Any
 
 # Local application imports
-from ....control import Controller
-from ....interpreter import JSONInterpreter
+from ....core.control import Controller
+from ....core.interpreter import JSONInterpreter
 
 BYTESIZE = 1024
 

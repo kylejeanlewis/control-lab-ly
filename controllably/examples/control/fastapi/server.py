@@ -10,8 +10,8 @@ import json
 from typing import Any
 
 # Local application imports
-from ....control import Controller
-from ....interpreter import JSONInterpreter
+from ....core.control import Controller
+from ....core.interpreter import JSONInterpreter
 
 PORT = 8000
 HOST = 'http://localhost'

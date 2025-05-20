@@ -21,8 +21,8 @@ from tkinter import ttk
 from typing import Protocol
 
 # Local application imports
-from ....position import Position
-from ....control import Proxy
+from ....core.position import Position
+from ....core.control import Proxy
 from .gui import Panel
 
 logger = logging .getLogger(__name__)

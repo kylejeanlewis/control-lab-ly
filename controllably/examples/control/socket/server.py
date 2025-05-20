@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from ....connection import get_host
-from ..control_utils import create_socket_hub
+from ....core.connection import get_host
+from .utils import create_socket_hub
 import time
 
 PORT = 12345

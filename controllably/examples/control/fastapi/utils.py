@@ -23,8 +23,8 @@ from typing import Any, Callable
 import urllib3
 
 # Local application imports
-from ....control import Controller
-from ....interpreter import JSONInterpreter
+from ....core.control import Controller
+from ....core.interpreter import JSONInterpreter
 
 CONNECTION_ERRORS = (ConnectionRefusedError, ConnectionError, urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError)
 
