@@ -95,7 +95,7 @@ class Measurer:
         self.record_event = threading.Event()
         
         # Measurer specific attributes
-        self.program: Program|None = None
+        self.program: Program|Any|None = None
         self.runs = dict()
         self.n_runs = 0
         self._threads = dict()
@@ -240,6 +240,7 @@ class Measurer:
             Any|None: data from device
         """
         if not self.device.stream_event.is_set():
+            self.device.clear()
             return self.device.query(query, multi_out=False)
         
         data_store = self.records if self.record_event.is_set() else self.buffer
