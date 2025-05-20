@@ -1,78 +1,128 @@
 import pytest
-import time
+import logging
+from types import SimpleNamespace
 from typing import Sequence
 
-from controllably.Make.Vacuum import VacuumMixin
-from controllably.Move.Cartesian import Gantry
-from controllably.core.connection import get_ports
-from controllably.core.position import Position, Deck
+import numpy as np
 
-PORT = 'COM3'
+from controllably.Compound.VacuumMover import VacuumGantry
+from controllably.core.connection import get_ports
+from controllably.core.position import Position
+
+PORT = 'COM9'
+LOADING_POSITION = (-118,0,0)
+CLOSING_WAYPOINTS = ((-3,0,0),(-3,-27,0))
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
    
-class GantryVacuum(VacuumMixin, Gantry):
+class VacuumChamber(VacuumGantry):
+    _default_flags = SimpleNamespace(busy=False, verbose=False, vented=True, closed=False)
     def __init__(self, 
         port: str,
         limits: Sequence[Sequence[float]] = ((0,0,0),(0,0,0)),          # in terms of robot coordinate system
-        *, 
-        robot_position: Position = Position(),
-        home_position: Position = Position(),                           # in terms of robot coordinate system
-        tool_offset: Position = Position(),
-        calibrated_offset: Position = Position(),
-        scale: float = 1.0,
-        deck: Deck|None = None,
-        safe_height: float|None = None,                                 # in terms of robot coordinate system
-        speed_max: float|None = None,                                   # in mm/min
-        device_type_name: str = 'GRBL',
-        baudrate: int = 115200, 
-        movement_buffer: int|None = None,
-        movement_timeout: int|None = None,
-        vacuum_on_delay: float = 3,
-        vacuum_off_delay: float = 3,
-        verbose: bool = False, 
-        simulation: bool = False,
+        loading_position:Sequence[int|float]|np.ndarray|None = None,
+        closing_waypoints:Sequence[Sequence[int|float]]|np.ndarray|None = None,
         **kwargs
     ):
         super().__init__(
-            port=port, baudrate=baudrate, limits=limits,
-            robot_position=robot_position, home_position=home_position,
-            tool_offset=tool_offset, calibrated_offset=calibrated_offset, scale=scale, 
-            deck=deck, safe_height=safe_height, speed_max=speed_max, 
-            device_type_name=device_type_name, movement_buffer=movement_buffer, 
-            movement_timeout=movement_timeout, verbose=verbose, simulation=simulation,
-            message_end='\r\n',
-            **kwargs
+            port=port, limits=limits, **kwargs
         )
-        self.vacuum_delays = dict(on=vacuum_on_delay, off=vacuum_off_delay)
+        loading_position = loading_position if loading_position is not None else LOADING_POSITION
+        closing_waypoints = closing_waypoints if closing_waypoints is not None else CLOSING_WAYPOINTS
+        self.loading_position = Position(loading_position)
+        self.closing_waypoints = [Position(wp) for wp in closing_waypoints]
         return
     
-    def home(self, axis: str|None = None, *, timeout:int|None = None) -> bool:  # TODO: implement state file / saving in case of unexpected power outage
-        timeout = self.movement_timeout if timeout is None else timeout
-        order = ('Z', 'X', 'Y')
-        if axis is not None:
-            order = (axis,)
-        for axis in order:
-            success = self.device.home(axis=axis, timeout=timeout)
-            if not success:
-                return False
-            xyz = [(coord if axis.upper()!=ax else 0) for coord,ax in zip(self.robot_position.coordinates,'XYZ')]
-            print(xyz)
-            self.updateRobotPosition(to=Position(xyz))
-        self.rotateTo(self.home_position.Rotation)
-        time.sleep(self.movement_buffer)
-        self.updateRobotPosition(to=self.home_position)
-        # logger.info(f"Homed | axis={axis}")
-        return True
+    # VacuumMixin methods
+    def evacuate(self):
+        if not self.flags.closed:
+            logger.warning("Please close the chamber before evacuating.")
+            return
+        super().evacuate()
+        self.flags.vented = False
+        return
 
-    def toggleVacuum(self, on: bool):
-        return self.toggleCoolantValve(on=on)
+    # Movement methods
+    def home(self):
+        """Make the robot go home"""
+        if not self.flags.vented:
+            self.vent()
+        super().home()
+        self.flags.closed = False
+        return 
+    
+    def moveBy(self,
+        by: Sequence[float]|Position|np.ndarray,
+        speed_factor: float|None = None,
+        *,
+        jog: bool = False,
+        rapid: bool = False,
+        robot: bool = False
+    ) -> Position:
+        if self.flags.closed:
+            logger.warning("Please home before moving.")
+            return
+        return super().moveBy(by, speed_factor=speed_factor, jog=jog, rapid=rapid, robot=robot)
+    
+    def moveTo(self,
+        to: Sequence[float]|Position|np.ndarray,
+        speed_factor: float|None = None,
+        *,
+        jog: bool = False,
+        rapid: bool = False,
+        robot: bool = False
+    ) -> Position:
+        if self.flags.closed:
+            logger.warning("Please home before moving.")
+            return
+        return super().moveTo(to, speed_factor=speed_factor, jog=jog, rapid=rapid, robot=robot)
+
+    # Combined methods
+    def closeChamber(self):
+        """Close the chamber"""
+        if self.flags.closed:
+            return
+        # Descend
+        for wp in self.closing_waypoints:
+            self.moveTo(wp)
+        self.flags.closed = True
+        return
+    
+    def openChamber(self, loading_position:bool = False):
+        """
+        Open the chamber, making sure to vent the chamber and home first
+        
+        Args:
+            loading_position (bool, optional): whether to move to loading position. Defaults to False.
+        """
+        self.vent()
+        self.home()
+        if loading_position:
+            self.moveTo(self.loading_position)
+        self.flags.closed = False
+        return
 
 
 @pytest.fixture(scope="session")
-def gantry_vacuum():
-    gv = GantryVacuum(port=PORT)
-    return gv
+def vacuum_chamber():
+    vc = VacuumChamber(port=PORT)
+    return vc
 
-    
 @pytest.mark.skipif((PORT not in get_ports()), reason="Requires serial connection to device")
-def test_gantry_vacuum(gantry_vacuum):
-    ...
+def test_vacuum_chamber(vacuum_chamber):
+    vacuum_chamber.home()
+    vacuum_chamber.openChamber(loading_position=True)
+    vacuum_chamber.closeChamber()
+    vacuum_chamber.evacuate()
+    vacuum_chamber.vent()
+    vacuum_chamber.openChamber(loading_position=False)
+
+if __name__ == "__main__":
+    vc = VacuumChamber(port=PORT, limits=[[-118,-28,0],[0,0,0]])
+    vc.home()
+    vc.openChamber(loading_position=True)
+    vc.closeChamber()
+    vc.evacuate()
+    vc.vent()
+    vc.openChamber(loading_position=False)
