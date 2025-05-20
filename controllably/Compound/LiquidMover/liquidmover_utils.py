@@ -3,7 +3,7 @@
 This module holds the class for liquid mover setups.
 
 Classes:
-    LiquidMoverSetup (CompoundSetup)
+    LiquidMover (Liquid, Mover)
 """
 # Standard library imports
 from __future__ import annotations
@@ -17,8 +17,6 @@ import numpy as np
 # Local application imports
 from ...core.compound import Compound, Part
 from ...core.position import Well, Position, Labware, Deck
-
-# from ..compound_utils import CompoundSetup
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
