@@ -4,7 +4,7 @@ import time
 
 from controllably.core.control import Controller, Proxy, TwoTierQueue
 from controllably.core.interpreter import JSONInterpreter
-from controllably.core.implementations.control.socket_control import SocketClient, SocketServer
+from controllably.examples.control.socket.utils import SocketClient, SocketServer
 
 HOST = '127.0.0.1'
 PORT = 12345
