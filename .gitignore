@@ -112,7 +112,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-.sila_venv
+.venv_sila
 
 # Spyder project settings
 .spyderproject
