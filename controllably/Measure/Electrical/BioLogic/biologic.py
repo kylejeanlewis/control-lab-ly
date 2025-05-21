@@ -93,7 +93,7 @@ def parse_docstring(program_class:BiologicProgram, verbose:bool = True) -> Progr
 class BioLogic(Measurer):
     _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, connected=False, verbose=False)
     def __init__(self, 
-        address:str = '192.109.209.128', 
+        host:str = '192.109.209.128', 
         timeout:int = 5, 
         populate_info:bool = True, 
         *, 
@@ -107,11 +107,11 @@ class BioLogic(Measurer):
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
         self.device: BiologicDevice|None = None
-        self._connection_details = dict(address=address, timeout=timeout, populate_info=populate_info)
-        if not match_current_ip_address(address):
-            raise ConnectionError(f"Device IP address {address} does not match current network IP address.")
+        self._connection_details = dict(host=host, timeout=timeout, populate_info=populate_info)
+        if not match_current_ip_address(host):
+            raise ConnectionError(f"Device IP address {host} does not match current network IP address.")
         try: 
-            self.device = BiologicDevice(address, timeout=timeout, populate_info=populate_info)
+            self.device = BiologicDevice(host, timeout=timeout, populate_info=populate_info)
         except ecl.EcError as e:
             print(e)
             raise ConnectionError('Could not establish communication with instrument.')
@@ -125,12 +125,12 @@ class BioLogic(Measurer):
         return self._connection_details
     
     @property
-    def address(self) -> str:
+    def host(self) -> str:
         """BioLogicDevice address"""
-        return self._connection_details.get('address', '')
-    @address.setter
-    def address(self, value:str):
-        self._connection_details['address'] = value
+        return self._connection_details.get('host', '')
+    @host.setter
+    def host(self, value:str):
+        self._connection_details['host'] = value
         return
     
     @property
@@ -152,15 +152,15 @@ class BioLogic(Measurer):
         """Connect to the device"""
         if self.is_connected:
             return
-        if not match_current_ip_address(self.address):
-            raise ConnectionError(f"Device IP address {self.address} does not match current network IP address.")
+        if not match_current_ip_address(self.host):
+            raise ConnectionError(f"Device IP address {self.host} does not match current network IP address.")
         try:
             self.device.connect()
         except (RuntimeError, ecl.EcError) as e:
-            self._logger.error(f"Failed to connect to {self.address}")
+            self._logger.error(f"Failed to connect to {self.host}")
             self._logger.debug(e)
         else:
-            self._logger.info(f"Connected to {self.address}")
+            self._logger.info(f"Connected to {self.host}")
             time.sleep(self.timeout)
         self.flags.connected = self.is_connected
         return
@@ -169,14 +169,13 @@ class BioLogic(Measurer):
         """Disconnect from the device"""
         if not self.is_connected:
             return
-        self.stopStream()
         try:
             self.device.disconnect()
         except (RuntimeError, ecl.EcError) as e:
-            self._logger.error(f"Failed to disconnect from {self.address}")
+            self._logger.error(f"Failed to disconnect from {self.host}")
             self._logger.debug(e)
         else:
-            self._logger.info(f"Disconnected from {self.address}")
+            self._logger.info(f"Disconnected from {self.host}")
         self.flags.connected = self.is_connected
         return
 
@@ -199,7 +198,7 @@ class BioLogic(Measurer):
         new_run = self.program(
             device = self.device, 
             params = parameters,
-            channels=channels
+            channels = channels
         )
         
         self.n_runs += 1
