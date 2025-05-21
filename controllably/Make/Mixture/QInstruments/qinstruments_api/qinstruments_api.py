@@ -262,7 +262,7 @@ class QInstrumentsDevice(SerialDevice):
             if isinstance(out.data, str) and out.data.startswith('u ->'):
                 error_message = f"{self.model} received an invalid command: {data!r}"
                 self._logger.error(error_message)
-                self.clear()
+                self.clearDeviceBuffer()
                 raise AttributeError(error_message)
             
             data_out = self.processOutput(out.data, format=format_out, data_type=data_type)

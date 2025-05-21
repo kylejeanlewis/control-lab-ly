@@ -321,7 +321,7 @@ class GCode(Mover):
             pass
         self.device.write(data)
         self.setSpeedFactor(self.speed_factor, persist=False)
-        self.device.clear()
+        self.device.clearDeviceBuffer()
         
         # Adding time delays to coincide with movement
         if not jog:
@@ -395,7 +395,7 @@ class GCode(Mover):
         for command in commands:
             self.query(command, jog=jog, wait=True)
         self.setSpeedFactor(self.speed_factor, persist=False)
-        self.device.clear()
+        self.device.clearDeviceBuffer()
         
         # Adding time delays to coincide with movement
         if not jog:

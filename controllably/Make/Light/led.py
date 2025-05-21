@@ -200,7 +200,7 @@ class LED(Maker, TimedDeviceMixin):
             all_power = list(all_power.values())
         all_power = all_power if isinstance(all_power, list) else [all_power]
         data = ';'.join([str(v) for v in all_power])
-        self.device.clear()
+        self.device.clearDeviceBuffer()
         self.device.query(data, multi_out=False)
         return
     

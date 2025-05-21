@@ -293,7 +293,7 @@ class SartoriusDevice(SerialDevice):
                 error_details = lib.ErrorCode[error_code].value
                 self._logger.error(f"{self.model}-{self.channel} received an error from command: {error_code}")
                 self._logger.error(error_details)
-                self.clear()
+                self.clearDeviceBuffer()
                 if error_code != 'er4' or not self._repeat_query:
                     self._repeat_query = True
                     raise RuntimeError(error_details)

@@ -224,8 +224,6 @@ class ActuatedSensor(LoadCell):
         Returns:
             bool: whether movement is successful
         """
-        # if not self.device.write('H 0\n'):
-        #     return False
         self.query('H 0')
         time.sleep(1)
         while not self.atDisplacement(self.home_displacement):
@@ -237,12 +235,11 @@ class ActuatedSensor(LoadCell):
         self.device.connect()
         time.sleep(2)
         self.query('H 0')
-        # if not self.device.write('H 0\n'):
-        #     return False
         time.sleep(1)
         while not self.atDisplacement(self.home_displacement):
             time.sleep(0.1)
         self.displacement = self.home_displacement
+        self.device.clearDeviceBuffer()
         return True
     
     def move(self, by: float, speed: float|None = None) -> bool:
@@ -316,8 +313,8 @@ class ActuatedSensor(LoadCell):
                 if data is None:
                     continue
                 self.displacement = displacement
-                
         self.displacement = self.getDisplacement()
+        self.device.clearDeviceBuffer()
         return success
     
     def touch(self, 
@@ -347,6 +344,7 @@ class ActuatedSensor(LoadCell):
         return not success
     
     def query(self, *args, **kwargs):
+        self.device.clearDeviceBuffer()
         out:Data = self.device.query(*args, multi_out=False, format_out=OUT_FORMAT, data_type=Data, **kwargs)
         if out is None or len(out.data) == 0:
             return None

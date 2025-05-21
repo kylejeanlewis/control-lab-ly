@@ -224,6 +224,7 @@ class Measurer:
         
     def clearCache(self):
         """Clear the cache"""
+        self.device.clearDeviceBuffer()
         self.buffer.clear()
         self.records.clear()
         self.n_runs = 0
@@ -242,7 +243,7 @@ class Measurer:
             Any|None: data from device
         """
         if not self.device.stream_event.is_set():
-            self.device.clear()
+            self.device.clearDeviceBuffer()
             return self.device.query(query, multi_out=False)
         
         data_store = self.records if self.record_event.is_set() else self.buffer
@@ -286,6 +287,7 @@ class Measurer:
         Returns:
             pd.DataFrame: dataframe of data collected
         """
+        self.device.clearDeviceBuffer()
         return datalogger.record(
             on=on, show=show, clear_cache=clear_cache, data_store=self.records, 
             device=self.device, event=self.record_event
@@ -302,6 +304,7 @@ class Measurer:
         Returns:
             pd.DataFrame: dataframe of data collected
         """
+        self.device.clearDeviceBuffer()
         return datalogger.stream(
             on=on, show=show, data_store=self.buffer, device=self.device
         )

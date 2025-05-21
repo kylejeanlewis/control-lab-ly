@@ -147,7 +147,7 @@ class Marlin(SerialDevice):
         Returns:
             dict[str, int|float|str]: settings in the response
         """
-        self.clear()
+        self.clearDeviceBuffer()
         time.sleep(1)
         responses = self.query('M503')
         while len(responses)==0 or 'ok' not in responses[-1]:
@@ -200,9 +200,9 @@ class Marlin(SerialDevice):
         Returns:
             tuple[str, np.ndarray[float], np.ndarray[float]]: status, current position, home offset
         """
-        self.clear()
+        self.clearDeviceBuffer()
         responses = self.query('M114 R', multi_out=False)
-        self.clear()
+        self.clearDeviceBuffer()
         # responses = self.query('M105', multi_out=False)      # Check the current temperature
         if self.flags.simulation:
             return 'Idle', current_position, self._home_offset
@@ -249,7 +249,7 @@ class Marlin(SerialDevice):
         
         data = f'G28 {axis}'
         self.query(data, multi_out=False)
-        self.clear()
+        self.clearDeviceBuffer()
         while True:
             time.sleep(LOOP_INTERVAL)
             responses = self.read()

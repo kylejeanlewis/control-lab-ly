@@ -130,14 +130,14 @@ class LoadCell(Measurer):
         super().connect()
         if not self.is_connected:
             return
-        self.device.clear()
+        self.device.clearDeviceBuffer()
         start_time = time.perf_counter()
         while True:
             time.sleep(0.1)
             out = self.device.query(None,multi_out=False)
             if out is not None:
                 time.sleep(1)
-                self.device.clear()
+                self.device.clearDeviceBuffer()
                 break
             if (time.perf_counter()-start_time) > 5:
                 break

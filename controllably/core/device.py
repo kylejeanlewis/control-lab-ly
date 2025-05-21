@@ -90,7 +90,10 @@ class StreamingDevice(Protocol):
     stream_event: threading.Event
     threads: dict
     def clear(self):
-        """Clear the input and output buffers"""
+        """Clear the input and output buffers, and reset the data queue and buffer"""
+        
+    def clearDeviceBuffer(self):
+        """Clear the device input and output buffers"""
 
     def connect(self):
         """Connect to the device"""
@@ -337,14 +340,19 @@ class BaseDevice:
         """
         return self.connection.in_waiting() # Replace with specific implementation
     
+    def clearDeviceBuffer(self):
+        """Clear the device input and output buffers"""
+        ... # Replace with specific implementation to clear input and output buffers
+        return
+    
     def clear(self):
-        """Clear the input and output buffers"""
+        """Clear the input and output buffers, and reset the data queue and buffer"""
         self.stopStream()
         self.buffer = deque()
         self.data_queue = queue.Queue()
         if self.flags.simulation:
             return
-        ... # Replace with specific implementation to clear input and output buffers
+        self.clearDeviceBuffer()
         return
 
     def read(self) -> str:
@@ -849,11 +857,8 @@ class SerialDevice(BaseDevice):
         self.flags.connected = self.serial.is_open
         return self.flags.connected
     
-    def clear(self):
-        """Clear the input and output buffers"""
-        super().clear()
-        if self.flags.simulation:
-            return
+    def clearDeviceBuffer(self):
+        """Clear the device input and output buffers"""
         self.serial.reset_input_buffer()
         self.serial.reset_output_buffer()
         return
@@ -1053,12 +1058,9 @@ class SocketDevice(BaseDevice):
         self.flags.connected =(self.socket.fileno() == self._current_socket_ref) and (self.socket.fileno() != -1)
         return self.flags.connected
     
-    def clear(self):
-        """Clear the input and output buffers"""
-        super().clear()
+    def clearDeviceBuffer(self):
+        """Clear the device input and output buffers"""
         self._stream_buffer = ""
-        if self.flags.simulation:
-            return
         while True:
             try:
                 out = self.socket.recv(self.byte_size).decode("utf-8", "replace").strip('\r\n').replace('\uFFFD', '')

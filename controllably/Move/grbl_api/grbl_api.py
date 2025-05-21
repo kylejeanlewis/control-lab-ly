@@ -168,7 +168,7 @@ class GRBL(SerialDevice):
         Returns:
             list[str]: information in the response
         """
-        self.clear()
+        self.clearDeviceBuffer()
         responses = self.query('$I')
         if self.flags.simulation:
             return ['GRBL:1.1']
@@ -181,7 +181,7 @@ class GRBL(SerialDevice):
         Returns:
             dict[str, list[float]]: parameters in the response
         """
-        self.clear()
+        self.clearDeviceBuffer()
         responses = self.query('$#')
         parameters = {}
         if self.flags.simulation:
@@ -208,7 +208,7 @@ class GRBL(SerialDevice):
         Returns:
             dict[str, int|float|str]: settings in the response
         """
-        self.clear()
+        self.clearDeviceBuffer()
         responses = self.query('$$')
         while len(responses)==0 or 'ok' not in responses[-1]:
             if self.flags.simulation:
@@ -253,7 +253,7 @@ class GRBL(SerialDevice):
         Returns:
             dict[str, str]: state in the response
         """
-        self.clear()
+        self.clearDeviceBuffer()
         responses = self.query('$G')
         state = {}
         if self.flags.simulation:
@@ -283,9 +283,9 @@ class GRBL(SerialDevice):
         Returns:
             tuple[str, np.ndarray[float], np.ndarray[float]]: status, current position, home offset
         """
-        self.clear()
+        self.clearDeviceBuffer()
         responses = self.query('?',multi_out=False)
-        self.clear()
+        self.clearDeviceBuffer()
         status,current_position = '', np.array([0,0,0])
         if self.flags.simulation:
             return 'Idle', current_position, self._home_offset
@@ -327,7 +327,7 @@ class GRBL(SerialDevice):
         if axis is not None:
             assert axis.upper() in 'XYZ', "Ensure axis is X,Y,Z for GRBL"
         command = '$H' if axis is None else f'$H{axis.upper()}'
-        self.clear()
+        self.clearDeviceBuffer()
         self.query(command)
         while True:
             if self.flags.simulation:
@@ -396,7 +396,7 @@ class GRBL(SerialDevice):
     def connect(self):
         """Connect to the device"""
         super().connect()
-        self.clear()
+        self.clearDeviceBuffer()
         startup_lines = self.readAll()
         self.clearAlarms()
         info = self.getInfo()
