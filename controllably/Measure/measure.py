@@ -160,6 +160,8 @@ class Measurer:
         """Reset the device and clear cache"""
         self.clearCache()
         self.program = None
+        self.runs.clear()
+        self._threads.clear()
         return
     
     def resetFlags(self):
@@ -248,12 +250,12 @@ class Measurer:
         data,_ = out if out is not None else (None,None)
         return data
     
-    def getDataframe(self, data_store: Iterable[NamedTuple, datetime]) -> pd.DataFrame:
+    def getDataframe(self, data_store: Iterable[tuple[NamedTuple, datetime]]) -> pd.DataFrame:
         """
         Get dataframe of data collected
         
         Args:
-            data_store (Iterable[NamedTuple, datetime]): data store
+            data_store (Iterable[tuple[NamedTuple, datetime]]): data store
             
         Returns:
             pd.DataFrame: dataframe of data collected
