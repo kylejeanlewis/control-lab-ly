@@ -116,27 +116,8 @@ class BioLogic(Measurer):
             print(e)
             raise ConnectionError('Could not establish communication with instrument.')
         super().__init__(device=self.device,verbose=verbose, **kwargs)
-        # self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
-        # self._logger.addHandler(logging.StreamHandler())
-        # self.verbose = verbose
-        
-        # # Category specific attributes
-        # # Data logging attributes
-        # self.buffer: deque[tuple[NamedTuple, datetime]] = deque(maxlen=MAX_LEN)
-        # self.records: deque[tuple[NamedTuple, datetime]] = deque()
         self._records_cache: dict[int, deque[tuple[NamedTuple, datetime]]] = dict()
-        # self.record_event = threading.Event()
-        
-        # # Measurer specific attributes
-        # self.program: BiologicProgram|Any|None = None
-        # self.runs = dict()
-        # self.n_runs = 0
-        # self._threads = dict()
         return
-    
-    # def __del__(self):
-    #     self.shutdown()
-    #     return
     
     @property
     def connection_details(self) -> dict:
@@ -161,42 +142,11 @@ class BioLogic(Measurer):
         self._connection_details['timeout'] = value
         return
     
-    # @property
-    # def is_busy(self) -> bool:
-    #     """Whether the device is busy"""
-    #     return self.flags.busy
-    
     @property
     def is_connected(self) -> bool:
         """Whether the device is connected"""
         self.flags.connected = self.device.is_connected()
         return self.flags.connected
-    
-    # @property
-    # def verbose(self) -> bool:
-    #     """Verbosity of class"""
-    #     return self.flags.verbose
-    # @verbose.setter
-    # def verbose(self, value:bool):
-    #     assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
-    #     self.flags.verbose = value
-    #     level = logging.DEBUG if value else logging.INFO
-    #     for handler in self._logger.handlers:
-    #         if not isinstance(handler, logging.StreamHandler):
-    #             continue
-    #         handler.setLevel(level)
-    #     return
-    
-    # Data logging properties
-    # @property
-    # def buffer_df(self) -> pd.DataFrame:
-    #     """Data buffer as a DataFrame"""
-    #     return self.getDataframe(data_store=self.buffer)
-    
-    # @property
-    # def records_df(self) -> pd.DataFrame:
-    #     """Records as a DataFrame"""
-    #     return self.getDataframe(data_store=self.records)
 
     def connect(self):
         """Connect to the device"""
@@ -229,23 +179,6 @@ class BioLogic(Measurer):
             self._logger.info(f"Disconnected from {self.address}")
         self.flags.connected = self.is_connected
         return
-    
-    # def reset(self):
-    #     """Reset the device and clear cache"""
-    #     self.clearCache()
-    #     self.program = None
-    #     return
-    
-    # def resetFlags(self):
-    #     """Reset all flags to class attribute `_default_flags`"""
-    #     self.flags = deepcopy(self._default_flags)
-    #     return
-    
-    # def shutdown(self):
-    #     """Shutdown procedure for tool"""
-    #     self.disconnect()
-    #     self.resetFlags()
-    #     return
 
     # Category specific properties and methods
     def measure(self, *args, parameters: dict|None = None, blocking:bool = True, **kwargs) -> pd.DataFrame|None:
@@ -301,10 +234,10 @@ class BioLogic(Measurer):
         """Clear the cache"""
         self.buffer.clear()
         self.records.clear()
-        # self.runs.clear()
         self.n_runs = 0
-        # self._threads.clear()
         self._records_cache.clear()
+        # self.runs.clear()
+        # self._threads.clear()
         return
     
     def getData(self, run_id:int,  *args, **kwargs) -> Any|None:
@@ -340,10 +273,6 @@ class BioLogic(Measurer):
         dated_records = deque([(r,now) for r in records])  
         self._records_cache[run_id] = deque([(r,now) for r in records])
         self.records = dated_records
-        # name_map = {
-        #     "Impendance phase": "Impedance phase [rad]",
-        #     "Impendance_ce phase": "Impedance_ce phase [rad]"
-        # }
         return self.records
     
     def getDataframe(self, data_store: Iterable[tuple[NamedTuple, datetime]]) -> pd.DataFrame:
