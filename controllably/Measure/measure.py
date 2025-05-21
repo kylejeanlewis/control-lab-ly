@@ -198,13 +198,16 @@ class Measurer:
         kwargs.update(new_run.parameters)
         
         self.n_runs += 1
+        logger.info(f"Run ID: {self.n_runs}")
         self.runs[self.n_runs] = new_run
         if not blocking:
             thread = threading.Thread(target=new_run.run, args=args, kwargs=kwargs)
             thread.start()
             self._threads['measure'] = thread
+            self.flags.busy = True
             return
         new_run.run(*args, **kwargs)
+        self.flags.busy = False
         return new_run.data_df
         
     def loadProgram(self, program: Program, docstring_parser: Callable[[Any,bool],ProgramDetails]|None = None):
