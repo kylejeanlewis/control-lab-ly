@@ -7,7 +7,7 @@ from pathlib import Path
 import threading
 import time
 from types import SimpleNamespace
-from typing import NamedTuple, Any, Callable, Iterable
+from typing import NamedTuple, Any, Iterable
 
 # Third party imports
 import pandas as pd
@@ -18,7 +18,7 @@ from pyvisa import VisaIOError
 # Local application imports
 from ....core.connection import match_current_ip_address
 from ....core import datalogger
-from ... import Measurer, ProgramDetails, Program
+from ... import Measurer, Program
 
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
@@ -28,8 +28,8 @@ KeithleyBase = type('KeithleyBase', (KeithleyBuffer,SCPIMixin,Instrument), {})
 class Keithley(Measurer):
     _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, connected=False, verbose=False)
     def __init__(self, 
+        host: str,
         keithley_class: str,
-        host:str = '192.109.209.128',
         name: str|None = None,
         *, 
         verbose:bool = False, 
@@ -43,20 +43,16 @@ class Keithley(Measurer):
         """
         assert hasattr(keithley, keithley_class), f"Keithley class {keithley_class} not found in pymeasure.instruments.keithley"
         device_type = getattr(keithley, keithley_class)
-        assert all([issubclass(device_type, superclass) for superclass in (KeithleyBuffer,SCPIMixin,Instrument)]), f"Keithley class {keithley_class} not a subclass of KeithleyBuffer, SCPIMixin and Instrument"
-        self._device_type = device_type
+        assert all(issubclass(device_type, superclass) for superclass in (KeithleyBuffer,SCPIMixin,Instrument)), f"Keithley class {keithley_class} not a subclass of KeithleyBuffer, SCPIMixin and Instrument"
+        
         self.device: KeithleyBase|None = None
-        self._connection_details = dict(host=host)
+        self._device_type = device_type
+        self._connection_details = dict(host=host, kwargs=kwargs)
         if name is not None:
             self._connection_details['name'] = name
             kwargs['name'] = name
         
-        if not match_current_ip_address(host):
-            raise ConnectionError(f"Device IP address {host} does not match current network IP address.")
-        try:
-            self.device = device_type(host, **kwargs)
-        except Exception as e:
-            raise e
+        self._connect(host, **kwargs)
         super().__init__(device=self.device, verbose=verbose, **kwargs)
         self._records_cache: dict[int, deque[tuple[NamedTuple, datetime]]] = dict()
         return
@@ -91,23 +87,26 @@ class Keithley(Measurer):
         self.flags.connected = connected
         return self.flags.connected
 
+    def _connect(self, host:str, **kwargs):
+        if not match_current_ip_address(host):
+            raise ConnectionError(f"Device IP address {host} does not match current network IP address.")
+        try:
+            self.device = self._device_type(f'TCPIP0::{host}::5025::SOCKET', **kwargs)
+            for _ in range(3):
+                self.device.write(':SYST:BEEP 440,0.1')
+                time.sleep(0.1)
+        except Exception as e:
+            raise e
+
     def connect(self):
         """Connect to the device"""
         if self.is_connected:
             return
-        if not match_current_ip_address(self.host):
-            raise ConnectionError(f"Device IP address {self.host} does not match current network IP address.")
-        if issubclass(self.device, Instrument):
+        if issubclass(self.device.__class__, Instrument):
             self.device.shutdown()
-        try:
-            self.device = self._device_type(self.host, **self._connection_details)
-        except Exception as e:
-            raise e
-            # self._logger.error(f"Failed to connect to {self.host}")
-            # self._logger.debug(e)
-        else:
-            self._logger.info(f"Connected to {self.host}")
-            time.sleep(self.timeout)
+        self._connect(self.host, **self._connection_details['kwargs'])
+        self._logger.info(f"Connected to {self.host}")
+        time.sleep(self.timeout)
         self.flags.connected = self.is_connected
         return
     
@@ -119,8 +118,6 @@ class Keithley(Measurer):
             self.device.shutdown()
         except Exception as e:
             raise e
-            # self._logger.error(f"Failed to disconnect from {self.host}")
-            # self._logger.debug(e)
         else:
             self._logger.info(f"Disconnected from {self.host}")
         self.flags.connected = self.is_connected
@@ -167,9 +164,9 @@ class Keithley(Measurer):
         self.buffer.clear()
         self.records.clear()
         self.n_runs = 0
+        self.runs.clear()
+        self._threads.clear()
         self._records_cache.clear()
-        # self.runs.clear()
-        # self._threads.clear()
         return
     
     def getData(self, run_id:int,  *args, **kwargs) -> Any|None:
