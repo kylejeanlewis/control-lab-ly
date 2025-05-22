@@ -234,9 +234,9 @@ class BioLogic(Measurer):
         self.buffer.clear()
         self.records.clear()
         self.n_runs = 0
+        self.runs.clear()
+        self._threads.clear()
         self._records_cache.clear()
-        # self.runs.clear()
-        # self._threads.clear()
         return
     
     def getData(self, run_id:int,  *args, **kwargs) -> Any|None:

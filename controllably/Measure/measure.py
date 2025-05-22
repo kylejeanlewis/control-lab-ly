@@ -160,8 +160,6 @@ class Measurer:
         """Reset the device and clear cache"""
         self.clearCache()
         self.program = None
-        self.runs.clear()
-        self._threads.clear()
         return
     
     def resetFlags(self):
@@ -231,6 +229,8 @@ class Measurer:
         self.buffer.clear()
         self.records.clear()
         self.n_runs = 0
+        self.runs.clear()
+        self._threads.clear()
         return
         
     def getData(self, query:Any|None = None, *args, **kwargs) -> Any|None:
