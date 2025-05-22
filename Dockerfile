@@ -25,4 +25,4 @@ RUN pip install --no-cache /wheels/* && rm -rf /wheels
 
 EXPOSE 8000
 
-CMD ["python", "-m", "controllably.core.implementations.control.fastapi_server"]
+CMD ["python", "-m", "controllably.examples.control.fastapi.server"]
