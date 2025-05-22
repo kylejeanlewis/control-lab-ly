@@ -101,5 +101,5 @@ deps =
     -r {toxinidir}/dev/requirements_dev.txt
 commands =
     pytest --cov=controllably/core -n auto -m "not socket" --reruns 3 --reruns-delay 1 {posargs}
-    pytest -n 1 -m socket --reruns 3 --reruns-delay 1 {posargs}
+    pytest --cov=controllably/core -n 1 -m socket --reruns 3 --reruns-delay 1 {posargs}
 """
