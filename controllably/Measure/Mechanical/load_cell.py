@@ -88,7 +88,7 @@ class LoadCell(Measurer):
         *, 
         calibration_factor: float = 1.0,
         correction_parameters: tuple[float] = (1.0,0.0),
-        baudrate: int = 9600,
+        baudrate: int = 115200,
         verbose: bool = False, 
         **kwargs
     ):
