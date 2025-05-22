@@ -133,19 +133,18 @@ class ActuatedSensor(LoadCell):
         )
         defaults.update(kwargs)
         kwargs = defaults
-        super().__init__(
-            port=port, baudrate=baudrate,
-            stabilize_timeout=stabilize_timeout, force_tolerance=force_tolerance,
-            calibration_factor=calibration_factor, correction_parameters=correction_parameters,
-            verbose=verbose, **kwargs
-        )
         self.displacement = None
         self.force_threshold = force_threshold
         self.home_displacement = home_displacement
         self.limits = (min(limits), max(limits))
         self.max_speed = max_speed
         self._steps_per_second = steps_per_second
-        
+        super().__init__(
+            port=port, baudrate=baudrate,
+            stabilize_timeout=stabilize_timeout, force_tolerance=force_tolerance,
+            calibration_factor=calibration_factor, correction_parameters=correction_parameters,
+            verbose=verbose, **kwargs
+        )
         self.program = ForceDisplacement
         return
     
