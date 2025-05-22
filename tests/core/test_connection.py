@@ -34,7 +34,8 @@ def test_get_host():
     assert isinstance(host, str)
     assert host == socket.gethostbyname(socket.gethostname())
 
-def test_get_node():
+def test_get_node(monkeypatch):
+    monkeypatch.setattr('platform.system', lambda: '')
     node = get_node()
     assert isinstance(node, str)
     assert node == str(uuid.getnode())
