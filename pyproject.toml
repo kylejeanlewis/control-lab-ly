@@ -11,7 +11,6 @@ authors = [
     {name="Chang Jie Leong", email="changjie.leong@outlook.com"}
 ]
 license = "MIT"
-# license-files = ["LICEN[CS]E.*"]
 keywords = [
     "python",
     "lab automation"
@@ -20,7 +19,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    # "License :: OSI Approved :: MIT License",
     "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -47,7 +45,6 @@ Tracker = "https://github.com/kylejeanlewis/control-lab-le/issues"
 
 [project.optional-dependencies]
 dev = [
-    # "mypy>=0.910",
     "pytest>=6.2",
     "pytest-cov>=2.11",
     "pytest-rerunfailures>=15.0",
@@ -64,12 +61,10 @@ biologic = ["easy-biologic>=0.4.0"]
 keithley = ["PyMeasure>=0.15"]
 
 [tool.setuptools]
-# package-dir = {"" = "src"}
 include-package-data = true
 zip-safe = false
 
 [tool.setuptools.packages.find]
-# where = ["src"]
 include = ["controllably*", "docs*"]
 exclude = ["tests*"]
 
@@ -84,21 +79,6 @@ python_files = ["test_*.py"]
 markers = [
     "socket: mark test socket connection"
 ]
-
-
-[tool.mypy]
-mypy_path = "controllably"
-check_untyped_defs = true
-disallow_any_generics = true
-ignore_missing_imports = true
-no_implicit_optional = true
-show_error_codes = true
-strict_equality = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unreachable = true
-warn_unused_configs = true
-no_implicit_reexport = true
 
 
 [tool.tox]
