@@ -77,14 +77,16 @@ def get_node() -> str:
         str: machine unique identifier
     """
     node_id = ''
-    if platform.system() == "Windows":
-        node_id = get_node_windows()
-    elif platform.system() == "Linux":
-        node_id = get_node_linux()
-    elif platform.system() == "Darwin":
-        node_id = get_node_macos()
-    else:
-        node_id = str(uuid.getnode())
+    system = platform.system()
+    match system:
+        case "Windows":
+            node_id = get_node_windows()
+        case "Linux":
+            node_id = get_node_linux()
+        case "Darwin":
+            node_id = get_node_macos()
+        case _:
+            node_id = str(uuid.getnode())
     node_out = f"Current machine id (unique): {node_id}"
     logger.info(node_out)
     logger.info(f"Current machine name: {socket.gethostname()}")
