@@ -1,0 +1,466 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Feature SiLA2Version="1.0" FeatureVersion="1.0" MaturityLevel="Verified" Originator="controllably"
+         Category="demo"
+         xmlns="http://www.sila-standard.org" 
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://www.sila-standard.org https://gitlab.com/SiLA2/sila_base/raw/master/schema/FeatureDefinition.xsd">
+  <Identifier>Sartorius</Identifier>
+  <DisplayName>Sartorius</DisplayName>
+  <Description>
+    Example implementation of a Sartorius feature. This feature is used to demonstrate the SiLA 2
+    capabilities.
+  </Description>
+  <Command>
+    <Identifier>Aspirate</Identifier>
+    <DisplayName>Aspirate</DisplayName>
+    <Description>Aspirate desired volume of reagent.</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>Volume</Identifier>
+      <DisplayName>Volume</DisplayName>
+      <Description>Target volume</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Speed</Identifier>
+      <DisplayName>Speed</DisplayName>
+      <Description>Speed to aspirate at</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Reagent</Identifier>
+      <DisplayName>Reagent</DisplayName>
+      <Description>Name of reagent</Description>
+      <DataType>
+        <Basic>String</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Pullback</Identifier>
+      <DisplayName>Pullback</DisplayName>
+      <Description>Whether to pullback after aspirate</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Delay</Identifier>
+      <DisplayName>Delay</DisplayName>
+      <Description>Time delay after aspirate</Description>
+      <DataType>
+        <Basic>Integer</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Pause</Identifier>
+      <DisplayName>Pause</DisplayName>
+      <Description>Whether to pause for user intervention</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Ignore</Identifier>
+      <DisplayName>Ignore</DisplayName>
+      <Description>Whether to aspirate reagent regardless</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>Success</Identifier>
+      <DisplayName>Success</DisplayName>
+      <Description>Whether the action is successful</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Response>
+  </Command>
+  <Command>
+    <Identifier>Dispense</Identifier>
+    <DisplayName>Dispense</DisplayName>
+    <Description>Dispense desired volume of reagent.</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>Volume</Identifier>
+      <DisplayName>Volume</DisplayName>
+      <Description>Target volume</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Speed</Identifier>
+      <DisplayName>Speed</DisplayName>
+      <Description>Speed to aspirate at</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Blowout</Identifier>
+      <DisplayName>Blowout</DisplayName>
+      <Description>Whether perform blowout</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Delay</Identifier>
+      <DisplayName>Delay</DisplayName>
+      <Description>Time delay after aspirate</Description>
+      <DataType>
+        <Basic>Integer</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Pause</Identifier>
+      <DisplayName>Pause</DisplayName>
+      <Description>Whether to pause for user intervention</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Ignore</Identifier>
+      <DisplayName>Ignore</DisplayName>
+      <Description>Whether to aspirate reagent regardless</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>Success</Identifier>
+      <DisplayName>Success</DisplayName>
+      <Description>Whether the action is successful</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Response>
+  </Command>
+  <Command>
+    <Identifier>Blowout</Identifier>
+    <DisplayName>Blowout</DisplayName>
+    <Description>Blowout liquid from tip.</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>Home</Identifier>
+      <DisplayName>Home</DisplayName>
+      <Description>Whether to home the pipette tool after blowing out</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>Success</Identifier>
+      <DisplayName>Success</DisplayName>
+      <Description>Whether the action is successful</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Response>
+  </Command>
+  <Command>
+    <Identifier>Pullback</Identifier>
+    <DisplayName>Pullback</DisplayName>
+    <Description>Pullback liquid from tip.</Description>
+    <Observable>No</Observable>
+    <Response>
+      <Identifier>Success</Identifier>
+      <DisplayName>Success</DisplayName>
+      <Description>Whether the action is successful</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Response>
+  </Command>
+  <Command>
+    <Identifier>Cycle</Identifier>
+    <DisplayName>Cycle</DisplayName>
+    <Description>Cycle between aspirate and dispense.</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>Volume</Identifier>
+      <DisplayName>Volume</DisplayName>
+      <Description>Target volume</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Speed</Identifier>
+      <DisplayName>Speed</DisplayName>
+      <Description>Speed to aspirate and dispense at</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Reagent</Identifier>
+      <DisplayName>Reagent</DisplayName>
+      <Description>Name of reagent</Description>
+      <DataType>
+        <Basic>String</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Cycles</Identifier>
+      <DisplayName>Cycles</DisplayName>
+      <Description>Number of cycles</Description>
+      <DataType>
+        <Basic>Integer</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Delay</Identifier>
+      <DisplayName>Delay</DisplayName>
+      <Description>Time delay after each action</Description>
+      <DataType>
+        <Basic>Integer</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>Success</Identifier>
+      <DisplayName>Success</DisplayName>
+      <Description>Whether the action is successful</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Response>
+  </Command>
+  <Command>
+    <Identifier>Empty</Identifier>
+    <DisplayName>Empty</DisplayName>
+    <Description>Empty the channel.</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>Speed</Identifier>
+      <DisplayName>Speed</DisplayName>
+      <Description>Speed to aspirate and dispense at</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Blowout</Identifier>
+      <DisplayName>Blowout</DisplayName>
+      <Description>Whether perform blowout</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Delay</Identifier>
+      <DisplayName>Delay</DisplayName>
+      <Description>Time delay after each action</Description>
+      <DataType>
+        <Basic>Integer</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Pause</Identifier>
+      <DisplayName>Pause</DisplayName>
+      <Description>Whether to pause for user intervention</Description>
+      <DataType>
+        <Basic>Integer</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>Success</Identifier>
+      <DisplayName>Success</DisplayName>
+      <Description>Whether the action is successful</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Response>
+  </Command>
+  <Command>
+    <Identifier>Fill</Identifier>
+    <DisplayName>Fill</DisplayName>
+    <Description>Fill the channel.</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>Speed</Identifier>
+      <DisplayName>Speed</DisplayName>
+      <Description>Speed to fill</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Reagent</Identifier>
+      <DisplayName>Reagent</DisplayName>
+      <Description>Name of reagent</Description>
+      <DataType>
+        <Basic>String</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Pullback</Identifier>
+      <DisplayName>Pullback</DisplayName>
+      <Description>Whether to pullback after aspirate</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Cycles</Identifier>
+      <DisplayName>Cycles</DisplayName>
+      <Description>Number of cycles</Description>
+      <DataType>
+        <Basic>Integer</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Delay</Identifier>
+      <DisplayName>Delay</DisplayName>
+      <Description>Time delay after each action</Description>
+      <DataType>
+        <Basic>Integer</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Pause</Identifier>
+      <DisplayName>Pause</DisplayName>
+      <Description>Whether to pause for user intervention</Description>
+      <DataType>
+        <Basic>Integer</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>Success</Identifier>
+      <DisplayName>Success</DisplayName>
+      <Description>Whether the action is successful</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Response>
+  </Command>
+  <Command>
+    <Identifier>Rinse</Identifier>
+    <DisplayName>Rinse</DisplayName>
+    <Description>Rinse the channel with aspirate and dispense cycles.</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>Speed</Identifier>
+      <DisplayName>Speed</DisplayName>
+      <Description>Speed to fill</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Reagent</Identifier>
+      <DisplayName>Reagent</DisplayName>
+      <Description>Name of reagent</Description>
+      <DataType>
+        <Basic>String</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Cycles</Identifier>
+      <DisplayName>Cycles</DisplayName>
+      <Description>Number of cycles</Description>
+      <DataType>
+        <Basic>Integer</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Delay</Identifier>
+      <DisplayName>Delay</DisplayName>
+      <Description>Time delay after each action</Description>
+      <DataType>
+        <Basic>Integer</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>Success</Identifier>
+      <DisplayName>Success</DisplayName>
+      <Description>Whether the action is successful</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Response>
+  </Command>
+  <Command>
+    <Identifier>Attach</Identifier>
+    <DisplayName>Attach</DisplayName>
+    <Description>Attach the tip to the pipette tool.</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>TipLength</Identifier>
+      <DisplayName>TipLength</DisplayName>
+      <Description>The length of the tip to attach</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>Success</Identifier>
+      <DisplayName>Success</DisplayName>
+      <Description>Whether the action is successful</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Response>
+  </Command>
+  <Command>
+    <Identifier>Eject</Identifier>
+    <DisplayName>Eject</DisplayName>
+    <Description>Eject the tip from the pipette tool.</Description>
+    <Observable>No</Observable>
+    <Response>
+      <Identifier>Success</Identifier>
+      <DisplayName>Success</DisplayName>
+      <Description>Whether the action is successful</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Response>
+  </Command>
+  <Command>
+    <Identifier>Home</Identifier>
+    <DisplayName>Home</DisplayName>
+    <Description>Home the pipette tool.</Description>
+    <Observable>No</Observable>
+    <Response>
+      <Identifier>Success</Identifier>
+      <DisplayName>Success</DisplayName>
+      <Description>Whether the action is successful</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Response>
+  </Command>
+  <Property>
+    <Identifier>TipLength</Identifier>
+    <DisplayName>TipLength</DisplayName>
+    <Description>Length of pipette tip.</Description>
+    <Observable>No</Observable>
+    <DataType>
+      <Basic>Real</Basic>
+    </DataType>
+  </Property>
+  <Property>
+    <Identifier>Capacity</Identifier>
+    <DisplayName>Capacity</DisplayName>
+    <Description>Capacity of pipette.</Description>
+    <Observable>No</Observable>
+    <DataType>
+      <Basic>Real</Basic>
+    </DataType>
+  </Property>
+  <Property>
+    <Identifier>IsTipOn</Identifier>
+    <DisplayName>IsTipOn</DisplayName>
+    <Description>Whether the tip is on.</Description>
+    <Observable>No</Observable>
+    <DataType>
+      <Basic>Boolean</Basic>
+    </DataType>
+  </Property>
+</Feature>
