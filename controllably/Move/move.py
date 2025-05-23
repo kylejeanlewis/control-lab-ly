@@ -558,7 +558,7 @@ class Mover:
         #     assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
         current_Rotation = self.robot_position.Rotation if robot else self.worktool_position.Rotation
         move_to = to if isinstance(to, Position) else Position(to, current_Rotation)
-        rotation = (move_to.Rotation == current_Rotation)
+        rotation = (move_to.Rotation != current_Rotation)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
         self._logger.info(f"Move To | {move_to} at speed factor {speed_factor}")
         
