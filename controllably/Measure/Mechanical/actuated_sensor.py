@@ -36,7 +36,7 @@ MAX_SPEED = 0.375 # mm/s (22.5mm/min)
 READ_FORMAT = "{target},{speed},{displacement},{end_stop},{value}\n"
 OUT_FORMAT = '{data}\n'
 Data = NamedTuple('Data', [('data',str)])
-MoveForceData = NamedTuple('MoveForceData', [('target', float),('speed', float)('displacement', float),('value', int),('end_stop', bool)])
+MoveForceData = NamedTuple('MoveForceData', [('target', float),('speed', float),('displacement', float),('value', int),('end_stop', bool)])
 
 class ActuatedSensor(LoadCell):
     """ 
@@ -350,6 +350,40 @@ class ActuatedSensor(LoadCell):
         if out.data[0] not in '-1234567890':
             return None
         return self.device.processOutput(out.data+'\n')
+    
+    def record(self, on: bool, show: bool = False, clear_cache: bool = False):
+        """
+        Record data from the device
+        
+        Args:
+            on (bool): whether to record data
+            show (bool, optional): whether to show data. Defaults to False.
+            clear_cache (bool, optional): whether to clear the cache. Defaults to False.
+            
+        Returns:
+            pd.DataFrame: dataframe of data collected
+        """
+        self.device.clearDeviceBuffer()
+        return datalogger.record(
+            on=on, show=show, clear_cache=clear_cache, data_store=self.records, 
+            split_stream=False, device=self.device, event=self.record_event
+        )
+    
+    def stream(self, on: bool, show: bool = False):
+        """
+        Stream data from the device
+        
+        Args:
+            on (bool): whether to stream data
+            show (bool, optional): whether to show data. Defaults to False.
+            
+        Returns:
+            pd.DataFrame: dataframe of data collected
+        """
+        self.device.clearDeviceBuffer()
+        return datalogger.stream(
+            on=on, show=show, split_stream=False, data_store=self.buffer, device=self.device
+        )
     
 Parallel_ActuatedSensor = Ensemble.factory(ActuatedSensor)
 
