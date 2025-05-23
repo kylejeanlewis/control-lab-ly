@@ -817,7 +817,7 @@ class Mover:
         # rotation = any(to.rotation) if isinstance(to,Position) else False
         current_Rotation = self.robot_position.Rotation if robot else self.worktool_position.Rotation
         move_to = to if isinstance(to, Position) else Position(to, current_Rotation)
-        rotation = (move_to.Rotation == current_Rotation)
+        rotation = (move_to.Rotation != current_Rotation)
         speed_factor_lateral = self.speed_factor if speed_factor_lateral is None else speed_factor_lateral
         speed_factor_up = self.speed_factor if speed_factor_up is None else speed_factor_up
         speed_factor_down = self.speed_factor if speed_factor_down is None else speed_factor_down
