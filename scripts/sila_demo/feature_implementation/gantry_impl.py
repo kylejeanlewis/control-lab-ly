@@ -20,14 +20,13 @@ if TYPE_CHECKING:
     from ..server import Server
 
 configs = {
-    'port': 'COM0',
-    'limits': [[100,100,100],[0,0,0]],
-    'home_position': [[0,0,0],[0,0,0]],
-    'calibrated_offset': [[0,0,0],[0,0,0]],
-    'scale': 1.0,
+    'port': 'COM7',
+    'limits': [[0,-480,-195.5],[180,0,0]],
+    'calibrated_offset': [[-206, 468.75,197.7],[-90,0,0]],
     'safe_height': -1,
-    'verbose': True,
-    'simulation': True
+    'home_position': [[0,0,0],[0,0,0]],
+    'scale': 1.0,
+    'verbose': True
 }
 
 class GantryImpl(GantryBase):

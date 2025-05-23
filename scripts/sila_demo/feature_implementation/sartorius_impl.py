@@ -25,13 +25,11 @@ if TYPE_CHECKING:
     from ..server import Server
 
 configs = {
-    'port': 'COM0',
+    'port': 'COM8',
     'channel': 1,
-    'offset': [0,0,0],
-    'tip_inset_mm': 12,
+    'tip_inset_mm': 13,
     'tip_length': 97,
-    'verbose': True,
-    'simulation': True
+    'verbose': True
 }
 
 class SartoriusImpl(SartoriusBase):
@@ -162,4 +160,5 @@ class SartoriusImpl(SartoriusBase):
         return super().start()
     
     def stop(self):
+        self.sartorius.shutdown()
         return super().stop()
