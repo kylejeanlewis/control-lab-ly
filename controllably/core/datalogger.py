@@ -58,6 +58,7 @@ def record(
     *, 
     device: StreamingDevice, 
     data_store: deque, 
+    split_stream: bool = True,
     query: Any|None = None,
     event: threading.Event|None = None
 ):
@@ -70,6 +71,7 @@ def record(
         clear_cache (bool, optional): clear the data cache before starting. Defaults to False.
         device (StreamingDevice): streaming device object
         data_store (deque): data cache
+        split_stream (bool, optional): whether to split the stream and data processing threads. Defaults to True.
         query (Any|None, optional): query to pass to the streaming device. Defaults to None.
         event (threading.Event | None, optional): event to set or clear. Defaults to None.
     """
@@ -81,7 +83,7 @@ def record(
     device.stopStream()
     time.sleep(0.1)
     if on:
-        device.startStream(data=device.processInput(query), buffer=data_store)
+        device.startStream(data=device.processInput(query), buffer=data_store, split_stream=split_stream)
         device.showStream(show)
     return
 
@@ -91,6 +93,7 @@ def stream(
     *, 
     device: StreamingDevice, 
     data_store: deque, 
+    split_stream: bool = True,
     query: Any|None = None,
     event: threading.Event|None = None
 ):
@@ -102,13 +105,14 @@ def stream(
         show (bool, optional): display the data as it is streamed. Defaults to False.
         device (StreamingDevice): streaming device object
         data_store (deque): data cache
+        split_stream (bool, optional): whether to split the stream and data processing threads. Defaults to True.
         query (Any|None, optional): query to pass to the streaming device. Defaults to None.
         event (threading.Event | None, optional): event to set or clear. Defaults to None.
     """
     if isinstance(event, threading.Event):
         _ = event.set() if on else event.clear()
     if on:
-        device.startStream(data=device.processInput(query), buffer=data_store)
+        device.startStream(data=device.processInput(query), buffer=data_store, split_stream=split_stream)
         device.showStream(show)
     else:
         device.stopStream()

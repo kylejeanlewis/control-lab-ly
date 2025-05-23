@@ -313,7 +313,7 @@ class SartoriusDevice(SerialDevice):
             data_dict = out._asdict()
             if out.data != 'ok':
                 data_dict.update(dict(data=out.data[2:]))
-            data_out = self.processOutput(format_out.format(**data_dict).strip(), format=format_out, data_type=data_type)
+            data_out = self.processOutput(format_out.format(**data_dict).strip(), format_out=format_out, data_type=data_type)
             data_out = data_out if timestamp else data_out[0]
             
             all_output.append((data_out, now) if timestamp else data_out)
@@ -669,6 +669,10 @@ class SartoriusDevice(SerialDevice):
         Returns:
             str: response from the device
         """
+        # self.query('RZ')
+        # time.sleep(2)
+        # self.eject(home=False)
+        # # time.sleep(1)
         out: Data = self.query('RZ')
         self.position = 0
         time.sleep(2)

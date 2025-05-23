@@ -28,7 +28,7 @@ requires-python = ">=3.10"
 dependencies = [
     "matplotlib>=3.9",
     "numpy>=2.0",
-    "opencv_python>=4.5.0",
+    "opencv_python>=4.10.0",
     "pandas>=2.0",
     "parse>=1.20",
     "pyserial>=3.5",
@@ -52,12 +52,18 @@ dev = [
     "tox>=3.24"
 ]
 all = [
+    "pyModbusTCP>=0.2",
     "easy-biologic>=0.4.0",
-    "PyMeasure>=0.15",
-    "pyModbusTCP>=0.2"
+    "nest-asyncio>=1.6.0",
+    "setuptools>=71.0.3",
+    "PyMeasure>=0.15"
 ]
 ax8 = ["pyModbusTCP>=0.2"]
-biologic = ["easy-biologic>=0.4.0"]
+biologic = [
+    "easy-biologic>=0.4.0",
+    "nest-asyncio>=1.6.0",
+    "setuptools>=71.0.3",
+]
 keithley = ["PyMeasure>=0.15"]
 
 [tool.setuptools]
@@ -98,6 +104,7 @@ python =
 setenv =
     PYTHONPATH = {toxinidir}
 deps =
+    -r {toxinidir}/dev/requirements_all.txt
     -r {toxinidir}/dev/requirements_dev.txt
 commands =
     pytest --cov=controllably/core -n auto -m "not socket" --reruns 3 --reruns-delay 1 {posargs}
