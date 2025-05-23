@@ -3,10 +3,13 @@ import pytest
 import platform
 import time
 
-pytestmark = pytest.mark.skipif((platform.system() != 'Windows'), reason="Widows platform required for easy-biologic")
-from easy_biologic import base_programs as bp
-from controllably.Measure.Electrical.BioLogic import BioLogic
-from controllably.core.connection import match_current_ip_address
+is_windows = platform.system() == 'Windows'
+if platform.system() != 'Windows':
+    pytest.skip("Windows platform required for easy-biologic")
+else:
+    from easy_biologic import base_programs as bp
+    from controllably.Measure.Electrical.BioLogic import BioLogic
+    from controllably.core.connection import match_current_ip_address
 
 HOST = '192.109.209.128'
 
