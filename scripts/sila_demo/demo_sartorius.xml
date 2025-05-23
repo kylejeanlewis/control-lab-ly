@@ -266,7 +266,7 @@
       <DisplayName>Pause</DisplayName>
       <Description>Whether to pause for user intervention</Description>
       <DataType>
-        <Basic>Integer</Basic>
+        <Basic>Boolean</Basic>
       </DataType>
     </Parameter>
     <Response>
@@ -328,7 +328,7 @@
       <DisplayName>Pause</DisplayName>
       <Description>Whether to pause for user intervention</Description>
       <DataType>
-        <Basic>Integer</Basic>
+        <Basic>Boolean</Basic>
       </DataType>
     </Parameter>
     <Response>
