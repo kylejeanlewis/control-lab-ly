@@ -1,5 +1,6 @@
 # %%
 import pytest
+import platform
 import time
 from easy_biologic import base_programs as bp
 from controllably.Measure.Electrical.BioLogic import BioLogic
@@ -11,8 +12,9 @@ configs = {
     'host': HOST,
     'verbose': True,
 }
+skip_condition = (not match_current_ip_address(HOST) or (platform.system() != 'Windows'))
 
-pytestmark = pytest.mark.skipif((not match_current_ip_address(HOST)), reason="Requires connection to local lab network")
+pytestmark = pytest.mark.skipif((skip_condition), reason="Requires connection to local lab network and running on Windows")
 
 # %%
 @pytest.fixture(scope='session')
