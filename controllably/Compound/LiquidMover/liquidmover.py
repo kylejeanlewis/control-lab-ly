@@ -413,8 +413,9 @@ class LiquidMover(Compound):
         coordinates = np.array(coordinates)
         self.align(coordinates)
         
+        tip_length = self.liquid.tip_length
         self.liquid.eject()
-        self.mover.tool_offset.translate((0,0,self.liquid.tip_length))
+        self.mover.tool_offset.translate((0,0,tip_length))
         self.mover.tool_offset.translate((0,0,-self.liquid.tip_inset_mm))
         self.liquid.tip_length = 0
         self._current_tip_origin = None
