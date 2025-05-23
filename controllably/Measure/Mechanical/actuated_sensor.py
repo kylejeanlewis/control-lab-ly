@@ -96,7 +96,7 @@ class ActuatedSensor(LoadCell):
     def __init__(self,
         port: str,
         limits: Iterable[float] = (-30.0, 0),
-        force_threshold: float = 10,
+        force_threshold: float = 10000,
         stabilize_timeout: float = 1, 
         force_tolerance: float = 0.01, 
         *, 
@@ -146,6 +146,7 @@ class ActuatedSensor(LoadCell):
             verbose=verbose, **kwargs
         )
         self.program = ForceDisplacement
+        # self.connect()
         return
     
     def connect(self):

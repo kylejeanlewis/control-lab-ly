@@ -669,6 +669,10 @@ class SartoriusDevice(SerialDevice):
         Returns:
             str: response from the device
         """
+        # self.query('RZ')
+        # time.sleep(2)
+        # self.eject(home=False)
+        # # time.sleep(1)
         out: Data = self.query('RZ')
         self.position = 0
         time.sleep(2)
