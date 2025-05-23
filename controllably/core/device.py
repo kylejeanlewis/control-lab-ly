@@ -490,9 +490,11 @@ class BaseDevice:
             parse_out = parse.parse(format, data)
         except TypeError:
             self._logger.warning(f"Failed to parse data: {data!r}")
+            self.clearDeviceBuffer()
             return None, timestamp
         if parse_out is None:
             self._logger.warning(f"Failed to parse data: {data!r}")
+            self.clearDeviceBuffer()
             return None, timestamp
         parsed = {k:v for k,v in parse_out.named.items() if not k.startswith('_')}
         for key, value in data_type.__annotations__.items():
@@ -504,6 +506,7 @@ class BaseDevice:
                 parsed[key] = value(parsed[key])
             except ValueError:
                 self._logger.warning(f"Failed to convert {key}: {parsed[key]} to type {value}")
+                self.clearDeviceBuffer()
                 # parsed[key] = None
                 return None ,timestamp
         processed_data = data_type(**parsed) 
