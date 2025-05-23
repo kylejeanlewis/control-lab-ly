@@ -5,7 +5,7 @@ import time
 
 is_windows = platform.system() == 'Windows'
 if platform.system() != 'Windows':
-    pytest.skip("Windows platform required for easy-biologic")
+    pytest.skip("Windows platform required for easy-biologic", allow_module_level=True)
 else:
     from easy_biologic import base_programs as bp
     from controllably.Measure.Electrical.BioLogic import BioLogic
