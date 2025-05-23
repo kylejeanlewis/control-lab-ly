@@ -313,7 +313,7 @@ class SartoriusDevice(SerialDevice):
             data_dict = out._asdict()
             if out.data != 'ok':
                 data_dict.update(dict(data=out.data[2:]))
-            data_out = self.processOutput(format_out.format(**data_dict).strip(), format=format_out, data_type=data_type)
+            data_out = self.processOutput(format_out.format(**data_dict).strip(), format_out=format_out, data_type=data_type)
             data_out = data_out if timestamp else data_out[0]
             
             all_output.append((data_out, now) if timestamp else data_out)

@@ -137,15 +137,15 @@ class TestBaseDevice:
             assert data == 'test_data\n'
 
     @pytest.mark.parametrize('kwargs, expected', [
-        ({'data': 'test_data', 'data_type': None, 'format': None}, 
+        ({'data': 'test_data', 'data_type': None, 'format_out': None}, 
          Data(data='test_data')),
-        ({'data': 'abc,123,4.5,false', 'data_type': OtherData, 'format': OTHER_FORMAT}, 
+        ({'data': 'abc,123,4.5,false', 'data_type': OtherData, 'format_out': OTHER_FORMAT}, 
          OtherData(strdata='abc',intdata=123,floatdata=4.5,booldata=False)),
-        ({'data': 'abc,12.3,4.5,false', 'data_type': OtherData, 'format': OTHER_FORMAT}, 
+        ({'data': 'abc,12.3,4.5,false', 'data_type': OtherData, 'format_out': OTHER_FORMAT}, 
          OtherData(strdata='abc',intdata=12,floatdata=4.5,booldata=False)),
-        ({'data': None, 'data_type': OtherData, 'format': OTHER_FORMAT}, None),
-        ({'data': '123abc', 'data_type': OtherData, 'format': OTHER_FORMAT}, None),
-        ({'data': 'abc,abc,4.5,false', 'data_type': OtherData, 'format': OTHER_FORMAT}, None),
+        ({'data': None, 'data_type': OtherData, 'format_out': OTHER_FORMAT}, None),
+        ({'data': '123abc', 'data_type': OtherData, 'format_out': OTHER_FORMAT}, None),
+        ({'data': 'abc,abc,4.5,false', 'data_type': OtherData, 'format_out': OTHER_FORMAT}, None),
     ])
     def test_process_output(self, kwargs, expected, base_device):
         assert isinstance(base_device, BaseDevice)

@@ -61,10 +61,10 @@ class Device(Protocol):
     def disconnect(self):
         """Disconnect from the device"""
 
-    def processInput(self, data:Any, format:str, **kwargs) -> str|None:
+    def processInput(self, data:Any, format_in:str, **kwargs) -> str|None:
         """Process the input"""
     
-    def processOutput(self, data:str, format:str, data_type:NamedTuple, timestamp: datetime|None, **kwargs) -> tuple[Any, datetime]:
+    def processOutput(self, data:str, format_out:str, data_type:NamedTuple, timestamp: datetime|None, **kwargs) -> tuple[Any, datetime]:
         """Process the output"""
 
     def query(self, data:Any, multi_out:bool = True, **kwargs) -> Any|None:
@@ -101,10 +101,10 @@ class StreamingDevice(Protocol):
     def disconnect(self):
         """Disconnect from the device"""
     
-    def processInput(self, data:Any, format:str, **kwargs) -> str|None:
+    def processInput(self, data:Any, format_in:str, **kwargs) -> str|None:
         """Process the input"""
     
-    def processOutput(self, data:str, format:str, data_type:NamedTuple, timestamp: datetime|None, **kwargs) -> tuple[Any, datetime]:
+    def processOutput(self, data:str, format_out:str, data_type:NamedTuple, timestamp: datetime|None, **kwargs) -> tuple[Any, datetime]:
         """Process the output"""
 
     def query(self, data:Any, multi_out:bool = True, **kwargs) -> Any|None:
@@ -437,7 +437,7 @@ class BaseDevice:
     
     def processInput(self, 
         data: Any = None,
-        format: str|None = None,
+        format_in: str|None = None,
         **kwargs
     ) -> str|None:
         """
@@ -445,23 +445,23 @@ class BaseDevice:
         
         Args:
             data (Any, optional): data to process. Defaults to None.
-            format (str|None, optional): format for the data. Defaults to None.
+            format_in (str|None, optional): format for the data. Defaults to None.
             
         Returns:
             str|None: processed input data
         """
         if data is None:
             return None
-        format = format or self.write_format
-        assert isinstance(format, str), "Ensure format is a string"
+        format_in = format_in or self.write_format
+        assert isinstance(format_in, str), "Ensure format is a string"
         
         kwargs.update(dict(data=data))
-        processed_data = format.format(**kwargs)
+        processed_data = format_in.format(**kwargs)
         return processed_data
     
     def processOutput(self, 
         data: str, 
-        format: str|None = None, 
+        format_out: str|None = None, 
         data_type: NamedTuple|None = None, 
         timestamp: datetime|None = None
         # *,
@@ -472,7 +472,7 @@ class BaseDevice:
         
         Args:
             data (str): data to process
-            format (str|None, optional): format for the data. Defaults to None.
+            format_out (str|None, optional): format for the data. Defaults to None.
             data_type (NamedTuple|None, optional): data type for the data. Defaults to None.
             timestamp (datetime|None, optional): timestamp for the data. Defaults to None.
             condition (Callable[[Any,datetime], bool]|None, optional): condition to stop the stream. Defaults to None.
@@ -480,14 +480,14 @@ class BaseDevice:
         Returns:
             tuple[Any, datetime|None]: processed output data and timestamp
         """
-        format = format or self.read_format
-        format = format.strip()
+        format_out = format_out or self.read_format
+        format_out = format_out.strip()
         data_type = data_type or self.data_type
-        fields = set([field for _, field, _, _ in Formatter().parse(format) if field and not field.startswith('_')])
+        fields = set([field for _, field, _, _ in Formatter().parse(format_out) if field and not field.startswith('_')])
         assert set(data_type._fields) == fields, "Ensure data type fields match read format fields"
         
         try:
-            parse_out = parse.parse(format, data)
+            parse_out = parse.parse(format_out, data)
         except TypeError:
             self._logger.warning(f"Failed to parse data: {data!r}")
             return None, timestamp
@@ -595,7 +595,7 @@ class BaseDevice:
         data: str|None = None, 
         buffer: deque|None = None,
         *, 
-        format: str|None = None, 
+        format_out: str|None = None, 
         data_type: NamedTuple|None = None,
         show: bool = False,
         sync_start: threading.Barrier|None = None,
@@ -607,7 +607,7 @@ class BaseDevice:
         Args:
             data (str|None, optional): data to stream. Defaults to None.
             buffer (deque|None, optional): buffer to store the streamed data. Defaults to None.
-            format (str|None, optional): format for the data. Defaults to None.
+            format_out (str|None, optional): format for the data. Defaults to None.
             data_type (NamedTuple|None, optional): data type for the data. Defaults to None.
             show (bool, optional): whether to show the stream. Defaults to False.
             sync_start (threading.Barrier|None, optional): synchronization barrier. Defaults to None.
@@ -674,7 +674,7 @@ class BaseDevice:
     
     def _loop_process_data(self, 
         buffer: deque|None = None,
-        format:str|None = None, 
+        format_out: str|None = None, 
         data_type: NamedTuple|None = None, 
         sync_start: threading.Barrier|None = None
     ):
@@ -683,7 +683,7 @@ class BaseDevice:
         
         Args:
             buffer (deque|None, optional): buffer to store the streamed data. Defaults to None.
-            format (str|None, optional): format for the data. Defaults to None.
+            format_out (str|None, optional): format for the data. Defaults to None.
             data_type (NamedTuple|None, optional): data type for the data. Defaults to None.
             sync_start (threading.Barrier|None, optional): synchronization barrier. Defaults to None.
         """
@@ -696,7 +696,7 @@ class BaseDevice:
         while self.stream_event.is_set():
             try:
                 out, now = self.data_queue.get(timeout=5)
-                out, now = self.processOutput(out, format=format, data_type=data_type, timestamp=now)
+                out, now = self.processOutput(out, format_out=format_out, data_type=data_type, timestamp=now)
                 if out is not None:
                     buffer.append((out, now))
                 self.data_queue.task_done()
@@ -711,7 +711,7 @@ class BaseDevice:
         while self.data_queue.qsize() > 0:
             try:
                 out, now = self.data_queue.get(timeout=1)
-                out, now = self.processOutput(out, format=format, data_type=data_type, timestamp=now)
+                out, now = self.processOutput(out, format_out=format_out, data_type=data_type, timestamp=now)
                 if out is not None:
                     buffer.append((out, now))
                 self.data_queue.task_done()

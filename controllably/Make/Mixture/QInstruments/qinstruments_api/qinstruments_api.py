@@ -265,7 +265,7 @@ class QInstrumentsDevice(SerialDevice):
                 self.clearDeviceBuffer()
                 raise AttributeError(error_message)
             
-            data_out = self.processOutput(out.data, format=format_out, data_type=data_type)
+            data_out = self.processOutput(out.data, format_out=format_out, data_type=data_type)
             data_out = data_out if timestamp else data_out[0]
             
             all_output.append((data_out, now) if timestamp else data_out)
