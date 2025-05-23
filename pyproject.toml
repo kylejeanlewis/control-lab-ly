@@ -52,15 +52,17 @@ dev = [
     "tox>=3.24"
 ]
 all = [
+    "pyModbusTCP>=0.2",
     "easy-biologic>=0.4.0",
     "nest-asyncio>=1.6.0",
-    "PyMeasure>=0.15",
-    "pyModbusTCP>=0.2"
+    "setuptools>=71.0.3",
+    "PyMeasure>=0.15"
 ]
 ax8 = ["pyModbusTCP>=0.2"]
 biologic = [
     "easy-biologic>=0.4.0",
-    "nest-asyncio>=1.6.0"
+    "nest-asyncio>=1.6.0",
+    "setuptools>=71.0.3",
 ]
 keithley = ["PyMeasure>=0.15"]
 
