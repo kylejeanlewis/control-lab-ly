@@ -33,10 +33,10 @@ logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
 
 MAX_SPEED = 0.375 # mm/s (22.5mm/min)
-READ_FORMAT = "{displacement},{end_stop},{value}\n"
+READ_FORMAT = "{target},{speed},{displacement},{end_stop},{value}\n"
 OUT_FORMAT = '{data}\n'
 Data = NamedTuple('Data', [('data',str)])
-MoveForceData = NamedTuple('MoveForceData', [('displacement', float),('value', int),('end_stop', bool)])
+MoveForceData = NamedTuple('MoveForceData', [('target', float),('speed', float),('displacement', float),('value', int),('end_stop', bool)])
 
 class ActuatedSensor(LoadCell):
     """ 
@@ -96,7 +96,7 @@ class ActuatedSensor(LoadCell):
     def __init__(self,
         port: str,
         limits: Iterable[float] = (-30.0, 0),
-        force_threshold: float = 10,
+        force_threshold: float = 10000,
         stabilize_timeout: float = 1, 
         force_tolerance: float = 0.01, 
         *, 
@@ -146,6 +146,7 @@ class ActuatedSensor(LoadCell):
             verbose=verbose, **kwargs
         )
         self.program = ForceDisplacement
+        # self.connect()
         return
     
     def connect(self):
