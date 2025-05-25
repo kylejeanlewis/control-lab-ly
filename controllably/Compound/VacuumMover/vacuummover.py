@@ -6,7 +6,7 @@ Classes:
     LiquidMoverSetup (CompoundSetup)
 """
 # Standard library imports
-import logging
+from __future__ import annotations
 from types import SimpleNamespace
 from typing import Sequence
 
@@ -14,9 +14,6 @@ from typing import Sequence
 from ...Make.Vacuum import VacuumMixin
 from ...Move.Cartesian import Gantry
 from ...core.position import Position, Deck
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 class VacuumGantry(VacuumMixin, Gantry):
     _default_flags = SimpleNamespace(busy=False, verbose=False, vented=True)

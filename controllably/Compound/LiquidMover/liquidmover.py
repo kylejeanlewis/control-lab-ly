@@ -7,7 +7,6 @@ Classes:
 """
 # Standard library imports
 from __future__ import annotations
-import logging
 from types import SimpleNamespace
 from typing import Sequence, Protocol
 
@@ -17,10 +16,6 @@ import numpy as np
 # Local application imports
 from ...core.compound import Compound, Part
 from ...core.position import Well, Position, Labware, Deck
-
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
-logger.debug(f"Import: OK <{__name__}>")
 
 class Liquid(Protocol):
     offset: Sequence[float]
@@ -413,13 +408,13 @@ class LiquidMover(Compound):
         coordinates = np.array(coordinates)
         self.align(coordinates)
         
-        logger.warning(self.mover.tool_offset)
+        self._logger.warning(self.mover.tool_offset)
         tip_length = self.liquid.tip_length
         self.liquid.eject()
         self.mover.tool_offset.translate((0,0,tip_length))
-        logger.warning(self.mover.tool_offset)
+        self._logger.warning(self.mover.tool_offset)
         self.mover.tool_offset.translate((0,0,-self.liquid.tip_inset_mm))
-        logger.warning(self.mover.tool_offset)
+        self._logger.warning(self.mover.tool_offset)
         self.liquid.tip_length = 0
         self._current_tip_origin = None
         return coordinates
