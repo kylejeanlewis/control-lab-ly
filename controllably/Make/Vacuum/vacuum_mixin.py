@@ -16,9 +16,6 @@ from __future__ import annotations
 import logging
 import time
 
-logger = logging.getLogger("controllably.Make")
-logger.debug(f"Import: OK <{__name__}>")
-
 VACUUM_ON_DELAY = 3
 VACUUM_OFF_DELAY = 3
 
@@ -43,6 +40,7 @@ class VacuumMixin:
         Args:
             wait (float|None): Time to wait after evacuating. Defaults to None.
         """
+        logger: logging.Logger = getattr(self, '_logger', logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}.{id(self)}"))
         logger.warning("Pulling vacuum")
         self.toggleVacuum(True)
         wait = VACUUM_ON_DELAY if wait is None else wait
@@ -56,6 +54,7 @@ class VacuumMixin:
         Args:
             wait (float|None): Time to wait after venting. Defaults to None.
         """
+        logger: logging.Logger = getattr(self, '_logger', logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}.{id(self)}"))
         logger.warning("Venting vacuum")
         self.toggleVacuum(False)
         wait = VACUUM_OFF_DELAY if wait is None else wait

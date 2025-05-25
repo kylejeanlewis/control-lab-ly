@@ -16,9 +16,6 @@ import logging
 import threading
 import time
 
-logger = logging.getLogger("controllably.Make")
-logger.debug(f"Import: OK <{__name__}>")
-
 TOLERANCE = 0.1
 
 class HeaterMixin:
@@ -82,7 +79,7 @@ class HeaterMixin:
             threading.Event: release event
         """
         def inner(temperature: float, duration: float, tolerance: float|None, release: threading.Event|None = None):
-            logger = logging.getLogger(f"{self.__class__}.{self.__class__.__name__}_{id(self)}")
+            logger: logging.Logger = getattr(self, '_logger', logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}.{id(self)}"))
             self.setTemperature(temperature, tolerance=tolerance)
             logger.info(f"Holding temperature at {temperature}°C for {duration} seconds")
             time.sleep(duration)
@@ -120,7 +117,7 @@ class HeaterMixin:
             tuple[threading.Thread, threading.Event]: thread and release event
         """
         def inner(temperature: float, tolerance: float|None, release: threading.Event|None = None):
-            logger = logging.getLogger(f"{self.__class__}.{self.__class__.__name__}_{id(self)}")
+            logger: logging.Logger = getattr(self, '_logger', logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}.{id(self)}"))
             self._set_temperature(temperature)
             logger.info(f"New set temperature at {temperature}°C")
             logger.info(f"Waiting for temperature ot reach {temperature}°C")

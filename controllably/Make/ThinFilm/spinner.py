@@ -11,14 +11,13 @@ This module holds the spinner class.
 # Standard Library imports
 from __future__ import annotations
 import threading
-import time
 
 # Local application imports
 from ...core.compound import Ensemble
 from ...core.device import TimedDeviceMixin
 from .. import Maker
 
-class Spinner(Maker, TimedDeviceMixin):
+class Spinner(TimedDeviceMixin, Maker):
     """ 
     Spinner class
     

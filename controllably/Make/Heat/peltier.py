@@ -18,7 +18,7 @@ from collections import deque
 from datetime import datetime
 import threading
 import time
-from typing import NamedTuple, Any
+from typing import NamedTuple
 
 # Third party imports
 import pandas as pd
@@ -32,7 +32,7 @@ MAX_LEN = 100
 READ_FORMAT = "{target};{temperature};{cold};{power}\n"
 TempData = NamedTuple('TempData', [('target',float),('temperature',float),('cold',float),('power',float)])
 
-class Peltier(Maker, HeaterMixin):
+class Peltier(HeaterMixin, Maker):
     """
     Peltier class
     

@@ -15,7 +15,6 @@ Attributes:
 from __future__ import annotations
 from collections import deque
 from datetime import datetime
-import logging
 import threading
 import time
 from types import SimpleNamespace
@@ -30,13 +29,10 @@ from ... import Maker
 from ...Heat.heater_mixin import HeaterMixin
 from .qinstruments_api import QInstrumentsDevice, FloatData
 
-logger = logging.getLogger("controllably.Make")
-logger.debug(f"Import: OK <{__name__}>")
-
 MAX_LEN = 100
 ACCELERATION_LIMIT = (1,30)
 
-class BioShake(Maker, HeaterMixin):
+class BioShake(HeaterMixin, Maker):
     """ 
     BioShake provides methods to control the QInstruments BioShake device.
     
@@ -406,13 +402,12 @@ class BioShake(Maker, HeaterMixin):
         speed = speed if speed else self.speed
         
         def inner(speed: float, duration: float, release: threading.Event|None = None):
-            logger = logging.getLogger(f"{self.__class__}.{self.__class__.__name__}_{id(self)}")
             self.setAcceleration(acceleration=acceleration)
             self.setSpeed(speed=speed)
             if not self.is_locked:
                 self.grip(on=True)
             self.toggleShake(on=True, duration=duration)
-            logger.info(f"Shaking at {speed}rpm for {duration} seconds")
+            self._logger.info(f"Shaking at {speed}rpm for {duration} seconds")
             
             while self.device.getShakeState() == 5:
                 time.sleep(0.1)
@@ -420,7 +415,7 @@ class BioShake(Maker, HeaterMixin):
                 time.sleep(duration)
                 while self.device.getShakeState() == 7:
                     time.sleep(0.1)
-            logger.info("End of shake")
+            self._logger.info("End of shake")
             
             if isinstance(release, threading.Event):
                 _ = release.clear() if release.is_set() else release.set()
@@ -456,7 +451,7 @@ class BioShake(Maker, HeaterMixin):
             return False
         speed = speed if speed is not None else self.getTargetSpeed()
         tolerance = tolerance or self.speed_tolerance
-        logger.debug(f"abs({data.data}-{speed}) = {tolerance*speed}")
+        self._logger.debug(f"abs({data.data}-{speed}) = {tolerance*speed}")
         return (abs(data.data - speed) <= tolerance*speed) 
     
     def getTargetSpeed(self) -> float|None:

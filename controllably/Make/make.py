@@ -17,8 +17,8 @@ from types import SimpleNamespace
 from ..core import factory
 from ..core.device import Device, StreamingDevice
 
-logger = logging.getLogger("controllably.Make")
-logger.debug(f"Import: OK <{__name__}>")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 class Maker:
     """
@@ -65,6 +65,16 @@ class Maker:
     def __del__(self):
         self.shutdown()
         return
+    
+    def __enter__(self):
+        """Context manager enter method"""
+        self.connect()
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Context manager exit method"""
+        self.disconnect()
+        return False
     
     @property
     def connection_details(self) -> dict:

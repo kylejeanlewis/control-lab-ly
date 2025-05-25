@@ -17,22 +17,14 @@ Attributes:
 """
 # Standard library imports
 from __future__ import annotations
-from copy import deepcopy
 from datetime import datetime
-import logging
 import time
 from types import SimpleNamespace
 from typing import Any, NamedTuple
 
-# Third party imports
-import serial       # pip install pyserial
-
 # Local application imports
 from .....core.device import SerialDevice
 from .qinstruments_lib import ELMStateCode, ELMStateString, ShakeStateCode, ShakeStateString
-
-logger = logging.getLogger("controllably.Make")
-logger.debug(f"Import: OK <{__name__}>")
 
 READ_FORMAT = "{data}\r"
 WRITE_FORMAT = "{data}\r"
@@ -187,9 +179,6 @@ class QInstrumentsDevice(SerialDevice):
             init_timeout=init_timeout, simulation=simulation, verbose=verbose, 
             data_type=data_type, read_format=read_format, write_format=write_format, **kwargs
         )
-        self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
-        self._logger.addHandler(logging.StreamHandler())
-        self.verbose = verbose
         
         self.model = ''
         self.serial_number = ''

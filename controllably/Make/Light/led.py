@@ -22,7 +22,7 @@ from .. import Maker
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-class LED(Maker, TimedDeviceMixin):
+class LED(TimedDeviceMixin, Maker):
     """ 
     LED class
     
@@ -108,7 +108,7 @@ class LED(Maker, TimedDeviceMixin):
             blocking (bool, optional): whether to block the thread. Defaults to
         """
         if self.channel != self._parent.channel:
-            logger.debug(f'{self.channel=} != {self._parent.channel=}, not lighting')
+            self._logger.debug(f'{self.channel=} != {self._parent.channel=}, not lighting')
             return
         timer = self.setValueDelayed(duration, power, 0, blocking, event=self.timer_event, **kwargs)
         if isinstance(timer, threading.Timer):
@@ -118,7 +118,7 @@ class LED(Maker, TimedDeviceMixin):
     def stop(self, **kwargs):
         """Stop the LED from emitting light"""
         if self.channel != self._parent.channel:
-            logger.debug(f'{self.channel=} != {self._parent.channel=}, not stopping')
+            self._logger.debug(f'{self.channel=} != {self._parent.channel=}, not stopping')
             return False
         self.stopTimer(self.threads.get('timer', None), event=self.timer_event)
         self.setPower(0, **kwargs)
@@ -148,7 +148,7 @@ class LED(Maker, TimedDeviceMixin):
         if isinstance(channel,int):
             self._parent.channel = channel
         if self.channel != self._parent.channel:
-            logger.debug(f'{self.channel=} != {self._parent.channel=}, not setting power')
+            self._logger.debug(f'{self.channel=} != {self._parent.channel=}, not setting power')
             return False
         ret = self.setTargetPower(power)
         self.updatePower()
@@ -168,7 +168,7 @@ class LED(Maker, TimedDeviceMixin):
             bool: whether the power level was set
         """
         if self.channel != self._parent.channel:
-            logger.debug(f'{self.channel=} != {self._parent.channel=}, not setting target power')
+            self._logger.debug(f'{self.channel=} != {self._parent.channel=}, not setting target power')
             return False
         assert power >= 0, "Ensure the power level is a non-negative number"
         if self.timer_event.is_set() and power != 0:
