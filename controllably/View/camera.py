@@ -17,7 +17,7 @@ import queue
 import threading
 import time
 from types import SimpleNamespace
-from typing import Any, Callable, Iterable, Mapping, Sequence
+from typing import Any, Callable, Iterable, Mapping
 
 # Third party imports
 import cv2              # pip install opencv-python
@@ -27,7 +27,7 @@ import numpy as np
 from .placeholder import PLACEHOLDER
 
 logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
+logger.setLevel(logging.DEBUG)
 
 class Camera:
     """ 
@@ -203,7 +203,7 @@ class Camera:
         try:
             feed_source = self.connection_details.get('feed_source', 0)
             feed_api = self.connection_details.get('feed_api', None)
-            logger.info(f'Opening feed: {feed_source}')
+            self._logger.info(f'Opening feed: {feed_source}')
             success = self.feed.open(feed_source, feed_api)
         except Exception as e:
             self._logger.error(f"Failed to connect to {self.connection_details}")

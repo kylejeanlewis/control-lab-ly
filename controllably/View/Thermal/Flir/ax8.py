@@ -13,11 +13,7 @@ Attributes:
 """
 # Standard library imports
 from __future__ import annotations
-import logging
-import queue
 import struct
-import threading
-import time
 from typing import Sequence
 
 # Third party imports
@@ -26,14 +22,10 @@ from pyModbusTCP.client import ModbusClient # pip install pyModbusTCP
 
 # Local application imports
 from ...camera import Camera
-from ...placeholder import PLACEHOLDER
 from .ax8_api.ax8_lib import BoxRegs, SpotMeterRegs
 
 BYTE_SIZE = 4
 MODBUS_PORT = 502
-
-logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
 
 class AX8(Camera):
     """ 
@@ -148,9 +140,9 @@ class AX8(Camera):
         modbus_status = self.modbus.is_open
         feed_status = self.feed.isOpened()
         if not modbus_status:
-            logger.warning(f"Modbus not connected: {self.connection_details['host']}")
+            self._logger.warning(f"Modbus not connected: {self.connection_details['host']}")
         if not feed_status:
-            logger.warning(f"Feed not connected: {self.connection_details['feed_source']}")
+            self._logger.warning(f"Feed not connected: {self.connection_details['feed_source']}")
         return modbus_status and feed_status
     
     def connect(self):
@@ -161,7 +153,7 @@ class AX8(Camera):
     def connectCamera(self):
         """Connect to camera"""
         # Connect to camera via Modbus
-        logger.info('Connecting to camera...')
+        self._logger.info('Connecting to camera...')
         self.modbus.host = self.host
         self.modbus.port = self.port
         success = self.modbus.open()
@@ -170,7 +162,7 @@ class AX8(Camera):
         return
     
     def connectFeed(self):
-        logger.info('Opening feed...')
+        self._logger.info('Opening feed...')
         host = self.connection_details['host']
         encoding = self.connection_details.get('encoding', 'avc')
         overlay = self.connection_details.get('overlay', False)
@@ -184,12 +176,12 @@ class AX8(Camera):
     
     def disconnectCamera(self):
         """Disconnect from camera"""
-        logger.info('Disconnecting from camera...')
+        self._logger.info('Disconnecting from camera...')
         self.modbus.close()
         return
     
     def disconnectFeed(self):
-        logger.info('Closing feed...')
+        self._logger.info('Closing feed...')
         return super().disconnect()
     
     def configureSpotmeter(self,
@@ -274,7 +266,7 @@ class AX8(Camera):
             np.ndarray|None: array of temperature values along cutline
         """
         if not any([x,y]) or all([x,y]):
-            print("Please only input value for one of 'x' or 'y'")
+            self._logger.warning("Please only input value for one of 'x' or 'y'")
             return
         if any([reflected_temperature, emissivity, distance]):
             self.configureSpotmeter(reflected_temperature, emissivity, distance)
@@ -298,7 +290,7 @@ class AX8(Camera):
         self.modbus.unit_id = 1
         out = self.modbus.read_holding_registers(1017, 2)[:2]
         camera_temperature = self.decodeModbus(out, is_int=False)[0]
-        logger.info(f"Internal Camera Temperature: {camera_temperature:.2f}K")
+        self._logger.info(f"Internal Camera Temperature: {camera_temperature:.2f}K")
         return camera_temperature
     
     def getSpotPositions(self, instances:list) -> dict[int, tuple[int,int]]:
