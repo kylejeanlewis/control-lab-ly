@@ -29,18 +29,14 @@ from string import Formatter
 import threading
 import time
 from types import SimpleNamespace
-from typing import Any, NamedTuple, Callable, Protocol, Iterable
+from typing import Any, NamedTuple, Protocol
 
 # Third party imports
 import parse
 import serial
 
-_logger = logging.getLogger("controllably.core")
-_logger.debug(f"Import: OK <{__name__}>")
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-# handler = logging.StreamHandler()
 
 READ_FORMAT = "{data}\n"
 WRITE_FORMAT = "{data}\n"

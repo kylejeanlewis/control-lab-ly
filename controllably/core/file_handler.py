@@ -36,9 +36,6 @@ import yaml
 # Local application imports
 from . import connection
 
-_logger = logging.getLogger("controllably.core")
-_logger.debug(f"Import: OK <{__name__}>")
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
@@ -164,10 +161,10 @@ def start_logging(log_dir:Path|str|None = None, log_file:Path|str|None = None, l
     log_path = log_dir/log_file
     os.makedirs(log_path.parent, exist_ok=True)
     
-    handler = logging.FileHandler(log_path)
-    handler.setLevel(logging.DEBUG)
-    logging.basicConfig(handlers=[handler])
-    logger.debug(f"Current working directory: {Path.cwd()}")
+    file_handler = logging.FileHandler(log_path)
+    file_handler.setLevel(logging.DEBUG)
+    logging.basicConfig(handlers=[file_handler])
+    logger.info(f"Current working directory: {Path.cwd()}")
     return log_path
 
 def start_project_here(dst:Path|str|None = None):
@@ -180,7 +177,7 @@ def start_project_here(dst:Path|str|None = None):
     """
     src = resources.files('controllably') / 'core/_templates'
     dst = Path.cwd() if dst is None else Path(dst)
-    logger.debug(f"Creating new project in: {dst}")
+    logger.info(f"Creating new project in: {dst}")
     for directory in src.iterdir():
         new_dst = dst / directory.name
         if new_dst.exists():

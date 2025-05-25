@@ -29,14 +29,10 @@ import uuid
 # Third party imports
 import serial.tools.list_ports                    # pip install pyserial
 
-_logger = logging.getLogger("controllably.core")
-_logger.debug(f"Import: OK <{__name__}>")
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
-handler.addFilter(logging.Filter(__name__+'.'))
 logger.addHandler(handler)
 
 def get_addresses(registry:dict|None) -> dict|None:
@@ -101,7 +97,7 @@ def get_node_linux() -> str:
             with open(machine_id_path, 'r') as f:
                 return f.read().strip()
         except Exception as e:
-            print(f"Error reading /etc/machine-id: {e}")
+            logger.error(f"Error reading /etc/machine-id: {e}")
     
     # Fallback to dmidecode (requires root, might not always be installed)
     try:
@@ -109,7 +105,7 @@ def get_node_linux() -> str:
         output = subprocess.check_output(cmd, shell=True).decode("utf-8")
         return output.strip()
     except Exception as e:
-        print(f"Error getting Linux system UUID with dmidecode: {e}")
+        logger.error(f"Error getting Linux system UUID with dmidecode: {e}")
     return ''
 
 def get_node_macos() -> str:
@@ -123,7 +119,7 @@ def get_node_macos() -> str:
         if serial_number_line:
             return serial_number_line[0].split('=')[-1].strip().strip('"')
     except Exception as e:
-        print(f"Error getting macOS serial number: {e}")
+        logger.error(f"Error getting macOS serial number: {e}")
     return ''
 
 def get_node_windows() -> str:
@@ -136,7 +132,7 @@ def get_node_windows() -> str:
         uuid_line = [line for line in output.split('\n') if 'UUID' not in line and line.strip()]
         return uuid_line[0].strip() if uuid_line else ''
     except Exception as e:
-        print(f"Error getting Windows system UUID with wmic: {e}")
+        logger.error(f"Error getting Windows system UUID with wmic: {e}")
     return ''
 
 def get_ports() -> list[str]:

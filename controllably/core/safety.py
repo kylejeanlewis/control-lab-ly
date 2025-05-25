@@ -23,15 +23,9 @@ import logging
 import time
 from typing import Callable
 
-_logger = logging.getLogger("controllably.core")
-_logger.debug(f"Import: OK <{__name__}>")
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setLevel(logging.DEBUG)
-logger.addHandler(handler)
-
+logger.addHandler(logging.StreamHandler())
 
 DEBUG = 0
 """Safety mode that logs the function call"""

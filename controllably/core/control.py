@@ -25,8 +25,6 @@ from dataclasses import dataclass
 import inspect
 import logging
 import queue
-import select
-import socket
 import threading
 import time
 from typing import Callable, Mapping, Any, Iterable, Type
@@ -35,12 +33,13 @@ import uuid
 # Local application imports
 from .interpreter import Interpreter
 
-BYTESIZE = 1024
-
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
+
+BYTESIZE = 1024
 
 @dataclass
 class ClassMethods:

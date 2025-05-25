@@ -35,9 +35,6 @@ from typing import Protocol, Callable, Sequence, Type, Iterable, Any
 from .device import Device
 from . import factory
 
-_logger = logging.getLogger("controllably.core")
-_logger.debug(f"Import: OK <{__name__}>")
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler())
@@ -371,7 +368,7 @@ class Ensemble(Compound):
             for future in as_completed(futures, timeout=timeout):
                 key = futures[future]
                 out = future.result()
-                logger.info(f"Channel {key}: {out}")
+                self._logger.info(f"Channel {key}: {out}")
                 outs[key] = out
         return outs
     

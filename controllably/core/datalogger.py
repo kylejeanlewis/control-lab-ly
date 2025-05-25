@@ -29,7 +29,7 @@ import pandas as pd
 from .device import StreamingDevice
 
 logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
+logger.setLevel(logging.DEBUG)
 
 def get_dataframe(data_store:Iterable[tuple[NamedTuple,datetime]], fields:Iterable[str]) -> pd.DataFrame:
     """ 
