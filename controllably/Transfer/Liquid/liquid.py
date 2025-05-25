@@ -18,14 +18,8 @@ from types import SimpleNamespace
 from ...core import factory
 from ...core.device import Device, StreamingDevice
 
-_logger = logging.getLogger("controllably.Transfer")
-_logger.debug(f"Import: OK <{__name__}>")
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-logger.addHandler(handler)
 
 class LiquidHandler:
     """ 

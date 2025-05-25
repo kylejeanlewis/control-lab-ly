@@ -11,16 +11,12 @@ This module provides a class for handling TriContinent pumps.
 """
 # Standard library imports
 from __future__ import annotations
-import logging
 import time
 
 # Local application imports
 from .....core.compound import Multichannel, Ensemble
 from ...liquid import LiquidHandler
 from .tricontinent_api import TriContinentDevice
-
-logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
 
 class TriContinent(LiquidHandler):
     """

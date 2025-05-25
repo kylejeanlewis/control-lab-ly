@@ -9,21 +9,11 @@ This module contains the Sartorius class.
 """
 # Standard library imports
 from __future__ import annotations
-import logging
 import time
 
 # Local application imports
 from ...liquid import LiquidHandler
 from .sartorius_api import SartoriusDevice, interpolate_speed
-
-_logger = logging.getLogger("controllably.Transfer")
-_logger.debug(f"Import: OK <{__name__}>")
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-logger.addHandler(handler)
 
 class Sartorius(LiquidHandler):
     """
@@ -187,7 +177,7 @@ class Sartorius(LiquidHandler):
         if (volume,speed) not in self.speed_interpolation:
             self.speed_interpolation[(volume,speed)] = parameters
         if parameters['n_intervals'] == 0:
-            logger.error("No feasible interpolation found.")
+            self._logger.error("No feasible interpolation found.")
             raise ValueError("No feasible interpolation found.")
             return False
         if self.speed_in != parameters['preset_speed']:
@@ -250,7 +240,7 @@ class Sartorius(LiquidHandler):
         if (volume,speed) not in self.speed_interpolation:
             self.speed_interpolation[(volume,speed)] = parameters
         if parameters['n_intervals'] == 0:
-            logger.error("No feasible interpolation found.")
+            self._logger.error("No feasible interpolation found.")
             raise ValueError("No feasible interpolation found.")
             return False
         if self.speed_out != parameters['preset_speed']:
@@ -288,7 +278,7 @@ class Sartorius(LiquidHandler):
         Returns:
             bool: whether the action is successful
         """
-        logger.debug("Blowing out")
+        self._logger.debug("Blowing out")
         out = self.device.blowout(home=home)
         return out == 'ok'
     
@@ -320,7 +310,7 @@ class Sartorius(LiquidHandler):
         Returns:
             bool: Whether the action is successful.
         """
-        logger.debug("Attaching tip")
+        self._logger.debug("Attaching tip")
         self.device.flags.tip_on = True
         self.device.flags.tip_on = self.device.isTipOn()
         if self.device.flags.tip_on:
@@ -334,7 +324,7 @@ class Sartorius(LiquidHandler):
         Returns:
             bool: Whether the action is successful.
         """
-        logger.debug("Ejecting tip")
+        self._logger.debug("Ejecting tip")
         out = self.device.eject()
         success = (out == 'ok')
         if success:
@@ -349,7 +339,7 @@ class Sartorius(LiquidHandler):
         Returns:
             bool: Whether the action is successful.
         """
-        logger.debug("Homing")
+        self._logger.debug("Homing")
         out = self.device.home()
         return out == 'ok'
         
@@ -365,7 +355,7 @@ class Sartorius(LiquidHandler):
             bool: Whether the action is successful.
         """
         assert abs(speed) in self.device.preset_speeds, f"Speed must be one of {self.device.preset_speeds}"
-        logger.debug(f"Setting speed to {speed} uL/s")
+        self._logger.debug(f"Setting speed to {speed} uL/s")
         speed_code = self.device.info.preset_speeds.index(abs(speed))+1
         out = self.device.setInSpeedCode(speed_code) if speed > 0 else self.device.setOutSpeedCode(speed_code)
         if as_default:

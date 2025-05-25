@@ -16,9 +16,6 @@ from __future__ import annotations
 import logging
 import time
 
-logger = logging.getLogger("controllably.Transfer")
-logger.debug(f"Import: OK <{__name__}>")
-
 GRIPPER_ON_DELAY = 0
 GRIPPER_OFF_DELAY = 0
 
@@ -43,6 +40,7 @@ class GripperMixin:
         Args:
             wait (float|None): Time to wait after dropping. Defaults to None.
         """
+        logger: logging.Logger = getattr(self, '_logger', logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}.{id(self)}"))
         logger.warning("Dropping object")
         self.toggleGrip(False)
         wait = GRIPPER_OFF_DELAY if wait is None else wait
@@ -56,6 +54,7 @@ class GripperMixin:
         Args:
             wait (float|None): Time to wait after grabbing. Defaults to None
         """
+        logger: logging.Logger = getattr(self, '_logger', logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}.{id(self)}"))
         logger.warning("Grabbing object")
         self.toggleGrip(True)
         wait = GRIPPER_ON_DELAY if wait is None else wait

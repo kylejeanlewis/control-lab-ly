@@ -31,9 +31,6 @@ from typing import NamedTuple, Any
 from ......core.device import SerialDevice
 from . import sartorius_lib as lib
 
-_logger = logging.getLogger("controllably.Transfer")
-_logger.debug(f"Import: OK <{__name__}>")
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
@@ -173,10 +170,6 @@ class SartoriusDevice(SerialDevice):
             data_type=data_type, read_format=read_format, write_format=write_format, **kwargs
         )
         
-        self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
-        self._logger.addHandler(logging.StreamHandler())
-        self.verbose = verbose
-        
         self.info = lib.Model.BRL0.value
         self.model = 'BRL0'
         self.version = ''
@@ -197,7 +190,7 @@ class SartoriusDevice(SerialDevice):
         self.tip_length = 0
         
         self._repeat_query = True
-        logger.warning("Any attached pipette tip may drop during initialisation.")
+        self._logger.warning("Any attached pipette tip may drop during initialisation.")
         self.connect()
         return
     
@@ -369,7 +362,7 @@ class SartoriusDevice(SerialDevice):
         status_name = lib.StatusCode(self.status).name
         if self.status in [4,6,8]:
             self.flags.busy = True
-            logger.debug(status_name)
+            self._logger.debug(status_name)
         elif self.status == 0:
             self.flags.busy = False
         return out.data
@@ -383,7 +376,7 @@ class SartoriusDevice(SerialDevice):
         """
         if self.flags.conductive_tips:
             self.flags.tip_on = (self.getCapacitance() > self.tip_capacitance)
-            logger.info(f'Tip capacitance: {self.capacitance}')
+            self._logger.info(f'Tip capacitance: {self.capacitance}')
         return self.flags.tip_on
     
     # Getter methods
@@ -409,8 +402,8 @@ class SartoriusDevice(SerialDevice):
         model_info = lib.Model[model_name.split('-')[0]].value
         self.info = model_info
         if self.volume_resolution != model_info.resolution:
-            logger.warning(f"Resolution mismatch: {self.volume_resolution=} | {model_info.resolution=}")
-            # logger.warning("Check library values.")
+            self._logger.warning(f"Resolution mismatch: {self.volume_resolution=} | {model_info.resolution=}")
+            # self._logger.warning("Check library values.")
             self.volume_resolution = model_info.resolution
         return model_info
     
@@ -424,9 +417,9 @@ class SartoriusDevice(SerialDevice):
         out: Data = self.query('DM')
         model_name = out.data.split('-')[0]
         if model_name not in lib.Model._member_names_:
-            logger.warning(f'Received: {model_name}')
-            logger.warning("Defaulting to: BRL0")
-            logger.warning(f"Valid models are: {', '.join(lib.Model._member_names_)}")
+            self._logger.warning(f'Received: {model_name}')
+            self._logger.warning("Defaulting to: BRL0")
+            self._logger.warning(f"Valid models are: {', '.join(lib.Model._member_names_)}")
         return out.data
     
     def getVolumeResolution(self) -> float:

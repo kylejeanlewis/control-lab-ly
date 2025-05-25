@@ -22,7 +22,6 @@ Attributes:
 # Standard library imports
 from __future__ import annotations
 from datetime import datetime
-import logging
 import time
 from types import SimpleNamespace
 from typing import NamedTuple, Any
@@ -30,15 +29,6 @@ from typing import NamedTuple, Any
 # Local application imports
 from ......core.device import SerialDevice
 from .tricontinent_lib import ErrorCode, StatusCode
-
-_logger = logging.getLogger("controllably.Transfer")
-_logger.debug(f"Import: OK <{__name__}>")
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-logger.addHandler(handler)
 
 MAX_CHANNELS = 15
 ACCEL_MULTIPLIER = 2500
@@ -149,10 +139,6 @@ class TriContinentDevice(SerialDevice):
             data_type=data_type, read_format=read_format, write_format=write_format, **kwargs
         )
         
-        self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
-        self._logger.addHandler(logging.StreamHandler())
-        self.verbose = verbose
-        
         self.info = "C3000: MMDDYY"
         self.model = 'C3000'
         self.version = 'MMDDYY'
@@ -259,7 +245,7 @@ class TriContinentDevice(SerialDevice):
             self.getStatus()
             self.getState()
         except AttributeError:
-            logger.warning(f"Channel {channel} not available.")
+            self._logger.warning(f"Channel {channel} not available.")
             self.channel = _old_channel
         return
     
