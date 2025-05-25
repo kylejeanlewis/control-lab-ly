@@ -2,7 +2,6 @@
 from __future__ import annotations
 from collections import deque
 from datetime import datetime
-import logging
 from pathlib import Path
 import threading
 import time
@@ -19,9 +18,6 @@ from pyvisa import VisaIOError
 from ....core.connection import match_current_ip_address
 from ....core import datalogger
 from ... import Measurer, Program
-
-logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
 
 KeithleyBase = type('KeithleyBase', (KeithleyBuffer,SCPIMixin,Instrument), {})
 
@@ -146,7 +142,7 @@ class Keithley(Measurer):
         )
         
         self.n_runs += 1
-        logger.info(f"Run ID: {self.n_runs}")
+        self._logger.info(f"Run ID: {self.n_runs}")
         self.runs[self.n_runs] = new_run
         if not blocking:
             thread = threading.Thread(target=new_run.run)
@@ -176,13 +172,13 @@ class Keithley(Measurer):
         
         program = self.runs.get(run_id, None)
         if program is None:
-            logger.warning(f"Run ID {run_id} not found.")
+            self._logger.warning(f"Run ID {run_id} not found.")
             return None
         if not isinstance(program, Program):
-            logger.warning("Program not of type Program.")
+            self._logger.warning("Program not of type Program.")
             return None
         if len(program.data) == 0:
-            logger.warning("No data found.")
+            self._logger.warning("No data found.")
             return None
         
         records = []

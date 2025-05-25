@@ -4,7 +4,6 @@ import ast
 from collections import deque
 from datetime import datetime
 from inspect import getdoc, Signature, Parameter
-import logging
 import nest_asyncio
 from pathlib import Path
 import threading
@@ -22,9 +21,6 @@ import pandas as pd
 from ....core.connection import match_current_ip_address
 from ....core import datalogger
 from ... import Measurer, ProgramDetails
-
-logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
 
 # INITIALIZING
 nest_asyncio.apply()
@@ -202,7 +198,7 @@ class BioLogic(Measurer):
         )
         
         self.n_runs += 1
-        logger.info(f"Run ID: {self.n_runs}")
+        self._logger.info(f"Run ID: {self.n_runs}")
         self.runs[self.n_runs] = new_run
         if not blocking:
             thread = threading.Thread(target=new_run.run)
@@ -246,13 +242,13 @@ class BioLogic(Measurer):
         
         program = self.runs.get(run_id, None)
         if program is None:
-            logger.warning(f"Run ID {run_id} not found.")
+            self._logger.warning(f"Run ID {run_id} not found.")
             return None
         if not isinstance(program, BiologicProgram):
-            logger.warning("Program not of type BiologicProgram.")
+            self._logger.warning("Program not of type BiologicProgram.")
             return None
         if len(program.data) == 0:
-            logger.warning("No data found.")
+            self._logger.warning("No data found.")
             return None
         
         records = []

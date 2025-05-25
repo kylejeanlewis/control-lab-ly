@@ -14,7 +14,6 @@ Attributes:
 # Standard library imports
 from __future__ import annotations
 from datetime import datetime
-import logging
 from typing import NamedTuple, Iterable
 
 # Third party imports
@@ -23,9 +22,6 @@ import pandas as pd
 # Local application 
 from ...core import datalogger
 from ..Mechanical.load_cell import LoadCell
-
-logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
 
 G = 9.81
 

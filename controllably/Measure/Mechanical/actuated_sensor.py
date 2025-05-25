@@ -16,7 +16,6 @@ Attributes:
 # Standard library imports
 from __future__ import annotations
 from datetime import datetime
-import logging
 import time
 from typing import NamedTuple, Iterable
 
@@ -28,9 +27,6 @@ from ...core import datalogger
 from ...core.compound import Ensemble
 from ..measure import Program
 from .load_cell import LoadCell
-
-logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
 
 MAX_SPEED = 0.375 # mm/s (22.5mm/min)
 READ_FORMAT = "{target},{speed},{displacement},{end_stop},{value}\n"

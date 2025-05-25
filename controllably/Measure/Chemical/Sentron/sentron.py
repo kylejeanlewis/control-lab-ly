@@ -14,16 +14,12 @@ Attributes:
 """
 # Standard library imports
 from __future__ import annotations
-import logging
 import time
 from typing import NamedTuple
 
 # Local application imports
 from ....core import datalogger
 from ...measure import Measurer
-
-logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
 
 MAX_LEN = 100
 READ_FORMAT = "{yymmdd} {hhmmss} {sample}  {pH}  {temperature}\n"

@@ -30,9 +30,6 @@ from typing import Any, NamedTuple, Iterable, Callable
 from ..core import datalogger, factory
 from ..core.device import StreamingDevice
 
-_logger = logging.getLogger("controllably.Measure")
-_logger.debug(f"Import: OK <{__name__}>")
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
@@ -104,6 +101,16 @@ class Measurer:
     def __del__(self):
         self.shutdown()
         return
+    
+    def __enter__(self):
+        """Context manager enter method"""
+        self.connect()
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Context manager exit method"""
+        self.disconnect()
+        return False
     
     @property
     def connection_details(self) -> dict:
@@ -196,7 +203,7 @@ class Measurer:
         kwargs.update(new_run.parameters)
         
         self.n_runs += 1
-        logger.info(f"Run ID: {self.n_runs}")
+        self._logger.info(f"Run ID: {self.n_runs}")
         self.runs[self.n_runs] = new_run
         if not blocking:
             thread = threading.Thread(target=new_run.run, args=args, kwargs=kwargs)

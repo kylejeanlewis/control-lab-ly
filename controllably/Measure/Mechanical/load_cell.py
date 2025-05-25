@@ -14,7 +14,6 @@ Attributes:
 # Standard library imports
 from __future__ import annotations
 from datetime import datetime
-import logging
 import time
 from typing import NamedTuple, Iterable
 
@@ -24,9 +23,6 @@ import pandas as pd
 # Local application imports
 from ...core import datalogger
 from ..measure import Measurer
-
-logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
 
 READ_FORMAT = "{value}\n"
 ValueData = NamedTuple('ValueData', [('value', int)])
