@@ -28,6 +28,7 @@ from ....core.interpreter import JSONInterpreter
 BYTESIZE = 1024
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
@@ -125,7 +126,7 @@ class SocketServer:
         server_socket.bind((host, port))
         server_socket.listen(n_connections)  # Listen for up to 5 connections (default)
 
-        print(f"Server listening on {host}:{port}")
+        logger.info(f"Server listening on {host}:{port}")
         controller.setAddress(f"{host}:{port}")
 
         threads = []
@@ -146,7 +147,7 @@ class SocketServer:
             client_addr = f"{addr[0]}:{addr[1]}"
             client_socket.sendall(f"[CONNECTED] {client_addr}".encode("utf-8"))
             handshake = client_socket.recv(BYTESIZE).decode("utf-8", "replace").replace('\uFFFD', '')  # Receive response" ")[1]
-            print(handshake)
+            logger.info(handshake)
             if not handshake.startswith("[CONNECTED] "):
                 raise ConnectionError(f"Invalid handshake: {handshake}")
             client_role = handshake.replace('[CONNECTED] ','')
@@ -201,7 +202,7 @@ class SocketClient:
             logger.info(f"Connected to server at {host_addr}")
             time.sleep(1)
             handshake = client_socket.recv(BYTESIZE).decode("utf-8","replace").replace('\uFFFD', '')  # Receive data (adjust buffer size if needed)
-            print(handshake)
+            logger.info(handshake)
             if not handshake.startswith("[CONNECTED] "):
                 raise ConnectionError(f"Invalid handshake: {handshake}")
             controller.setAddress(handshake.replace('[CONNECTED] ',''))

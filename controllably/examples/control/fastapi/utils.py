@@ -29,6 +29,10 @@ from ....core.interpreter import JSONInterpreter
 CONNECTION_ERRORS = (ConnectionRefusedError, ConnectionError, urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError)
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
 
 class FastAPIWorkerClient:
     instances: dict[str, FastAPIWorkerClient] = dict()
