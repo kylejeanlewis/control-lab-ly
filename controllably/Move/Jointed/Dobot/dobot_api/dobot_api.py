@@ -23,9 +23,8 @@ from typing import Any
 from .....core import connection
 from .....external.Dobot_Arm import DobotApiDashboard, DobotApiMove
 
-logger = logging.getLogger("controllably.Move")
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-logger.debug(f"Import: OK <{__name__}>")
 
 DASHBOARD_PORT = 29999
 FEEDBACK_PORT = 30003

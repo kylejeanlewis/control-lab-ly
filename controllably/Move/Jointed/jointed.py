@@ -9,7 +9,6 @@ This module provides the base class for jointed robot arms.
 """
 # Standard library imports
 from __future__ import annotations
-import logging
 from typing import Sequence
 
 # Third party imports 
@@ -19,9 +18,6 @@ from scipy.spatial.transform import Rotation
 # Local application imports
 from ...core.position import Position
 from .. import Mover
-
-logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
 
 class RobotArm(Mover):
     """

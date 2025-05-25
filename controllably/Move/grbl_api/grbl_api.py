@@ -17,7 +17,6 @@ Attributes:
 """
 # Standard library imports
 from __future__ import annotations
-import logging
 import time
 from typing import Any, Sequence, NamedTuple
 
@@ -28,9 +27,6 @@ import numpy as np
 from ...core.device import SerialDevice
 from ...core.position import Position
 from .grbl_lib import Alarm, Error, Setting, Status
-
-logger = logging.getLogger("controllably.Move")
-logger.debug(f"Import: OK <{__name__}>")
 
 LOOP_INTERVAL = 0.1
 MOVEMENT_TIMEOUT = 30

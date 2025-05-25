@@ -26,9 +26,8 @@ from ..core import factory
 from ..core.device import Device
 from ..core.position import Deck, Labware, Position, BoundingVolume, get_transform, convert_to_position
 
-logger = logging.getLogger("controllably.Move")
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-logger.debug(f"Import: OK <{__name__}>")
 
 class Mover:
     """ 

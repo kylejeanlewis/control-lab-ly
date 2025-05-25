@@ -1,6 +1,5 @@
 # Standard library imports
 from __future__ import annotations
-import logging
 import time
 from typing import Sequence
 
@@ -8,9 +7,6 @@ from typing import Sequence
 from ...core.position import Position, Deck
 from ...Make.Heat import HeaterMixin
 from .cartesian import Gantry
-
-logger = logging.getLogger("controllably.Move")
-logger.debug(f"Import: OK <{__name__}>")
 
 class Ender(Gantry, HeaterMixin):
     """

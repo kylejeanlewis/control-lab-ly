@@ -14,7 +14,6 @@ Attributes:
 # Standard library imports
 from __future__ import annotations
 from copy import deepcopy
-import logging
 import time
 from typing import Sequence
 
@@ -26,9 +25,6 @@ from scipy.spatial.transform import Rotation
 from ....core.position import Position
 from .. import RobotArm
 from .dobot_api import DobotDevice
-
-logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
 
 MOVEMENT_BUFFER = 1
 MOVEMENT_TIMEOUT = 30

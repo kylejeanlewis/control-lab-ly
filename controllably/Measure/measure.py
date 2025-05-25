@@ -32,9 +32,6 @@ from ..core.device import StreamingDevice
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-logger.addHandler(handler)
 
 MAX_LEN = 100
 

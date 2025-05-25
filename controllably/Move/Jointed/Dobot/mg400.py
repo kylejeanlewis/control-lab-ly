@@ -15,7 +15,6 @@ Attributes:
 """
 # Standard library imports
 from __future__ import annotations
-import logging
 import math
 from types import SimpleNamespace
 from typing import Sequence
@@ -26,9 +25,6 @@ import numpy as np
 # Local application imports
 from ....core.position import Position, Deck, BoundingVolume
 from . import Dobot
-
-logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
 
 DEFAULT_SPEEDS = dict(max_speed_j1=300, max_speed_j2=300, max_speed_j3=300, max_speed_j4=300)
 

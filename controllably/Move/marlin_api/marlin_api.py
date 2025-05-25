@@ -14,7 +14,6 @@ Attributes:
 """
 # Standard library imports
 from __future__ import annotations
-import logging
 import time
 from typing import Any, NamedTuple
 
@@ -25,9 +24,6 @@ import numpy as np
 # from ...core.connection import SerialDevice
 from ...core.device import SerialDevice
 from ...core.position import Position
-
-logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
 
 LOOP_INTERVAL = 0.1
 MOVEMENT_TIMEOUT = 30
@@ -98,7 +94,6 @@ class Marlin(SerialDevice):
             message_end (str): message end character for serial communication. Defaults to '\n'.
             simulation (bool): simulation mode for testing. Defaults to False.
         """
-        logger.warning('Marlin firmware support still under development. Proceed with care.')        # TODO: Remove warning when fully supported
         super().__init__(
             port=port, 
             baudrate=baudrate, 

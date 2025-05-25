@@ -9,7 +9,6 @@ This module holds the base class for cartesian mover tools.
 """
 # Standard library imports
 from __future__ import annotations
-import logging
 from typing import Sequence
 
 # Third party imports
@@ -21,9 +20,6 @@ from scipy.spatial.transform import Rotation
 # Local application imports
 from ...core.position import BoundingBox, Position, Deck
 from .. import GCode
-
-logger = logging.getLogger("controllably.Move")
-logger.debug(f"Import: OK <{__name__}>")
 
 class Gantry(GCode):
     """

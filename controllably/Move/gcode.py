@@ -14,7 +14,6 @@ Attributes:
 """
 # Standard library imports
 from __future__ import annotations
-import logging
 import time
 from typing import Sequence, Protocol, Any
 
@@ -27,9 +26,6 @@ from ..core.position import Position
 from . import Mover
 from .grbl_api import GRBL
 from .marlin_api import Marlin
-
-logger = logging.getLogger("controllably.Move")
-logger.debug(f"Import: OK <{__name__}>")
 
 MOVEMENT_BUFFER = 0
 MOVEMENT_TIMEOUT = 30
