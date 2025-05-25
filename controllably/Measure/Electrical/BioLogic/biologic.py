@@ -260,7 +260,7 @@ class BioLogic(Measurer):
                 field_titles = ['channel'] + list(datum._fields)
                 field_types = [int] + [type(d) for d in datum]
                 fields = [(title,type_) for title,type_ in zip(field_titles,field_types)]
-                print(field_titles)
+                self._logger.info(field_titles)
                 data_type = NamedTuple(data_name, fields)
             channel_data = [data_type(chn, *datum) for datum in data]
             records.extend(channel_data)

@@ -286,7 +286,7 @@ class BioShake(HeaterMixin, Maker):
             FloatData|None: data from device
         """
         if not self.device.stream_event.is_set():
-            print(query)
+            self._logger.debug(query)
             return self.device.query(query, multi_out=False, data_type=FloatData)
         
         data_store = self.records if self.record_event.is_set() else self.buffer

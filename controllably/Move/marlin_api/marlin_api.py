@@ -152,7 +152,7 @@ class Marlin(SerialDevice):
         settings = {}
         if self.flags.simulation:
             return settings
-        print(responses)
+        self._logger.debug(responses)
         for response in responses:
             response = response.replace('echo:','').split(';')[0].strip()
             if not len(response):

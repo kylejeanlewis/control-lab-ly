@@ -134,7 +134,7 @@ class DobotDevice:
         if self.is_connected:
             return
         if not connection.match_current_ip_address(self.host):
-            print(f"Device  IP Address: {self.host}")
+            self._logger.warning(f"Device  IP Address: {self.host}")
             raise ConnectionError("Ensure device is connected to the same network as the machine")
         
         start_time = time.perf_counter()

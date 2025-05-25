@@ -196,7 +196,7 @@ class TriContinentDevice(SerialDevice):
             format_in=format_in, timestamp=timestamp,
             channel=self.channel
         )
-        # print(repr(responses))
+        self._logger.debug(repr(responses))
         if multi_out and not len(responses):
             return None
         responses = responses if multi_out else [responses]
