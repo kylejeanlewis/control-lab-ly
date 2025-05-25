@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 # Standard library imports
 import inspect
+import logging
 import re
 from typing import Callable, Any
 import xml.etree.ElementTree as ET
+
+logger = logging.getLogger(__name__)
 
 type_mapping = {
     "str": "String",
@@ -28,10 +31,10 @@ def create_xml(prime: Any):
     ET.indent(tree, space="  ", level=0) # Using 2 spaces for indentation
     filename = feature.find('Identifier').text
     tree.write(f"{filename}.xml", encoding="utf-8", xml_declaration=True)
-    print(f"XML file '{filename}.xml' generated successfully.\n")
-    print('1) Remove any unnecessary commands and properties.')
-    print('2) Verify the data types, replacing the "Any" fields as needed.')
-    print('3) Fill in the "DESCRIPTION" fields in the XML file.')
+    logger.warning(f"XML file '{filename}.xml' generated successfully.\n")
+    logger.warning('1) Remove any unnecessary commands and properties.')
+    logger.warning('2) Verify the data types, replacing the "Any" fields as needed.')
+    logger.warning('3) Fill in the "DESCRIPTION" fields in the XML file.')
     return
         
 def write_feature(prime: Any):
@@ -50,10 +53,8 @@ def write_feature(prime: Any):
         attr = getattr(prime, attr_name)
         if callable(attr):
             commands.append(attr)
-            # feature = write_command(attr, feature)
         else:
             properties.append(attr_name)
-            # feature = write_property(attr_name, feature)
     
     for attr_name in properties:
         feature = write_property(attr_name, feature)
