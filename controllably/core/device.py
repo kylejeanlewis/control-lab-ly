@@ -632,7 +632,7 @@ class BaseDevice:
         else:
             self.threads['stream'] = threading.Thread(
                 target=self._loop_stream, 
-                args=(data,sync_start),
+                args=(data,),
                 kwargs=dict(buffer=buffer, format_out=format_out, data_type=data_type, split_stream=split_stream), 
                 daemon=True
             )
