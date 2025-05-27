@@ -59,6 +59,7 @@ def record(
     device: StreamingDevice, 
     data_store: deque, 
     split_stream: bool = True,
+    callback: Callable[[str],Any]|None = None,
     query: Any|None = None,
     event: threading.Event|None = None
 ):
@@ -83,7 +84,7 @@ def record(
     device.stopStream()
     time.sleep(0.1)
     if on:
-        device.startStream(data=device.processInput(query), buffer=data_store, split_stream=split_stream)
+        device.startStream(data=device.processInput(query), buffer=data_store, split_stream=split_stream, callback=callback)
         device.showStream(show)
     return
 
@@ -94,6 +95,7 @@ def stream(
     device: StreamingDevice, 
     data_store: deque, 
     split_stream: bool = True,
+    callback: Callable[[str],Any]|None = None,
     query: Any|None = None,
     event: threading.Event|None = None
 ):
@@ -112,7 +114,7 @@ def stream(
     if isinstance(event, threading.Event):
         _ = event.set() if on else event.clear()
     if on:
-        device.startStream(data=device.processInput(query), buffer=data_store, split_stream=split_stream)
+        device.startStream(data=device.processInput(query), buffer=data_store, split_stream=split_stream, callback=callback)
         device.showStream(show)
     else:
         device.stopStream()
