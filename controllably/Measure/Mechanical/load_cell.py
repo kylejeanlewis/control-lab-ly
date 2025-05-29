@@ -24,6 +24,8 @@ import pandas as pd
 from ...core import datalogger
 from ..measure import Measurer
 
+G = 9.81
+"""Acceleration due to Earth's gravity"""
 READ_FORMAT = "{value}\n"
 ValueData = NamedTuple('ValueData', [('value', int)])
 
@@ -256,7 +258,7 @@ class LoadCell(Measurer):
         Returns:
             float: Force
         """
-        return (value-self.baseline)/self.calibration_factor
+        return (value-self.baseline)/self.calibration_factor * G
     
     def _correct_value(self, value: float) -> float:
         """
@@ -268,5 +270,6 @@ class LoadCell(Measurer):
         Returns:
             float: Corrected value
         """
-        return sum([param * (value**i) for i,param in enumerate(self.correction_parameters[::-1])])
+        # return sum([param * (value**i) for i,param in enumerate(self.correction_parameters[::-1])])
+        return (value-self.correction_parameters[1])/self.correction_parameters[0]
     
