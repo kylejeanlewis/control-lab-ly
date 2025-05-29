@@ -29,7 +29,7 @@ from string import Formatter
 import threading
 import time
 from types import SimpleNamespace
-from typing import Any, NamedTuple, Protocol
+from typing import Any, NamedTuple, Protocol, Callable
 
 # Third party imports
 import parse
@@ -243,6 +243,7 @@ class BaseDevice:
         self.data_type = data_type
         self.read_format = read_format
         self.write_format = write_format
+        self.eol = self.read_format.replace(self.read_format.rstrip(), '')
         fields = set([field for _, field, _, _ in Formatter().parse(read_format) if field and not field.startswith('_')])
         assert set(data_type._fields) == fields, "Ensure data type fields match read format fields"
         
@@ -349,6 +350,7 @@ class BaseDevice:
         if self.flags.simulation:
             return
         self.clearDeviceBuffer()
+        # time.sleep(0.01)
         return
 
     def read(self) -> str:
@@ -377,7 +379,7 @@ class BaseDevice:
         Returns:
             list[str]|None: data read from the device
         """
-        delimiter = self.read_format.replace(self.read_format.rstrip(), '')
+        delimiter = self.eol
         data = ''
         try:
             while True:
@@ -460,8 +462,6 @@ class BaseDevice:
         format_out: str|None = None, 
         data_type: NamedTuple|None = None, 
         timestamp: datetime|None = None
-        # *,
-        # condition: Callable[[Any,datetime], bool]|None = None
     ) -> tuple[Any, datetime|None]:
         """
         Process the output
@@ -486,11 +486,13 @@ class BaseDevice:
             parse_out = parse.parse(format_out, data)
         except TypeError:
             self._logger.warning(f"Failed to parse data: {data!r}")
-            self.clearDeviceBuffer()
+            # self.clearDeviceBuffer()
+            # time.sleep(0.01)
             return None, timestamp
         if parse_out is None:
             self._logger.warning(f"Failed to parse data: {data!r}")
-            self.clearDeviceBuffer()
+            # self.clearDeviceBuffer()
+            # time.sleep(0.01)
             return None, timestamp
         parsed = {k:v for k,v in parse_out.named.items() if not k.startswith('_')}
         for key, value in data_type.__annotations__.items():
@@ -502,15 +504,14 @@ class BaseDevice:
                 parsed[key] = value(parsed[key])
             except ValueError:
                 self._logger.warning(f"Failed to convert {key}: {parsed[key]} to type {value}")
-                self.clearDeviceBuffer()
+                # self.clearDeviceBuffer()
+                # time.sleep(0.01)
                 # parsed[key] = None
                 return None ,timestamp
         processed_data = data_type(**parsed) 
         
         if self.show_event.is_set():
             print(processed_data)
-        # if callable(condition) and condition(processed_data, timestamp):
-        #     self.stopStream()
         return processed_data, timestamp
     
     def query(self, 
@@ -540,14 +541,6 @@ class BaseDevice:
             Any|None: queried data
         """
         data_type: NamedTuple = data_type or self.data_type
-        # if self.flags.simulation:
-        #     field_types = data_type.__annotations__
-        #     data_defaults = data_type._field_defaults
-        #     defaults = [data_defaults.get(f, ('' if t==str else 0)) for f,t in field_types.items()]
-        #     data_out = data_type(*defaults)
-        #     response = (data_out, datetime.now()) if timestamp else data_out
-        #     return [response] if multi_out else response
-        
         data_in = self.processInput(data, format_in, **kwargs)
         now = datetime.now() if timestamp else None
         if not multi_out:
@@ -598,7 +591,8 @@ class BaseDevice:
         data_type: NamedTuple|None = None,
         show: bool = False,
         sync_start: threading.Barrier|None = None,
-        split_stream: bool = True
+        split_stream: bool = True,
+        callback: Callable[[str],Any]|None = None
     ):
         """
         Start the stream
@@ -622,6 +616,7 @@ class BaseDevice:
             self.threads['stream'] = threading.Thread(
                 target=self._loop_stream, 
                 args=(data,sync_start),
+                kwargs=dict(callback=callback),
                 daemon=True
             )
             self.threads['process'] = threading.Thread(
@@ -632,8 +627,8 @@ class BaseDevice:
         else:
             self.threads['stream'] = threading.Thread(
                 target=self._loop_stream, 
-                args=(data,sync_start),
-                kwargs=dict(buffer=buffer, format_out=format_out, data_type=data_type, split_stream=split_stream), 
+                args=(data,),
+                kwargs=dict(buffer=buffer, format_out=format_out, data_type=data_type, split_stream=split_stream, callback=callback), 
                 daemon=True
             )
         self.showStream(show)
@@ -657,6 +652,7 @@ class BaseDevice:
         *,
         sync_start:threading.Barrier|None = None,
         split_stream: bool = True,
+        callback: Callable[[str],Any]|None = None,
         **kwargs
     ):
         """
@@ -669,7 +665,7 @@ class BaseDevice:
             sync_start (threading.Barrier|None, optional): synchronization barrier. Defaults to None.
             split_stream (bool, optional): whether to split the stream and data processing threads. Defaults to True.
         """
-        return self.startStream(data=data, buffer=buffer, sync_start=sync_start, split_stream=split_stream, **kwargs) if on else self.stopStream()
+        return self.startStream(data=data, buffer=buffer, sync_start=sync_start, split_stream=split_stream, callback=callback, **kwargs) if on else self.stopStream()
     
     def _loop_process_data(self, 
         buffer: deque|None = None,
@@ -728,7 +724,8 @@ class BaseDevice:
         buffer: deque|None = None,
         format_out: str|None = None, 
         data_type: NamedTuple|None = None,
-        split_stream: bool = True
+        split_stream: bool = True,
+        callback: Callable[[str],Any]|None = None
     ):
         """
         Stream loop
@@ -747,6 +744,8 @@ class BaseDevice:
             assert isinstance(buffer, deque), "Ensure buffer is a deque"
         if isinstance(sync_start, threading.Barrier):
             sync_start.wait()
+        if not callable(callback):
+            callback = lambda _: None
         
         while self.stream_event.is_set():
             try:
@@ -758,6 +757,7 @@ class BaseDevice:
                     out, now = self.processOutput(out, format_out=format_out, data_type=data_type, timestamp=now)
                     if out is not None:
                         buffer.append((out, now))
+                        callback((out, now))
             except queue.Full:
                 time.sleep(0.01)
                 continue
@@ -928,8 +928,11 @@ class SerialDevice(BaseDevice):
         data = ''
         try:
             data = self.serial.readline().decode("utf-8", "replace").replace('\uFFFD', '')
+            # eol = self.eol if len(self.eol) else '\n'
+            # data = self.serial.read_until(eol.encode()).decode("utf-8", "replace").replace('\uFFFD', '')
             data = data.strip()
             self._logger.debug(f"[{self.port}] Received: {data!r}")
+            self.serial.reset_output_buffer()
         except serial.SerialException as e:
             self._logger.debug(f"[{self.port}] Failed to receive data")
         except KeyboardInterrupt:
