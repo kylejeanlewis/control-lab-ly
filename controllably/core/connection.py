@@ -65,7 +65,7 @@ def get_host() -> str:
     logger.info(host_out)
     return host
 
-def get_node(new:bool = False) -> str:
+def get_node(mac_address: bool = True) -> str:
     """
     Get the unique identifier for current machine
 
@@ -73,7 +73,7 @@ def get_node(new:bool = False) -> str:
         str: machine unique identifier
     """
     node_id = ''
-    system = platform.system() if new else ''
+    system = platform.system() if not mac_address else ''
     match system:
         case "Windows":
             node_id = get_node_windows()

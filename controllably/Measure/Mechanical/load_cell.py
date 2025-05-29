@@ -24,6 +24,8 @@ import pandas as pd
 from ...core import datalogger
 from ..measure import Measurer
 
+G = 9.81
+"""Acceleration due to Earth's gravity"""
 READ_FORMAT = "{value}\n"
 ValueData = NamedTuple('ValueData', [('value', int)])
 
@@ -119,7 +121,7 @@ class LoadCell(Measurer):
         self.baseline = 0
         self.calibration_factor = calibration_factor        # counts per unit force
         self.correction_parameters = correction_parameters  # polynomial correction parameters, starting with highest order
-        self.connect()
+        # self.connect()
         return
     
     def connect(self):
@@ -166,6 +168,7 @@ class LoadCell(Measurer):
     
     def atForce(self, 
         force: float, 
+        current_force: float|None = None,
         *, 
         tolerance: float|None = None,
         stabilize_timeout: float = 0
@@ -181,13 +184,13 @@ class LoadCell(Measurer):
         Returns:
             bool: True if the device is at the target force
         """
-        force_actual = self.getForce()
-        if force_actual is None:
+        current_force = current_force or self.getForce()
+        if current_force is None:
             return False
         
         tolerance = tolerance or self.force_tolerance
         stabilize_timeout = stabilize_timeout or self.stabilize_timeout
-        if abs(force_actual - force) > tolerance:
+        if abs(current_force - force) > tolerance:
             self._stabilize_start_time = None
             return False
         self._stabilize_start_time = self._stabilize_start_time or time.perf_counter()
@@ -255,7 +258,7 @@ class LoadCell(Measurer):
         Returns:
             float: Force
         """
-        return (value-self.baseline)/self.calibration_factor
+        return (value-self.baseline)/self.calibration_factor * G
     
     def _correct_value(self, value: float) -> float:
         """
@@ -267,5 +270,6 @@ class LoadCell(Measurer):
         Returns:
             float: Corrected value
         """
-        return sum([param * (value**i) for i,param in enumerate(self.correction_parameters[::-1])])
+        # return sum([param * (value**i) for i,param in enumerate(self.correction_parameters[::-1])])
+        return (value-self.correction_parameters[1])/self.correction_parameters[0]
     

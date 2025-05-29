@@ -30,7 +30,7 @@ from .load_cell import LoadCell
 
 MAX_SPEED = 0.375 # mm/s (22.5mm/min)
 READ_FORMAT = "{target},{speed},{displacement},{end_stop},{value}\n"
-OUT_FORMAT = '{data}\n'
+OUT_FORMAT = '{data}\r\n'
 Data = NamedTuple('Data', [('data',str)])
 MoveForceData = NamedTuple('MoveForceData', [('target', float),('speed', float),('displacement', float),('value', int),('end_stop', bool)])
 
@@ -340,7 +340,14 @@ class ActuatedSensor(LoadCell):
         return not success
     
     def query(self, *args, **kwargs):
-        self.device.clearDeviceBuffer()
+        if self.device.stream_event.is_set():
+            data = args[0] if len(args) else kwargs.get('data', None)
+            if data is None:
+                return
+            self.device.write(data)
+            return 
+        
+        # self.device.clearDeviceBuffer()
         out:Data = self.device.query(*args, multi_out=False, format_out=OUT_FORMAT, data_type=Data, **kwargs)
         if out is None or len(out.data) == 0:
             return None
