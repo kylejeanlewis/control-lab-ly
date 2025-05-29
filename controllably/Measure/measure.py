@@ -282,7 +282,7 @@ class Measurer:
         self.records_df.to_csv(filepath)
         return
     
-    def record(self, on: bool, show: bool = False, clear_cache: bool = False, **kwargs):
+    def record(self, on: bool, show: bool = False, clear_cache: bool = False, *, callback: Callable|None =None, **kwargs):
         """
         Record data from the device
         
@@ -297,10 +297,10 @@ class Measurer:
         self.device.clearDeviceBuffer()
         return datalogger.record(
             on=on, show=show, clear_cache=clear_cache, data_store=self.records, 
-            device=self.device, event=self.record_event
+            device=self.device, callback=callback, event=self.record_event, **kwargs
         )
     
-    def stream(self, on: bool, show: bool = False, **kwargs):
+    def stream(self, on: bool, show: bool = False, *, callback: Callable|None = None, **kwargs):
         """
         Stream data from the device
         
@@ -313,7 +313,7 @@ class Measurer:
         """
         self.device.clearDeviceBuffer()
         return datalogger.stream(
-            on=on, show=show, data_store=self.buffer, device=self.device
+            on=on, show=show, data_store=self.buffer, device=self.device, callback=callback, **kwargs
         )
 
 
