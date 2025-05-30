@@ -205,10 +205,10 @@ class LoadCell(Measurer):
         Returns:
             float: Force
         """
-        data = self.getValue()
-        if data is None:
+        value = self.getValue()
+        if value is None:
             return None
-        return self._calculate_force(data)
+        return self._calculate_force(value)
     
     def getValue(self) -> float|None:
         """
