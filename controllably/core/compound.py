@@ -275,7 +275,7 @@ class Ensemble(Compound):
         assert type(cls._channel_class) == type, "Use the `factory` method to generate the desired class first"
         
         parent = cls._channel_class
-        parts_list = [parent(**settings) for settings in details]
+        parts_list = [parent(final=False, **settings) for settings in details]
         parts = {chn:part for chn,part in zip(channels,parts_list)}
         assert len(channels) == len(parts), "Ensure the number of channels match the number of parts"
         return parts
