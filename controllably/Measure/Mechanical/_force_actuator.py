@@ -1,21 +1,23 @@
 # Standard library imports
 from __future__ import annotations
+from collections import deque
 from copy import deepcopy
 from datetime import datetime
 import logging
+from pathlib import Path
 import threading
 import time
 from types import SimpleNamespace
-from typing import Iterable, NamedTuple, Any
+from typing import Iterable, NamedTuple, Any, Callable
 
 # Third party imports
 import pandas as pd
 
 # Local application imports
-from ...core import factory
+from ...core import factory, datalogger
 from ...core.compound import Ensemble
 from ...core.device import StreamingDevice
-from .. import Program
+from .. import Program, ProgramDetails
 
 _logger = logging.getLogger("controllably.Measure")
 _logger.debug(f"Import: OK <{__name__}>")
@@ -31,6 +33,7 @@ COLUMNS = ('Time', 'Displacement', 'Value', 'Factor', 'Baseline', 'Force')
 G = 9.81
 """Acceleration due to Earth's gravity"""
 
+MAX_LEN = 100
 MAX_SPEED = 0.375 # mm/s (22.5mm/min)
 READ_FORMAT = "{target},{speed},{displacement},{end_stop},{value}\r\n"
 OUT_FORMAT = '{data}\r\n'
@@ -140,6 +143,22 @@ class ForceActuator:
         self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         
+        # Category specific attributes
+        # Data logging attributes
+        self.buffer: deque[tuple[NamedTuple, datetime]] = deque(maxlen=MAX_LEN)
+        self.records: deque[tuple[NamedTuple, datetime]] = deque()
+        self.record_event = threading.Event()
+        
+        # Measurer property
+        self.buffer_df = pd.DataFrame(columns=COLUMNS)
+        
+        # Measurer specific attributes
+        self.program: Program|Any|None = None
+        self.runs = dict()
+        self.n_runs = 0
+        self._threads = dict()
+        
+        # LoadCell specific attributes        
         self.force_tolerance = force_tolerance
         self.stabilize_timeout = stabilize_timeout
         self._stabilize_start_time = None
@@ -148,6 +167,7 @@ class ForceActuator:
         self.calibration_factor = calibration_factor
         self.correction_parameters = correction_parameters
         
+        # ActuatedSensor specific attributes
         self.displacement = 0
         self.force_threshold = force_threshold
         self.home_displacement = home_displacement
@@ -155,28 +175,15 @@ class ForceActuator:
         self.max_speed = max_speed
         self._steps_per_second = steps_per_second
         
+        # ForceActuator specific attributes
         self.end_stop = False
+        self.precision = 3
+        self._force = 0
         self._touch_force_threshold: float = touch_force_threshold
         self._touch_timeout : int = 120
         
-        self.buffer_df = pd.DataFrame(columns=COLUMNS)
-        self.precision = 3
-        self._force = 0
-        
-        # Measurer specific attributes
-        self.program: Program|Any|None = None
-        self.runs = dict()
-        self.n_runs = 0
-        self._threads = dict()
-        
-        # self._connect(port, simulation=kwargs.get('simulation', False))
-        # # Category specific attributes
-        # # Data logging attributes
-        # self.buffer: deque[tuple[NamedTuple, datetime]] = deque(maxlen=MAX_LEN)
-        # self.records: deque[tuple[NamedTuple, datetime]] = deque()
-        # self.record_event = threading.Event()
-        
-        # self.connect()
+        if kwargs.get('final', True):
+            self.connect()
         return
     
     def __del__(self):
@@ -214,17 +221,21 @@ class ForceActuator:
         return
     
     @property
-    def force(self) -> float:
-        return round(self._force, self.precision)
-    
-    @property
     def records_df(self) -> pd.DataFrame:
         """DataFrame of records"""
         return self.buffer_df.copy()
     
+    # ForceActuator implementation
+    @property
+    def force(self) -> float:
+        return round(self._force, self.precision)
+    
     def connect(self):
         """Establish connection with device"""
+        # Measurer specific
         self.device.connect()
+        
+        #LoadCell specific
         if not self.is_connected:
             return
         self.device.clearDeviceBuffer()
@@ -239,6 +250,7 @@ class ForceActuator:
             if (time.perf_counter()-start_time) > 5:
                 break
         
+        # ActuatedSensor specific
         # self.stream(True)
         self.home()
         # self.stream(False)
@@ -253,14 +265,21 @@ class ForceActuator:
     
     def reset(self):
         """Reset the device"""
+        # Measurer specific
         self.clearCache()
-        self.resetFlags()
+        self.program = None
+        
+        # LoadCell specific
         self.baseline = 0
+        
+        # ForceActuator specific
+        self.resetFlags()
         return
     
     def resetFlags(self):
         """Reset all flags to class attribute `_default_flags`"""
         self.flags = deepcopy(self._default_flags)
+        self.record_event.clear()
         return
     
     def shutdown(self):
@@ -270,15 +289,96 @@ class ForceActuator:
         self.disconnect()
         return
     
-    # Category specific properties and methods
+    # Measurer specific properties and methods
+    # Measurer implementation
+    def measure(self, *args, parameters: dict|None = None, blocking:bool = True, **kwargs) -> pd.DataFrame|None:
+        """
+        Run the measurement program
+        
+        Args:
+        *args: positional arguments
+            parameters (dict, optional): dictionary of kwargs. Defaults to None.
+            blocking (bool, optional): whether to block until completion. Defaults to True.
+            **kwargs: keyword arguments
+            
+        Returns:
+            pd.DataFrame|None: dataframe of data collected
+        """
+        assert issubclass(self.program, Program), "No Program loaded"
+        new_run = self.program(
+            instrument = self, 
+            parameters = parameters,
+            verbose = self.verbose
+        )
+        kwargs.update(new_run.parameters)
+        
+        self.n_runs += 1
+        self._logger.info(f"Run ID: {self.n_runs}")
+        self.runs[self.n_runs] = new_run
+        if not blocking:
+            thread = threading.Thread(target=new_run.run, args=args, kwargs=kwargs)
+            thread.start()
+            self._threads['measure'] = thread
+            self.flags.busy = True
+            return
+        new_run.run(*args, **kwargs)
+        self.flags.busy = False
+        return new_run.data_df
+    
+    # Measurer implementation
+    def loadProgram(self, program: Program, docstring_parser: Callable[[Any,bool],ProgramDetails]|None = None):
+        """
+        Load a program to the Measurer
+        
+        Args:
+            program (Program): program to load
+        """
+        assert issubclass(program, Program), "Ensure program type is a subclass of Program"
+        self.program = program
+        if docstring_parser is None and hasattr(program, 'parseDocstring'):
+            docstring_parser = program.parseDocstring
+        if docstring_parser is not None:
+            self.measure.__func__.__doc__ = docstring_parser(program, verbose=self.verbose)
+        return
+        
     def clearCache(self):
         """Clear most recent data and configurations"""
+        # ForceActuator specific
         self.flags.pause_feedback = True
         time.sleep(0.1)
         self.buffer_df = pd.DataFrame(columns=COLUMNS)
+        self.buffer.clear()
+        self.records.clear()
         self.flags.pause_feedback = False
         return
  
+    # Measurer implementation
+    def getDataframe(self, data_store: Iterable[tuple[NamedTuple, datetime]]) -> pd.DataFrame:
+        """
+        Get dataframe of data collected
+        
+        Args:
+            data_store (Iterable[tuple[NamedTuple, datetime]]): data store
+            
+        Returns:
+            pd.DataFrame: dataframe of data collected
+        """
+        return datalogger.get_dataframe(data_store=data_store, fields=self.device.data_type._fields)
+    
+    # Measurer implementation
+    def saveData(self, filepath:str|Path):
+        """
+        Save data to file
+        
+        Args:
+            filepath (str|Path): path to save file
+        """
+        if not len(self.records_df):
+            raise ValueError("No records to save. Ensure you have recorded data before saving.")
+        self.records_df.to_csv(filepath)
+        return
+    
+    # LoadCell implementation
     def getAttributes(self) -> dict:
         """
         Get attributes
@@ -289,29 +389,29 @@ class ForceActuator:
         relevant = ['correction_parameters', 'baseline', 'calibration_factor', 'force_tolerance', 'stabilize_timeout']
         return {key: getattr(self, key) for key in relevant}
     
-    def getForce(self) -> str:
+    # ForceActuator implementation
+    def getData(self, *args, **kwargs) -> MoveForceData|None:
         """
-        Get the force response and displacement of actuator
+        Get data from device
         
         Returns:
-            str: device response
+            MoveForceData: Data from device
         """
         response = self.device.read()
         now = datetime.now()
         try:
-            # data: MoveForceData = self.device.processOutput(response)
-            # displacement = data.displacement
-            # end_stop = data.end_stop
-            # value = data.value
-            _,_,displacement,end_stop,value = response.split(',')
-            displacement = float(displacement)
-            end_stop = bool(int(end_stop))
-            value = int(value)
+            data,_ = self.device.processOutput(response, timestamp=now)
+            if data is None:
+                return None
+            data: MoveForceData = data
+            target = data.target
+            speed = data.speed
+            displacement = data.displacement
+            end_stop = data.end_stop
+            value = data.value
         except ValueError:
             return None
         else:
-            # value = (value - self.correction_parameters[1]) / self.correction_parameters[0]
-            # self._force = (value - self.baseline) / self.calibration_factor * G
             self._force = self._calculate_force(self._correct_value(value)) * G
             self.displacement = displacement
             self.end_stop = end_stop
@@ -319,7 +419,8 @@ class ForceActuator:
             self.flags.threshold = bool(over_threshold)
             if self.verbose:
                 print(f"{displacement:.2f} mm | {self.force:.5E} mN | {value:.2f}")
-            if self.flags.record:
+            if self.record_event.is_set():
+                self.records.append((data, now))
                 values = [
                     now,
                     displacement, 
@@ -332,8 +433,97 @@ class ForceActuator:
                 new_row_df = pd.DataFrame(row, index=[0])
                 dfs = [_df for _df in [self.buffer_df, new_row_df] if len(_df)]
                 self.buffer_df = pd.concat(dfs, ignore_index=True)
-        return self._force
+            else:
+                self.buffer.append((data, now))
+        return data
     
+    # LoadCell implementation
+    def atForce(self, 
+        force: float, 
+        current_force: float|None = None,
+        *, 
+        tolerance: float|None = None,
+        stabilize_timeout: float = 0
+    ) -> bool:
+        """
+        Check if the device is at the target force
+        
+        Args:
+            force (float): Target force
+            current_force (float|None): Current force
+            tolerance (float): Tolerance for force
+            stabilize_timeout (float): Time to wait for the device to stabilize
+            
+        Returns:
+            bool: True if the device is at the target force
+        """
+        current_force = current_force or self.getForce()
+        if current_force is None:
+            return False
+        
+        tolerance = tolerance or self.force_tolerance
+        stabilize_timeout = stabilize_timeout or self.stabilize_timeout
+        if abs(current_force - force) > tolerance:
+            self._stabilize_start_time = None
+            return False
+        self._stabilize_start_time = self._stabilize_start_time or time.perf_counter()
+        if ((time.perf_counter()-self._stabilize_start_time) < stabilize_timeout):
+            return False
+        return True
+    
+    # ForceActuator implementation
+    def getForce(self) -> float|None:
+        """
+        Get the force response and displacement of actuator
+        
+        Returns:
+            str: device response
+        """
+        self.getData()
+        return self.force
+    
+    # LoadCell implementation
+    def getValue(self) -> float|None:
+        """
+        Get the value readout from device
+        
+        Returns:
+            float|None: Value readout
+        """
+        data = self.getData()
+        if data is None:
+            return None
+        return self._correct_value(data.value)
+    
+    # ActuatedSensor specific properties and methods
+    def atDisplacement(self, displacement: float, current_displacement: float|None = None) -> bool:
+        """
+        Check if the device is at the target displacement
+        
+        Args:
+            displacement (float): Target displacement
+            current_displacement (float|None): Current displacement. Defaults to None.
+            
+        Returns:
+            bool: True if the device is at the target displacement
+        """
+        current_displacement = current_displacement or self.getDisplacement()
+        if current_displacement is None:
+            return False
+        return current_displacement == displacement
+    
+    # ForceActuator implementation
+    def getDisplacement(self) -> float|None:
+        """
+        Get displacement
+        
+        Returns:
+            float: Displacement in mm
+        """
+        self.getData()
+        return self.displacement
+    
+    # ForceActuator implementation
     def home(self) -> bool:
         """
         Home the actuator
@@ -368,6 +558,7 @@ class ForceActuator:
         self.displacement = self.home_displacement
         return True
 
+    # ActuatedSensor implementation
     def move(self, by: float, speed: float|None = None) -> bool:
         """
         Move the actuator to the target displacement and apply the target force
@@ -382,6 +573,7 @@ class ForceActuator:
         speed = speed or self.max_speed
         return self.moveBy(by, speed=speed)
     
+    # ActuatedSensor implementation
     def moveBy(self, by: float, speed: float|None = None) -> bool:
         """
         Move the actuator by desired distance
@@ -397,6 +589,7 @@ class ForceActuator:
         new_displacement = self.displacement + by
         return self.moveTo(new_displacement, speed)
     
+    # ForceActuator implementation
     def moveTo(self, to: float, speed: float|None = None) -> bool:
         """
         Move the actuator to desired displacement
@@ -425,6 +618,7 @@ class ForceActuator:
         self.displacement = displacement
         return displacement == to
 
+    # ForceActuator implementation
     def touch(self, 
         force_threshold: float = 0.1, 
         displacement_threshold: float|None = None, 
@@ -481,6 +675,7 @@ class ForceActuator:
         self.flags.threshold = False
         return True
     
+    # ForceActuator implementation
     def waitThreshold(self, displacement:float, timeout:float | None = None) -> float:
         """
         Wait for force sensor to reach the threshold
@@ -506,6 +701,7 @@ class ForceActuator:
                 break
         return self.displacement
     
+    # ForceActuator implementation
     def zero(self, timeout:int = 5):
         """
         Set current reading as baseline (i.e. zero force)
@@ -513,15 +709,12 @@ class ForceActuator:
         Args:
             timeout (int, optional): duration to wait while zeroing, in seconds. Defaults to 5.
         """
-        # if self.flags.record:
-        #     logger.warning("Unable to zero while recording.")
-        #     logger.warning("Use `record(False)` to stop recording.")
-        #     return
-        temp_record_state = self.flags.record
+        # ForceActuator specific
+        temp_record_state = self.record_event.is_set()
         temp_buffer_df = self.buffer_df.copy()
         if self.flags.get_feedback:
             self.stream(False)
-        if self.flags.record:
+        if self.record_event.is_set():
             self.record(False)
         self.reset()
         self.record(True)
@@ -535,6 +728,7 @@ class ForceActuator:
         self.record(temp_record_state)
         return
     
+    # ForceActuator implementation
     def record(self, on: bool, show: bool = False, clear_cache: bool = False):
         """
         Start or stop data recording
@@ -542,12 +736,13 @@ class ForceActuator:
         Args:
             on (bool): whether to start recording data
         """
-        self.flags.record = on
+        _ = self.record_event.set() if on else self.record_event.clear()
         self.flags.get_feedback = on
         self.flags.pause_feedback = False
         self.stream(on=on)
         return
     
+    # ForceActuator implementation
     def stream(self, on: bool, show: bool = False):
     # def stream(self, on:bool):
         """
@@ -567,6 +762,7 @@ class ForceActuator:
             self._threads['feedback_loop'].join()
         return
     
+    # LoadCell implementation
     def _calculate_force(self, value: float) -> float:
         """
         Calculate force from value
@@ -579,6 +775,7 @@ class ForceActuator:
         """
         return (value-self.baseline)/self.calibration_factor * G
     
+    # LoadCell implementation
     def _correct_value(self, value: float) -> float:
         """
         Correct value
@@ -592,13 +789,14 @@ class ForceActuator:
         # return sum([param * (value**i) for i,param in enumerate(self.correction_parameters[::-1])])
         return (value-self.correction_parameters[1])/self.correction_parameters[0]
 
+    # ForceActuator implementation
     def _loop_feedback(self):
         """Loop to constantly read from device"""
         print('Listening...')
         while self.flags.get_feedback:
             if self.flags.pause_feedback:
                 continue
-            self.getForce()
+            self.getData()
         print('Stop listening...')
         return
 
