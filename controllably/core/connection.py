@@ -35,7 +35,7 @@ handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
 
-def get_addresses(registry:dict|None) -> dict|None:
+def get_addresses(registry:dict|None, mac_address: bool = True) -> dict|None:
     """
     Get the appropriate addresses for current machine
 
@@ -45,12 +45,14 @@ def get_addresses(registry:dict|None) -> dict|None:
     Returns:
         dict|None: dictionary of serial port addresses and camera ids for current machine, if available
     """
-    node_id = get_node()
+    node_id = get_node(mac_address)
     addresses = registry.get('machine_id',{}).get(node_id,{}) if registry is not None else {}
     if len(addresses) == 0:
-        logger.warning("Append machine id and camera ids/port addresses to registry file")
-        logger.warning(f"Machine not yet registered. (Current machine id: {node_id})")
-        return None
+        if not mac_address:
+            logger.warning("Append machine id and camera ids/port addresses to registry file")
+            logger.warning(f"Machine not yet registered. (Current machine id: {node_id})")
+            return None
+        get_addresses(registry, False)
     return addresses
 
 def get_host() -> str:
