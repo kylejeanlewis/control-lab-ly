@@ -739,6 +739,8 @@ class ForceActuator:
         _ = self.record_event.set() if on else self.record_event.clear()
         self.flags.get_feedback = on
         self.flags.pause_feedback = False
+        if clear_cache:
+            self.clearCache()
         self.stream(on=on)
         return
     
