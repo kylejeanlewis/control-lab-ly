@@ -485,12 +485,14 @@ class BaseDevice:
         try:
             parse_out = parse.parse(format_out, data)
         except TypeError:
-            self._logger.warning(f"Failed to parse data: {data!r}")
+            if data:
+                self._logger.warning(f"Failed to parse data: {data!r}")
             # self.clearDeviceBuffer()
             # time.sleep(0.01)
             return None, timestamp
         if parse_out is None:
-            self._logger.warning(f"Failed to parse data: {data!r}")
+            if data:
+                self._logger.warning(f"Failed to parse data: {data!r}")
             # self.clearDeviceBuffer()
             # time.sleep(0.01)
             return None, timestamp
