@@ -93,6 +93,9 @@ class Measurer:
         self.runs = dict()
         self.n_runs = 0
         self._threads = dict()
+        
+        if kwargs.get('final', True):
+            self.connect()
         return
     
     def __del__(self):

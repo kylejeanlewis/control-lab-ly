@@ -139,10 +139,11 @@ class ActuatedSensor(LoadCell):
             port=port, baudrate=baudrate,
             stabilize_timeout=stabilize_timeout, force_tolerance=force_tolerance,
             calibration_factor=calibration_factor, correction_parameters=correction_parameters,
-            verbose=verbose, **kwargs
+            verbose=verbose, final=False, **kwargs
         )
         self.program = ForceDisplacement
-        # self.connect()
+        if kwargs.get('final', True):
+            self.connect()
         return
     
     def connect(self):

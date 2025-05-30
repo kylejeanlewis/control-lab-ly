@@ -111,7 +111,7 @@ class LoadCell(Measurer):
         kwargs = defaults
         super().__init__(
             port=port, baudrate=baudrate, 
-            verbose=verbose, **kwargs
+            verbose=verbose, final=False, **kwargs
         )
         
         self.force_tolerance = force_tolerance
@@ -121,7 +121,9 @@ class LoadCell(Measurer):
         self.baseline = 0
         self.calibration_factor = calibration_factor        # counts per unit force
         self.correction_parameters = correction_parameters  # polynomial correction parameters, starting with highest order
-        # self.connect()
+        
+        if kwargs.get('final', True):
+            self.connect()
         return
     
     def connect(self):
