@@ -278,7 +278,7 @@ class Measurer:
             filepath (str|Path): path to save file
         """
         if not len(self.records):
-            raise
+            raise ValueError("No records to save. Ensure you have recorded data before saving.")
         self.records_df.to_csv(filepath)
         return
     
