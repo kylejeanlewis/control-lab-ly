@@ -4,6 +4,7 @@ import ast
 from collections import deque
 from datetime import datetime
 from inspect import getdoc, Signature, Parameter
+import json
 import nest_asyncio
 from pathlib import Path
 import threading
@@ -12,6 +13,7 @@ from types import SimpleNamespace
 from typing import NamedTuple, Any, Callable, Iterable
 
 # Third party imports
+import easy_biologic
 from easy_biologic.lib import ec_lib as ecl     # pip install easy-biologic
 from easy_biologic.device import BiologicDevice
 from easy_biologic.program import BiologicProgram
@@ -24,6 +26,15 @@ from ... import Measurer, ProgramDetails
 
 # INITIALIZING
 nest_asyncio.apply()
+path = Path(easy_biologic.__path__[0]) / 'techniques_version.json'
+with open(path, 'r+') as f:
+    content = json.load(f)
+    version = content.get('version', None)
+    if version not in ('6.04',):
+        print(f"Updating easy-biologic techniques version from {version} to 6.04")
+        f.seek(0)
+        f.truncate()
+        f.write(json.dumps({'version': '6.04'}, indent=4))
         
 def parse_docstring(program_class:BiologicProgram, verbose:bool = True) -> ProgramDetails:
     method = getattr(program_class, '__init__')
