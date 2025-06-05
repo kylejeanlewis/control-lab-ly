@@ -52,7 +52,7 @@ def get_addresses(registry:dict|None, mac_address: bool = True) -> dict|None:
             logger.warning("Append machine id and camera ids/port addresses to registry file")
             logger.warning(f"Machine not yet registered. (Current machine id: {node_id})")
             return None
-        get_addresses(registry, False)
+        addresses = get_addresses(registry, False)
     return addresses
 
 def get_host() -> str:
