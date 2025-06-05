@@ -186,7 +186,7 @@ def test_load_setup_from_files(monkeypatch, caplog):
     new_modules.update(dict(mock_module=mock_module))
     monkeypatch.setattr('sys.modules', new_modules)
     monkeypatch.setattr('os.getcwd', lambda : str(Path(HERE).parent))
-    monkeypatch.setattr('controllably.core.connection.get_node', lambda: '012345678901234')
+    monkeypatch.setattr('controllably.core.connection.get_node', lambda _: '012345678901234')
     config_file = 'control-lab-le/tests/core/examples/tool.yaml'
     config_file = controllably.core.file_handler.resolve_repo_filepath(config_file)
     registry_file = 'control-lab-le/tests/core/examples/registry.yaml'

@@ -22,7 +22,7 @@ registry = {
     (registry, "987654321", None),
 ])
 def test_get_addresses(registry, node, expected, monkeypatch):
-    monkeypatch.setattr('controllably.core.connection.get_node', lambda: node)
+    monkeypatch.setattr('controllably.core.connection.get_node', lambda _: node)
     addresses = get_addresses(registry)
     if expected is None:
         assert addresses is None
