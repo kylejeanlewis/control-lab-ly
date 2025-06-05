@@ -410,6 +410,8 @@ def serial_device(monkeypatch):
             if self.count > 3:
                 return b''
             return b'test_output\ntest_output\ntest_output\n'
+        def reset_output_buffer(self):
+            return
     monkeypatch.setattr(serial, 'Serial', MockSerial)
     device = SerialDevice(port='COM3', baudrate=9600, timeout=1)
     device._logger.handlers.clear()
