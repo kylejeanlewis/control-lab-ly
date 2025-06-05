@@ -24,11 +24,15 @@ KeithleyBase = type('KeithleyBase', (KeithleyBuffer,SCPIMixin,Instrument), {})
 class Keithley(Measurer):
     _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, connected=False, verbose=False)
     def __init__(self, 
-        host: str,
         keithley_class: str,
+        host: str|None = None,
         name: str|None = None,
         *, 
-        verbose:bool = False, 
+        adapter: str|None = None,
+        read_termination: str ='\n', 
+        write_termination: str = '\n',
+        timeout: int = 2000,     # in milliseconds
+        verbose: bool = False, 
         **kwargs
     ):
         """
@@ -43,12 +47,19 @@ class Keithley(Measurer):
         
         self.device: KeithleyBase|None = None
         self._device_type = device_type
-        self._connection_details = dict(host=host, kwargs=kwargs)
-        if name is not None:
-            self._connection_details['name'] = name
-            kwargs['name'] = name
         
-        self._connect(host, **kwargs)
+        if host is None and adapter is None:
+            raise ValueError("Either host or adapter must be provided")
+        
+        kwargs['adapter'] = adapter or f'TCPIP0::{host}::5025::SOCKET'
+        kwargs['read_termination'] = read_termination
+        kwargs['write_termination'] = write_termination
+        kwargs['timeout'] = timeout
+        if name is not None:
+            kwargs['name'] = name
+        self._connection_details = kwargs
+        
+        self._connect(**self._connection_details)
         super().__init__(device=self.device, verbose=verbose, **kwargs)
         self._records_cache: dict[int, deque[tuple[NamedTuple, datetime]]] = dict()
         return
@@ -83,11 +94,14 @@ class Keithley(Measurer):
         self.flags.connected = connected
         return self.flags.connected
 
-    def _connect(self, host:str, **kwargs):
-        if not match_current_ip_address(host):
-            raise ConnectionError(f"Device IP address {host} does not match current network IP address.")
+    def _connect(self, **kwargs):
+        adapter: str = kwargs.get('adapter','')
+        if adapter.startswith('TCPIP0'):
+            host = adapter.split('::')[1]
+            if not match_current_ip_address(host):
+                raise ConnectionError(f"Device IP address {host} does not match current network IP address.")
         try:
-            self.device = self._device_type(f'TCPIP0::{host}::5025::SOCKET', **kwargs)
+            self.device = self._device_type(**kwargs)
             for _ in range(3):
                 self.device.write(':SYST:BEEP 440,0.1')
                 time.sleep(0.1)
@@ -98,12 +112,13 @@ class Keithley(Measurer):
         """Connect to the device"""
         if self.is_connected:
             return
-        if issubclass(self.device.__class__, Instrument):
-            self.device.shutdown()
-        self._connect(self.host, **self._connection_details['kwargs'])
+        # if issubclass(self.device.__class__, Instrument):
+        #     self.device.shutdown()
+        self._connect(**self._connection_details)
         self._logger.info(f"Connected to {self.host}")
         time.sleep(self.timeout)
         self.flags.connected = self.is_connected
+        self.device.reset()
         return
     
     def disconnect(self):

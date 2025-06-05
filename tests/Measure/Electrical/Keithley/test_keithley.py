@@ -5,11 +5,14 @@ from controllably.Measure.Electrical.Keithley import Keithley
 from controllably.Measure import Program
 from controllably.core.connection import match_current_ip_address
 
-HOST = '192.109.209.104'
+HOST = '192.109.209.103'
 
 configs = {
-    'host': HOST,
     'keithley_class': 'Keithley2450',
+    'host': HOST,
+    'read_termination': '\n', 
+    'write_termination': '\n',
+    'timeout': 2000,
     'verbose': True,
 }
 
