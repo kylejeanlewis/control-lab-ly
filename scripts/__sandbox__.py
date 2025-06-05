@@ -225,7 +225,7 @@ import test_init
 from controllably.core.position import Position
 from controllably.Move.Cartesian import Gantry
 from controllably.core.device import SerialDevice
-from controllably.GUI.move_gui import MovePanel
+from controllably.examples.gui.tkinter import MovePanel
 
 ser = SerialDevice(port='COM21', baudrate=115200, timeout=1, verbose=True, simulation=False)
 # %%
