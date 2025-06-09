@@ -6,7 +6,7 @@ Lab Equipment Automation Package
 ![Tests](https://github.com/kylejeanlewis/control-lab-le/actions/workflows/tests.yml/badge.svg)
 
 ## Description
-User-friendly package that enables flexible automation an reconfigurable setups for high-throughput experimentation and machine learning.
+User-friendly package that simplifies the definition and control of reconfigurable setups for high-throughput experimentation and machine learning.
 
 ## Installation
 Control-lab-ly can be found on PyPI and can be easily installed with `pip install`.
