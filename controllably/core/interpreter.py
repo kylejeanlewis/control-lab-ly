@@ -15,6 +15,9 @@ import json
 import pickle
 from typing import Mapping, Any
 
+# Third party imports
+import pandas as pd
+
 # Local application imports
 from .position import Position
 
@@ -130,8 +133,11 @@ class JSONInterpreter(Interpreter):
         """
         data = data.copy()
         for k,v in data.items():
+            # Convert objects to JSON strings
             if isinstance(v, Position):
                 data[k] = v.toJSON()
+            elif isinstance(v, (pd.DataFrame, pd.Series)):
+                data[k] = v.to_json(orient='table')
         try:
             packet = json.dumps(data).encode('utf-8')
         except TypeError:
@@ -171,7 +177,10 @@ class JSONInterpreter(Interpreter):
             data.update(dict(data = pickle.loads(ast.literal_eval(pickled))))
         elif 'data' in data:
             for k,v in data.items():
+                # Convert JSON strings to objects
                 if isinstance(v, str) and v.startswith('Position('):
                     data[k] = Position.fromJSON(v)
+                if isinstance(v, str) and v.startswith('{"schema":'):
+                    data[k] = pd.read_json(v, orient='table')
         return data
     
