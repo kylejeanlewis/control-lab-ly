@@ -1,21 +1,27 @@
 {
     "request":{
-        "request_id": "",
-        "address": {"sender": [""], "target": [""]},
+        "request_id": "{{ request_id }}",
+        "address": {
+            "sender": ["{{ sender }}"], 
+            "target": ["{{ target }}"]
+        },
         "priority": false,
         "rank": null,
-        "object_id": "",
-        "method": "",
-        "args": [""],
-        "kwargs": {"":""}
+        "object_id": "{{ object_id }}",
+        "method": "{{ method }}",
+        "args": [],
+        "kwargs": {}
     },
     "reply": {
-        "reply_id": "",
-        "request_id": "",
-        "address": {"sender": [""], "target": [""]},
+        "reply_id": "{{ reply_id }}",
+        "request_id": "{{ request_id }}",
+        "address": {
+            "sender": ["{{ sender }}"], 
+            "target": ["{{ target }}"]
+        },
         "priority": false,
         "rank": null,
-        "status": "",
+        "status": "{{ status }}",
         "data": null
     }
 }
