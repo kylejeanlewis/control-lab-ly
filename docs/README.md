@@ -1,19 +1,32 @@
-# Control.lab.ly
+# Control-lab-ly
 Lab Equipment Automation Package
 
+[![PyPI](https://img.shields.io/pypi/v/control-lab-ly)](https://pypi.org/project/control-lab-ly/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/control-lab-ly)](https://pypi.org/project/control-lab-ly/)
 ![Tests](https://github.com/kylejeanlewis/control-lab-le/actions/workflows/tests.yml/badge.svg)
 
 ## Description
 User-friendly package that enables flexible automation an reconfigurable setups for high-throughput experimentation and machine learning.
 
-## Package Structure
-1. core
-2. external
-3. Make
-4. Measure
-5. Move
-6. Transfer
-7. View
+## Installation
+Control-lab-ly can be found on PyPI and can be easily installed with `pip install`.
+```shell
+$ python -m pip install control-lab-ly[all]
+```
+
+## Quickstart
+Import the desired class from the library and initialize to use.
+```python
+from controllably.Move.Cartesian import Gantry
+mover = Gantry(...)
+mover.connect()
+mover.safeMoveTo((x,y,z))
+```
+
+Explore the details for each object using the `help()` function, or the `?` operator within the IPython / Jupyter Notebook environment.
+```python
+help(Gantry)
+```
 
 ## Device support
 - Make
@@ -23,144 +36,157 @@ User-friendly package that enables flexible automation an reconfigurable setups 
     - Multi-channel spin-coater
     - Peltier device
 - Measure
+  - (BioLogic) via `easy-biologic` (optional)
+  - (Keithley) via `PyMeasure` (optional)
   - (Sentron) SI series pH meters
   - (Arduino-based device) 
     - Precision mass balance
     - Load cell
 - Move
   - (Creality) Ender-3
-  - (Dobot) 
+  - (Dobot) with `external/../dobot_api`
     - M1 Pro
     - MG400
   - (Arduino-based device) gantry robot running on GRBL
 - Transfer
-  - (Dobot) Gripper attachments
   - (Sartorius) rLINE® dispensing modules
   - (TriContinent) C Series syringe pumps
-  - (Arduino-based device) Peristaltic pump and syringe system
 - View
-  - (FLIR) AX8 thermal imaging camera
-  - (General) Web cameras
-
-## Installation
-Control.lab.ly can be found on PyPI and can be easily installed with `pip install`.
-```shell
-$ pip install control-lab-ly
-```
-
-## Basic Usage
-Simple start-up guide for basic usage of the package.
-
-### Import desired class
-```python
-from controllably.Move.Cartesian import Gantry
-mover = Gantry(...)
-mover.safeMoveTo((x,y,z))
-```
-
-### View documentation
-Details for each class / module / package can be explored by using the `help` function.
-```python
-help(Gantry)
-```
-
-For basic usage, this is all you need to know. Check the documentation for more details on each class and function.
-
----
->Content below is still work in progress
-
+  - (FLIR) AX8 thermal imaging camera via `pyModbusTCP` (optional)
+  - (General) Web cameras with `cv2`
 ---
 
 ## Advanced Usage
-For more advanced uses, Control.lab.ly provides a host of tools to streamline the development of lab equipment automation. This includes setting up configuration files and adding plugin drivers.
+Setup initialization can be greatly simplified with Control-lab-ly.
 
-### Import package
+To access files / folders in the project repository as you would with an installed package, use the `init()` function to add the project directory into PATH.
+
 ```python
-import controllably as lab
+from controllably import init
+init('project_root')
+
+from tools import ToolSetup01
+setup = ToolSetup01.setup()
+setup.MoverDevice.loadDeckFromFile(ToolSetup01.LAYOUT_FILE)
 ```
 
-Optionally, you can set the safety policy for the session. This feature allows the user to prevent collisions before each movement is made. The safety policy has to be assigned before importing any of the `Mover` objects.
-```python
-lab.set_safety('high')  # Notifies; Pauses for input before every move action
-lab.set_safety('low')   # Notifies; Waits for countdown before every move action
-lab.set_safety(None)    # Carries out movement actions without delay
+Here, the setup is initialized and returned with just `ToolSetup01.setup()`, and the layout is loaded with the `loadDeckFromFile` method.
 
-# Import control-lab-ly classes only after setting the safety policy
+
+### Folder structure
+To make full use of Control-lab-ly's features, a typical project file structure will need the `library` and `tools` folders.
+```ascii
+project_root/
+|
+├── library/
+|   ├── deck/
+|   |   ├── layout_board_30x30.json
+|   |   └── layout_board_60x30.json
+|   ├── labware/
+|   |   ├── generic_96_tiprack.json
+|   |   ├── generic_8_wellplate.json
+|   |   └── generic_1_bin.json
+|   ├── plugins/
+|   |   ├── tool_part_1.py
+|   |   ├── tool_part_2.py
+|   |   └── mock_module.py
+|   └── __init__.py
+|
+├── tools/
+|   ├── ToolSetup01/
+|   |   ├── __init__.py
+|   |   ├── config.yaml
+|   |   └── layout.json
+|   ├── ToolSetup02/
+|   |   ├── __init__.py
+|   |   ├── config.yaml
+|   |   └── layout.json
+|   ├── __init__.py
+|   └── registry.yaml
+|
+├── scripts/
+|   ├── experiment_script_1.py
+|   ├── experiment_2.ipynb
+|   └── ...
+└── ...
 ```
 
-### Contents
-1. [Setups](#1-creating-a-new-setup)
-2. [Decks](#2-managing-a-deck)
-3. [Addresses](#3-managing-project-addresses)
-4. [Plugins](#4-using-plugins)
-
-
-### 1. Creating a new setup
-Create a `/configs/MySetup` folder that holds the configuration files for the setup, which includes `config.yaml` and `layout.json`.
+Use `start_project_here(target_dir)` to generate the above file structure,
 ```python
-lab.create_setup(setup_name = "MySetup")
+from controllably import start_project_here
+controllably.start_project_here(".")
 ```
 
-#### 1.1 `config.yaml`
-This file stores the configuration and calibration values for your devices.
+or the CLI to create the required directories.
+```shell
+$ python -m controllably .
+```
+
+
+## 1. Features
+For more advanced uses, Control-lab-ly provides a host of tools to streamline the development of lab equipment automation. This includes setting up configuration files and writing plugins.
+
+1. [Dynamic object initialization](#11-dynamic-object-initialization)
+2. [Reconfigurable complex tools](#12-reconfigurable-complex-tools)
+3. [Modular positioning system](#13-modular-positioning-system)
+4. [Application and network interoperability](#14-application-and-network-interoperability)
+
+
+### 1.1 Dynamic object initialization
+Control-lab-ly allows users to store all their tool configuration data in a YAML file, providing a single source of truth for all projects using the same set up. The `config.yaml` file stores the configuration for all the tools in the set up, which can be parsed by Control-lab-ly to initialize the tools using `get_setup()`.
 ```yaml
-MyDevice:                                       # device name
-  module: controllably.Move.Cartesian                     # top-level category
-  class: Gantry                        # device class
+MyDevice:                                   # user-defined name
+  module: controllably.Move.Cartesian       # "from" ...
+  class: Gantry                             # "import" ...
   settings:
-    port: COM1                                  # serial port address
-    setting_A: {'tuple': [300,0,200]}           # use keys to define the type of iterable
-    setting_B: {'array': [[0,1,0],[-1,0,0]]}    # only tuple and np.array supported
-```
-> Each device configuration starts with the device name, then the following parameters:\
-> `module`: module/sub-package dotnotation\
-> `class`: object class\
-> `settings`: various initialisation settings\
-
-Compound devices are similarly configured. 
-```yaml
-MyCompoundDevice:                         # compound device name
-  module: controllably.Compound.LiquidMover
-  class: LiquidMover
-  settings:                               # settings for your compound device
-    setting_C: True
-    details:                     # nest component configuration settings here
-      liquid:                      # component device name
-        module: controllably.Transfer.Liquid.Pipette.Sartorius
-        class: Sartorius
-        settings:                         # settings for your component device
-          port: COM22
-          setting_D: 2                    
-      mover:                     # component device name
-        module: controllably.Mover.Jointed.Dobot
-        class: M1Pro
-        settings:                         # settings for your compound device
-          ip_address: '192.0.0.1'
-```
-> The configuration values for the component devices are nested under the `component_config` setting of the compound device.
-
-Lastly, you can define shortcuts (or nicknames) to quickly access the components of compound devices.
-```yaml
-SHORTCUTS:
-  First: 'MyCompoundDevice.liquid'
-  Second: 'MyCompoundDevice.mover'
+    port: COM1                              # serial port address
+    setting_A: [300,0,200]
+    setting_B: [[0,1,0],[-1,0,0]]
 ```
 > A different serial port address or camera index may be used by different machines for the same device.\
 *See* [**Section 3**](#3-creating-a-new-project) *to find out how to manage the different addresses used by different machines.*
 
 
-#### 1.2 `layout.json`
-This file stores the layout configuration of your physical workspace, also known as a `Deck`.\
-*See* [**Section 2**](#2-managing-a-deck) *on how to load this information into the setup.*
+### 1.2 Reconfigurable complex tools
+Compound devices are similarly configured in the `config.yaml` file. The configuration details of the component tools are nested in `details`.
+```yaml
+MyCompoundDevice:                           # user-defined name
+  module: controllably.Compound.LiquidMover
+  class: LiquidMover
+  settings:                                 # settings for compound device
+    speed_factor_lateral: null
+    speed_factor_up: 0.2
+    speed_factor_down: 0.2
+    speed_factor_pick_tip: 0.01
+    tip_approach_distance: 20
+    details:                                # nest component configuration in "details"
+      mover:                                # component name (defined in LiquidMover)
+        module: controllably.Move.Cartesian
+        class: Gantry
+        settings:
+          port: COM1 
+      liquid:                               # component name (defined in LiquidMover)
+        module: controllably.Transfer.Liquid.Pipette.Sartorius
+        class: Sartorius
+        settings:
+          port: COM22
+```
 
-*Optional: if your setup does not involve moving objects around in a pre-defined workspace,  a layout configuration may not be required*
-> This package uses the same Labware files as those provided by [Opentrons](https://opentrons.com/), which can be found [here](https://labware.opentrons.com/), and custom Labware files can be created [here](https://labware.opentrons.com/create/). Labware files are JSON files that specifies the external and internal dimensions of a Labware block / object.
+Lastly, you can define shortcuts (or aliases) at the end of `config.yaml` to easily access the nested components of compound devices.
+```yaml
+SHORTCUTS:
+  LiquidDevice: 'MyCompoundDevice.liquid'
+  MoverDevice: 'MyCompoundDevice.mover'
+```
 
 
+### 1.3 Modular positioning system
+Control-lab-ly allows users to easily combine multiple modules and switch between local and global coordinates. The `layout.json` file stores the layout configuration of your physical workspace (`Deck`).
+>*Optional: if your setup does not involve moving objects around in a pre-defined workspace,  a layout configuration may not be required*
 ```json
 {
     "metadata": {
-        "displayName": "Example Layout (sub)",
+        "displayName": "Example Layout (main)",
         "displayCategory": "deck",
         "displayVolumeUnits": "µL",
         "displayLengthUnits": "mm",
@@ -181,7 +207,7 @@ This file stores the layout configuration of your physical workspace, also known
             "dimensions": [127.76,85.48,0],
             "cornerOffset": [310.5,6.5,0],
             "orientation": [0,0,0],
-            "labware_file": "control-lab-le/tests/core/examples/labware_wellplate.json"
+            "labware_file": "project_root/library/labware/labware_wellplate.json"
         },
         "3": {
             "name": "slotThree",
@@ -190,142 +216,153 @@ This file stores the layout configuration of your physical workspace, also known
             "orientation": [0,0,0]
         }
     },
-    "zones":{}
+    "zones":{
+        "A":{ 
+            "dimensions": [600,300,0],
+            "cornerOffset": [600,600,0],
+            "orientation": [-90,0,0],
+            "deck_file": "project_root/library/deck/layout_sub.json",
+            "entry_waypoints": [
+                [653.2, 224.6, 232]
+            ]
+        }
+    }
 }
 ```
-> In `cornerOffset`, the bottom-left coordinates of each slot on the deck are defined. Slots are positions where Labware blocks may be placed.
 
-> In `slots`, the `name` of the Labware and the `labware_file` path to the JSON file containing Labware details are defined. The filepath starts with the name of the repository's base folder.\
->\
-> The `exclusion_height` is the height (in mm) above the dimensions of the Labware block to steer clear from when performing movement actions. Values less than 0 means the Labware is not avoided.\
->\
-> *(Note: Labware avoidance only applies to final coordinates (i.e. destination). Does not guarantee collision avoidance when using point-to-point move actions. Use* `safeMoveTo()` *instead.)*
+The size and position of the `Deck` is defined by the `dimensions`, and combination of `cornerOffset` and `orientation` respectively. 
+- `dimensions` is the (x,y,z) dimensions with respect to the deck's own coordinate system. 
+- `cornerOffset` is the (x,y,z) coordinates of the bottom-left corner of the deck with respect to world coordinates (typically the origin). 
+- `orientation` is the (rz,ry,rx) rotation of the deck about the bottom-left corner with respect to world coordinates (typically the identity rotation or zero rotation).
 
-#### 1.3 Load setup
-The initialisation of the setup occurs when importing `setup` from `configs.MySetup`. With `setup`, you can access all the devices that you have defined in [**Section 1.1**](#11-configyaml).
+Within the deck, `slots` and `zones` can be defined.
+- `slots` are spaces where Labware can be placed. These Labware can be individual tools or vessel holders. Indexing of slots increments numerically, typically starting from 1. 
+- `zones` are regions of nested layouts. As such, a `Deck` of a smaller modular setup layout can be incorporated as part of a larger layout. Indexing of zones increments alphabetically, typically starting with 'A'.
 
+Here, the `dimensions`, `cornerOffset`, and `orientation` definitions apply similarly, except the latter two takes reference from the parent's origin and orientation. The filename definition in `labware_file` and `deck_file` can either be absolute filepaths, or relative to the project repository. 
+> This package uses the same Labware files as those provided by [Opentrons](https://opentrons.com/), which can be found [here](https://labware.opentrons.com/), and custom Labware files can be created [here](https://labware.opentrons.com/create/). Additional fields can be added to the these Labware files to enable features such as plate stacking and collision avoidance.
+> - `parameters.isStackable` is a boolean value defining if another Labware can be stacked above.
+> - `slotAbove` defines a new slot above the Labware, with similar subfields `slotAbove.name`, `slotAbove.dimensions`, `slotAbove.cornerOffset`, and `slotAbove.orientation`.
+> - `exclusionBuffer` is the offset from the lower and upper bounds of the Labware bounding box. i.e. [ [left, front, bottom], [right, back, top] ]
+>   - *Note: avoidance checks only apply to destination coordinates. **Does not** guarantee collision avoidance along intermediate path coordinates when using point-to-point move actions such as `move`, `moveBy` or `moveTo`. Use* `safeMoveTo` *instead.*
+
+For zones, `entry_waypoints` lists a sequence of coordinates that defines a safe path a translation tool can take to transit into that particular zone.
+
+
+### 1.4 Application and network interoperability
+To allow control of the setups over the network, or with other applications, Control-lab-ly provides a way to access the attributes and methods over a communication layer. A `Controller` encodes and decodes requests and responses using an `Interpreter`, serializing the data to be sent.
 ```python
-### main.py ###
-# Add repository folder to sys.path
-from pathlib import Path
-import sys
-REPO = 'MyREPO'
-ROOT = str(Path().absolute()).split(REPO)[0]
-sys.path.append(f'{ROOT}{REPO}')
+from controllably.core.control import Controller
+from controllably.core.interpreter import JSONInterpreter
 
-# Import the initialised setup
-from configs.MySetup import setup
-setup.MyDevice
-setup.First
+# 'model' controllers receives requests, triggers execution in registered objects, and transmits the resultant data
+worker = Controller(role='model', interpreter=JSONInterpreter())
+worker.setAddress('WORKER')
+
+# 'view' controllers transmits requests and receives the resultant data
+user = Controller(role='view', interpreter=JSONInterpreter())
+user.setAddress('USER')
 ```
 
-
-### 2. Managing a deck
-*Optional: if your setup does not involve moving items around in a pre-defined workspace,  a* `Deck` *may not be required*
-
-#### 2.1 Loading a deck
-To load a `Deck` from the layout file, use the `loadDeck()` function of a `Mover` object (or its subclasses).
+Each controller subscribes to one or more callbacks that will be called when the controller transmits. In this example, when `user` tries to transmit a request to target controller (`'WORKER'`), it will call `worker.receiveRequest`. Likewise, when `worker` tries to transmit data back to the request originator (`'USER'`), it will call `user.receiveData`.
 ```python
-from configs.MySetup import setup, LAYOUT_FILE
-setup.Mover.loadDeckFromFile(LAYOUT_FILE)
-``` 
-> `LAYOUT_FILE` contains the details that has been defined in `layout.json` (see [**Section 1.2**](#12-layoutjson))
+# request flow: USER -> WORKER
+user.subscribe(callback=worker.receiveRequest, callback_type='request', address='WORKER')
+# data flow: USER -> WORKER
+worker.subscribe(callback=user.receiveData, callback_type='data', address='USER')
+```
 
-#### 2.2 Loading a Labware
-To load a `Labware` onto the deck, use the `loadLabware()` method of the `Deck` object.
+A hub-and-spoke network can also be achieved using a new 'relay' controller.
 ```python
-setup.Mover.deck.loadLabware(...)
-``` 
-> This package uses the same Labware files as those provided by [Opentrons](https://opentrons.com/), which can be found [here](https://labware.opentrons.com/), and custom Labware files can be created [here](https://labware.opentrons.com/create/). Labware files are JSON files that specifies the external and internal dimensions of a Labware block / object.
+# 'relay' controllers bridges communication between `model` and `view` controllers
+hub = Controller(role='relay', interpreter=JSONInterpreter())
+hub.setAddress('HUB')
+
+# request flow: USER -> HUB -> WORKER
+user.subscribe(callback=hub.relayRequest, callback_type='request', address='HUB', relay=True)
+hub.subscribe(callback=worker.receiveRequest, callback_type='request', address='WORKER')
+
+# data flow: WORKER -> HUB -> USER
+worker.subscribe(callback=hub.relayData, callback_type='data', address='HUB', relay=True)
+hub.subscribe(callback=user.receiveData, callback_type='data', address='USER')
+```
+
+These callbacks should be replaced with user implementation of communication layers, (e.g. socket communication or FastAPI).
 
 
-### 3. Managing project addresses
-A `/configs` folder will have been created in the base folder of your project repository to store all configuration related files from which the package will read from, in [**Section 1**](#1-creating-a-new-setup). A template of `registry.yaml` has also been added to the `/configs` folder to manage the machine-specific addresses of your connected devices (e.g. serial port and camera index).
+## 2. Additional features
+### 2.1 Managing hardware addresses
+Hardware addresses may vary from machine to machine, especially for serial ports and cameras. To keep track of all the different port addresses, the machine ID and its corresponding port addresses are stored in `registry.yaml`
+
+In the `tools` folder, a template of `registry.yaml` has been added to manage the machine-specific addresses of your connected devices (e.g. serial port and camera index). First, use the `get_node` and `get_ports` functions to identify your machine's ID and the serial port addresses of your tools.
+```python
+from controllably.core.connection import get_node, get_ports
+get_node()           # Get the unique identifier of your machine
+get_ports()          # Get a list of serial port addresses of your connect devices
+```
+
+Next, populate the `registry.yaml` file with the relevant information.
 ```yaml
-### registry.yaml ###
-'012345678901234':              # insert your machine's 15-digit ID here
+'012345678901234':              # insert your machine's unique identifier
     cam_index:                  # camera index of the connected imaging devices
-      __cam_01__: 1             # keep the leading and trailing double underscores
-      __cam_02__: 0
+      __cam_01__: 1             # NOTE: retain leading and trailing double underscores
     port:                       # addresses of serial ports
-      __MyDevice__: COM1        # keep the leading and trailing double underscores
-      __MyFirstDevice__: COM22
+      __MyDevice__: COM1        # NOTE: retain leading and trailing double underscores
 ```
 
-> Use the `Helper.get_node()` function to get the 15-digit unique identifier of your machine\
-> Use the `Helper.get_port()` function to get the serial port addresses of your connect devices
-
-```python
-lab.Helper.get_node()           # Get your machine's ID (15-digit)
-lab.Helper.get_ports()          # Get the port addresses of connected devices
-```
-
-Afterwards, change the value for the serial port address in the `config.yaml` file to match the registry.
+Lastly, change the value for the serial port address in the `config.yaml` file(s) to match the registry.
 ```yaml
-### config.yaml ###
-MyDevice:
-  module: controllably.Move.Cartesian
-  class: Gantry
+MyDevice:                                   # user-defined name
+  module: controllably.Move.Cartesian       # "from" ...
+  class: Gantry                             # "import" ...
   settings:
-    port: __MyDevice__          # serial port address
+    port: __MyDevice__                      # serial port address
+    setting_A: [300,0,200]
+    setting_B: [[0,1,0],[-1,0,0]]
 ```
 
-### 4. Using plugins
-*Optional: if drivers for your hardware components are already included, plugins may not be required*
-
-User-defined plugins can be easily written and integrated into Control.lab.ly. All available classes and functions can be found in `lab.modules`.
+### 2.2 Linting and coding assists
+To help with development, linters such as Pylance provide suggestions while coding, based on the types of the objects. To make use of this feature, furnish the `__init__.py` file with the corresponding tool names and classes from the `config.yaml` file.
 ```python
-lab.guide_me()                              # Use guide to view imported objects
-lab.modules.at.Make.Something.Good.MyClass  # Access the class 
+from dataclasses import dataclass
+...
+
+# ========== Optional (for typing) ========== #
+from controllably.Compound.LiquidMover import LiquidMover
+from controllably.Transfer.Liquid.Pipette.Sartorius import Sartorius
+from controllably.Move.Cartesian import Gantry
+
+@dataclass
+class Platform:
+    MyCompoundDevice: LiquidMover
+    LiquidDevice: Sartorius
+    MoverDevice: Gantry
+# ========================================== #
+
+...
 ```
 
-#### 4.1 Registering a Class or Function
-You can import the class and register the object using the `Factory.register()` function.
-```python
-from my_module import MyClass
-lab.Factory.register(MyClass, "Make.Something.Good")
-```
-
-#### 4.2 Registering a Python module
-Alternatively, you can automatically register all Classes and Functions in a Python module just by importing it.
-> 1. Declare a `__where__` global variable to indicate where to register the module
-> 2. At the end of the .py file, import and call  the `include_this_module()` function
-```python
-### my_module.py ###
-__where__ = "Make.Something.Good"               # Where to register this module to
-
-def MyClass:                                    # Main body of code goes here
-  ...
-
-def my_function:
-  ...
-
-from controllably import include_this_module    # Registers only the Classes and Functions
-include_this_module()                           # defined above in this .py file
-```
-
-The Classes and Functions in the module will be registered when you import the module.
-```python
-### main.py ###
-from my_module import MyClass, my_function
-```
+> More additional features to be documented...
 ---
 
 ## Dependencies
-- numpy (>=1.19.5)
-- opencv-python (>=4.5.4.58)
-- pandas (>=1.2.4)
-- pyModbusTCP (>=0.2.0)
+- matplotlib (>=3.9.2)
+- numpy (>=2.1.0)
+- opencv-python (>=4.11.0.86)
+- pandas (>=2.2.2)
+- parse (>=1.20.2)
 - pyserial (>=3.5)
-- PyVISA (>=1.12.0)
-- PyVISA-py (>=0.7)
-- PyYAML (>=6.0)
+- PyYAML (>=6.0.1)
+- scipy (>=1.14.1)
+- pyModbusTCP (>=0.2.0)
+- easy-biologic (>=0.4.0)
+- nest-asyncio (>=1.6.0)
+- setuptools (>=71.0.3)
+- PyMeasure (>=0.15.0)
+
 
 ## Contributors
-[@kylejeanlewis](https://github.com/kylejeanlewis)\
-[@mat-fox](https://github.com/mat-fox)\
-[@Quijanove](https://github.com/Quijanove)\
-[@AniketChitre](https://github.com/AniketChitre)
+[@kylejeanlewis](https://github.com/kylejeanlewis) / [@Quijanove](https://github.com/Quijanove) / [@mat-fox](https://github.com/mat-fox)
 
 
 ## How to Contribute
