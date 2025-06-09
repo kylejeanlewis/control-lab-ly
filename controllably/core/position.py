@@ -632,7 +632,8 @@ class Labware:
             from_repo (bool, optional): whether to load from repo. Defaults to True.
         """
         assert isinstance(labware_file,(str,Path)), "Please input a valid filepath"
-        filepath = Path(labware_file) if not from_repo else file_handler.resolve_repo_filepath(labware_file)
+        filepath = Path(labware_file)
+        filepath = filepath if filepath.is_absolute() else file_handler.resolve_repo_filepath(labware_file)
         assert filepath.is_file(), "Please input a valid Labware filepath"
         details = file_handler.read_config_file(filepath)
         details['labware_file'] = str(filepath)
@@ -1271,7 +1272,8 @@ class Deck:
             Deck: `Deck` object
         """
         assert isinstance(deck_file,(str,Path)), "Please input a valid filepath"
-        filepath = Path(deck_file) if not from_repo else file_handler.resolve_repo_filepath(deck_file)
+        filepath = Path(deck_file)
+        filepath = filepath if filepath.is_absolute() else file_handler.resolve_repo_filepath(deck_file)
         assert filepath.is_file(), "Please input a valid Deck filepath"
         details = file_handler.read_config_file(filepath)
         details['deck_file'] = str(filepath)
