@@ -11,7 +11,7 @@ Attributes:
 """
 from dataclasses import dataclass
 from pathlib import Path
-from controllably.core.factory import get_setup         # pip install control-lab-ly
+from controllably import get_setup         # pip install control-lab-ly
 __all__ = ['CONFIG_FILE', 'LAYOUT_FILE', 'REGISTRY_FILE', 'setup']
 __setup__ = None
 
