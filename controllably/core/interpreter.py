@@ -6,7 +6,7 @@ This module contains the `Interpreter` abstract class and its implementation `JS
     `Interpreter`: Abstract class for encoding and decoding messages.
     `JSONInterpreter`: Class for encoding and decoding messages in JSON format.
 
-<i>Documentation last updated: 2025-02-22</i>
+<i>Documentation last updated: 2025-06-11</i>
 """
 # Standard library imports
 from __future__ import annotations

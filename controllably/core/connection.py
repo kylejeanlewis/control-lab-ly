@@ -2,19 +2,17 @@
 """ 
 This module provides classes for handling connections to serial and socket devices.
     
-## Classes:
-    `SocketUtils`: Socket utility class for handling socket connections
-    `Server`: Server class for handling socket connections
-    `Client`: Client class for handling socket connections
-    
 ## Functions:
     `get_addresses`: Get the appropriate addresses for current machine
     `get_host`: Get the host IP address for current machine
     `get_node`: Get the unique identifier for current machine
+    `get_node_linux`: Get the unique identifier for Linux machine
+    `get_node_macos`: Get the unique identifier for macOS machine
+    `get_node_windows`: Get the unique identifier for Windows machine
     `get_ports`: Get available serial ports connected to current machine
     `match_current_ip_address`: Match the current IP address of the machine
     
-<i>Documentation last updated: 2024-11-12</i>
+<i>Documentation last updated: 2025-06-11</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -41,6 +39,7 @@ def get_addresses(registry:dict|None, mac_address: bool = True) -> dict|None:
 
     Args:
         registry (dict|None): dictionary with serial port addresses and camera ids
+        mac_address (bool): whether to use MAC address for node id, defaults to True
 
     Returns:
         dict|None: dictionary of serial port addresses and camera ids for current machine, if available
@@ -70,6 +69,9 @@ def get_host() -> str:
 def get_node(mac_address: bool = True) -> str:
     """
     Get the unique identifier for current machine
+    
+    Args:
+        mac_address (bool): whether to use MAC address for node id, defaults to True
 
     Returns:
         str: machine unique identifier
@@ -91,6 +93,12 @@ def get_node(mac_address: bool = True) -> str:
     return node_id
 
 def get_node_linux() -> str:
+    """
+    Get the unique identifier for Linux machine
+    
+    Returns:
+        str: machine unique identifier
+    """
     assert platform.system() == "Linux", "This function is for Linux only"
     # Try /etc/machine-id first (more common and accessible)
     machine_id_path = "/etc/machine-id"
@@ -111,6 +119,12 @@ def get_node_linux() -> str:
     return ''
 
 def get_node_macos() -> str:
+    """ 
+    Get the unique identifier for macOS machine
+    
+    Returns:
+        str: machine unique identifier
+    """
     assert platform.system() == "Darwin", "This function is for macOS only"
     # Try to get the serial number using system_profiler
     try:
@@ -125,6 +139,12 @@ def get_node_macos() -> str:
     return ''
 
 def get_node_windows() -> str:
+    """
+    Get the unique identifier for Windows machine
+    
+    Returns:
+        str: machine unique identifier
+    """
     assert platform.system() == "Windows", "This function is for Windows only"
     # Use wmic to get the UUID
     try:
@@ -156,6 +176,9 @@ def get_ports() -> list[str]:
 def match_current_ip_address(ip_address:str) -> bool:
     """
     Match the current IP address of the machine
+    
+    Args:
+        ip_address (str): IP address to match against the current machine's IP addresses
 
     Returns:
         bool: whether the IP address matches the current machine

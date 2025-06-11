@@ -19,7 +19,7 @@ Attributes:
     `convert_to_position`: Convert a value to a `Position` object
     `get_transform`: Get transformation matrix from initial to final points, with the first point in each set being the center of rotation
 
-<i>Documentation last updated: 2025-02-22</i>
+<i>Documentation last updated: 2025-06-11</i>
 """
 # Standard library imports
 from __future__ import annotations

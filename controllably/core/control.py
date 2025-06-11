@@ -10,13 +10,8 @@ Attributes:
     `TwoTierQueue`: a queue that can handle two types of items: normal and high-priority.
     `Proxy`: a proxy class to handle remote method calls.
     `Controller`: a class to control the flow of data and commands between models and views.
-    
-## Functions:
-    `handle_client`: handle a client connection.
-    `start_server`: start a server.
-    `start_client`: start a client.
 
-<i>Documentation last updated: 2025-02-22</i>
+<i>Documentation last updated: 2025-06-11</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -105,10 +100,10 @@ class TwoTierQueue:
         
         Args:
             item (Any): item to put in the queue.
-            block (bool): flag to block the queue.
-            timeout (float): time to wait for the queue.
-            priority (bool): flag to indicate high-priority item.
-            rank (int): rank of the high-priority item.
+            block (bool, optional): flag to block the queue. Defaults to True.
+            timeout (float, optional): time to wait for the queue. Defaults to None.
+            priority (bool, optional): flag to indicate high-priority item. Defaults to False.
+            rank (int, optional): rank of the high-priority item. Defaults to None.
         """
         if priority or rank is not None:
             self.priority_counter += 1
@@ -124,8 +119,8 @@ class TwoTierQueue:
         
         Args:
             item (Any): item to put in the queue.
-            priority (bool): flag to indicate high-priority item.
-            rank (int|None): rank of the high-priority item.
+            priority (bool, optional): flag to indicate high-priority item. Defaults to False.
+            rank (int|None, optional): rank of the high-priority item. Defaults to None.
         """
         return self.put(item, block=False, priority=priority, rank=rank)
     
@@ -134,8 +129,8 @@ class TwoTierQueue:
         Get an item from the queue.
         
         Args:
-            block (bool): flag to block the queue.
-            timeout (float): time to wait for the queue.
+            block (bool): flag to block the queue. Defaults to True.
+            timeout (float): time to wait for the queue. Defaults to None.
             
         Returns:
             Any: item from the queue.
@@ -192,9 +187,9 @@ class TwoTierQueue:
         
         Args:
             item (Any): item to put in the queue.
-            rank (int): rank of the high-priority item.
-            block (bool): flag to block the queue.
-            timeout (float): time to wait for the queue.
+            rank (int): rank of the high-priority item
+            block (bool, optional): flag to block the queue. Defaults to True.
+            timeout (float, optional): time to wait for the queue. Defaults to None.
         """
         self.high_priority_queue.put((rank, item), block=block, timeout=timeout)
         
@@ -206,8 +201,8 @@ class TwoTierQueue:
         
         Args:
             item (Any): item to put in the queue.
-            block (bool): flag to block the queue.
-            timeout (float): time to wait for the queue.
+            block (bool, optional): flag to block the queue. Defaults to True.
+            timeout (float, optional): time to wait for the queue. Defaults to None.
         """
         self.normal_queue.put(item, block=block, timeout=timeout)
         return
@@ -268,7 +263,7 @@ class Proxy:
         
         Args:
             prime (Callable): the object to create a proxy for
-            object_id (str|None, optional): the ID of the object
+            object_id (str|None, optional): the ID of the object. Defaults to None.
             
         Returns:
             Type[Proxy]: the new class with methods and properties of the prime object
@@ -420,8 +415,10 @@ class Controller:
         `role` (str): the role of the controller
         `interpreter` (Interpreter): the interpreter to use
         `address` (str|None): the address of the controller
+        `relay_delay` (int): delay for relaying data
         `relays` (list): list of relays
         `callbacks` (dict[str, dict[str, Callable]]): dictionary of callbacks
+        `events` (dict[str, threading.Event]): dictionary of events
         `command_queue` (TwoTierQueue): command queue
         `data_buffer` (dict): data buffer
         `objects` (dict): dictionary of objects
@@ -529,7 +526,8 @@ class Controller:
         Receive a request
         
         Args:
-            packet (str|bytes): the request to receive
+            packet (str|bytes, optional): the request to receive. Defaults to None.
+            sender (str|None, optional): the sender of the request. Defaults to None.
         """
         assert self.role in ('model', 'both'), "Only the model can receive requests"
         if packet is None:
@@ -894,7 +892,8 @@ class Controller:
         Receive data
         
         Args:
-            packet (str|bytes): the packet to receive
+            packet (str|bytes, optional): the packet to receive. Defaults to None.
+            sender (str|None, optional): the sender of the packet. Defaults to None.
         """
         assert self.role in ('view', 'both'), "Only the view can receive data"
         if packet is None:
@@ -1071,7 +1070,7 @@ class Controller:
         Relay a request
         
         Args:
-            packet (str|bytes): the request to relay
+            packet (str|bytes, optional): the request to relay. Defaults to None.
         """
         # if packet is None:
         #     packet = self.callbacks['listen'](**kwargs)
@@ -1087,7 +1086,7 @@ class Controller:
         Relay data
         
         Args:
-            packet (str|bytes): the packet to relay
+            packet (str|bytes, optional): the packet to relay. Defaults to None.
         """
         # if packet is None:
         #     packet = self.callbacks['listen'](**kwargs)

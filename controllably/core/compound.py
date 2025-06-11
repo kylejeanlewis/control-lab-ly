@@ -19,7 +19,7 @@ is presented in the table below:
     `Combined`: Combined class is an composition of multiple part tools
     `Multichannel`: Multichannel class is an composition of duplicate part tools to form multiple channels
     
-<i>Documentation last updated: 2025-02-22</i>
+<i>Documentation last updated: 2025-06-11</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -598,6 +598,12 @@ class Multichannel(Combined):
         
     ## Attributes and properties:
         `channels` (dict[int,Part]): dictionary of channels
+        `device` (Device): device object
+        `connection_details` (dict): connection details for the device
+        `parts` (SimpleNamespace[str,Part]): namespace of parts
+        `flags` (SimpleNamespace[str,bool]): flags of class
+        `is_busy` (bool): whether any part is busy
+        `is_connected` (bool): whether all parts are connected
         `verbose` (bool): verbosity of class
         
     ## Class methods:
@@ -783,6 +789,21 @@ class Multichannel(Combined):
         func.__signature__ = signature.replace(parameters = tuple(parameters))
         return func
     
+    def setActiveChannel(self, channel:int|None = None):
+        """
+        Set active channel
+        
+        Args:
+            channel (int|None, optional): select channel. Defaults to None.
+        """
+        if channel is None:
+            self.active_channel = list(self.channels.keys())[0]
+            return
+        if channel not in self.channels:
+            raise KeyError(f"Channel {channel} not found in {self.channels.keys()}")
+        self.active_channel = channel
+        return
+    
     def _get_channel(self, channel:int|Sequence[int]|None = None) -> dict[str,Part]:
         """
         Get channel(s)
@@ -805,19 +826,4 @@ class Multichannel(Combined):
                 raise KeyError(f"Channel(s) {', '.join(not_found)} not found in {self.channels.keys()}")
             return {chn:self.channels[chn] for chn in channel}
         raise ValueError(f"Invalid channel input: {channel}")
-    
-    def setActiveChannel(self, channel:int|None = None):
-        """
-        Set active channel
-        
-        Args:
-            channel (int|None, optional): select channel. Defaults to None.
-        """
-        if channel is None:
-            self.active_channel = list(self.channels.keys())[0]
-            return
-        if channel not in self.channels:
-            raise KeyError(f"Channel {channel} not found in {self.channels.keys()}")
-        self.active_channel = channel
-        return
     

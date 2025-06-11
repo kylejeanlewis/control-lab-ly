@@ -207,6 +207,52 @@ class TimedDeviceMixin:
     
 
 class BaseDevice:
+    """
+    BaseDevice provides an interface for handling device connections
+    
+    ### Constructor:
+        `connection_details` (dict|None, optional): connection details for the device. Defaults to None.
+        `init_timeout` (int, optional): timeout for initialization. Defaults to 1.
+        `data_type` (NamedTuple, optional): data type for the device. Defaults to Data.
+        `read_format` (str, optional): read format for the device. Defaults to READ_FORMAT.
+        `write_format` (str, optional): write format for the device. Defaults to WRITE_FORMAT.
+        `simulation` (bool, optional): whether to simulate the device. Defaults to False.
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+        
+    ### Attributes and properties:
+        `connection` (Any|None): connection object for the device
+        `connection_details` (dict): connection details for the device
+        `flags` (SimpleNamespace[str, bool]): flags for the device
+        `init_timeout` (int): timeout for initialization
+        `data_type` (NamedTuple): data type for the device
+        `read_format` (str): read format for the device
+        `write_format` (str): write format for the device
+        `eol` (str): end of line character for the read format
+        `buffer` (deque): buffer for storing streamed data
+        `data_queue` (queue.Queue): queue for storing processed data
+        `show_event` (threading.Event): event for showing streamed data
+        `stream_event` (threading.Event): event for controlling streaming
+        `threads` (dict): dictionary of threads used in streaming
+        
+    ### Methods:
+        `clear`: clear the input and output buffers, and reset the data queue and buffer
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `checkDeviceConnection`: check the connection to the device
+        `checkDeviceBuffer`: check the connection buffer
+        `clearDeviceBuffer`: clear the device input and output buffers
+        `read`: read data from the device
+        `readAll`: read all data from the device
+        `write`: write data to the device
+        `poll`: poll the device (i.e. write and read data)
+        `processInput`: process the input data
+        `processOutput`: process the output data
+        `query`: query the device (i.e. write and read data)
+        `startStream`: start the stream
+        `stopStream`: stop the stream
+        `stream`: toggle the stream
+        `showStream`: show the stream
+    """
     
     _default_flags: SimpleNamespace = SimpleNamespace(verbose=False, connected=False, simulation=False)
     def __init__(self, 
@@ -471,7 +517,6 @@ class BaseDevice:
             format_out (str|None, optional): format for the data. Defaults to None.
             data_type (NamedTuple|None, optional): data type for the data. Defaults to None.
             timestamp (datetime|None, optional): timestamp for the data. Defaults to None.
-            condition (Callable[[Any,datetime], bool]|None, optional): condition to stop the stream. Defaults to None.
             
         Returns:
             tuple[Any, datetime|None]: processed output data and timestamp
@@ -607,6 +652,7 @@ class BaseDevice:
             show (bool, optional): whether to show the stream. Defaults to False.
             sync_start (threading.Barrier|None, optional): synchronization barrier. Defaults to None.
             split_stream (bool, optional): whether to split the stream and data processing threads. Defaults to True.
+            callback (Callable[[str],Any]|None, optional): callback function to call with the streamed data. Defaults to None.
         """
         sync_start = sync_start or threading.Barrier(2, timeout=2)
         assert isinstance(sync_start, threading.Barrier), "Ensure sync_start is a threading.Barrier"
@@ -666,6 +712,7 @@ class BaseDevice:
             buffer (deque|None, optional): buffer to store the streamed data. Defaults to None.
             sync_start (threading.Barrier|None, optional): synchronization barrier. Defaults to None.
             split_stream (bool, optional): whether to split the stream and data processing threads. Defaults to True.
+            callback (Callable[[str],Any]|None, optional): callback function to call with the streamed data. Defaults to None.
         """
         return self.startStream(data=data, buffer=buffer, sync_start=sync_start, split_stream=split_stream, callback=callback, **kwargs) if on else self.stopStream()
     
@@ -739,6 +786,7 @@ class BaseDevice:
             format_out (str|None, optional): format for the data. Defaults to None.
             data_type (NamedTuple|None, optional): data type for the data. Defaults to None.
             split_stream (bool, optional): whether to split the stream and data processing threads. Defaults to True.
+            callback (Callable[[str],Any]|None, optional): callback function to call with the streamed data. Defaults to None.
         """
         if not split_stream:
             if buffer is None:
@@ -778,7 +826,9 @@ class SerialDevice(BaseDevice):
         `baudrate` (int, optional): baudrate for the device. Defaults to 9600.
         `timeout` (int, optional): timeout for the device. Defaults to 1.
         `init_timeout` (int, optional): timeout for initialization. Defaults to 2.
-        `message_end` (str, optional): message end character. Defaults to '\\n'.
+        `data_type` (NamedTuple, optional): data type for the device. Defaults to Data.
+        `read_format` (str, optional): read format for the device. Defaults to READ_FORMAT.
+        `write_format` (str, optional): write format for the device. Defaults to WRITE_FORMAT.
         `simulation` (bool, optional): whether to simulate the device. Defaults to False.
         `verbose` (bool, optional): verbosity of class. Defaults to False.
     
@@ -795,12 +845,23 @@ class SerialDevice(BaseDevice):
         `verbose` (bool): verbosity of class
         
     ### Methods:
-        `clear`: clear the input and output buffers
+        `clear`: clear the input and output buffers, and reset the data queue and buffer
         `connect`: connect to the device
         `disconnect`: disconnect from the device
-        `query`: query the device (i.e. write and read data)
+        `checkDeviceConnection`: check the connection to the device
+        `checkDeviceBuffer`: check the connection buffer
+        `clearDeviceBuffer`: clear the device input and output buffers
         `read`: read data from the device
+        `readAll`: read all data from the device
         `write`: write data to the device
+        `poll`: poll the device (i.e. write and read data)
+        `processInput`: process the input data
+        `processOutput`: process the output data
+        `query`: query the device (i.e. write and read data)
+        `startStream`: start the stream
+        `stopStream`: stop the stream
+        `stream`: toggle the stream
+        `showStream`: show the stream
     """
     
     def __init__(self,
@@ -824,7 +885,9 @@ class SerialDevice(BaseDevice):
             baudrate (int, optional): baudrate for the device. Defaults to 9600.
             timeout (int, optional): timeout for the device. Defaults to 1.
             init_timeout (int, optional): timeout for initialization. Defaults to 2.
-            message_end (str, optional): message end character. Defaults to '\\n'.
+            data_type (NamedTuple, optional): data type for the device. Defaults to Data.
+            read_format (str, optional): read format for the device. Defaults to READ_FORMAT.
+            write_format (str, optional): write format for the device. Defaults to WRITE_FORMAT.
             simulation (bool, optional): whether to simulate the device. Defaults to False.
             verbose (bool, optional): verbosity of class. Defaults to False.
         """
@@ -982,6 +1045,7 @@ class SocketDevice(BaseDevice):
         `host` (str): host for the device
         `port` (int): port for the device
         `timeout` (int, optional): timeout for the device. Defaults to 1.
+        `byte_size` (int, optional): size of the byte buffer. Defaults to 1024.
         `simulation` (bool, optional): whether to simulate the device. Defaults to False.
         `verbose` (bool, optional): verbosity of class. Defaults to False.
     
@@ -989,6 +1053,7 @@ class SocketDevice(BaseDevice):
         `host` (str): device host
         `port` (int): device port
         `timeout` (int): device timeout
+        `byte_size` (int): size of the byte buffer
         `connection_details` (dict): connection details for the device
         `socket` (socket.socket): socket object for the device
         `flags` (SimpleNamespace[str, bool]): flags for the device
@@ -996,12 +1061,23 @@ class SocketDevice(BaseDevice):
         `verbose` (bool): verbosity of class
         
     ### Methods:
-        `clear`: clear the input and output buffers
+        `clear`: clear the input and output buffers, and reset the data queue and buffer
         `connect`: connect to the device
         `disconnect`: disconnect from the device
-        `query`: query the device (i.e. write and read data)
+        `checkDeviceConnection`: check the connection to the device
+        `checkDeviceBuffer`: check the connection buffer
+        `clearDeviceBuffer`: clear the device input and output buffers
         `read`: read data from the device
+        `readAll`: read all data from the device
         `write`: write data to the device
+        `poll`: poll the device (i.e. write and read data)
+        `processInput`: process the input data
+        `processOutput`: process the output data
+        `query`: query the device (i.e. write and read data)
+        `startStream`: start the stream
+        `stopStream`: stop the stream
+        `stream`: toggle the stream
+        `showStream`: show the stream
     """
     
     _default_flags: SimpleNamespace = SimpleNamespace(verbose=False, connected=False, simulation=False)
@@ -1022,6 +1098,7 @@ class SocketDevice(BaseDevice):
             host (str): host for the device
             port (int): port for the device
             timeout (int, optional): timeout for the device. Defaults to 1.
+            byte_size (int, optional): size of the byte buffer. Defaults to 1024.
             simulation (bool, optional): whether to simulate the device. Defaults to False.
             verbose (bool, optional): verbosity of class. Defaults to False.
         """

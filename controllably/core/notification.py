@@ -9,7 +9,7 @@ Attributes:
     `Notifier`: class for sending notifications
     `EmailNotifier`: class for sending email notifications
 
-<i>Documentation last updated: 2025-02-22</i>
+<i>Documentation last updated: 2025-06-11</i>
 """
 # Standard library imports
 from __future__ import annotations

@@ -8,7 +8,7 @@ This module provides functions to record and stream data from a streaming device
     `stream`: Stream data from a streaming device
     `monitor_plot`: Monitor a data stream in real-time
 
-<i>Documentation last updated: 2025-02-22</i>
+<i>Documentation last updated: 2025-06-11</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -121,7 +121,7 @@ def stream(
     return
 
 def monitor_plot(
-    data_store: Iterable[tuple[NamedTuple,datetime]], 
+    data_store: Iterable[tuple[NamedTuple,datetime]]|pd.DataFrame, 
     y: str, 
     x: str = 'timestamp', 
     *,
@@ -134,7 +134,7 @@ def monitor_plot(
     Monitor a data stream in real-time.
     
     Args:
-        data_store (Iterable[tuple[NamedTuple,datetime]]): list of tuples
+        data_store (Iterable[tuple[NamedTuple,datetime]]|pd.DataFrame): list of tuples or dataframe containing the data to plot
         y (str): y-axis field name
         x (str, optional): x-axis field name. Defaults to 'timestamp'.
         kind (str, optional): plot type. Defaults to 'line'.
@@ -151,6 +151,7 @@ def monitor_plot(
     assert kind in ('line','scatter'), "kind must be either 'line' or 'scatter'"
     from IPython.display import display, clear_output
     stop_trigger = stop_trigger if isinstance(stop_trigger, threading.Event) else threading.Event()
+    dataframe_maker = lambda _data_store: _data_store if isinstance(_data_store, pd.DataFrame) else None
     dataframe_maker = dataframe_maker if callable(dataframe_maker) else functools.partial(get_dataframe, fields=(x,y))
     def inner():
         fig = plt.figure()

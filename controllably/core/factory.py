@@ -17,7 +17,7 @@ This module contains functions to create and manage objects.
     `parse_configs`: Decode dictionary of configuration details to get tuples and `numpy.ndarray`
     `zip_kwargs_to_dict`: Checks and zips multiple keyword arguments of lists into dictionary
 
-<i>Documentation last updated: 2025-02-22</i>
+<i>Documentation last updated: 2025-06-11</i>
 """
 # Standard library imports
 import importlib
