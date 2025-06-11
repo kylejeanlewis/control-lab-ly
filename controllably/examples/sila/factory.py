@@ -1,4 +1,35 @@
 # -*- coding: utf-8 -*-
+""" 
+This module provides functions to generate XML files for SiLA2 features based on Python classes.
+It includes functions to write feature headers, identifiers, display names, descriptions, properties, and commands.
+It also includes utility functions to convert naming conventions and handle data types.
+This is useful for creating SiLA2-compliant XML files that describe the features of a device or service.
+
+It is designed to be used with Python classes that represent SiLA2 features, allowing for easy generation of XML files that can be used in SiLA2 applications.
+
+Attributes:
+    type_mapping (dict): A mapping of Python types to SiLA2 data types.
+    BASIC_TYPES (tuple): A tuple of basic SiLA2 data types.
+    
+## Functions:
+    `create_xml`: Generates an XML file for the given SiLA2 feature class.
+    `write_feature`: Writes the XML structure for a SiLA2 feature based on a Python class.
+    `write_header`: Writes the header information for the SiLA2 feature XML.
+    `split_by_words`: Splits a string into words based on common naming conventions.
+    `to_pascal_case`: Converts a string to PascalCase.
+    `to_title_case`: Converts a string to Title Case.
+    `write_identifier`: Writes the identifier element for a SiLA2 feature.
+    `write_display_name`: Writes the display name element for a SiLA2 feature.
+    `write_description`: Writes the description element for a SiLA2 feature.
+    `write_observable`: Writes the observable element for a SiLA2 feature.
+    `write_data_type`: Writes the data type element for a SiLA2 feature.
+    `write_property`: Writes a property element for a SiLA2 feature.
+    `write_command`: Writes a command element for a SiLA2 feature.
+    `write_parameter`: Writes a parameter element for a SiLA2 command.
+    `write_response`: Writes a response element for a SiLA2 command.
+    
+<i>Documentation last updated: 2025-06-11</i>
+"""
 # Standard library imports
 import inspect
 import logging
@@ -25,6 +56,9 @@ BASIC_TYPES = tuple(type_mapping.values())
 def create_xml(prime: Any):
     """
     Write the XML data to a file.
+    
+    Args:
+        prime (Any): The SiLA2 feature class or instance to generate XML for.
     """
     feature = write_feature(prime)
     tree = ET.ElementTree(feature)
@@ -37,7 +71,16 @@ def create_xml(prime: Any):
     logger.warning('3) Fill in the "DESCRIPTION" fields in the XML file.')
     return
         
-def write_feature(prime: Any):
+def write_feature(prime: Any) -> ET.Element:
+    """
+    Write the XML structure for a SiLA2 feature based on a Python class.
+    
+    Args:
+        prime (Any): The SiLA2 feature class or instance to generate XML for.
+        
+    Returns:
+        ET.Element: The root element of the XML structure for the SiLA2 feature.
+    """
     class_name = prime.__name__ if inspect.isclass(prime) else prime.__class__.__name__
     feature = ET.Element("Feature")
     feature = write_header(feature)
@@ -67,7 +110,18 @@ def write_header(
     parent: ET.Element,
     originator:str = "controllably", 
     category: str = "setup"
-):
+) -> ET.Element:
+    """
+    Write the header information for the SiLA2 feature XML.
+    
+    Args:
+        parent (ET.Element): The parent XML element to append the header to.
+        originator (str): The originator of the SiLA2 feature.
+        category (str): The category of the SiLA2 feature.
+        
+    Returns:
+        ET.Element: The parent element with the header information added.
+    """
     parent.set('SiLA2Version','1.0')
     parent.set('FeatureVersion','1.0')
     parent.set('MaturityLevel','Verified')
@@ -140,22 +194,62 @@ def to_title_case(name_string: str) -> str:
     # Then remove any extra spaces that might have been introduced
     return ' '.join(word.capitalize() for word in split_by_words(name_string)).strip()
 
-def write_identifier(parent: ET.Element, text:str):
+def write_identifier(parent: ET.Element, text:str) -> ET.Element:
+    """
+    Write the identifier element for a SiLA2 feature.
+    
+    Args:
+        parent (ET.Element): The parent XML element to append the identifier to.
+        text (str): The identifier text to be converted to PascalCase.
+        
+    Returns:
+        ET.Element: The parent element with the identifier added.
+    """
     identifier = ET.SubElement(parent, "Identifier")
     identifier.text = to_pascal_case(text)
     return parent
     
-def write_display_name(parent: ET.Element, text:str):
+def write_display_name(parent: ET.Element, text:str) -> ET.Element:
+    """
+    Write the display name element for a SiLA2 feature.
+    
+    Args:
+        parent (ET.Element): The parent XML element to append the display name to.
+        text (str): The display name text to be converted to Title Case.
+        
+    Returns:
+        ET.Element: The parent element with the display name added.
+    """
     display_name = ET.SubElement(parent, "DisplayName")
     display_name.text = to_title_case(text)
     return parent
     
-def write_description(parent: ET.Element, text:str):
+def write_description(parent: ET.Element, text:str) -> ET.Element:
+    """
+    Write the description element for a SiLA2 feature.
+    
+    Args:
+        parent (ET.Element): The parent XML element to append the description to.
+        text (str): The description text.
+        
+    Returns:
+        ET.Element: The parent element with the description added.
+    """
     description = ET.SubElement(parent, "Description")
     description.text = text
     return parent
 
-def write_observable(parent: ET.Element, observable: bool):
+def write_observable(parent: ET.Element, observable: bool) -> ET.Element:
+    """
+    Write the observable element for a SiLA2 feature.
+    
+    Args:
+        parent (ET.Element): The parent XML element to append the observable to.
+        observable (bool): Whether the feature is observable or not.
+        
+    Returns:
+        ET.Element: The parent element with the observable added.
+    """
     observable_ = ET.SubElement(parent, "Observable")
     observable_.text = 'Yes' if observable else 'No'
     return parent
@@ -164,7 +258,18 @@ def write_data_type(
     parent: ET.Element, 
     data_type: str = "Any",
     is_list: bool = False
-):
+) -> ET.Element:
+    """
+    Write the data type element for a SiLA2 feature.
+    
+    Args:
+        parent (ET.Element): The parent XML element to append the data type to.
+        data_type (str): The data type text, defaults to "Any".
+        is_list (bool): Whether the data type is a list or not.
+        
+    Returns:
+        ET.Element: The parent element with the data type added.
+    """
     is_list = is_list or data_type.lower() == "list"
     data_type_ = ET.SubElement(parent, "DataType")
     if is_list:
@@ -181,9 +286,21 @@ def write_property(
     attr_name: str,
     parent: ET.Element,
     *,
-    description: str|None = None,
+    description: str = "DESCRIPTION",
     observable: bool = False,
-):
+) -> ET.Element:
+    """
+    Write a property element for a SiLA2 feature.
+    
+    Args:
+        attr_name (str): The name of the property attribute.
+        parent (ET.Element): The parent XML element to append the property to.
+        description (str, optional): The description of the property. Defaults to "DESCRIPTION".
+        observable (bool, optional): Whether the property is observable or not. Defaults to False.
+        
+    Returns:
+        ET.Element: The parent element with the property added.
+    """
     property_ = ET.SubElement(parent, "Property")
     property_ = write_identifier(property_, attr_name)
     property_ = write_display_name(property_, attr_name)
@@ -197,7 +314,18 @@ def write_command(
     parent: ET.Element,
     *,
     observable: bool = False,
-):
+) -> ET.Element:
+    """
+    Write a command element for a SiLA2 feature.
+    
+    Args:
+        attr (Callable): The command attribute, typically a method of the feature class.
+        parent (ET.Element): The parent XML element to append the command to.
+        observable (bool, optional): Whether the command is observable or not. Defaults to False.
+    
+    Returns:
+        ET.Element: The parent element with the command added.
+    """
     command_ = ET.SubElement(parent, "Command")
     command_ = write_identifier(command_, attr.__name__)
     command_ = write_display_name(command_, attr.__name__)
@@ -221,8 +349,21 @@ def write_parameter(
     display_name: str,
     data_type: str,
     *,
-    description: str|None = None
-):
+    description: str = "DESCRIPTION"
+) -> ET.Element:
+    """
+    Write a parameter element for a SiLA2 command.
+    
+    Args:
+        parent (ET.Element): The parent XML element to append the parameter to.
+        identifier (str): The identifier of the parameter.
+        display_name (str): The display name of the parameter.
+        data_type (str): The data type of the parameter.
+        description (str, optional): The description of the parameter. Defaults to "DESCRIPTION".
+        
+    Returns:
+        ET.Element: The parent element with the parameter added.
+    """
     parameter_ = ET.SubElement(parent, "Parameter")
     parameter_ = write_identifier(parameter_, identifier)
     parameter_ = write_display_name(parameter_, display_name)
@@ -232,12 +373,25 @@ def write_parameter(
     
 def write_response(
     parent: ET.Element,
-    identifier: str|None = None,
-    display_name: str|None = None,
+    identifier: str = "Response",
+    display_name: str = "Response",
     data_type: str = "Any",
     *,
-    description: str|None = None
-):
+    description: str = "DESCRIPTION"
+) -> ET.Element:
+    """
+    Write a response element for a SiLA2 command.
+    
+    Args:
+        parent (ET.Element): The parent XML element to append the response to.
+        identifier (str, optional): The identifier of the response. Defaults to "Response".
+        display_name (str, optional): The display name of the response. Defaults to "Response".
+        data_type (str, optional): The data type of the response. Defaults to "Any".
+        description (str, optional): The description of the response. Defaults to "DESCRIPTION".
+        
+    Returns:
+        ET.Element: The parent element with the response added.
+    """
     response_ = ET.SubElement(parent, "Response")
     response_ = write_identifier(response_, identifier or "Response")
     response_ = write_display_name(response_, display_name or "Response")

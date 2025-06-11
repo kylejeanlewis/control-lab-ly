@@ -1,4 +1,18 @@
 # -*- coding: utf-8 -*-
+""" 
+This module provides a FastAPI server for managing commands and replies in a distributed system.
+
+Attributes:
+    PORT (int): The port number for the FastAPI server.
+    HOST (str): The host address for the FastAPI server.
+    
+## Functions:
+    `place_command`: Place a command in the outbound queue.
+    `place_reply`: Place a reply in the outbound queue.
+    `start_server`: Start the FastAPI server if it is not already running.
+
+<i>Documentation last updated: 2025-06-11</i>
+"""
 # Key imports
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -52,6 +66,12 @@ class Reply(BaseModel):
 def place_command(command: Command) -> str:
     """
     Place a command in the outbound queue.
+    
+    Args:
+        command (Command): The command to place in the outbound queue.
+        
+    Returns:
+        str: The request ID of the command.
     """
     targets = command.address.get('target',[])
     targets = targets or list(worker_registry.keys())
@@ -64,6 +84,12 @@ def place_command(command: Command) -> str:
 def place_reply(reply: Reply) -> str:
     """
     Place a reply in the outbound queue.
+    
+    Args:
+        reply (Reply): The reply to place in the outbound queue.
+        
+    Returns:
+        str: The reply ID of the reply.
     """
     targets = reply.address.get('target',[])
     if reply.request_id == 'registration':
@@ -76,23 +102,55 @@ def place_reply(reply: Reply) -> str:
             worker_registry[worker] = reply.data
     return reply.reply_id
 
+def start_server(host: str = HOST, port: int = PORT):
+    """
+    Start the FastAPI server if it is not already running.
+    
+    Args:
+        host (str): The host address for the server.
+        port (int): The port number for the server.
+    """
+    try:
+        response = requests.get(f'{host}:{port}/')
+        if response.status_code == 200:
+            print("Server is running")
+        else:
+            print("Server is not running or returned an error status code")
+    except requests.ConnectionError:
+        print("Server was not running, starting server now...")
+        uvicorn.run(app, host='0.0.0.0', port=port)
 
 # Main
 @app.get("/")
 def read_root():
+    """
+    Root endpoint for the FastAPI server.
+    
+    Returns:
+        dict: A simple greeting message.
+    """
     return {"Hello": "World"}
 
 @app.get("/registry")
 def registry():
     """
     See the registry of workers.
+    
+    Returns:
+        dict: A dictionary containing the worker registry.
     """
     return worker_registry
 
 @app.post("/register/model")
-def register_model(target: str):
+def register_model(target: str) -> dict:
     """
     Register the model with the hub.
+    
+    Args:
+        target (str): The target worker to register.
+        
+    Returns:
+        dict: A dictionary containing the list of registered workers.
     """
     if target not in worker_registry:
         worker_registry[target] = dict()
@@ -110,6 +168,9 @@ def register_model(target: str):
 def commands():
     """
     Get the commands in the outbound queue.
+    
+    Returns:
+        dict: A dictionary containing the outbound commands.
     """
     return outbound_commands
 
@@ -117,6 +178,12 @@ def commands():
 def send_command(command: Command):
     """
     Send a command to the hub.
+    
+    Args:
+        command (Command): The command to send.
+        
+    Returns:
+        dict: A dictionary containing the request ID of the command.
     """
     request_id = place_command(command)
     return {"request_id": request_id}
@@ -125,6 +192,12 @@ def send_command(command: Command):
 def get_command(target: str):
     """
     Get a command from the hub.
+    
+    Args:
+        target (str): The target worker to get the command for.
+        
+    Returns:
+        Command: The command for the specified target worker.
     """
     request_ids = list(outbound_commands[target].keys()) if target in outbound_commands else []
     request_id = request_ids[0] if len(request_ids) > 0 else None
@@ -136,6 +209,9 @@ def get_command(target: str):
 def clear_commands():
     """
     Clear the commands in the outbound queue.
+    
+    Returns:
+        dict: A dictionary indicating the status of the clear operation.
     """
     outbound_commands.clear()
     return {"status": "cleared"}
@@ -144,6 +220,12 @@ def clear_commands():
 def clear_commands_target(target: str):
     """
     Clear the commands in the outbound queue for a specific target.
+    
+    Args:
+        target (str): The target worker to clear the commands for.
+        
+    Returns:
+        dict: A dictionary indicating the status of the clear operation.
     """
     if target in outbound_commands:
         outbound_commands[target].clear()
@@ -157,6 +239,9 @@ def clear_commands_target(target: str):
 def replies():
     """
     Get the replies in the outbound queue.
+    
+    Returns:
+        dict: A dictionary containing the outbound replies.
     """
     return outbound_replies
 
@@ -164,6 +249,12 @@ def replies():
 def send_reply(reply: Reply):
     """
     Send a command to the hub.
+    
+    Args:
+        reply (Reply): The reply to send.
+        
+    Returns:
+        dict: A dictionary containing the reply ID of the reply.
     """
     reply_id = place_reply(reply)
     return {"reply_id": reply_id}
@@ -172,6 +263,12 @@ def send_reply(reply: Reply):
 def get_reply(request_id: str):
     """
     Get a command from the hub.
+    
+    Args:
+        request_id (str): The request ID to get the reply for.
+        
+    Returns:
+        Reply: The reply for the specified request ID.
     """
     if request_id not in outbound_replies:
         raise HTTPException(status_code=404, detail=f"No pending replies to request: {request_id}")
@@ -181,6 +278,9 @@ def get_reply(request_id: str):
 def clear_replies():
     """
     Clear the replies in the outbound queue.
+    
+    Returns:
+        dict: A dictionary indicating the status of the clear operation.
     """
     outbound_replies.clear()
     return {"status": "cleared"}
@@ -189,6 +289,12 @@ def clear_replies():
 def clear_replies_target(request_id: str):
     """
     Clear the replies in the outbound queue for a specific request_id.
+    
+    Args:
+        request_id (str): The request ID to clear the reply for.
+        
+    Returns:
+        dict: A dictionary indicating the status of the clear operation.
     """
     if request_id in outbound_replies:
         outbound_replies.pop(request_id)
@@ -197,16 +303,7 @@ def clear_replies_target(request_id: str):
         raise HTTPException(status_code=404, detail=f"No pending replies to request: {request_id}")
 
 
-def start_server(host: str = HOST, port: int = PORT):
-    try:
-        response = requests.get(f'{host}:{port}/')
-        if response.status_code == 200:
-            print("Server is running")
-        else:
-            print("Server is not running or returned an error status code")
-    except requests.ConnectionError:
-        print("Server was not running, starting server now...")
-        uvicorn.run(app, host='0.0.0.0', port=port)
+
     
 # Start the server if not yet running
 if __name__ == "__main__":

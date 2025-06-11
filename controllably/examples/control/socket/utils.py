@@ -1,16 +1,21 @@
 # -*- coding: utf-8 -*-
 """
-This module provides classes for a simple remote procedure call (RPC) framework.
+This module provides a socket server and client for managing connections in a distributed system.
 
 Attributes:
     BYTE_SIZE (int): size of the byte.
+
+## Classes:
+    `SocketServer`: Class for handling socket server operations.
+    `SocketClient`: Class for handling socket client operations.
     
 ## Functions:
-    `handle_client`: handle a client connection.
-    `start_server`: start a server.
-    `start_client`: start a client.
+    `create_listen_socket_callback`: Create a callback function for listening to socket data.
+    `create_socket_user`: Create a Socket client instance.
+    `create_socket_worker`: Create a Socket worker instance.
+    `create_socket_hub`: Create a Socket hub instance.
 
-<i>Documentation last updated: 2025-02-22</i>
+<i>Documentation last updated: 2025-06-11</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -34,6 +39,16 @@ handler.setLevel(logging.INFO)
 logger.addHandler(handler)
 
 def create_listen_socket_callback(client_socket: socket.socket, relay: bool) -> Callable[[Any], str]:
+    """
+    Create a callback function for listening to socket data.
+    
+    Args:
+        client_socket (socket.socket): the client socket
+        relay (bool): flag to indicate if the socket is a relay
+    
+    Returns:
+        Callable[[Any], str]: a function that listens for incoming data on the socket
+    """
     def listen_socket(**kwargs) -> str:
         """
         Listen for incoming communications
@@ -236,6 +251,15 @@ class SocketClient:
 def create_socket_user(host:str, port:int, address:str|None = None, relay:bool = True) -> tuple[Controller, dict[str,Any]]:
     """
     Create a Socket client instance.
+    
+    Args:
+        host (str): the host address
+        port (int): the port number
+        address (str|None, optional): the address to set for the controller. Defaults to None.
+        relay (bool, optional): whether to relay messages. Defaults to True.
+        
+    Returns:
+        tuple[Controller, dict[str,Any]]: a tuple containing the controller and a dictionary with termination event and thread information.
     """
     user = Controller('view', JSONInterpreter())
     if address is not None:
@@ -254,6 +278,15 @@ def create_socket_user(host:str, port:int, address:str|None = None, relay:bool =
 def create_socket_worker(host:str, port:int, address:str|None = None, relay:bool = True) -> tuple[Controller, dict[str,Any]]:
     """
     Create a Socket client instance.
+    
+    Args:
+        host (str): the host address
+        port (int): the port number
+        address (str|None, optional): the address to set for the controller. Defaults to None.
+        relay (bool, optional): whether to relay messages. Defaults to True.
+        
+    Returns:
+        tuple[Controller, dict[str,Any]]: a tuple containing the controller and a dictionary with termination event and thread information.
     """
     worker = Controller('model', JSONInterpreter())
     if address is not None:
@@ -276,6 +309,15 @@ def create_socket_worker(host:str, port:int, address:str|None = None, relay:bool
 def create_socket_hub(host:str, port:int, address:str|None = None, relay:bool = True) -> tuple[Controller, dict[str,Any]]:
     """
     Create a Socket client instance.
+    
+    Args:
+        host (str): the host address
+        port (int): the port number
+        address (str|None, optional): the address to set for the controller. Defaults to None.
+        relay (bool, optional): whether to relay messages. Defaults to True.
+        
+    Returns:
+        tuple[Controller, dict[str,Any]]: a tuple containing the controller and a dictionary with termination event and thread information.
     """
     hub = Controller('relay', JSONInterpreter())
     if address is not None:

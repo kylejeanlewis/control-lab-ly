@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-This module provides classes for a simple remote procedure call (RPC) framework.
+This module provides a FastAPI server for managing commands and replies in a distributed system.
 
 Attributes:
-    BYTE_SIZE (int): size of the byte.
+    CONNECTION_ERRORS (tuple): Tuple of exceptions that indicate connection errors.
+
+## Classes:
+    `FastAPIWorkerClient`: Client for managing worker connections to the FastAPI server.
+    `FastAPIUserClient`: Client for managing user connections to the FastAPI server.
     
 ## Functions:
-    `handle_client`: handle a client connection.
-    `start_server`: start a server.
-    `start_client`: start a client.
+    `create_fastapi_user`: Create a FastAPI client instance for user interaction.
+    `create_fastapi_worker`: Create a FastAPI client instance for worker interaction.
 
-<i>Documentation last updated: 2025-02-22</i>
+<i>Documentation last updated: 2025-06-11</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -35,6 +38,29 @@ handler.setLevel(logging.INFO)
 logger.addHandler(handler)
 
 class FastAPIWorkerClient:
+    """ 
+    FastAPIWorkerClient is a singleton class that manages worker connections to a FastAPI server.
+    It allows workers to register with the hub, send commands, and receive replies from the hub.
+    It maintains a registry of workers and their associated terminate and pause events, allowing for
+    communication between workers and the hub.
+    
+    ### Constructor:
+        `host` (str): The host address for the FastAPI server.
+        `port` (int): The port number for the FastAPI server, defaults to 8000.
+        
+    ### Attributes:
+        `url` (str): The URL of the FastAPI server.
+        `workers` (dict[str, Controller]): A dictionary mapping worker addresses to worker controllers.
+        `terminate_events` (dict[str, threading.Event]): A dictionary mapping worker addresses to terminate events.
+        `pause_events` (dict[str, threading.Event]): A dictionary mapping worker addresses to pause events.
+        
+    ### Methods:
+        `update_registry`: Register a worker with the hub.
+        `get_command`: Get a command from the hub for a specific worker.
+        `send_reply`: Send a reply to the hub.
+        `create_listen_loop`: Create a loop for the worker to listen for commands from the hub.
+    """
+    
     instances: dict[str, FastAPIWorkerClient] = dict()
     def __new__(cls, host:str, port:int=8000):
         url = f"{host}:{port}"
@@ -48,6 +74,13 @@ class FastAPIWorkerClient:
         return instance
     
     def __init__(self, host:str, port:int=8000):
+        """
+        Initialize the FastAPIWorkerClient with the host and port.
+        
+        Args:
+            host (str): The host address for the FastAPI server.
+            port (int): The port number for the FastAPI server, defaults to 8000.
+        """
         self.url = f"{host}:{port}"
         self.workers: dict[str, Controller] = self.workers
         self.terminate_events: dict[str, threading.Event] = self.terminate_events
@@ -57,8 +90,14 @@ class FastAPIWorkerClient:
     def update_registry(self, worker: Controller, terminate: threading.Event|None = None) -> dict[str, Any]:
         """
         Register a worker with the hub.
-        """
         
+        Args:
+            worker (Controller): The worker controller to register.
+            terminate (threading.Event|None): An event to signal termination, defaults to None.
+            
+        Returns:
+            dict[str, Any]: The registry of the hub.
+        """
         response = requests.post(f"{self.url}/register/model?target={worker.address}")
         registry = response.json()
         logger.debug(registry)
@@ -78,6 +117,14 @@ class FastAPIWorkerClient:
     def get_command(target: str, url: str, terminate: threading.Event|None = None) -> dict[str, Any]:
         """
         Get a reply from the hub.
+        
+        Args:
+            target (str): The address of the target worker.
+            url (str): The URL of the FastAPI server.
+            terminate (threading.Event|None): An event to signal termination, defaults to None.
+            
+        Returns:
+            dict[str, Any]: The command from the hub.
         """
         terminate = terminate if terminate is not None else threading.Event()
         while not terminate.is_set():
@@ -100,6 +147,13 @@ class FastAPIWorkerClient:
     def send_reply(reply: str|bytes, url: str) -> dict[str, Any]:
         """
         Send a reply to the hub.
+        
+        Args:
+            reply (str|bytes): The reply to send.
+            url (str): The URL of the FastAPI server.
+            
+        Returns:
+            dict[str, Any]: The reply ID returned by the hub.
         """
         reply_json = json.loads(reply)
         try:
@@ -118,6 +172,18 @@ class FastAPIWorkerClient:
         terminate: threading.Event|None = None,
         pause: threading.Event|None = None
     ) -> Callable:
+        """
+        Create a loop for the worker to listen for commands from the hub.
+        
+        Args:
+            worker (Controller): The worker controller to listen for commands.
+            sender (str|None): The address of the sender, defaults to None.
+            terminate (threading.Event|None): An event to signal termination, defaults to None.
+            pause (threading.Event|None): An event to signal pause, defaults to None.
+            
+        Returns:
+            Callable: A function that runs the loop for the worker.
+        """
         terminate = terminate if terminate is not None else threading.Event()
         pause = pause if pause is not None else threading.Event()
         def loop():
@@ -141,6 +207,27 @@ class FastAPIWorkerClient:
         return loop
 
 class FastAPIUserClient:
+    """ 
+    FastAPIUserClient is a singleton class that manages user connections to a FastAPI server.
+    It allows users to join a hub, send commands, and receive replies from the hub.
+    It maintains a registry of users and their associated request IDs, allowing for communication
+    between users and the hub.
+    
+    ### Constructor:
+        `host` (str): The host address for the FastAPI server.
+        `port` (int): The port number for the FastAPI server, defaults to 8000.
+    
+    ### Attributes:
+        `url` (str): The URL of the FastAPI server.
+        `users` (dict[str, Controller]): A dictionary mapping user addresses to user controllers.
+        `request_ids` (dict[str, Controller]): A dictionary mapping request IDs to user controllers.
+    
+    ### Methods:
+        `join_hub`: Join a hub with the user controller.
+        `send_command`: Send a command to the hub.
+        `get_reply`: Get a reply from the hub based on a request ID.
+    """
+    
     instances: dict[str, FastAPIUserClient] = dict()
     def __new__(cls, host:str, port:int=8000):
         url = f"{host}:{port}"
@@ -153,6 +240,13 @@ class FastAPIUserClient:
         return instance
     
     def __init__(self, host:str, port:int=8000):
+        """
+        Initialize the FastAPIUserClient with the host and port.
+        
+        Args:
+            host (str): The host address for the FastAPI server.
+            port (int): The port number for the FastAPI server, defaults to 8000.
+        """
         self.url = f"{host}:{port}"
         self.users: dict[str, Controller] = self.users
         self.request_ids: dict[str, Controller] = self.request_ids
@@ -161,6 +255,12 @@ class FastAPIUserClient:
     def join_hub(self, user: Controller) -> dict[str, Any]:
         """
         Join a hub.
+        
+        Args:
+            user (Controller): The user controller to join the hub.
+            
+        Returns:
+            dict[str, Any]: The registry of the hub.
         """
         try:
             response = requests.get(f"{self.url}/registry")
@@ -182,6 +282,15 @@ class FastAPIUserClient:
     def send_command(command:str|bytes, url: str, request_ids: dict[str, Controller], users: dict[str, Controller]) -> dict[str, Any]:
         """
         Send a command to the hub.
+        
+        Args:
+            command (str|bytes): The command to send.
+            url (str): The URL of the FastAPI server.
+            request_ids (dict[str, Controller]): A dictionary mapping request IDs to users.
+            users (dict[str, Controller]): A dictionary mapping user addresses to user controllers.
+            
+        Returns:
+            dict[str, Any]: The request ID returned by the hub.
         """
         command_json = json.loads(command)
         try:
@@ -198,6 +307,14 @@ class FastAPIUserClient:
     def get_reply(request_id: str, url: str, terminate: threading.Event|None = None) -> dict[str, Any]:
         """
         Get a reply from the hub.
+        
+        Args:
+            request_id (str): The ID of the request to get the reply for.
+            url (str): The URL of the FastAPI server.
+            terminate (threading.Event|None): An event to signal termination, defaults to None.
+            
+        Returns:
+            dict[str, Any]: The reply from the hub.
         """
         terminate = terminate if terminate is not None else threading.Event()
         while not terminate.is_set():
@@ -219,6 +336,14 @@ class FastAPIUserClient:
 def create_fastapi_user(host:str, port:int, address:str|None = None) -> tuple[Controller, dict[str,Any]]:
     """
     Create a FastAPI client instance.
+    
+    Args:
+        host (str): The host address for the FastAPI server.
+        port (int): The port number for the FastAPI server.
+        address (str|None): The address of the user, defaults to None.
+        
+    Returns:
+        tuple[Controller, dict[str, Any]]: A tuple containing the Controller instance and a dictionary with the client.
     """
     user = Controller('view', JSONInterpreter())
     if address is not None:
@@ -232,6 +357,14 @@ def create_fastapi_user(host:str, port:int, address:str|None = None) -> tuple[Co
 def create_fastapi_worker(host:str, port:int, address:str|None = None) -> tuple[Controller, dict[str,Any]]:
     """
     Create a FastAPI client instance.
+    
+    Args:
+        host (str): The host address for the FastAPI server.
+        port (int): The port number for the FastAPI server.
+        address (str|None): The address of the worker, defaults to None.
+        
+    Returns:
+        tuple[Controller, dict[str, Any]]: A tuple containing the Controller instance and a dictionary with the client.
     """
     worker = Controller('model', JSONInterpreter())
     if address is not None:
