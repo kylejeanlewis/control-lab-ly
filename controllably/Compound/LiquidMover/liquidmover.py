@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-This module holds the class for liquid mover setups.
+This module provides a high-level interface for liquid handling operations, including aspirating, dispensing, and tip management.
 
-Classes:
-    LiquidMover (Liquid, Mover)
+## Classes:
+    `LiquidMover`: High-level interface for liquid handling operations
+    
+<i>Documentation last updated: 2025-06-11</i>
 """
 # Standard library imports
 from __future__ import annotations
@@ -59,8 +61,6 @@ class LiquidMover(Compound):
         `verbose` (bool, optional): verbosity of output. Defaults to False.
         
     ### Attributes and properties
-        `tip_approach_distance` (float): distance in mm from top to travel down to pick tip
-        `speed_factor_pick_tip` (float): speed factor to pick up tip
         `speed_factor_lateral` (float): speed factor for lateral movement
         `speed_factor_up` (float): speed factor for upward movement
         `speed_factor_down` (float): speed factor for downward movement
@@ -74,6 +74,8 @@ class LiquidMover(Compound):
         `verbose` (bool): verbosity of class
         
         #### (For liquid handlers with replaceable tips)
+        `tip_approach_distance` (float): distance in mm from top to travel down to pick tip
+        `speed_factor_pick_tip` (float): speed factor to pick up tip
         `bin_slots` (dict[int,Labware]): dictionary of bin slots
         `tip_racks` (dict[int,Labware]): dictionary of tip racks
         `tip_lists` (dict[int,list[str]]): dictionary of tip lists
@@ -141,10 +143,12 @@ class LiquidMover(Compound):
     # Properties
     @property
     def liquid(self) -> Liquid:
+        """Liquid transfer tool"""
         return getattr(self.parts, 'liquid')
     
     @property
     def mover(self) -> Mover:
+        """Movement / translation robot"""
         return getattr(self.parts, 'mover')
     
     def align(self, 

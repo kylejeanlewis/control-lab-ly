@@ -1,7 +1,3 @@
-"""
-This sub-package imports the class for liquid mover setups.
-
-Classes:
-    VacuumGantry (VacuumMixin, Gantry))
-"""
+# -*- coding: utf-8 -*-
+"""This sub-package imports the class for liquid mover setups."""
 from .vacuummover import VacuumGantry
