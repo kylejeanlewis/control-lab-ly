@@ -76,7 +76,7 @@ def init(repository:str|Path) -> str:
     else:
         cwd = str(Path().absolute())
         assert str(repository) in cwd, f"Repository name '{repository}' not found in current working directory: {cwd}"
-        root = cwd.split(repository)[0]
+        root = cwd.split(str(repository))[0]
         target_dir = f'{root}{repository}'
     if target_dir not in sys.path:
         sys.path.append(target_dir)
