@@ -17,7 +17,7 @@ Attributes:
 from __future__ import annotations
 from datetime import datetime
 import time
-from typing import NamedTuple, Iterable
+from typing import NamedTuple, Iterable, Callable
 
 # Third party imports
 import pandas as pd
@@ -356,7 +356,7 @@ class ActuatedSensor(LoadCell):
             return None
         return self.device.processOutput(out.data+'\n')
     
-    def record(self, on: bool, show: bool = False, clear_cache: bool = False):
+    def record(self, on: bool, show: bool = False, clear_cache: bool = False, *, callback: Callable|None = None, **kwargs):
         """
         Record data from the device
         
@@ -364,9 +364,7 @@ class ActuatedSensor(LoadCell):
             on (bool): whether to record data
             show (bool, optional): whether to show data. Defaults to False.
             clear_cache (bool, optional): whether to clear the cache. Defaults to False.
-            
-        Returns:
-            pd.DataFrame: dataframe of data collected
+            callback (Callable|None, optional): callback function to process data. Defaults to None.
         """
         self.device.clearDeviceBuffer()
         return datalogger.record(
@@ -374,16 +372,14 @@ class ActuatedSensor(LoadCell):
             split_stream=False, device=self.device, event=self.record_event
         )
     
-    def stream(self, on: bool, show: bool = False):
+    def stream(self, on: bool, show: bool = False, *, callback: Callable|None = None, **kwargs):
         """
         Stream data from the device
         
         Args:
             on (bool): whether to stream data
             show (bool, optional): whether to show data. Defaults to False.
-            
-        Returns:
-            pd.DataFrame: dataframe of data collected
+            callback (Callable|None, optional): callback function to process data. Defaults to None.
         """
         self.device.clearDeviceBuffer()
         return datalogger.stream(

@@ -274,7 +274,7 @@ def load_parts(configs:dict, **kwargs) -> dict:
     Load all parts of compound tools from configuration
 
     Args:
-        config (dict): dictionary of configuration parameters
+        configs (dict): dictionary of configuration parameters
 
     Returns:
         dict: dictionary of part tools
@@ -380,7 +380,7 @@ def zip_kwargs_to_dict(primary_key:str, kwargs:dict) -> dict:
     Checks and zips multiple keyword arguments of lists into dictionary
     
     Args:
-        primary_keyword (str): primary keyword to be used as key
+        primary_key (str): primary keyword to be used as key
         kwargs (dict): {keyword, list of values} pairs
         
     Returns:

@@ -3,8 +3,8 @@
 This module holds the references for AX8 cameras from FLIR.
 
 ## Classes:
-    `SpotmeterRegs`
-    `BoxRegs`
+    `SpotMeterRegs`: Contains register addresses for the spot meter functionality.
+    `BoxRegs`: Contains register addresses for the box functionality.
     
 <i>Documentation last updated: 2025-02-22</i>
 """

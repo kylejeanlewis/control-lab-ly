@@ -275,7 +275,7 @@ class Position:
         Apply self to other `Position`, first translating and then orientating
 
         Args:
-            on (Position): other `Position`
+            other (Position): other `Position`
 
         Returns:
             Position: other `Position` transformed by self
@@ -607,7 +607,7 @@ class Labware:
         return f"{self.name} ({len(self._wells)}x) on {self.parent.name}" 
     
     @classmethod
-    def fromConfigs(cls, details:dict[str, Any], parent:Slot|None = None):
+    def fromConfigs(cls, details:dict[str, Any], parent:Slot|None = None) -> Labware:
         """
         Factory method to load Labware details from dictionary
 
@@ -1242,7 +1242,7 @@ class Deck:
         return f"{self.name} comprising:\n{slots_name}\n{zones_name}"
     
     @classmethod
-    def fromConfigs(cls, details:dict[str, Any], parent:Deck|None = None, _nesting_lineage:Sequence[Path|None]=(None,)):
+    def fromConfigs(cls, details:dict[str, Any], parent:Deck|None = None, _nesting_lineage:Sequence[Path|None]=(None,)) -> Deck:
         """
         Factory method to load Deck details from dictionary
         
@@ -1259,7 +1259,7 @@ class Deck:
         return cls(name=name, _details=details, parent=parent, _nesting_lineage=tuple(_nesting_lineage))
     
     @classmethod
-    def fromFile(cls, deck_file:str, parent:Deck|None = None, from_repo:bool = True):
+    def fromFile(cls, deck_file:str, parent:Deck|None = None, from_repo:bool = True) -> Deck:
         """
         Factory method to load Deck from file
         

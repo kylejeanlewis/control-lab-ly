@@ -2,15 +2,15 @@
 """
 This module holds the base class for image data.
 
-Functions:
-    addText
-    annotate
-    blur
-    convolve
-    crosshair
-    process
-    removeNoise
-    rotate
+## Functions:
+    `addText`: Add text to the image
+    `annotate`: Annotate the image to label identified targets
+    `blur`: Blur the image
+    `convolve`: Perform convolution on image
+    `crosshair`: Add crosshair in the middle of image
+    `process`: Process the image
+    `removeNoise`: Remove noise from image
+    `rotate`: Rotate a 2D array of multiples of 90 degrees, clockwise
 """
 # Standard library imports
 from __future__ import annotations

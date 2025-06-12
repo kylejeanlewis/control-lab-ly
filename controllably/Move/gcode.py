@@ -412,7 +412,7 @@ class GCode(Mover):
         
         Args:
             data (Any): data to query
-            lines (bool, optional): lines of data. Defaults to True.
+            multi_out (bool, optional): lines of data. Defaults to True.
             timeout (int, optional): timeout for movement. Defaults to None.
             jog (bool, optional): jog movement. Defaults to False.
             wait (bool, optional): wait for movement. Defaults to False.

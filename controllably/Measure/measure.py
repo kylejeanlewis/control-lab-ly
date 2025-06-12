@@ -39,7 +39,7 @@ class Measurer:
     """
     Base class for maker tools.
     
-    ### Constructor
+    ### Constructor:
         `verbose` (bool, optional): verbosity of class. Defaults to False.
     
     ### Attributes and properties:
@@ -58,12 +58,10 @@ class Measurer:
         `is_connected` (bool): whether the device is connected
         `verbose` (bool): verbosity of class
     
-    ### Methods
+    ### Methods:
         `connect`: connect to the device
         `disconnect`: disconnect from the device
-        `execute`: execute task
         `resetFlags`: reset all flags to class attribute `_default_flags`
-        `run`: alias for `execute()`
         `shutdown`: shutdown procedure for tool
     """
     
@@ -246,8 +244,6 @@ class Measurer:
         
         Args:
             query (Any, optional): query to device. Defaults to None.
-            *args: positional arguments
-            **kwargs: keyword arguments
             
         Returns:
             Any|None: data from device
@@ -285,7 +281,7 @@ class Measurer:
         self.records_df.to_csv(filepath)
         return
     
-    def record(self, on: bool, show: bool = False, clear_cache: bool = False, *, callback: Callable|None =None, **kwargs):
+    def record(self, on: bool, show: bool = False, clear_cache: bool = False, *, callback: Callable|None = None, **kwargs):
         """
         Record data from the device
         
@@ -293,9 +289,7 @@ class Measurer:
             on (bool): whether to record data
             show (bool, optional): whether to show data. Defaults to False.
             clear_cache (bool, optional): whether to clear the cache. Defaults to False.
-            
-        Returns:
-            pd.DataFrame: dataframe of data collected
+            callback (Callable, optional): callback function to process data. Defaults to None.
         """
         self.device.clearDeviceBuffer()
         return datalogger.record(
@@ -310,9 +304,7 @@ class Measurer:
         Args:
             on (bool): whether to stream data
             show (bool, optional): whether to show data. Defaults to False.
-            
-        Returns:
-            pd.DataFrame: dataframe of data collected
+            callback (Callable, optional): callback function to process data. Defaults to None.
         """
         self.device.clearDeviceBuffer()
         return datalogger.stream(
@@ -324,8 +316,7 @@ class Program:
     """
     Base Program template
 
-    ### Constructor
-    Args:
+    ### Constructor:
         `instrument` (Measurer, optional): Measurer object. Defaults to None.
         `parameters` (dict, optional): dictionary of kwargs. Defaults to None.
         `verbose` (bool, optional): verbosity of class. Defaults to False.
@@ -337,7 +328,7 @@ class Program:
         `verbose` (bool): verbosity of class
         `data_df` (pd.DataFrame): dataframe of data collected
         
-    ### Methods
+    ### Methods:
         `getDataframe`: get dataframe of data collected
         `run`: measurement program to run
         `saveData`: save data to file
@@ -459,8 +450,7 @@ class ProgramDetails:
     """
     ProgramDetails dataclass represents the set of inputs, default values, truncated docstring and tooltip of a program class
     
-    ### Constructor
-    Args:
+    ### Constructor:
         `inputs` (list[str]): list of input field names
         `defaults` (dict[str, Any]): dictionary of kwargs and default values
         `short_doc` (str): truncated docstring of the program

@@ -162,7 +162,6 @@ class LED(TimedDeviceMixin, Maker):
         
         Args:
             power (int): power level
-            event (threading.Event, optional): event to set. Defaults to None.
             
         Returns:
             bool: whether the power level was set

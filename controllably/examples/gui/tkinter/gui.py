@@ -213,8 +213,8 @@ class Panel:
         
         Args:
             method (Callable): The method to execute.
-            *args: The positional arguments to pass to the method.
-            **kwargs: The keyword arguments to pass to the method.
+            *args (tuple): The positional arguments to pass to the method.
+            **kwargs (dict): The keyword arguments to pass to the method.
             
         Returns:
             Any|None: The output of the method or None if an error occurred.
@@ -242,7 +242,7 @@ class Panel:
         
         Args:
             panel (Panel): The Panel to add.
-            **kwargs: The keyword arguments to pass to the pack geometry manager.
+            **kwargs (dict): The keyword arguments to pass to the pack geometry manager.
         """
         return self.addPanel('pack', panel, **kwargs)
     
@@ -252,7 +252,7 @@ class Panel:
         
         Args:
             panel (Panel): The Panel to add.
-            **kwargs: The keyword arguments to pass to the grid
+            **kwargs (dict): The keyword arguments to pass to the grid
         """
         return self.addPanel('grid', panel, **kwargs)
     
@@ -263,7 +263,7 @@ class Panel:
         Args:
             mode (str): The geometry manager to use.
             panel (Panel): The Panel to add.
-            **kwargs: The keyword arguments to pass to the geometry manager.
+            **kwargs (dict): The keyword arguments to pass to the geometry manager.
         """
         assert isinstance(panel, Panel), 'Panel must be a Panel object'
         assert mode in ['pack','grid'], 'Mode must be either "pack" or "grid"'

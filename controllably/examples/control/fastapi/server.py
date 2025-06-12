@@ -122,7 +122,7 @@ def start_server(host: str = HOST, port: int = PORT):
 
 # Main
 @app.get("/")
-def read_root():
+def read_root() -> dict:
     """
     Root endpoint for the FastAPI server.
     
@@ -132,7 +132,7 @@ def read_root():
     return {"Hello": "World"}
 
 @app.get("/registry")
-def registry():
+def registry() -> dict:
     """
     See the registry of workers.
     
@@ -165,7 +165,7 @@ def register_model(target: str) -> dict:
 
 # Commands
 @app.get("/commands")
-def commands():
+def commands() -> dict:
     """
     Get the commands in the outbound queue.
     
@@ -175,7 +175,7 @@ def commands():
     return outbound_commands
 
 @app.post("/command")
-def send_command(command: Command):
+def send_command(command: Command) -> dict:
     """
     Send a command to the hub.
     
@@ -189,7 +189,7 @@ def send_command(command: Command):
     return {"request_id": request_id}
     
 @app.get("/command/{target}")
-def get_command(target: str):
+def get_command(target: str) -> Command:
     """
     Get a command from the hub.
     
@@ -206,7 +206,7 @@ def get_command(target: str):
     return outbound_commands[target].pop(request_id)
 
 @app.get("/command/clear")
-def clear_commands():
+def clear_commands() -> dict:
     """
     Clear the commands in the outbound queue.
     
@@ -217,7 +217,7 @@ def clear_commands():
     return {"status": "cleared"}
 
 @app.get("/command/clear/{target}")
-def clear_commands_target(target: str):
+def clear_commands_target(target: str) -> dict:
     """
     Clear the commands in the outbound queue for a specific target.
     
@@ -236,7 +236,7 @@ def clear_commands_target(target: str):
 
 # Replies
 @app.get("/replies")
-def replies():
+def replies() -> dict:
     """
     Get the replies in the outbound queue.
     
@@ -246,7 +246,7 @@ def replies():
     return outbound_replies
 
 @app.post("/reply")
-def send_reply(reply: Reply):
+def send_reply(reply: Reply) -> dict:
     """
     Send a command to the hub.
     
@@ -260,7 +260,7 @@ def send_reply(reply: Reply):
     return {"reply_id": reply_id}
     
 @app.get("/reply/{request_id}")
-def get_reply(request_id: str):
+def get_reply(request_id: str) -> Reply:
     """
     Get a command from the hub.
     
@@ -275,7 +275,7 @@ def get_reply(request_id: str):
     return outbound_replies[request_id]
  
 @app.get("/reply/clear")
-def clear_replies():
+def clear_replies() -> dict:
     """
     Clear the replies in the outbound queue.
     
@@ -286,7 +286,7 @@ def clear_replies():
     return {"status": "cleared"}
 
 @app.get("/reply/clear/{request_id}")
-def clear_replies_target(request_id: str):
+def clear_replies_target(request_id: str) -> dict:
     """
     Clear the replies in the outbound queue for a specific request_id.
     

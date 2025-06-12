@@ -2,17 +2,16 @@
 """
 This module holds the references for pipette tools from Sartorius.
 
-Classes:
-    ErrorCode (Enum)
-    ModelInfo (Enum)
-    StaticQueryCode (Enum)
-    StatusCode (Enum)
-    StatusQueryCode (Enum)
-    ModelInfo (dataclass)
+Attributes:
+    QUERIES (list): List of all query codes available for the pipette
 
-Other types:
-    PresetSpeeds (namedtuple)
-    SpeedParameters (namedtuple)
+Classes:
+    `ErrorCode`: Enum for error codes returned by the pipette
+    `Model`: Enum for pipette models, each containing a `ModelInfo` dataclass
+    `StaticQueryCode`: Enum for static query codes
+    `StatusCode`: Enum for status codes returned by the pipette
+    `StatusQueryCode`: Enum for status query codes
+    `ModelInfo`: Dataclass representing a pipette model with its specifications
 """
 # Standard library imports
 from collections import namedtuple
@@ -22,11 +21,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")
-
-# PresetSpeeds = namedtuple('PresetSpeeds', ['s1','s2','s3','s4','s5','s6'])
-# """PresetSpeeds is a named tuple for a set of the 6 preset speeds provided with each model"""
-SpeedParameters = namedtuple('SpeedParameters', ['preset', 'intervals', 'step_size', 'delay'])
-"""SpeedParameters is a named tuple for a set of calculated parameters for achieving intermediate speeds"""
 
 @dataclass
 class ModelInfo:

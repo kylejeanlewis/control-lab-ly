@@ -49,7 +49,7 @@ class Notifier:
         Initialize `Notifier` class
         
         Args:
-            `configs` (dict): configuration details for the notifier
+            configs (dict): configuration details for the notifier
         """
         assert 'credentials' in configs, "Credentials not found in configuration file"
         assert 'service' in configs, "Service details not found in configuration file"
@@ -75,10 +75,10 @@ class Notifier:
         Create a `Notifier` object from a configuration file
         
         Args:
-            `config_file` (str|Path): Path to the configuration file
+            config_file (str|Path): Path to the configuration file
             
         Returns:
-            `Notifier`: Notifier object created from the configuration file
+            Notifier: Notifier object created from the configuration file
         """
         config_file = Path(config_file)
         configs = file_handler.read_config_file(config_file)
@@ -92,11 +92,11 @@ class Notifier:
         Write a message
         
         Args:
-            `message_config` (dict): configuration details for the message
-            `placeholders` (dict): placeholders for the message
+            message_config (dict): configuration details for the message
+            placeholders (dict): placeholders for the message
             
         Returns:
-            `Any`: message to be sent
+            Any: message to be sent
         """
         ... # Replace with implementation
         raise NotImplementedError
@@ -106,7 +106,7 @@ class Notifier:
         Write and send a message through chosen service
         
         Args:
-            `placeholders` (dict): placeholders for the message
+            placeholders (dict): placeholders for the message
         """
         placeholders = placeholders or dict()
         username = self.configs['credentials']['username']
@@ -119,9 +119,9 @@ class Notifier:
         Send a message through chosen service
         
         Args:
-            `service_config` (dict): configuration details for the service
-            `username` (str): username for the service
-            `message` (Any): message to be sent
+            service_config (dict): configuration details for the service
+            username (str): username for the service
+            message (Any): message to be sent
         """
         _app_password = self._app_password
         if _app_password is not None:
@@ -178,11 +178,11 @@ class EmailNotifier(Notifier):
         Write an email message
         
         Args:
-            `message_config` (dict): configuration details for the message
-            `placeholders` (dict): placeholders for the message
-            `attachments` (Iterable[Path]): filepaths of attachments to be sent
-            `save_zip` (bool): whether to save the attachments as a zip file
-            `time_format` (str): time format for the message
+            message_config (dict): configuration details for the message
+            placeholders (dict): placeholders for the message
+            attachments (Iterable[Path]): filepaths of attachments to be sent
+            save_zip (bool): whether to save the attachments as a zip file
+            time_format (str): time format for the message
             
         Returns:
             `EmailMessage`: email message to be sent
@@ -230,9 +230,9 @@ class EmailNotifier(Notifier):
         Send an email message through chosen server
         
         Args:
-            `service_config` (dict): configuration details for the service
-            `username` (str): username for the service
-            `message` (EmailMessage): email message to be sent
+            service_config (dict): configuration details for the service
+            username (str): username for the service
+            message (EmailMessage): email message to be sent
         """
         _app_password = self._app_password
         if _app_password is not None:

@@ -267,7 +267,7 @@ class Camera:
         Decode byte array of image
 
         Args:
-            array (bytes): byte array of image
+            bytearray (bytes): byte array of image
 
         Returns:
             np.ndarray: image array of decoded byte array

@@ -152,10 +152,13 @@ class TriContinent(LiquidHandler):
         Args:
             volume (float): target volume
             speed (float|None, optional): speed to aspirate at. Defaults to None.
+            reagent (str|None, optional): name of reagent. Defaults to None.
+            start_speed (int|None, optional): start speed of the pump. Defaults to None.
+            pullback (bool, optional): whether to perform pullback. Defaults to False.
             delay (int, optional): time delay after aspirate. Defaults to 0.
             pause (bool, optional): whether to pause for user intervention. Defaults to False.
-            reagent (str|None, optional): name of reagent. Defaults to None.
-            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+            ignore (bool, optional): whether to aspirate reagent regardless. Defaults to False.
+            blocking (bool, optional): whether to block the thread until the action is complete. Defaults to True.
 
         Returns:
             bool: whether the action is successful
@@ -212,11 +215,12 @@ class TriContinent(LiquidHandler):
         Args:
             volume (float): target volume
             speed (float|None, optional): speed to dispense at. Defaults to None.
+            start_speed (int|None, optional): start speed of the pump. Defaults to None.
+            blowout (bool, optional): whether perform blowout. Defaults to False.
             delay (int, optional): time delay after dispense. Defaults to 0.
             pause (bool, optional): whether to pause for user intervention. Defaults to False.
-            blowout (bool, optional): whether perform blowout. Defaults to False.
             ignore (bool, optional): whether to dispense reagent regardless. Defaults to False.
-            channel (Optional[Union[int, tuple[int]]], optional): channel id. Defaults to None.
+            blocking (bool, optional): whether to block the thread until the action is complete. Defaults to True.
 
         Returns:
             bool: whether the action is successful

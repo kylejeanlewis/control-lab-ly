@@ -178,7 +178,7 @@ class RobotArm(Mover):
         Move the robot by target joint angles
 
         Args:
-            to (Sequence[float] | np.ndarray): target joint angles
+            by (Sequence[float] | np.ndarray): target joint angles to move by
             speed_factor (float, optional): fraction of maximum speed to travel at. Defaults to None.
             jog (bool, optional): whether to jog the robot. Defaults to False.
             rapid (bool, optional): whether to move rapidly. Defaults to False.
