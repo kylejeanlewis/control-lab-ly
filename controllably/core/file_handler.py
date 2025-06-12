@@ -60,20 +60,24 @@ def create_folder(base:Path|str = '', sub:Path|str = '') -> Path:
     os.makedirs(new_folder)
     return new_folder
 
-def init(repository_name:str) -> str:
+def init(repository:str|Path) -> str:
     """
     Add repository to `sys.path`, and getting machine id and connected ports
 
     Args:
-        repository_name (str): name of current repository
+        repository (str|Path): name of current repository, or path to repository folder
         
     Returns:
         str: target directory path
     """
-    cwd = str(Path().absolute())
-    assert repository_name in cwd, f"Repository name '{repository_name}' not found in current working directory: {cwd}"
-    root = cwd.split(repository_name)[0]
-    target_dir = f'{root}{repository_name}'
+    repository = repository if isinstance(repository, Path) else Path(repository)
+    if repository.is_absolute():
+        target_dir = str(repository)
+    else:
+        cwd = str(Path().absolute())
+        assert repository in cwd, f"Repository name '{repository}' not found in current working directory: {cwd}"
+        root = cwd.split(repository)[0]
+        target_dir = f'{root}{repository}'
     if target_dir not in sys.path:
         sys.path.append(target_dir)
     connection.get_node()
