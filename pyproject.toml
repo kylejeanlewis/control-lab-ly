@@ -48,6 +48,8 @@ Tracker = "https://github.com/kylejeanlewis/control-lab-le/issues"
 
 [project.optional-dependencies]
 dev = [
+    "mkdocs>=1.6.1",
+    "mkdocstrings-python>=1.16.12",
     "pytest>=6.2",
     "pytest-cov>=2.11",
     "pytest-rerunfailures>=15.0",
