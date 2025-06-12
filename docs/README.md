@@ -143,8 +143,9 @@ MyDevice:                                   # user-defined name
     setting_A: [300,0,200]
     setting_B: [[0,1,0],[-1,0,0]]
 ```
-> A different serial port address or camera index may be used by different machines for the same device.\
-*See* [**Section 3**](#3-creating-a-new-project) *to find out how to manage the different addresses used by different machines.*
+> A different serial port address or camera index may be used by different machines for the same device.
+>
+> *See* [**Section 2.1**](#21-managing-hardware-addresses) *to find out how to manage the different addresses used by different machines.*
 
 
 ### 1.2 Reconfigurable complex tools
@@ -244,7 +245,7 @@ Here, the `dimensions`, `cornerOffset`, and `orientation` definitions apply simi
 > - `parameters.isStackable` is a boolean value defining if another Labware can be stacked above.
 > - `slotAbove` defines a new slot above the Labware, with similar subfields `slotAbove.name`, `slotAbove.dimensions`, `slotAbove.cornerOffset`, and `slotAbove.orientation`.
 > - `exclusionBuffer` is the offset from the lower and upper bounds of the Labware bounding box. i.e. [ [left, front, bottom], [right, back, top] ]
->   - *Note: avoidance checks only apply to destination coordinates. **Does not** guarantee collision avoidance along intermediate path coordinates when using point-to-point move actions such as `move`, `moveBy` or `moveTo`. Use* `safeMoveTo` *instead.*
+>   - *Note: avoidance checks only apply to destination coordinates. **Does not** guarantee collision avoidance along intermediate path coordinates when using point-to-point move actions such as* `move`*,* `moveBy` *or* `moveTo`*. Use* `safeMoveTo` *instead.*
 
 For zones, `entry_waypoints` lists a sequence of coordinates that defines a safe path a translation tool can take to transit into that particular zone.
 
@@ -255,7 +256,8 @@ To allow control of the setups over the network, or with other applications, Con
 from controllably.core.control import Controller
 from controllably.core.interpreter import JSONInterpreter
 
-# 'model' controllers receives requests, triggers execution in registered objects, and transmits the resultant data
+# 'model' controllers receives requests, triggers execution in registered objects, 
+# and transmits the resultant data
 worker = Controller(role='model', interpreter=JSONInterpreter())
 worker.setAddress('WORKER')
 
@@ -341,8 +343,9 @@ class Platform:
 
 ...
 ```
-
+---
 > More additional features to be documented...
+
 ---
 
 ## Dependencies
