@@ -24,9 +24,6 @@ _logger.debug(f"Import: OK <{__name__}>")
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-logger.addHandler(handler)
 
 COLUMNS = ('Time', 'Displacement', 'Value', 'Factor', 'Baseline', 'Force')
 """Headers for output data from force sensor"""
@@ -412,7 +409,7 @@ class ForceActuator:
         except ValueError:
             return None
         else:
-            self._force = self._calculate_force(self._correct_value(value)) * G
+            self._force = self._calculate_force(self._correct_value(value))
             self.displacement = displacement
             self.end_stop = end_stop
             over_threshold = (abs(self.force) > abs(self.force_threshold))
@@ -613,7 +610,7 @@ class ForceActuator:
             pass
         else:
             displacement = self.waitThreshold(to)
-            logger.info(displacement)
+            self._logger.info(displacement)
             self.device.write(f'G {displacement} {rpm}')
         self.displacement = displacement
         return displacement == to
@@ -640,7 +637,7 @@ class ForceActuator:
         """
         speed = speed or self.max_speed
         
-        logger.info('Touching...')
+        self._logger.info('Touching...')
         # if not self.flags.get_feedback:
         #     self.stream(True)
         if abs(round(self.force)) > self._touch_force_threshold:
@@ -661,14 +658,14 @@ class ForceActuator:
             self.moveTo(self.limits[0], speed=speed)
             time.sleep(2)
         except Exception as e:
-            logger.exception(e)
+            self._logger.exception(e)
         else:
             ...
         finally:
             self.force_threshold = _threshold
             self._touch_timeout = _touch_timeout
             time.sleep(2)
-        logger.info('In contact')
+        self._logger.info('In contact')
         if record:
             self.record(False)
             self.stream(True)
@@ -694,10 +691,10 @@ class ForceActuator:
             if self.force >= abs(self.force_threshold):
                 displacement = self.displacement
                 self.flags.threshold = True
-                logger.warning('Made contact')
+                self._logger.warning('Made contact')
                 break
             if time.time() - start > timeout:
-                logger.warning('Touch timeout')
+                self._logger.warning('Touch timeout')
                 break
         return self.displacement
     
@@ -718,13 +715,13 @@ class ForceActuator:
             self.record(False)
         self.reset()
         self.record(True)
-        logger.info(f"Zeroing... ({timeout}s)")
+        self._logger.info(f"Zeroing... ({timeout}s)")
         time.sleep(timeout)
         self.record(False)
         self.baseline = self.buffer_df['Value'].mean()
         self.clearCache()
         self.buffer_df = temp_buffer_df.copy()
-        logger.info("Zeroing complete.")
+        self._logger.info("Zeroing complete.")
         self.record(temp_record_state)
         return
     
