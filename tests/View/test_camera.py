@@ -2,7 +2,6 @@ import pytest
 import time
 import cv2
 from controllably.View import Camera
-from controllably.core import init
 
 cap = cv2.VideoCapture(0)
 is_opened = cap.isOpened()
