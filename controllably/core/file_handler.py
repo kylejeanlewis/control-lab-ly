@@ -7,6 +7,8 @@ Attributes:
 
 ## Functions:
     `create_folder`: Check and create folder if it does not exist
+    `get_git_info`: Get current git branch and commit hash
+    `get_package_info`: Get package information (local, editable, source path)
     `init`: Add repository to `sys.path`, and get machine id and connected ports
     `read_config_file`: Read configuration file and return as dictionary
     `readable_duration`: Display time duration (s) as HH:MM:SS text
@@ -20,12 +22,13 @@ Attributes:
 # Standard library imports
 from __future__ import annotations
 from datetime import datetime, timedelta
-from importlib import resources
+from importlib import resources, metadata
 import json
 import logging
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 from typing import Iterable
 from zipfile import ZipFile
@@ -59,6 +62,80 @@ def create_folder(base:Path|str = '', sub:Path|str = '') -> Path:
     new_folder = Path(base) / main_folder / Path(sub)
     os.makedirs(new_folder)
     return new_folder
+
+def get_git_info(directory: str = '.') -> tuple[str|None, str|None]:
+    """
+    Get current git branch name and short commit hash
+    
+    Args:
+        directory (str, optional): path to git repository. Defaults to '.'.
+        
+    Returns:
+        tuple[str|None, str|None]: branch name and short commit hash
+    """
+    branch_name = None
+    short_commit_hash = None
+    try:
+        # Get the branch name
+        # --abbrev-ref HEAD gives the branch name or "HEAD" for detached state
+        branch_name_output = subprocess.check_output(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], 
+            stderr=subprocess.STDOUT,
+            cwd=directory
+        )
+        branch_name = branch_name_output.strip().decode('utf-8')
+
+        # Get the short commit hash
+        short_commit_hash_output = subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            stderr=subprocess.STDOUT,
+            cwd=directory
+        )
+        short_commit_hash = short_commit_hash_output.strip().decode('utf-8')
+    except subprocess.CalledProcessError as e:
+        print(f"Error getting git info: {e}")
+    except FileNotFoundError:
+        print("Git command not found. Make sure Git is installed and in your PATH.")
+    return branch_name, short_commit_hash
+
+def get_package_info(package_name: str) -> tuple[bool, bool, Path|None]:
+    """
+    Get package information (local, editable, source path)
+    
+    Args:
+        package_name (str): name of the package
+        
+    Returns:
+        tuple[bool, bool, Path|None]: is_local, is_editable, source_path
+    """
+    is_local = False
+    is_editable = False
+    source_path = None
+    try:
+        dist = metadata.distribution(package_name)
+        direct_url_file = None
+        for f in dist.files:
+            path = f.locate()
+            if 'direct_url.json' in str(path):
+                direct_url_file = path
+                break
+        if direct_url_file is not None and direct_url_file.exists():
+            is_local = True
+            with open(direct_url_file, 'r') as f:
+                direct_url_data = json.load(f)
+            is_editable = direct_url_data.get('dir_info',{}).get('editable', False)
+            source_path = direct_url_data.get('url','')
+            if source_path.startswith('file://'):
+                source_path = source_path.replace('file://', '', 1)
+                if os.name == 'nt' and source_path.startswith('/'):
+                    source_path = source_path[1:]
+                source_path = Path(source_path).resolve()
+
+    except metadata.PackageNotFoundError:
+        print(f"Package '{package_name}' not found.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    return is_local, is_editable, source_path
 
 def init(repository:str|Path) -> str:
     """
@@ -155,20 +232,34 @@ def start_logging(log_dir:Path|str|None = None, log_file:Path|str|None = None, l
     Returns:
         Path|None: path to log file; None if logging_config is provided
     """
+    log_path = None
     if logging_config is not None and isinstance(logging_config, dict):
         logging.basicConfig(**logging_config)
-        return
+    else:
+        now = datetime.now().strftime("%Y%m%d_%H%M")
+        log_dir = Path.cwd() if log_dir is None else Path(log_dir)
+        log_file = f'logs/session_{now}.log' if ((log_file is None) or (not isinstance(log_file, (Path,str)))) else Path(log_file)
+        log_path = log_dir/log_file
+        os.makedirs(log_path.parent, exist_ok=True)
+        
+        file_handler = logging.FileHandler(log_path)
+        file_handler.setLevel(logging.DEBUG)
+        logging.basicConfig(handlers=[file_handler])
+        logger.info(f"Current working directory: {Path.cwd()}")
     
-    now = datetime.now().strftime("%Y%m%d_%H%M")
-    log_dir = Path.cwd() if log_dir is None else Path(log_dir)
-    log_file = f'logs/session_{now}.log' if ((log_file is None) or (not isinstance(log_file, (Path,str)))) else Path(log_file)
-    log_path = log_dir/log_file
-    os.makedirs(log_path.parent, exist_ok=True)
-    
-    file_handler = logging.FileHandler(log_path)
-    file_handler.setLevel(logging.DEBUG)
-    logging.basicConfig(handlers=[file_handler])
-    logger.info(f"Current working directory: {Path.cwd()}")
+    _logger = logging.getLogger('controllably')
+    _logger.setLevel(logging.DEBUG)
+    is_local, _, source_path = get_package_info('control-lab-ly')
+    _logger.debug(f'Local install: {is_local}')
+    if is_local:
+        branch, commit = get_git_info(source_path)
+        if any([branch, commit]):
+            _logger.debug(f'Git reference: {branch} | {commit}')
+        else:
+            _logger.debug(f'Source: {source_path}')
+    else:
+        version = metadata.version('control-lab-ly')
+        _logger.debug(f'Version: {version}')
     return log_path
 
 def start_project_here(dst:Path|str|None = None):
