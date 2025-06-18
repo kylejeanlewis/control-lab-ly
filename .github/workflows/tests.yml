@@ -2,7 +2,6 @@ name: Tests
 
 on:
   - push
-  # - pull_request
 
 env:
   REPO_ROOT: ${{ github.workspace }}
@@ -22,10 +21,11 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+      
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install tox tox-gh-actions
+      
     - name: Test with tox
-      run: |
-        tox
+      run: tox
