@@ -21,6 +21,14 @@ def test_create_folder(tmp_path):
     assert folder == (base / datetime.now().strftime("%Y%m%d_%H%M") / sub)
     assert folder.exists()
     assert folder.is_dir()
+    
+@pytest.mark.skip(reason="This test requires a git repository to run")
+def test_get_git_info():
+    ...
+
+@pytest.mark.skip(reason="This test requires an installed package to run")
+def test_get_package_info():
+    ...
 
 def test_init(monkeypatch):
     repository_name = "control-lab-le"
