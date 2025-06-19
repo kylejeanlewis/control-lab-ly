@@ -92,12 +92,12 @@ def test_resolve_repo_filepath(path, monkeypatch):
     
 @pytest.mark.parametrize("logging_config", [
     None,
-    {"log_level": "DEBUG"},
+    {"version":1,"loggers": {"root": {"level": "DEBUG", "handlers": ["console"]}}, "handlers": {"console": {"class": "logging.StreamHandler", "level": "DEBUG"}}}
 ])
 def test_start_logging(logging_config, tmp_path):
     log_dir = tmp_path / "logs"
     log_file = "test.log"
-    log_path = start_logging(log_dir, log_file, logging_config)
+    log_path = start_logging(log_dir, log_file, logging_config=logging_config)
     if logging_config is None:
         assert isinstance(log_path, Path)
         assert log_path.exists()
