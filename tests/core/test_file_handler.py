@@ -36,6 +36,10 @@ def test_init(monkeypatch):
     target_dir = init(repository_name)
     assert repository_name in target_dir
     assert target_dir in sys.path
+
+@pytest.mark.skip(reason="This test requires a git repository and/or an installed package to run")
+def test_log_version_info():
+    ...
     
 def test_init_unknown_repo(monkeypatch):
     repository_name = "unknown"
