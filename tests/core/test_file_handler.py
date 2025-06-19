@@ -1,6 +1,7 @@
 import pytest
 from datetime import datetime
 import json
+import logging
 import os
 from pathlib import Path
 import sys
@@ -91,8 +92,8 @@ def test_resolve_repo_filepath(path, monkeypatch):
         assert absolute_path == Path().absolute()
     
 @pytest.mark.parametrize("logging_config", [
-    None,
-    {"version":1,"loggers": {"root": {"level": "DEBUG", "handlers": ["console"]}}, "handlers": {"console": {"class": "logging.StreamHandler", "level": "DEBUG"}}}
+    {"version":1,"loggers": {"root": {"level": "DEBUG"}}},
+    None
 ])
 def test_start_logging(logging_config, tmp_path):
     log_dir = tmp_path / "logs"
