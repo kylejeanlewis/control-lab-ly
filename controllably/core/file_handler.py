@@ -287,10 +287,16 @@ def start_logging(
         log_path = log_dir/log_file
         os.makedirs(log_path.parent, exist_ok=True)
         
-        log_config_file = resources.files('controllably') / 'core/_templates/library/configs/logging.yaml'
-        logging_config = read_config_file(log_config_file)
-        logging_config['handlers']['file_handler']['filename'] = str(log_path)
-        logging.config.dictConfig(logging_config)
+        try:
+            log_config_file = resources.files('controllably') / 'core/_templates/library/configs/logging.yaml'
+            logging_config = read_config_file(log_config_file)
+            logging_config['handlers']['file_handler']['filename'] = str(log_path)
+            logging.config.dictConfig(logging_config)
+        except FileNotFoundError:
+            print(f"Logging configuration file not found: {log_config_file}. Logging to {log_path}")
+            file_handler = logging.FileHandler(log_path)
+            file_handler.setLevel(logging.DEBUG)
+            logging.root.addHandler(file_handler)
     
     for handler in logging.root.handlers:
         if isinstance(handler, logging.handlers.QueueHandler):
