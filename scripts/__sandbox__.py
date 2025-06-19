@@ -1,11 +1,8 @@
 # %%
-import test_init
-from controllably.Move.Jointed.Dobot import M1Pro
-
-m1pro = M1Pro(host='127.0.0.1')
+from controllably import start_logging
+start_logging()
 
 # %%
-import test_init
 from controllably.Make.Light import LED, Multi_LED
 
 led = LED(port='COM1', baudrate=9600, timeout=1, verbose=True, simulation=True)
@@ -16,7 +13,6 @@ mled = Multi_LED(
 mled.device.verbose = True
 
 # %%
-import test_init
 from controllably.Transfer.Liquid.Pump.TriContinent import TriContinent, Multi_TriContinent, Parallel_TriContinent
 
 pump = TriContinent(port='COM1', baudrate=9600, timeout=1, verbose=True, simulation=True)
@@ -41,129 +37,6 @@ ppump = Parallel_TriContinent(
 )
 
 # %%
-import test_init
-import socket
-import threading
-import time
-
-from controllably.core.control import Controller, Proxy, start_client, start_server
-from controllably.core.interpreter import JSONInterpreter
-from controllably.core.control import TwoTierQueue
-
-HOST = '127.0.0.1'
-PORT = 12345
-hub = Controller('relay', JSONInterpreter())
-hub_terminate = threading.Event()
-hub_thread = threading.Thread(target=start_server, args=[HOST,PORT,hub], kwargs={'terminate':hub_terminate}, daemon=True)
-hub_thread.start()
-time.sleep(1)
-
-worker = Controller('model', JSONInterpreter())
-worker.start()
-worker_terminate = threading.Event()
-worker_thread = threading.Thread(target=start_client, args=[HOST,PORT,worker,True], kwargs={'terminate':worker_terminate}, daemon=True)
-worker_thread.start()
-
-user = Controller('view', JSONInterpreter())
-user_terminate = threading.Event()
-user_thread = threading.Thread(target=start_client, args=[HOST,PORT,user,True], kwargs={'terminate':user_terminate}, daemon=True)
-user_thread.start()
-time.sleep(2)
-assert hub_thread.is_alive()
-assert worker_thread.is_alive()
-assert user_thread.is_alive()
-
-# %%
-q = TwoTierQueue()
-worker.register(q, 'TEST1')
-time.sleep(1)
-assert worker.registry == {'TEST1': [worker.address]}
-assert user.registry == {'TEST1': [worker.address]}
-
-# %%
-p = Proxy(TwoTierQueue, 'TEST1')
-p.bindController(user)
-p.put_nowait('12345')
-assert p.qsize() == 1
-assert p.get() == '12345'
-
-# %%
-user.callbacks['request'][f"{HOST}:{PORT}"](b'[EXIT]')
-worker.callbacks['data'][f"{HOST}:{PORT}"](b'[EXIT]')
-hub_terminate.set()
-user_thread.join()
-worker_thread.join()
-hub_thread.join()
-assert not user_thread.is_alive()
-assert not worker_thread.is_alive()
-assert not hub_thread.is_alive()
-
-# %%
-import test_init
-import socket
-import threading
-import time
-
-from controllably.core.control import Controller, Proxy, start_client, start_server
-from controllably.core.interpreter import JSONInterpreter
-from controllably.core.control import TwoTierQueue
-
-HOST = '127.0.0.1'
-PORT = 12345
-worker = Controller('model', JSONInterpreter())
-worker.start()
-worker_terminate = threading.Event()
-worker_thread = threading.Thread(target=start_server, args=[HOST,PORT,worker], kwargs={'terminate':worker_terminate}, daemon=True)
-worker_thread.start()
-time.sleep(1)
-
-user = Controller('view', JSONInterpreter())
-user_terminate = threading.Event()
-user_thread = threading.Thread(target=start_client, args=[HOST,PORT,user], kwargs={'terminate':user_terminate}, daemon=True)
-user_thread.start()
-assert worker_thread.is_alive()
-assert user_thread.is_alive()
-
-# %%
-q = TwoTierQueue()
-worker.register(q, 'TEST1')
-time.sleep(1)
-assert worker.registry == {'TEST1': [worker.address]}
-assert user.registry == {'TEST1': [worker.address]}
-
-# %%
-p = Proxy(TwoTierQueue, 'TEST1')
-p.bindController(user)
-p.put_nowait('12345')
-assert p.qsize() == 1
-assert p.get() == '12345'
-
-# %%
-user.callbacks['request'][f"{HOST}:{PORT}"](b'[EXIT]')
-worker_terminate.set()
-user_thread.join()
-worker_thread.join()
-assert not user_thread.is_alive()
-assert not worker_thread.is_alive()
-
-# %%
-import socket
-
-hn = socket.gethostname()
-print(hn)
-host = socket.gethostbyname(hn)
-print(host)
-
-# %%
-import test_init
-from controllably.Transfer.Liquid.Pipette.Sartorius.sartorius_api import SartoriusDevice
-from controllably.Transfer.Liquid.Pipette.Sartorius import Sartorius
-
-device = SartoriusDevice(port='COM35', verbose=True, simulation=True)
-# pipette = Sartorius('COM35',verbose=True)
-
-# %%
-import test_init
 from controllably.Measure.Mechanical.actuated_sensor import ActuatedSensor, Parallel_ActuatedSensor
 from controllably.core.datalogger import monitor_plot
 
@@ -184,22 +57,9 @@ fin.touch(1,-15)
 fin.record(False)
 
 # %%
-import test_init
-from controllably.core.connection import get_ports
-from controllably.Make.Mixture.TwoMag.twomag_api import TwoMagDevice
-from controllably.Make.Mixture.TwoMag import TwoMagStirrer
-
-get_ports()
-# %%
-mag = TwoMagStirrer('COM40')
-mag.connect()
-mag.getStatus()
-
-# %%
 import cv2
 import matplotlib.pyplot as plt
 
-import test_init
 from controllably.View.camera import Camera
 from controllably.View.Thermal.Flir.ax8 import AX8
 
@@ -221,169 +81,40 @@ _,frame = therm.getFrame()
 plt.imshow(frame)
 
 # %%
-import test_init
-from controllably.core.position import Position
-from controllably.Move.Cartesian import Gantry
-from controllably.core.device import SerialDevice
-from controllably.examples.gui.tkinter import MovePanel
-
-ser = SerialDevice(port='COM21', baudrate=115200, timeout=1, verbose=True, simulation=False)
-# %%
-# mover = Gantry('COM22', limits=((-100,-100,-100),(0,0,0)),safe_height=0, verbose=True, device_type_name='GRBL')
-mover = Gantry('COM21', 
-    limits=((0,0,0),(220,220,250)),safe_height=30,
-    home_position=Position((0,0,30)), verbose=True, 
-    device_type_name='Marlin'
-)
-
-# %%
-app = MovePanel(mover)
-app.show()
-
-# %%
-import time
-
-import test_init
-from controllably.core.control import Controller, TwoTierQueue
-from controllably.core.interpreter import JSONInterpreter
-
-worker = Controller('model', JSONInterpreter())
-ui = Controller('view', JSONInterpreter())
-hub = Controller('relay', JSONInterpreter())
-
-# %% Server-client version
-worker.subscribe(ui.receiveData,'data')
-ui.subscribe(worker.receiveRequest,'request')
-
-# %% Hub-spoke version
-worker.subscribe(hub.relayData,'data', relay=True)
-hub.subscribe(ui.receiveData,'data')
-
-ui.subscribe(hub.relayRequest,'request', relay=True)
-hub.subscribe(worker.receiveRequest,'request')
-
-# %%
-q = TwoTierQueue()
-worker.register(q)
-worker.start()
-
-# %%
-ui.getMethods([str(id(worker)),str(id(worker))], private=True)
-
-# %%
-ui.getMethods(private=False)
-
-# %%
-ui.getAttributes()
-
-# %%
-command = dict(
-    subject_id = id(q),
-    method = 'qsize'
-)
-ui.transmitRequest(command)
-time.sleep(1)
-ui.data_buffer
-
-# %%
-import test_init
 from controllably.core.connection import get_ports
-from controllably.core.device import SerialDevice
 from controllably.core import datalogger
 from controllably.Measure.Chemical.Sentron.sentron import SI600
 
-# get_ports()
-# %%
 probe = SI600(port='COM36', baudrate=9600, verbose=True)
 probe.connect()
-
-# %%
 probe.stream(True, False)
-# %%
 event = datalogger.monitor_plot(
     probe.buffer, 'temperature', x='timestamp', kind='scatter',
     stop_trigger=probe.device.stream_event,
     dataframe_maker=probe.getDataframe
 )
-
-# %%
+time.sleep(10)  # Let it run for 10 seconds
 probe.stream(False)
+event.set()
 
 # %%
-import test_init
 from controllably.core.connection import get_ports
 from controllably.Measure.Physical.balance import Balance
 from controllably.core import datalogger
 
-get_ports()
-# %%
 bal = Balance(port='COM21', baudrate=115200, timeout=1, verbose=True, simulation=True)
 bal.connect()
 bal.getMass()
-
-# %%
 bal.zero()
-
-# %%
 bal.stream(True, False)
 datalogger.monitor_plot(
     bal.buffer, 'force', 
     stop_trigger=bal.device.stream_event,
     dataframe_maker=bal.getDataframe
 )
-
-# %%
+time.sleep(10)
 bal.stream(False)
-
-# %%
-import test_init
-from controllably.core.connection import get_ports
-from controllably.Make.Mixture.QInstruments import BioShake
-from controllably.Make.Mixture.QInstruments.qinstruments_api import QInstrumentsDevice
-get_ports()
-bio = BioShake('COM34', temp_tolerance=1.0)
-# %%
-qin = QInstrumentsDevice('COM34')
-qin.connect()
-print(qin.getSerial())
-print(qin.getDescription())
-print(qin.getErrorList())
-print(qin.getVersion())
-print(qin.info())
-print(qin.version())
-
-# %%
-print(qin.getShakeAcceleration())
-print(qin.getShakeAccelerationMax())
-print(qin.getShakeAccelerationMin())
-print('\n')
-print(qin.getShakeMaxRpm())
-print(qin.getShakeMinRpm())
-print(qin.getShakeTargetSpeed())
-print(qin.getShakeActualSpeed())
-print('\n')
-print(qin.getShakeDirection())
-print(qin.getShakeRemainingTime())
-print('\n')
-print(qin.getShakeState())
-print(qin.getShakeStateAsString())
-
-# %%
-print(qin.getTemp40Calibr())
-print(qin.getTemp90Calibr())
-print(qin.getTempActual())
-print(qin.getTempTarget())
-print('\n')
-print(qin.getTempMax())
-print(qin.getTempMin())
-print(qin.getTempState())
-print('\n')
-print(qin.getElmState())
-print(qin.getElmStateAsString())
-
-# %%
-bio = BioShake('COM34', temp_tolerance=0.1)
-
+event.set()
 
 # %%
 from datetime import datetime
@@ -391,7 +122,6 @@ from random import random
 import time
 from unittest import mock
 
-import test_init
 from controllably.Measure.Chemical.Sentron.sentron import SI600
 
 probe = SI600(port='COM1', baudrate=9600, verbose=True)
@@ -424,24 +154,6 @@ def readline():
 MockSerial.readline = readline
 probe.device.connection = MockSerial
 
-# %%
-import test_init
-from controllably.core.device import SerialDevice
-from controllably.core.connection import get_ports
-from controllably.Make.Heat.peltier import Peltier
-
-get_ports()
-# ser = SerialDevice(port='COM32', baudrate=115200, timeout=1, verbose=True, simulation=False)
-pelt = Peltier(port='COM32')
-
-# %%
-import test_init
-from controllably.core.device import SerialDevice
-from controllably.Make.Light.led import LED, Multi_LED
-
-device = SerialDevice(port='COM1', baudrate=9600, timeout=1, verbose=True, simulation=True)
-led = LED(port='COM1', baudrate=9600, timeout=1, verbose=True, simulation=True)
-mled = Multi_LED.create(channels=[1,2,3,4], details=[dict(device=device)]*4)
 
 # %%
 from datetime import datetime
@@ -455,7 +167,6 @@ import matplotlib.pyplot as plt
 from IPython.display import display, clear_output
 import pandas as pd
 
-import test_init
 from controllably.core import datalogger
 from controllably.core.device import SerialDevice
 from controllably.Make.Heat import Peltier
@@ -553,7 +264,6 @@ from typing import NamedTuple
 
 import pandas as pd
 
-import test_init
 from controllably.core.device import SocketDevice
 
 # %%
@@ -585,74 +295,7 @@ df = pd.DataFrame(data, index=timestamps).reset_index(names='timestamp')
 df
 
 # %%
-from random import random
-import threading
-import time
-from typing import NamedTuple
-from unittest import mock
-
-import pandas as pd
-
-import test_init
-from controllably.core.device import SerialDevice
-
-def readline():
-    time.sleep(0.01)
-    return f"{10*random():.3f};{10*random():.3f};{10*random():.3f}\n".encode()
-
-MockSerial = mock.Mock()
-MockSerial.port = 'COM1'
-MockSerial.baudrate = 9600
-MockSerial.timeout = 1
-MockSerial.is_open = True
-MockSerial.readline = readline
-MockSerial.write = mock.Mock()
-
-# %%
-device = SerialDevice(
-    port='COM4', baudrate=9600, timeout=1,
-    data_type=NamedTuple("Data", [("d1", str),("d2", int),("d3", float)]),
-    read_format="{d1};{d2};{d3}\n",
-)
-device.connection = MockSerial
-
-device.clear()
-device.showStream(False)
-device.startStream()
-time.sleep(1)
-device.showStream(True)
-time.sleep(5)
-device.stopStream()
-
-data,timestamps = list([x for x in zip(*device.buffer)])
-df = pd.DataFrame(data,index=timestamps)
-df
-
-# %%
-import test_init
-from controllably import start_logging
-start_logging(r'logs\session_20241115_1451.log')
-from controllably.core.factory import load_setup_from_files
-
-setup = load_setup_from_files(r'C:\Users\chang\GitHub\control-lab-le\library\configs\open_pipette.yaml')
-overkill = setup.overkill
-mover = overkill.mover
-liquid = overkill.liquid
-
-# setup = load_setup_from_files(r'C:\Users\chang\GitHub\control-lab-le\library\configs\ender.yaml')
-ender = setup.ender
-primitiv = setup.primitiv
-
-# %%
-import test_init
-from controllably.Make.Light import LEDArray
-
-leds = LEDArray(port='COM1', baudrate=9600, timeout=1, verbose=True, simulation=True)
-
-# %%
-import test_init
 from controllably.Move.Cartesian import Gantry
-
 # mover = Gantry('COM3', limits=((-100,-100,-100),(0,0,0)),safe_height=0, verbose=True)
 mover = Gantry('COM4', device_type_name='Marlin', safe_height=30, limits=((0,0,0),(220,220,250)), verbose=True, simulation=True)
 
@@ -673,23 +316,6 @@ mover.move('x', -10,jog=True)
 mover.home()
 
 # %%
-import test_init
-from controllably.Move.grbl_api.grbl_api import GRBL
-
-grbl = GRBL('COM22', baudrate=115200, timeout=1, simulation=True, verbose=True)
-grbl.connect()
-grbl.read(True)
-
-# %%
-import test_init
-from controllably.Move.Cartesian import Marlin, Grbl
-
-mover = Marlin('COM21')
-# mover = Grbl('COM22')
-
-# %%
-import test_init
-# from controllably.Make.ThinFilm import Multi_Spinner, Spinner
 from controllably.Make.ThinFilm.spinner import Spinner, Multi_Spinner
 details = [
     dict(port='COM17', verbose=True),
@@ -699,94 +325,9 @@ details = [
 ]
 spinners = Multi_Spinner.create(channels=[1,2,3,4], details=details, verbose=True)
 spinners.connect()
-
-# %%
 spinners.spin(1000,5,blocking=True)
 
 # %%
-import inspect
-import pprint
-import sys
-
-import test_init
-from controllably.core.factory import get_imported_modules
-
-mod = get_imported_modules('library')
-pprint.pprint(mod)
-
-# %%
-import importlib.resources
-import os
-from pathlib import Path
-
-path_string = 'control-lab-le/tests/files/corning_24_wellplate_3400ul.json'
-p = Path('control-lab-le/tests/files/corning_24_wellplate_3400ul.json')
-
-parent = [os.path.sep] + os.getcwd().split(os.path.sep)[1:]
-path = os.path.normpath(path_string).split(os.path.sep)
-full_path = os.path.abspath(os.path.join(*parent[:parent.index(path[0])], *path))
-full_path
-
-# %%
-from typing import Sequence
-
-def zip_kwargs_to_dict(primary_key:str, kwargs:dict) -> dict:
-    """
-    Checks and zips multiple keyword arguments of lists into dictionary
-    
-    Args:
-        primary_keyword (str): primary keyword to be used as key
-    
-    Kwargs:
-        key, list[...]: {keyword, list of values} pairs
-
-    Raises:
-        Exception: Ensure the lengths of inputs are the same
-
-    Returns:
-        dict: dictionary of (primary keyword, kwargs)
-    """
-    length = len(kwargs[primary_key])
-    for key, value in kwargs.items():
-        if isinstance(value, Sequence):
-            continue
-        if isinstance(value, set):
-            kwargs[key] = list(value)
-            continue
-        kwargs[key] = [value]*length
-    keys = list(kwargs.keys())
-    assert all(len(kwargs[key]) == length for key in keys), f"Ensure the lengths of these inputs are the same: {', '.join(keys)}"
-    primary_values = kwargs.pop(primary_key)
-    other_values = [v for v in zip(*kwargs.values())]
-    sub_dicts = [dict(zip(keys[1:], values)) for values in other_values]
-    new_dict = dict(zip(primary_values, sub_dicts))
-    return new_dict
-
-kwargs = dict(
-    name=['A','B','C'],
-    value=[1,2,3],
-    other=5
-)
-
-zip_kwargs_to_dict('name', kwargs)
-
-# %%
-import datetime
-
-seconds = 1e6
-delta = datetime.timedelta(seconds=seconds)
-
-strings = str(delta).split(' ')
-strings[-1] = "{}h {}min {}sec".format(*strings[-1].split(':'))
-' '.join(strings)
-
-# %%
-print("{}h {}min {}sec".format(*str(delta).split(':')))
-
-# %%
-
-# %%
-import test_init
 from controllably.core import safety
 
 safety.set_level(safety.SUPERVISED)
@@ -801,152 +342,4 @@ def move(position:tuple[int,int,int], stop:bool = False) -> None:
 move((1,1,1), stop=True)
 move((1,1,1))
 
-# %%
-import numpy as np
-from scipy.spatial.transform import Rotation
-
-import test_init
-from controllably.core.position import get_transform
-
-internal_points = np.array([(10,10,0), (80,10,0), (10,60,0), (80,60,0)])
-external_points = np.array([(50,50,0), (50,120,0), (0,50,0), (0,120,0)])
-transform = get_transform(internal_points, external_points)
-transform
-
-# %%
-import logging
-
-import test_init
-from controllably.core.compound import Combined
-from controllably.Make.Heat import Peltier
-from controllably.Make.Mixture.QInstruments import BioShake
-
-# logging.basicConfig(level=logging.DEBUG)
-
-config = dict(
-    port='COM1',
-    baudrate=9600,
-    timeout=1,
-    verbose=True,
-    simulation=True,
-    details=dict(
-        heater=dict(
-            part_class=Peltier,
-            port='COM2'
-        ),
-        heatr=dict(
-            part_class=Peltier,
-            port='COM3'
-        )
-    )
-)
-
-comb = Combined.fromConfig(config)
-
-
-# %%
-import test_init
-from controllably.core.position import BoundingBox, Position
-
-p = Position((1,2,3))
-dim = (100,200,300)
-buffer = ((-10,-20,-30),(40,50,60))
-bb = BoundingBox(reference=p, dimensions=dim, buffer=buffer)
-
-# %%
-point = (1,2,3)
-point in bb
-
-# %%
-point = (-10,2,3)
-point in bb
-
-# %%
-import json
-from pathlib import Path
-from types import SimpleNamespace
-import test_init
-from controllably.core.position import Labware, Deck
-
-# labware_file = Path('control-lab-le/tests/core/examples/corning_24_wellplate_3400ul.json')
-# labware = Labware.fromFile(labware_file)
-# labware.show()
-
-deck_file = Path('control-lab-le/tests/core/examples/layout_main.json')
-deck = Deck.fromFile(deck_file)
-deck.show()
-deck
-
-positions = deck.getAllPositions()
-my_positions = json.loads(json.dumps(positions), object_hook=lambda item: SimpleNamespace(**item))
-
-# %%
-for n,bb in deck.exclusion_zone.items():
-    print(n)
-    print(bb.bounds)
-
-# %%
-import gc
-import inspect
-
-import test_init
-from controllably.core.compound import Ensemble
-from controllably.core.device import SerialDevice
-from controllably.Make.Heat import Peltier
-
-# %%
-Multi_Peltier = Ensemble.factory(Peltier)
-details = [
-    dict(port='COM1',baudrate=115200,timeout=2, simulation=True),
-    # dict(port='COM2',baudrate=9600,timeout=3, simulation=True),
-]
-multi = Multi_Peltier.create(channels=[0,1], details=details)
-# multi.parts.chn_0.device.is_connected
-# %%
-multi.connect()
-multi.parts.chn_0.device.is_connected
-# %%
-print(multi.parts.chn_0.device)
-print(multi.parts.chn_1.device)
-
-# %%
-details = [
-    dict(port='COM1',baudrate=115200,timeout=5, simulation=True),
-    # dict(port='COM2',baudrate=115200,timeout=3, simulation=True),
-]
-multi2 = Multi_Peltier.create(channels=[0,1], details=details)
-multi2.parts.chn_0.device.is_connected
-# %%
-print(multi2.parts.chn_0.device)
-print(multi2.parts.chn_1.device)
-
-# %%
-inspect.signature(multi.setTemperature)
-
-# %%
-from controllably.Make import Maker
-from controllably.Make.Mixture.QInstruments import BioShake
-from controllably.Make.Heat import Peltier
-
-maker = Peltier(verbose=True, port=None)
-
-# %%
-maker = BioShake(verbose=True, port=None)
-
-# %%
-maker = Maker(verbose=True, port=None, baudrate=9600, timeout=1)
-maker.connection_details
-# %%
-maker.connect()
-maker.is_connected
-maker.device.write('M3')
-maker.device.read()
-maker.device.query('G0')
-maker.disconnect()
-# %%
-maker.execute()
-# %%
-maker.connection_details
-# %%
-maker.verbose = False
 # %%
