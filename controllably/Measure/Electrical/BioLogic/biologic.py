@@ -24,6 +24,12 @@ from ....core.connection import match_current_ip_address
 from ....core import datalogger
 from ... import Measurer, ProgramDetails
 
+# Clear logging setup from easy_biologic
+import logging
+for handler in logging.root.handlers:
+    if isinstance(handler, logging.StreamHandler):
+        logging.root.removeHandler(handler)
+
 # INITIALIZING
 nest_asyncio.apply()
 path = Path(easy_biologic.__path__[0]) / 'techniques_version.json'
