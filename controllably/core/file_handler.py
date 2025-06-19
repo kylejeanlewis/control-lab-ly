@@ -7,9 +7,10 @@ Attributes:
 
 ## Functions:
     `create_folder`: Check and create folder if it does not exist
-    `get_git_info`: Get current git branch and commit hash
+    `get_git_info`: Get current git branch name, short commit hash, and commit datetime in UTC
     `get_package_info`: Get package information (local, editable, source path)
     `init`: Add repository to `sys.path`, and get machine id and connected ports
+    `log_version_info`: Log version information of the package
     `read_config_file`: Read configuration file and return as dictionary
     `readable_duration`: Display time duration (s) as HH:MM:SS text
     `resolve_repo_filepath`: Resolve relative path to absolute path
@@ -21,10 +22,13 @@ Attributes:
 """
 # Standard library imports
 from __future__ import annotations
-from datetime import datetime, timedelta
+import atexit
+from datetime import datetime, timedelta, timezone
 from importlib import resources, metadata
 import json
 import logging
+import logging.config
+import logging.handlers
 import os
 from pathlib import Path
 import shutil
@@ -63,18 +67,19 @@ def create_folder(base:Path|str = '', sub:Path|str = '') -> Path:
     os.makedirs(new_folder)
     return new_folder
 
-def get_git_info(directory: str = '.') -> tuple[str|None, str|None]:
+def get_git_info(directory: str = '.') -> tuple[str|None, str|None, datetime|None]:
     """
-    Get current git branch name and short commit hash
+    Get current git branch name, short commit hash, and commit datetime in UTC.
     
     Args:
         directory (str, optional): path to git repository. Defaults to '.'.
         
     Returns:
-        tuple[str|None, str|None]: branch name and short commit hash
+        tuple[str|None, str|None]: branch name, short commit hash, commit datetime in UTC
     """
     branch_name = None
     short_commit_hash = None
+    commit_datetime_utc = None
     try:
         # Get the branch name
         # --abbrev-ref HEAD gives the branch name or "HEAD" for detached state
@@ -92,11 +97,24 @@ def get_git_info(directory: str = '.') -> tuple[str|None, str|None]:
             cwd=directory
         )
         short_commit_hash = short_commit_hash_output.strip().decode('utf-8')
+        
+        # Get the Unix timestamp of the committer date for HEAD
+        # Git typically stores timestamps in UTC.
+        commit_timestamp_str = subprocess.check_output(
+            ['git', 'show', '-s', '--format=%ct', 'HEAD'],
+            stderr=subprocess.STDOUT,
+            cwd=directory
+        )
+        commit_timestamp = int(commit_timestamp_str.strip().decode('utf-8'))
+        commit_datetime_utc = datetime.fromtimestamp(commit_timestamp, tz=timezone.utc)
+        
     except subprocess.CalledProcessError as e:
-        print(f"Error getting git info: {e}")
+        logger.error(f"Error getting git info: {e}")
     except FileNotFoundError:
-        print("Git command not found. Make sure Git is installed and in your PATH.")
-    return branch_name, short_commit_hash
+        logger.error("Git command not found. Make sure Git is installed and in your PATH.")
+    except ValueError:
+        logger.error(f"Error: Could not parse commit timestamp '{commit_timestamp_str}'.")
+    return branch_name, short_commit_hash, commit_datetime_utc
 
 def get_package_info(package_name: str) -> tuple[bool, bool, Path|None]:
     """
@@ -132,9 +150,9 @@ def get_package_info(package_name: str) -> tuple[bool, bool, Path|None]:
                 source_path = Path(source_path).resolve()
 
     except metadata.PackageNotFoundError:
-        print(f"Package '{package_name}' not found.")
+        logger.error(f"Package '{package_name}' not found.")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred: {e}")
     return is_local, is_editable, source_path
 
 def init(repository:str|Path) -> str:
@@ -160,6 +178,24 @@ def init(repository:str|Path) -> str:
     connection.get_node()
     connection.get_ports()
     return target_dir
+
+def log_version_info():
+    """Log version information of the package"""
+    _logger = logging.getLogger('controllably')
+    _logger.setLevel(logging.DEBUG)
+    is_local, _, source_path = get_package_info('control-lab-ly')
+    _logger.debug(f'Local install: {is_local}')
+    if is_local:
+        branch, commit, date = get_git_info(source_path)
+        date_string = date.strftime("%Y/%m/%d %H:%M:%S [%z]") if date else 'unknown'
+        if any([branch, commit]):
+            _logger.debug(f'Git reference: {branch} | {commit} | {date_string}')
+        else:
+            _logger.debug(f'Source: {source_path}')
+    else:
+        version = metadata.version('control-lab-ly')
+        _logger.debug(f'Version: {version}')
+    return
 
 def read_config_file(filepath:Path|str) -> dict:
     """
@@ -220,13 +256,19 @@ def resolve_repo_filepath(filepath:Path|str) -> Path:
     full_path = os.path.abspath(os.path.join(*parent[:index], *path))
     return Path(full_path)
 
-def start_logging(log_dir:Path|str|None = None, log_file:Path|str|None = None, logging_config:dict|None = None) -> Path|None:
+def start_logging(
+    log_dir:Path|str|None = None, 
+    log_file:Path|str|None = None, 
+    log_config_file:Path|str|None = None,
+    logging_config:dict|None = None
+) -> Path|None:
     """
     Start logging to file. Default logging behavior is to log to file in current working directory.
     
     Args:
         log_dir (Path|str|None, optional): log directory path. Defaults to None.
         log_file (Path|str|None, optional): log file path. Defaults to None.
+        log_config_file (Path|str|None, optional): path to logging configuration file. Defaults to None.
         logging_config (dict|None, optional): logging configuration. Defaults to None.
         
     Returns:
@@ -234,32 +276,28 @@ def start_logging(log_dir:Path|str|None = None, log_file:Path|str|None = None, l
     """
     log_path = None
     if logging_config is not None and isinstance(logging_config, dict):
-        logging.basicConfig(**logging_config)
+        logging.config.dictConfig(logging_config)
+    elif log_config_file is not None and isinstance(log_config_file, (Path,str)):
+        logging_config = read_config_file(log_config_file)
+        logging.config.dictConfig(logging_config)
     else:
         now = datetime.now().strftime("%Y%m%d_%H%M")
         log_dir = Path.cwd() if log_dir is None else Path(log_dir)
-        log_file = f'logs/session_{now}.log' if ((log_file is None) or (not isinstance(log_file, (Path,str)))) else Path(log_file)
+        log_file = f'logs/session_{now}.log' if not isinstance(log_file, (Path,str)) else log_file
         log_path = log_dir/log_file
         os.makedirs(log_path.parent, exist_ok=True)
         
-        file_handler = logging.FileHandler(log_path)
-        file_handler.setLevel(logging.DEBUG)
-        logging.basicConfig(handlers=[file_handler])
-        logger.info(f"Current working directory: {Path.cwd()}")
+        log_config_file = resources.files('controllably') / 'core/_templates/library/configs/logging.yaml'
+        logging_config = read_config_file(log_config_file)
+        logging_config['handlers']['file_handler']['filename'] = str(log_path)
+        logging.config.dictConfig(logging_config)
     
-    _logger = logging.getLogger('controllably')
-    _logger.setLevel(logging.DEBUG)
-    is_local, _, source_path = get_package_info('control-lab-ly')
-    _logger.debug(f'Local install: {is_local}')
-    if is_local:
-        branch, commit = get_git_info(source_path)
-        if any([branch, commit]):
-            _logger.debug(f'Git reference: {branch} | {commit}')
-        else:
-            _logger.debug(f'Source: {source_path}')
-    else:
-        version = metadata.version('control-lab-ly')
-        _logger.debug(f'Version: {version}')
+    for handler in logging.root.handlers:
+        if isinstance(handler, logging.handlers.QueueHandler):
+            handler.listener.start()
+            atexit.register(handler.listener.stop)
+    logger.info(f"Current working directory: {Path.cwd()}")
+    log_version_info()
     return log_path
 
 def start_project_here(dst:Path|str|None = None):
