@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from importlib import resources, metadata
 import json
 import logging
+import logging.config
 import logging.handlers
 import os
 from pathlib import Path
@@ -120,7 +121,6 @@ def get_package_info(package_name: str) -> tuple[bool, bool, Path|None]:
 def log_version_info():
     """Log version information of the package"""
     app_logger = logging.getLogger('controllably')
-    app_logger.setLevel(logging.DEBUG)
     is_local, _, source_path = get_package_info('control-lab-ly')
     app_logger.debug(f'Local install: {is_local}')
     if is_local:
@@ -173,12 +173,16 @@ def start_logging(
             logging.config.dictConfig(logging_config)
         except FileNotFoundError:
             print(f"Logging configuration file not found: {log_config_file}. Logging to {log_path}")
-            file_handler = logging.FileHandler(log_path)
+            file_handler = logging.handlers.RotatingFileHandler(log_path, maxBytes=5242880)
             file_handler.setLevel(logging.DEBUG)
+            fmt = logging.Formatter(
+                "%(asctime)s %(levelname)s %(name)s: %(message)s",
+                datefmt="%Y-%m-%dT%H:%M:%S%z"
+            )
+            file_handler.setFormatter(fmt)
             app_logger = logging.getLogger('controllably')
             app_logger.addHandler(file_handler)
     
-    app_logger = logging.getLogger('controllably')
     for handler in logging.root.handlers+app_logger.handlers:
         if isinstance(handler, logging.handlers.QueueHandler):
             handler.listener.start()
