@@ -28,7 +28,7 @@ from ... import Measurer, ProgramDetails
 import logging
 for handler in logging.root.handlers:
     if isinstance(handler, logging.StreamHandler):
-        logging.root.removeHandler(handler)
+        handler.setLevel(logging.WARNING)
 
 # INITIALIZING
 nest_asyncio.apply()
