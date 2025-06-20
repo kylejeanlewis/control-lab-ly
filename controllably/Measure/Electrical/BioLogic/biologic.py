@@ -27,7 +27,7 @@ from ... import Measurer, ProgramDetails
 # Clear logging setup from easy_biologic
 import logging
 for handler in logging.root.handlers:
-    if isinstance(handler, logging.StreamHandler):
+    if isinstance(handler, logging.StreamHandler) and handler.level == logging.NOTSET:
         handler.setLevel(logging.WARNING)
 
 # INITIALIZING

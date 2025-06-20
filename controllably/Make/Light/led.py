@@ -19,8 +19,8 @@ from ...core.compound import Multichannel
 from ...core.device import TimedDeviceMixin
 from .. import Maker
 
+# Configure logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 class LED(TimedDeviceMixin, Maker):
     """ 

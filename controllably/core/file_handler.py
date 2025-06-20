@@ -39,11 +39,10 @@ import yaml
 # Local application imports
 from . import connection
 
+# Configure logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-logger.addHandler(handler)
+from controllably import CustomLevelFilter
+CustomLevelFilter().setModuleLevel(__name__, logging.INFO)
 
 TEMP_ZIP = Path('_temp.zip')
 

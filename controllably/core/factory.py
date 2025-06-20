@@ -39,11 +39,10 @@ from . import connection
 from . import device
 from . import file_handler
 
+# Configure logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-logger.addHandler(handler)
+from controllably import CustomLevelFilter
+CustomLevelFilter().setModuleLevel(__name__, logging.INFO)
 
 class Part(Protocol):
     """Protocol for Part (i.e. component tools)"""

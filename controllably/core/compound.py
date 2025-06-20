@@ -35,9 +35,9 @@ from typing import Protocol, Callable, Sequence, Type, Iterable, Any
 from .device import Device
 from . import factory
 
+# Configure logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.StreamHandler())
+from controllably import CustomLevelFilter
 
 class Part(Protocol):
     """Protocol for Part (i.e. component tools)"""
@@ -100,7 +100,6 @@ class Compound:
         self.flags = deepcopy(self._default_flags)
         
         self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
-        self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         return
     
@@ -156,10 +155,7 @@ class Compound:
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
         level = logging.DEBUG if value else logging.INFO
-        for handler in self._logger.handlers:
-            if not isinstance(handler, logging.StreamHandler):
-                continue
-            handler.setLevel(level)
+        CustomLevelFilter().setModuleLevel(self._logger.name, level)
         for part in self._parts.values():
             part.verbose = value
         return
@@ -489,7 +485,6 @@ class Combined:
         self.flags = deepcopy(self._default_flags)
         
         self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
-        self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         return
     
@@ -549,10 +544,7 @@ class Combined:
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
         level = logging.DEBUG if value else logging.INFO
-        for handler in self._logger.handlers:
-            if not isinstance(handler, logging.StreamHandler):
-                continue
-            handler.setLevel(level)
+        CustomLevelFilter().setModuleLevel(self._logger.name, level)
         for part in self._parts.values():
             part.verbose = value
         return

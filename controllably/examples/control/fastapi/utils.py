@@ -29,13 +29,12 @@ import urllib3
 from ....core.control import Controller
 from ....core.interpreter import JSONInterpreter
 
-CONNECTION_ERRORS = (ConnectionRefusedError, ConnectionError, urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError)
-
+# Configure logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-logger.addHandler(handler)
+from controllably import CustomLevelFilter
+CustomLevelFilter().setModuleLevel(__name__, logging.INFO)
+
+CONNECTION_ERRORS = (ConnectionRefusedError, ConnectionError, urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError)
 
 class FastAPIWorkerClient:
     """ 

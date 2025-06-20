@@ -28,8 +28,8 @@ import pandas as pd
 # Local application imports
 from .device import StreamingDevice
 
+# Configure logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 def get_dataframe(data_store:Iterable[tuple[NamedTuple,datetime]], fields:Iterable[str]) -> pd.DataFrame:
     """ 

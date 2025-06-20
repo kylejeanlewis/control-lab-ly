@@ -23,9 +23,8 @@ import logging
 import time
 from typing import Callable
 
+# Configure logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.StreamHandler())
 
 DEBUG = 0
 """Safety mode that logs the function call"""

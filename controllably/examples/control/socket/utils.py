@@ -30,13 +30,12 @@ from typing import Callable, Any
 from ....core.control import Controller
 from ....core.interpreter import JSONInterpreter
 
-BYTESIZE = 1024
-
+# Configure logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-logger.addHandler(handler)
+from controllably import CustomLevelFilter
+CustomLevelFilter().setModuleLevel(__name__, logging.INFO)
+
+BYTESIZE = 1024
 
 def create_listen_socket_callback(client_socket: socket.socket, relay: bool) -> Callable[[Any], str]:
     """

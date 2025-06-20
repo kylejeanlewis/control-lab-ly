@@ -23,8 +23,9 @@ from typing import Any
 from .....core import connection
 from .....external.Dobot_Arm import DobotApiDashboard, DobotApiMove
 
+# Configure logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+from controllably import CustomLevelFilter
 
 DASHBOARD_PORT = 29999
 FEEDBACK_PORT = 30003
@@ -94,7 +95,6 @@ class DobotDevice:
         self.flags.simulation = simulation
         
         self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
-        self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         return
     
@@ -123,10 +123,7 @@ class DobotDevice:
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
         level = logging.DEBUG if value else logging.INFO
-        for handler in self._logger.handlers:
-            if not isinstance(handler, logging.StreamHandler):
-                continue
-            handler.setLevel(level)
+        CustomLevelFilter().setModuleLevel(self._logger.name, level)
         return
     
     def connect(self):

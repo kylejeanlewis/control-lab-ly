@@ -18,8 +18,9 @@ from types import SimpleNamespace
 from ...core import factory
 from ...core.device import Device, StreamingDevice
 
+# Configure logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+from controllably import CustomLevelFilter
 
 class LiquidHandler:
     """ 
@@ -71,7 +72,6 @@ class LiquidHandler:
         self.flags: SimpleNamespace = deepcopy(self._default_flags)
         
         self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
-        self._logger.addHandler(logging.StreamHandler())
         self.verbose = verbose
         
         # Category specific attributes
@@ -115,10 +115,7 @@ class LiquidHandler:
         assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
         self.flags.verbose = value
         level = logging.DEBUG if value else logging.INFO
-        for handler in self._logger.handlers:
-            if not isinstance(handler, logging.StreamHandler):
-                continue
-            handler.setLevel(level)
+        CustomLevelFilter().setModuleLevel(self._logger.name, level)
         return
     
     @property
