@@ -11,7 +11,8 @@ import yaml # pip install pyyaml
 from ..context import controllably
 from controllably.core.file_handler import (
     create_folder, init, read_config_file, readable_duration,
-    resolve_repo_filepath, start_logging, start_project_here, zip_files, TEMP_ZIP)
+    resolve_repo_filepath, start_project_here, zip_files, TEMP_ZIP)
+from controllably.core.logging import start_logging
 
 HERE = os.environ.get("REPO_ROOT") or Path(__file__).parent.parent.absolute()
 
@@ -106,6 +107,8 @@ def test_start_logging(logging_config, tmp_path):
         assert log_path == log_dir / log_file
     else:
         assert log_path is None
+    for h in logging.root.handlers:
+        logging.root.removeHandler(h)
 
 def test_start_project_here(caplog, monkeypatch, tmp_path):
     monkeypatch.setattr('os.getcwd', lambda : str(HERE))
