@@ -181,20 +181,20 @@ def init(repository:str|Path) -> str:
 
 def log_version_info():
     """Log version information of the package"""
-    _logger = logging.getLogger('controllably')
-    _logger.setLevel(logging.DEBUG)
+    app_logger = logging.getLogger('controllably')
+    app_logger.setLevel(logging.DEBUG)
     is_local, _, source_path = get_package_info('control-lab-ly')
-    _logger.debug(f'Local install: {is_local}')
+    app_logger.debug(f'Local install: {is_local}')
     if is_local:
         branch, commit, date = get_git_info(source_path)
         date_string = date.strftime("%Y/%m/%d %H:%M:%S [%z]") if date else 'unknown'
         if any([branch, commit]):
-            _logger.debug(f'Git reference: {branch} | {commit} | {date_string}')
+            app_logger.debug(f'Git reference: {branch} | {commit} | {date_string}')
         else:
-            _logger.debug(f'Source: {source_path}')
+            app_logger.debug(f'Source: {source_path}')
     else:
         version = metadata.version('control-lab-ly')
-        _logger.debug(f'Version: {version}')
+        app_logger.debug(f'Version: {version}')
     return
 
 def read_config_file(filepath:Path|str) -> dict:
@@ -296,9 +296,11 @@ def start_logging(
             print(f"Logging configuration file not found: {log_config_file}. Logging to {log_path}")
             file_handler = logging.FileHandler(log_path)
             file_handler.setLevel(logging.DEBUG)
-            logging.root.addHandler(file_handler)
+            app_logger = logging.getLogger('controllably')
+            app_logger.addHandler(file_handler)
     
-    for handler in logging.root.handlers:
+    app_logger = logging.getLogger('controllably')
+    for handler in logging.root.handlers+app_logger.handlers:
         if isinstance(handler, logging.handlers.QueueHandler):
             handler.listener.start()
             atexit.register(handler.listener.stop)
