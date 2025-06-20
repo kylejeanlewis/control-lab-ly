@@ -1,5 +1,4 @@
 # %%
-import test_init
 from controllably.examples.control.socket import create_socket_worker
 from controllably.core.connection import get_host
 
