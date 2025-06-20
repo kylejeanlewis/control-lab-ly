@@ -11,10 +11,6 @@ external_libs = os.path.join(os.path.dirname(__file__), 'external')
 sys.path.insert(0, external_libs)
 del sys, os, external_libs
 
-# Get the main logger
-import logging
-logging.getLogger('controllably').setLevel(logging.DEBUG)
-
 # Import logging filters
 from ._log_filters import CustomLevelFilter, AppFilter
 
