@@ -10,6 +10,7 @@ and filtering logs based on module names or application roots.
 <i>Documentation last updated: 2025-06-11</i>
 """
 import logging
+import sys
 
 class CustomLevelFilter(logging.Filter):
     """
@@ -87,3 +88,21 @@ class AppFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         is_app_log = record.name.startswith(self.app_root_name)
         return is_app_log if not self.invert else not is_app_log
+
+# Configure the logging system
+fmt = logging.Formatter("%(message)s")
+custom_console_filter = CustomLevelFilter()
+controllably_filter = AppFilter('controllably')
+
+stdout_handler = logging.StreamHandler(sys.stdout)
+stdout_handler.setLevel(logging.DEBUG)
+stdout_handler.setFormatter(fmt)
+stdout_handler.addFilter(controllably_filter)
+stdout_handler.addFilter(custom_console_filter)
+
+app_logger = logging.getLogger('controllably')
+app_logger.setLevel(logging.DEBUG)
+app_logger.addHandler(stdout_handler)
+print("Adding StreamHandler to 'controllably' logger")
+app_logger.propagate = False
+print("Setting 'controllably' logger to not propagate logs to root logger")
