@@ -28,10 +28,10 @@ handlers:
     filters: [controllably_filter]
     filename: logs/session.log
     maxBytes: 5242880  # 5 MB
-  queue_handler: 
-    class: logging.handlers.QueueHandler
-    handlers: [file_handler]
-    respect_handler_level: true
+  # queue_handler: 
+  #   class: logging.handlers.QueueHandler
+  #   handlers: [file_handler]
+  #   respect_handler_level: true
 
 filters: 
   custom_console_filter:
@@ -48,4 +48,4 @@ filters:
 loggers: 
   root:
     level: DEBUG
-    handlers: [stdout, stderr, queue_handler]
+    handlers: [stdout, stderr, file_handler]
