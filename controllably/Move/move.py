@@ -176,6 +176,16 @@ class Mover:
         self.shutdown()
         return
     
+    def __enter__(self):
+        """Context manager enter method"""
+        self.connect()
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Context manager exit method"""
+        self.disconnect()
+        return False
+    
     @property
     def connection_details(self) -> dict:
         """Connection details for the device"""

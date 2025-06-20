@@ -139,6 +139,16 @@ class Camera:
         self.disconnect()
         return
     
+    def __enter__(self):
+        """Context manager enter method"""
+        self.connect()
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Context manager exit method"""
+        self.disconnect()
+        return False
+    
     @property
     def feed(self) -> cv2.VideoCapture:
         """Video feed"""
