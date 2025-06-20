@@ -155,11 +155,17 @@ def start_logging(
         Path|None: path to log file; None if logging_config is provided
     """
     log_path = None
+    app_logger = logging.getLogger('controllably')
+    
     if logging_config is not None and isinstance(logging_config, dict):
         logging.config.dictConfig(logging_config)
+        _ = [app_logger.removeHandler(h) for h in app_logger.handlers]
+        app_logger.propagate = True
     elif log_config_file is not None and isinstance(log_config_file, (Path,str)):
         logging_config = read_config_file(log_config_file)
         logging.config.dictConfig(logging_config)
+        _ = [app_logger.removeHandler(h) for h in app_logger.handlers]
+        app_logger.propagate = True
     else:
         now = datetime.now().strftime("%Y%m%d_%H%M")
         log_dir = Path.cwd() if log_dir is None else Path(log_dir)
@@ -172,6 +178,8 @@ def start_logging(
             logging_config = read_config_file(log_config_file)
             logging_config['handlers']['file_handler']['filename'] = str(log_path)
             logging.config.dictConfig(logging_config)
+            _ = [app_logger.removeHandler(h) for h in app_logger.handlers]
+            app_logger.propagate = True
         except FileNotFoundError:
             print(f"Logging configuration file not found: {log_config_file}. Logging to {log_path}")
             file_handler = logging.handlers.RotatingFileHandler(log_path, maxBytes=5242880)
@@ -181,7 +189,6 @@ def start_logging(
                 datefmt="%Y-%m-%dT%H:%M:%S%z"
             )
             file_handler.setFormatter(fmt)
-            app_logger = logging.getLogger('controllably')
             app_logger.addHandler(file_handler)
     
     for handler in logging.root.handlers:
