@@ -24,9 +24,10 @@ from pathlib import Path
 import subprocess
 
 # Local application imports
-from controllably import CustomLevelFilter
 from .file_handler import read_config_file
 
+# Configure logging
+from controllably import CustomLevelFilter
 logger = logging.getLogger(__name__)
 CustomLevelFilter().setModuleLevel(__name__, logging.INFO)
 
@@ -183,7 +184,7 @@ def start_logging(
             app_logger = logging.getLogger('controllably')
             app_logger.addHandler(file_handler)
     
-    for handler in logging.root.handlers+app_logger.handlers:
+    for handler in logging.root.handlers:
         if isinstance(handler, logging.handlers.QueueHandler):
             handler.listener.start()
             atexit.register(handler.listener.stop)
