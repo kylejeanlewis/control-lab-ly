@@ -11,7 +11,7 @@
         }
     },
     "handlers": {
-        "console":{
+        "stdout":{
             "class": "logging.StreamHandler",
             "level": "DEBUG",
             "formatter": "simple",
@@ -29,12 +29,13 @@
             "class": "logging.handlers.RotatingFileHandler",
             "level": "DEBUG",
             "formatter": "detailed",
+            "filters": ["controllably_filter"],
             "filename": "logs/session.log",
             "maxBytes": 5242880
         },
         "queue_handler": {
             "class": "logging.handlers.QueueHandler",
-            "handlers": ["console", "stderr", "file_handler"],
+            "handlers": ["file_handler"],
             "respect_handler_level": true
         }
     },
@@ -56,7 +57,7 @@
     "loggers": {
         "root": {
             "level": "DEBUG",
-            "handlers": ["queue_handler"]
+            "handlers": ["stdout", "stderr", "queue_handler"]
         }
     }
 }
