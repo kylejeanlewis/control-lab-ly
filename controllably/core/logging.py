@@ -190,11 +190,13 @@ def start_logging(
             )
             file_handler.setFormatter(fmt)
             app_logger.addHandler(file_handler)
+        except ValueError as e :
+            print(e)
     
     for handler in logging.root.handlers:
         if isinstance(handler, logging.handlers.QueueHandler):
             handler.listener.start()
             atexit.register(handler.listener.stop)
-    logger.info(f"Current working directory: {Path.cwd()}")
+    app_logger.info(f"Current working directory: {Path.cwd()}")
     log_version_info()
     return log_path
