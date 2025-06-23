@@ -5,6 +5,7 @@ from collections import deque
 from datetime import datetime
 from inspect import getdoc, Signature, Parameter
 import json
+import logging
 import nest_asyncio
 from pathlib import Path
 import threading
