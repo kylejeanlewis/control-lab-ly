@@ -14,13 +14,8 @@ Classes:
     `ModelInfo`: Dataclass representing a pipette model with its specifications
 """
 # Standard library imports
-from collections import namedtuple
 from dataclasses import dataclass
 from enum import Enum
-import logging
-
-logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
 
 @dataclass
 class ModelInfo:
