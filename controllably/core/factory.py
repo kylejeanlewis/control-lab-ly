@@ -20,6 +20,7 @@ This module contains functions to create and manage objects.
 <i>Documentation last updated: 2025-06-11</i>
 """
 # Standard library imports
+from dataclasses import fields
 import importlib
 import inspect
 import json
@@ -133,7 +134,7 @@ def dict_to_named_tuple(d:dict, tuple_name:str = 'Setup') -> tuple:
         object_list.append(v)
     
     named_tuple = NamedTuple(tuple_name, field_list)
-    logger.info(f"\nObjects created: {', '.join([f[0] for f in field_list])}")
+    logger.info(f"\nObjects created: {', '.join([k for k,v in d.items() if not isinstance(v,Exception)])}")
     return named_tuple(*object_list)
 
 def dict_to_simple_namespace(d:dict) -> SimpleNamespace:
@@ -239,9 +240,10 @@ def get_plans(configs:dict, registry:dict|None = None) -> dict:
     return configs
 
 def get_setup(
-    config_file:Path|str, 
-    registry_file:Path|str|None = None, 
-    platform_type:Type|None = None
+    config_file: Path|str, 
+    registry_file: Path|str|None = None, 
+    platform_type: Type|None = None,
+    silent_fail: bool = False
 ) -> tuple|Any:
     """
     Load setup from files and return as NamedTuple or Platform
@@ -250,23 +252,34 @@ def get_setup(
         config_file (Path|str): config filename
         registry_file (Path|str|None, optional): registry filename. Defaults to None.
         platform_type (Type|None, optional): target platform type. Defaults to None.
+        silent_fail (bool, optional): whether to let setup errors through without raising an exception. Defualts to False.
         
     Returns:
         tuple|Any: named tuple or Platform object
     """
-    platform: NamedTuple = load_setup_from_files(config_file=config_file, registry_file=registry_file, create_tuple=True)
-    n_errors = sum([int(isinstance(tool, Exception)) for tool in platform])
-    if platform_type is None or len(platform_type.__annotations__) == 0:
-        out = platform
-    else:
-        try:
-            out = platform_type(**platform._asdict())
-        except TypeError as e:
-            logger.error(f"Error creating platform: {platform_type}") 
-            return platform
-    if n_errors:
-        raise SystemExit(f"{n_errors} error(s) during initialization", out)
-    return out
+    setup: NamedTuple = load_setup_from_files(config_file=config_file, registry_file=registry_file, create_tuple=True)
+    errors = {name: tool for name,tool in setup._asdict().items() if isinstance(tool, Exception)}
+    n_errors = len(errors)
+    if n_errors and not silent_fail:
+        raise SystemExit(f"{n_errors} error(s) during initialization", setup)
+    
+    if platform_type is None or len(platform_type.__annotations__) != len(setup):
+        logger.warning('Unable to create typed Platform dataclass')
+        logger.warning(f'{type(setup).__name__} has fields: {setup._fields}')
+        logger.warning(f"Platform dataclass has fields: {fields(platform_type)}") 
+        logger.warning('Returning NamedTuple instead...')
+        return setup
+    
+    try:
+        new_platform = platform_type(**setup._asdict())
+        if n_errors:
+            logger.error(f'Errors occurred for: {", ".join(errors.keys())}')
+    except TypeError as e:
+        logger.error(f"Error creating Platform for {type(setup).__name__}")
+        logger.error(e)
+        logger.warning('Returning NamedTuple instead...')
+        return setup
+    return new_platform
 
 def load_parts(configs:dict, **kwargs) -> dict:
     """
