@@ -145,7 +145,7 @@
     "slotAbove": {
         "name": "stackSlot",
         "dimensions": [127.53,85.47,0],
-        "cornerOffset": [0,0,0],
+        "cornerOffset": [0,0,62.7],
         "orientation": [0,0,0]
     }
 }
