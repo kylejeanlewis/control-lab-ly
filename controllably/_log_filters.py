@@ -103,6 +103,5 @@ stdout_handler.addFilter(custom_console_filter)
 app_logger = logging.getLogger('controllably')
 app_logger.setLevel(logging.DEBUG)
 app_logger.addHandler(stdout_handler)
-print("Adding StreamHandler to 'controllably' logger")
 app_logger.propagate = False
-print("Setting 'controllably' logger to not propagate logs to root logger")
+print("NOTE: StreamHandler added to 'controllably' logger, which does not propagate to the root logger")
