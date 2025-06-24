@@ -210,7 +210,7 @@ class TestDeck:
         
     def test_exclusion_zone(self, main_deck):
         assert isinstance(main_deck, Deck)
-        assert len(main_deck.exclusion_zone) == 2
+        assert len(main_deck.exclusion_zone) == 3
         assert main_deck.isExcluded((749.175,375.875,52.95))
         assert not main_deck.isExcluded((0,0,0))
         
@@ -224,7 +224,7 @@ class TestDeck:
         assert np.allclose(sub_deck.offset, (300,150,0))
         assert np.allclose(sub_deck.center, (750,300,0))
         assert np.allclose(sub_deck.dimensions, (300,-600,0))
-        assert len(sub_deck.exclusion_zone) == 2
+        assert len(sub_deck.exclusion_zone) == 3
         
     def test_slot(self, sub_deck):
         assert isinstance(sub_deck, Deck)
