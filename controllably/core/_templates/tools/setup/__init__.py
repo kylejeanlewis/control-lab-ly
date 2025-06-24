@@ -32,10 +32,10 @@ class Platform:
     
 # ========================================== #
 
-def setup() -> tuple|Platform:
+def setup(silent_fail:bool = False) -> tuple|Platform:
     global __setup__
     if __setup__ is not None:
         print(f"Setup already loaded from {CONFIG_FILE}")
         return __setup__
-    __setup__ = get_setup(CONFIG_FILE, REGISTRY_FILE, Platform)
+    __setup__ = get_setup(CONFIG_FILE, REGISTRY_FILE, Platform, silent_fail=silent_fail)
     return __setup__
