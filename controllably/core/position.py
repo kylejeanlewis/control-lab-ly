@@ -880,7 +880,7 @@ class Labware:
         # ax.add_patch(patch)
         patches.append(patch)
         if isinstance(self.slot_above, Slot) and isinstance(self.slot_above.loaded_labware, Labware):
-            return patches
+            return self.slot_above.loaded_labware._draw(ax=ax, zoom_out=zoom_out, **kwargs)
         
         for well in self._wells.values():
             patch = well._draw(ax, zoom_out=zoom_out, **kwargs)
@@ -949,11 +949,33 @@ class Slot:
         self.x,self.y,self.z = dimensions/2
         self._dimensions = tuple(dimensions)
         
-        labware_file = Path(self._details.get('labware_file',''))
-        labware_file = file_handler.resolve_repo_filepath(labware_file) if not labware_file.is_absolute() else labware_file
-        if labware_file.is_file():
-            self.loadLabwareFromFile(labware_file=labware_file)
-            assert isinstance(self.loaded_labware, Labware), "Labware not loaded"
+        labware_details = self._details.get('labware_file','')
+        if isinstance(labware_details, str) and labware_details.strip() != '':
+            labware_file = Path(labware_details)
+            labware_file = file_handler.resolve_repo_filepath(labware_file) if not labware_file.is_absolute() else labware_file
+            if labware_file.is_file():
+                self.loadLabwareFromFile(labware_file=labware_file)
+                assert isinstance(self.loaded_labware, Labware), "Labware not loaded"
+        elif isinstance(labware_details, list):
+            current_top_slot = self
+            layers = 0
+            for labware_file in labware_details:
+                labware_file = Path(labware_file)
+                labware_file = file_handler.resolve_repo_filepath(labware_file) if not labware_file.is_absolute() else labware_file
+                if not labware_file.is_file():
+                    logger.error(f"Labware file '{labware_file}' not found, skipping...")
+                    continue
+                else:
+                    labware = Labware.fromFile(labware_file=labware_file, parent=current_top_slot)
+                    current_top_slot.loadLabware(labware=labware)
+                    assert isinstance(current_top_slot.loaded_labware, Labware), "Labware not loaded"
+                    layers += 1
+                    if current_top_slot.loaded_labware.is_stackable and isinstance(current_top_slot.slot_above, Slot):
+                        current_top_slot = current_top_slot.slot_above
+                    else:
+                        logger.warning(f"'{current_top_slot.loaded_labware.name}' in '{current_top_slot.name}' is not stackable or has no defined Slot above")
+                        logger.warning(f"Stopped stacking Labware in slot '{self.name}' at layer {layers}")
+                        break 
         return
     
     def __repr__(self) -> str:
@@ -996,7 +1018,20 @@ class Slot:
     @property
     def exclusion_zone(self) -> BoundingBox|None:
         """Exclusion zone of loaded Labware to avoid"""
-        return self.loaded_labware.exclusion_zone if isinstance(self.loaded_labware, Labware) else None
+        if not isinstance(self.loaded_labware, Labware):
+            return None
+        exclusion_zone = deepcopy(self.loaded_labware.exclusion_zone)
+        if isinstance(self.slot_above, Slot):
+            exclusion_zone += self.slot_above.exclusion_zone
+        return exclusion_zone
+    
+    @property
+    def stack(self) -> dict[str, Slot]:
+        """Stack of Labware in Slot, including Slot above"""
+        stack = {self.name: self}
+        if isinstance(self.slot_above, Slot):
+            stack.update(self.slot_above.stack)
+        return stack
     
     def fromCenter(self, offset:Sequence[float]|np.ndarray) -> np.ndarray:
         """
@@ -1543,6 +1578,24 @@ class BoundingVolume:
     def __contains__(self, point:Sequence[float]) -> bool:
         return self.contains(point=point)
     
+    def __add__(self, other:BoundingVolume|None) -> BoundingVolume:
+        """
+        Add two BoundingVolumes together
+        
+        Args:
+            other (BoundingVolume|None): another `BoundingVolume` object
+            
+        Returns:
+            BoundingVolume: new `BoundingVolume` object
+        """
+        if other is None:
+            return self
+        assert isinstance(other, BoundingVolume), "Please input a valid BoundingVolume object"
+        new_function = {}
+        new_function.update(self.parametric_function)
+        new_function.update(other.parametric_function)
+        return BoundingVolume(parametric_function=new_function)
+    
     def contains(self, point:Sequence[float]|np.ndarray) -> bool:
         """
         Check if point is within BoundingVolume
@@ -1554,8 +1607,7 @@ class BoundingVolume:
             bool: whether point is within BoundingVolume
         """
         assert len(point) == 3, "Please input x,y,z coordinates"
-        func = list(self.parametric_function.values())[0]
-        return func(point)
+        return any(func(point) for func in self.parametric_function.values())  # check if point is within any of the parametric functions
 
     
 @dataclass(kw_only=True)
@@ -1597,6 +1649,43 @@ class BoundingBox(BoundingVolume):
         
         self.parametric_function['box'] = lambda p: all([min(b) <= p[i] <= max(b) for i,b in enumerate(list(zip(*self.bounds)))])
         return
+    
+    def __add__(self, other:BoundingVolume|BoundingBox|None) -> BoundingVolume|BoundingBox:
+        """
+        Add two BoundingVolumes together
+        
+        Args:
+            other (BoundingVolume|BoundingBox|None): another `BoundingVolume` or `BoundingBox` object
+            
+        Returns:
+            BoundingVolume|BoundingBox: new `BoundingVolume` or `BoundingBox` object
+        """
+        if other is None:
+            return self
+        assert isinstance(other, BoundingVolume), "Please input a valid BoundingVolume object"
+        if not isinstance(other, BoundingBox):
+            return super().__add__(other)
+        if not sum([int(np.isclose(sd,od)) for sd,od in zip(self.dimensions, other.dimensions)]) >= 2:
+            return super().__add__(other)
+        if not sum([int(np.isclose(self.reference.coordinates[i], other.reference.coordinates[i])) for i in range(3)]) == 2:
+            return super().__add__(other)
+        if not np.allclose(self.reference.Rotation.as_quat(), other.reference.Rotation.as_quat()):
+            return super().__add__(other)
+        
+        bottom_left_corner = np.min([self.reference.coordinates, other.reference.coordinates], axis=0)
+        reference = Position(_coordinates=bottom_left_corner, Rotation=self.reference.Rotation)
+        buffer = [[0,0,0], [0,0,0]]
+        dimensions = [0,0,0]
+        for i,(s_ref,o_ref) in enumerate(zip(self.reference.coordinates, other.reference.coordinates)):
+            if np.isclose(s_ref, o_ref):
+                dimensions[i] = max(self.dimensions[i], other.dimensions[i])
+                buffer[0][i] = min(self.buffer[0][i], other.buffer[0][i])
+                buffer[1][i] = max(self.buffer[1][i], other.buffer[1][i])
+            else:
+                dimensions[i] = self.dimensions[i] + other.dimensions[i]
+                buffer[0][i] = self.buffer[0][i] if s_ref < o_ref else other.buffer[0][i]
+                buffer[1][i] = other.buffer[1][i] if s_ref < o_ref else self.buffer[1][i]
+        return BoundingBox(reference=reference, dimensions=dimensions, buffer=buffer)
     
     @property
     def bounds(self):
