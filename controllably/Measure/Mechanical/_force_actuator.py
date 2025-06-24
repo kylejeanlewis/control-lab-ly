@@ -101,6 +101,8 @@ class ForceActuator:
         calibration_factor: float = 1.0,
         correction_parameters: tuple[float] = (1.0,0.0),
         touch_force_threshold: float = 2 * G,
+        touch_timeout: int = 300,
+        from_top: bool = True,      # whether compression direction is towards negative displacement
         baudrate: int = 115200,
         verbose: bool = False, 
         **kwargs
@@ -173,8 +175,9 @@ class ForceActuator:
         self.end_stop = False
         self.precision = 3
         self._force = 0
-        self._touch_force_threshold: float = touch_force_threshold
-        self._touch_timeout : int = 120
+        self.touch_force_threshold = touch_force_threshold
+        self.touch_timeout = touch_timeout
+        self.from_top = from_top
         
         if kwargs.get('final', True):
             self.connect()
@@ -337,7 +340,8 @@ class ForceActuator:
         # ForceActuator specific
         self.flags.pause_feedback = True
         time.sleep(0.1)
-        self.buffer_df = pd.DataFrame(columns=COLUMNS)
+        # self.buffer_df = pd.DataFrame(columns=COLUMNS)
+        self.buffer_df.drop(index=self.buffer_df.index, inplace=True, errors='ignore')
         self.buffer.clear()
         self.records.clear()
         self.flags.pause_feedback = False
@@ -615,41 +619,46 @@ class ForceActuator:
         displacement_threshold: float|None = None, 
         speed: float|None = None, 
         from_top: bool = True,
-        record: bool = False
+        record: bool = False,
+        timeout:int=None,
     ) -> bool:
         """
         Apply the target force
         
         Args:
-            force_threshold (float): target force
-            displacement_threshold (float): target displacement
-            speed (float): movement speed
-            from_top (bool): whether to move from the top or bottom
+            force_threshold (float): target force. Defaults to 0.1.
+            displacement_threshold (float): target displacement. Defaults to None.
+            speed (float): movement speed. Defaults to None.
+            from_top (bool): whether compression direction is towards negative displacement. Defaults to True.
+            record (bool): whether to record data. Defaults to False.
             
         Returns:
             bool: whether movement is successful (i.e. force threshold is not reached)
         """
+        if timeout != None:
+            default_timeout = self.touch_timeout
+            self.touch_timeout = timeout
         speed = speed or self.max_speed
         
         self._logger.info('Touching...')
         # if not self.flags.get_feedback:
         #     self.stream(True)
-        if abs(round(self.force)) > self._touch_force_threshold:
+        if abs(round(self.force)) > self.touch_force_threshold:
             # self.stream(False)
             self.zero()
             # self.stream(True)
         
         _threshold = self.force_threshold
-        _touch_timeout = self._touch_timeout
-        self.force_threshold = self._touch_force_threshold if force_threshold is None else force_threshold
-        self._touch_timeout = 3600
+        # touch_timeout = self.touch_timeout
+        self.force_threshold = self.touch_force_threshold if force_threshold is None else force_threshold
+        # self.touch_timeout = 3600
         
         if record:
             self.stream(False)
             self.record(True)
         try:
             # touch sample
-            self.moveTo(self.limits[0], speed=speed)
+            self.moveTo(displacement_threshold, speed=speed)
             time.sleep(2)
         except Exception as e:
             self._logger.exception(e)
@@ -657,7 +666,9 @@ class ForceActuator:
             ...
         finally:
             self.force_threshold = _threshold
-            self._touch_timeout = _touch_timeout
+            if timeout != None:
+                self.touch_timeout = default_timeout
+            # self.touch_timeout = touch_timeout
             time.sleep(2)
         self._logger.info('In contact')
         if record:
@@ -678,7 +689,7 @@ class ForceActuator:
         Returns:
             float: actual displacement upon reaching threshold
         """
-        timeout = self._touch_timeout if timeout is None else timeout
+        timeout = self.touch_timeout if timeout is None else timeout
         start = time.time()
         while self.displacement != displacement:
             time.sleep(0.001)
