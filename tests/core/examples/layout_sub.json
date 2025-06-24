@@ -46,7 +46,13 @@
             "name": "slotSix",
             "dimensions": [127.76,85.48,0],
             "cornerOffset": [460.5,106.5,0],
-            "orientation": [0,0,0]
+            "orientation": [0,0,0],
+            "labware_file": [
+                "control-lab-le/tests/core/examples/labware_wellplate.json",
+                "control-lab-le/tests/core/examples/labware_wellplate.json",
+                "control-lab-le/tests/core/examples/labware_tiprack.json",
+                "control-lab-le/tests/core/examples/labware_wellplate.json"
+            ]
         },
         "0": {
             "name": "slotZero",
