@@ -7,12 +7,7 @@ This module holds the references for syringe pumps from TriContinent.
     `StatusCode`: Enum for status codes returned by the pump
 """
 # Standard library imports
-from dataclasses import dataclass, field
 from enum import Enum
-import logging
-
-logger = logging.getLogger(__name__)
-logger.debug(f"Import: OK <{__name__}>")
 
 class ErrorCode(Enum):
     er0     = 'No error'
