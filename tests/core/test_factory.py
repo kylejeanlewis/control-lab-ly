@@ -144,7 +144,7 @@ def test_get_plans():
 @pytest.mark.parametrize("config, use_platform", [
     ({'tool': mock_module.TestClass()}, False),
     ({'tool': mock_module.TestClass()}, True),
-    ({'tool': mock_module.TestClass(), 'error':Exception}, False)
+    ({'tool': mock_module.TestClass(), 'error':Exception()}, False)
 ])
 def test_get_setup(config, use_platform, monkeypatch):
     monkeypatch.setattr('controllably.core.factory.load_setup_from_files', lambda *args,**kwargs: dict_to_named_tuple(config, 'TestClasses'))
