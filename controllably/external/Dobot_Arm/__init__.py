@@ -1,1 +1,1 @@
-from .TCP_IP_4Axis_Python import *
+from .TCP_IP_4Axis_Python import DobotApiDashboard, DobotApiMove
