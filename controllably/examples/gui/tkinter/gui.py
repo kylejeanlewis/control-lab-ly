@@ -2,7 +2,7 @@
 """ 
 This module contains the Panel class for creating GUI panels.
 
-### Classes:
+## Classes:
     `Panel`: Panel class for creating GUI panels.
 
 <i>Documentation last updated: 2025-02-22</i>
