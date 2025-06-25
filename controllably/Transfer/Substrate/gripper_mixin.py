@@ -23,7 +23,7 @@ class GripperMixin:
     """
     Mixin class for vacuum control
     
-    ### Methods
+    ### Methods:
         `drop`: Drop to release object
         `grab`: Grab to secure object
         `toggleGrip`: Toggle grip

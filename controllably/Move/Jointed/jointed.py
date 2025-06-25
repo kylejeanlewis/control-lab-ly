@@ -23,11 +23,11 @@ class RobotArm(Mover):
     """
     RobotArm provides methods to control a robot arm
     
-    ### Constructor
+    ### Constructor:
         `home_waypoints` (Sequence[Position], optional): home waypoints for the robot. Defaults to list().
         `joint_limits` (Sequence[Sequence[float]], optional): joint limits for the robot. Defaults to None.
     
-    ### Attributes and properties
+    ### Attributes and properties:
         `home_waypoints` (list[Position]): home waypoints for the robot
         `joint_limits` (np.ndarray): joint limits for the robot
         `joint_position` (np.ndarray): current joint angles
@@ -55,7 +55,7 @@ class RobotArm(Mover):
         `worktool_position` (Position): work position of the tool end effector
         `position` (Position): work position of the tool end effector; alias for `worktool_position`
     
-    ### Methods
+    ### Methods:
         `isFeasibleJoint`: checks and returns whether the target joint angles are feasible
         `jointMoveBy`: move the robot by target joint angles
         `jointMoveTo`: move the robot to target joint position

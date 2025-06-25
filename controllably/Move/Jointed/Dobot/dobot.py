@@ -33,7 +33,7 @@ class Dobot(RobotArm):
     """
     Dobot provides methods to control Dobot's robot arms
     
-    ### Constructor
+    ### Constructor:
         `host` (str): IP address of Dobot
         `joint_limits` (Optional[Sequence[Sequence[float]]], optional): joint limits of the robot. Defaults to None.
         `home_waypoints` (Sequence[Position], optional): home waypoints for the robot. Defaults to [].
@@ -41,7 +41,7 @@ class Dobot(RobotArm):
         `movement_timeout` (Optional[int], optional): timeout for movement. Defaults to None.
         `verbose` (bool, optional): whether to output logs. Defaults to False.
         
-    ### Attributes and properties
+    ### Attributes and properties:
         `movement_buffer` (int): buffer time for movement
         `movement_timeout` (int): timeout for movement
         `max_joint_accels` (np.ndarray): maximum joint accelerations of the robot
@@ -73,7 +73,7 @@ class Dobot(RobotArm):
         `worktool_position` (Position): work position of the tool end effector
         `position` (Position): work position of the tool end effector; alias for `worktool_position`
         
-    ### Methods
+    ### Methods:
         `isFeasibleJoint`: checks and returns whether the target joint angles are feasible
         `jointMoveBy`: move the robot by target joint angles
         `jointMoveTo`: move the robot to target joint position

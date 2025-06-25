@@ -60,7 +60,7 @@ class LiquidMover(Compound):
         `tip_approach_distance` (float, optional): distance in mm from top to travel down to pick tip. Defaults to 20.
         `verbose` (bool, optional): verbosity of output. Defaults to False.
         
-    ### Attributes and properties
+    ### Attributes and properties:
         `speed_factor_lateral` (float): speed factor for lateral movement
         `speed_factor_up` (float): speed factor for upward movement
         `speed_factor_down` (float): speed factor for downward movement
@@ -81,7 +81,7 @@ class LiquidMover(Compound):
         `tip_lists` (dict[int,list[str]]): dictionary of tip lists
         `current_tip_detail` (dict[str, str|np.ndarray]): dictionary of current tip details
         
-    ### Methods
+    ### Methods:
         `align`: align the tool tip to the target coordinates, while also considering any additional offset
         `aspirateAt`: aspirate specified volume at target location, at desired speed
         `dispenseAt`: dispense specified volume at target location, at desired speed

@@ -40,7 +40,7 @@ class GRBL(SerialDevice):
     GRBL class for controlling CNC machines using the GRBL firmware.
     Refer to https://github.com/gnea/grbl/tree/master/doc/markdown for more information on the GRBL firmware.
     
-    ### Constructor
+    ### Constructor:
         `port` (str|None): Serial port to connect to. Defaults to None.
         `baudrate` (int): Baudrate of the serial connection. Defaults to 115200.
         `timeout` (int): Timeout for serial connection. Defaults to 1.
@@ -48,7 +48,7 @@ class GRBL(SerialDevice):
         `message_end` (str): Message end character for serial communication. Defaults to '\n'.
         `simulation` (bool): Simulation mode for testing. Defaults to False.
         
-    ### Attributes and properties
+    ### Attributes and properties:
         `port` (str): device serial port
         `baudrate` (int): device baudrate
         `timeout` (int): device timeout
@@ -60,7 +60,7 @@ class GRBL(SerialDevice):
         `is_connected` (bool): whether the device is connected
         `verbose` (bool): verbosity of class
         
-    ### Methods
+    ### Methods:
         `getAlarms`: check for alarms in the response
         `getErrors`: check for errors in the response
         `getInfo`: query device information

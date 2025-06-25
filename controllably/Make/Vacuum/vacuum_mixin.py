@@ -23,7 +23,7 @@ class VacuumMixin:
     """
     Mixin class for vacuum control
     
-    ### Methods
+    ### Methods:
         `evacuate`: Evacuate to create vacuum
         `vent`: Vent to release vacuum
         `toggleVacuum`: Toggle vacuum

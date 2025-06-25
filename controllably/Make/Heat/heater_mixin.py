@@ -22,7 +22,7 @@ class HeaterMixin:
     """
     Mixin class for heater control
     
-    ### Methods
+    ### Methods:
         `atTemperature`: Check if temperature is reached
         `getTemperature`: Get temperature
         `holdTemperature`: Hold temperature

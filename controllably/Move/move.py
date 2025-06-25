@@ -34,7 +34,7 @@ class Mover:
     """ 
     Base class for mover tools.
     
-    ### Constructor
+    ### Constructor:
         `robot_position` (Position, optional): current position of the robot. Defaults to Position().
         `home_position` (Position, optional): home position of the robot in terms of robot coordinate system. Defaults to Position().
         `tool_offset` (Position, optional): tool offset from robot to end effector. Defaults to Position().
@@ -47,7 +47,7 @@ class Mover:
         `speed_max` (float, optional): maximum speed of robot in mm/min. Defaults to 600.
         `verbose` (bool, optional): verbosity of class. Defaults to False.
         
-    ### Attributes and properties
+    ### Attributes and properties:
         `connection_details` (dict): connection details for the device
         `device` (Device): device object that communicates with physical tool
         `flags` (SimpleNamespace[str, bool]): flags for the class
@@ -72,7 +72,7 @@ class Mover:
         `worktool_position` (Position): work position of the tool end effector
         `position` (Position): work position of the tool end effector; alias for `worktool_position`
         
-    ### Methods
+    ### Methods:
         `connect`: connect to the device
         `disconnect`: disconnect from the device
         `resetFlags`: reset all flags to class attribute `_default_flags`

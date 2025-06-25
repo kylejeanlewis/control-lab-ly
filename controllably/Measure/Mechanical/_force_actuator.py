@@ -49,38 +49,36 @@ class ForceActuator:
         `precalibration` (Sequence[float], optional): pre-calibration correction against a calibrated load cell. Defaults to (1.0, 0.0).
         `touch_force_threshold` (float, optional): force threshold to detect touching of sample. Defaults to 2 * G.
 
-    ### Attributes
-    - `baseline` (float): baseline readout at which zero newtons is set
-    - `calibration_factor` (float): calibration factor of device readout to newtons
-    - `displacement` (float): machine displacement
-    - `end_stop` (bool): whether the end stop is triggered
-    - `home_displacement` (float): starting displacement of home position
-    - `precision` (int): number of decimal places to print force value
-    - `threshold` (float): force threshold to stop movement
+    ### Attributes and properties:
+        `baseline` (float): baseline readout at which zero newtons is set
+        `calibration_factor` (float): calibration factor of device readout to newtons
+        `displacement` (float): machine displacement
+        `end_stop` (bool): whether the end stop is triggered
+        `home_displacement` (float): starting displacement of home position
+        `precision` (int): number of decimal places to print force value
+        `threshold` (float): force threshold to stop movement
+        `force` (float): force experienced
+        `limits` (np.ndarray): lower and upper limits of movement
     
-    ### Properties
-    - `force` (float): force experienced
-    - `limits` (np.ndarray): lower and upper limits of movement
-    
-    ### Methods
-    - `clearCache`: clear most recent data and configurations
-    - `disconnect`: disconnect from device
-    - `getForce`: get the force response
-    - `home`: home the actuator
-    - `isFeasible`: checks and returns whether the target displacement is feasible
-    - `measure`: measure the stress-strain response of sample
-    - `move`: move the actuator by desired distance. Alias of `moveBy()` method
-    - `moveBy`: move the actuator by desired distance
-    - `moveTo`: move the actuator to desired displacement
-    - `reset`: reset the device
-    - `setThreshold`: set the force threshold for the machine
-    - `shutdown`: shutdown procedure for tool
-    - `tare`: alias for zero()
-    - `stream`: start or stop feedback loop
-    - `record`: start or stop data recording
-    - `touch`: touch the sample
-    - `waitThreshold`: wait for force sensor to reach the force threshold
-    - `zero`: set the current reading as baseline (i.e. zero force)
+    ### Methods:
+        `clearCache`: clear most recent data and configurations
+        `disconnect`: disconnect from device
+        `getForce`: get the force response
+        `home`: home the actuator
+        `isFeasible`: checks and returns whether the target displacement is feasible
+        `measure`: measure the stress-strain response of sample
+        `move`: move the actuator by desired distance. Alias of `moveBy()` method
+        `moveBy`: move the actuator by desired distance
+        `moveTo`: move the actuator to desired displacement
+        `reset`: reset the device
+        `setThreshold`: set the force threshold for the machine
+        `shutdown`: shutdown procedure for tool
+        `tare`: alias for zero()
+        `stream`: start or stop feedback loop
+        `record`: start or stop data recording
+        `touch`: touch the sample
+        `waitThreshold`: wait for force sensor to reach the force threshold
+        `zero`: set the current reading as baseline (i.e. zero force)
     """
 
     _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(

@@ -59,7 +59,7 @@ class M1Pro(Dobot):
     """
     M1Pro provides methods to control Dobot's M1Pro robot arm
     
-    ### Constructor
+    ### Constructor:
         `host` (str): IP address of Dobot
         `joint_limits` (Sequence[Sequence[float]]|None, optional): joint limits of the robot. Defaults to None.
         `right_handed` (bool, optional): whether the robot is in right-handed mode (i.e elbow bends to the right). Defaults to True.
@@ -78,7 +78,7 @@ class M1Pro(Dobot):
         `verbose` (bool, optional): whether to output logs. Defaults to False.
         `simulation` (bool, optional): whether to simulate the robot. Defaults to False.
         
-    ### Attributes and properties
+    ### Attributes and properties:
         `movement_buffer` (int): buffer time for movement
         `movement_timeout` (int): timeout for movement
         `max_joint_accels` (np.ndarray): maximum joint accelerations of the robot
@@ -110,7 +110,7 @@ class M1Pro(Dobot):
         `worktool_position` (Position): work position of the tool end effector
         `position` (Position): work position of the tool end effector; alias for `worktool_position`
         
-    ### Methods
+    ### Methods:
         `setHandedness`: set the handedness of the robot
         `isFeasibleJoint`: checks and returns whether the target joint angles are feasible
         `jointMoveBy`: move the robot by target joint angles

@@ -85,7 +85,7 @@ class GCode(Mover):
     GCode provides an interface to control a G-code based device.
     Refer to https://reprap.org/wiki/G-code for more information on G-code commands.
     
-    ### Constructor
+    ### Constructor:
         `port` (str): serial port address
         `device_type_name` (str, optional): name of the device type. Defaults to 'GRBL'.
         `baudrate` (int, optional): baudrate of the device. Defaults to 115200.
@@ -93,7 +93,7 @@ class GCode(Mover):
         `movement_timeout` (int, optional): timeout for movement. Defaults to None.
         `verbose` (bool, optional): verbosity of class. Defaults to False.
         
-    ### Attributes and properties
+    ### Attributes and properties:
         `movement_buffer` (int): buffer time after movement
         `movement_timeout` (int): timeout for movement
         `connection_details` (dict): connection details for the device
@@ -121,7 +121,7 @@ class GCode(Mover):
         `max_accels` (np.ndarray): maximum accelerations of the robot
         `max_speeds` (np.ndarray): maximum speeds of the robot
         
-    ### Methods
+    ### Methods:
         `query`: query the device
         `toggleCoolantValve`: toggle the coolant valve
         `connect`: connect to the device

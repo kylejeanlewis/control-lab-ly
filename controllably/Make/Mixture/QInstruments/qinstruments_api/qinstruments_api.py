@@ -38,7 +38,7 @@ class QInstrumentsDevice(SerialDevice):
     QInstrumentsDevice provides an interface for available actions to control devices from QInstruments, including orbital shakers,
     heat plates, and cold plates.
     
-    ### Constructor
+    ### Constructor:
         `port` (str|None, optional): serial port for the device. Defaults to None.
         `baudrate` (int, optional): baudrate for the device. Defaults to 9600.
         `timeout` (int, optional): timeout for the device. Defaults to 1.
@@ -47,7 +47,7 @@ class QInstrumentsDevice(SerialDevice):
         `simulation` (bool, optional): whether to simulate the device. Defaults to False.
         `verbose` (bool, optional): verbosity of class. Defaults to False.
     
-    ### Attributes and properties
+    ### Attributes and properties:
         `port` (str): device serial port
         `baudrate` (int): device baudrate
         `timeout` (int): device timeout
@@ -60,7 +60,7 @@ class QInstrumentsDevice(SerialDevice):
         `is_connected` (bool): whether the device is connected
         `verbose` (bool): verbosity of class
     
-    ### Methods
+    ### Methods:
 
     #### General
         `clear`: clear the input and output buffers

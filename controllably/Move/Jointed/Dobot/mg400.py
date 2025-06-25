@@ -55,7 +55,7 @@ class MG400(Dobot):
     """
     MG400 provides methods to control Dobot's MG400 robot arm
 
-    ### Constructor
+    ### Constructor:
         `host` (str): IP address of Dobot
         `joint_limits` (Sequence[Sequence[float]]|None, optional): joint limits of the robot. Defaults to None.
         `robot_position` (Position, optional): current position of the robot. Defaults to Position().
@@ -73,7 +73,7 @@ class MG400(Dobot):
         `verbose` (bool, optional): whether to output logs. Defaults to False.
         `simulation` (bool, optional): whether to simulate the robot. Defaults to False.
     
-    ### Attributes and properties
+    ### Attributes and properties:
         `movement_buffer` (int): buffer time for movement
         `movement_timeout` (int): timeout for movement
         `max_joint_accels` (np.ndarray): maximum joint accelerations of the robot
@@ -105,7 +105,7 @@ class MG400(Dobot):
         `worktool_position` (Position): work position of the tool end effector
         `position` (Position): work position of the tool end effector; alias for `worktool_position`
     
-    ### Methods
+    ### Methods:
         `retractArm`: retract arm, rotate about base, then extend again
         `isFeasibleJoint`: checks and returns whether the target joint angles are feasible
         `jointMoveBy`: move the robot by target joint angles

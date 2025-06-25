@@ -25,10 +25,10 @@ class Maker:
     """
     Base class for maker tools.
     
-    ### Constructor
+    ### Constructor:
         `verbose` (bool, optional): verbosity of class. Defaults to False.
     
-    ### Attributes and properties
+    ### Attributes and properties:
         `connection_details` (dict): connection details for the device
         `device` (Device): device object that communicates with physical tool
         `flags` (SimpleNamespace[str, bool]): flags for the class
@@ -36,7 +36,7 @@ class Maker:
         `is_connected` (bool): whether the device is connected
         `verbose` (bool): verbosity of class
     
-    ### Methods
+    ### Methods:
         `connect`: connect to the device
         `disconnect`: disconnect from the device
         `execute`: execute task

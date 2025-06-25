@@ -34,14 +34,14 @@ class DobotDevice:
     """ 
     DobotDevice provides methods to connect and interface with Dobot's arms
     
-    ### Constructor
+    ### Constructor:
         `host` (str): IP address of Dobot
         `port` (int, optional): port number. Defaults to None.
         `timeout` (int, optional): timeout for connection. Defaults to 10.
         `simulation` (bool, optional): whether to simulate the connection. Defaults to False.
         `verbose` (bool, optional): whether to log debug messages. Defaults to False.
     
-    ### Attributes and properties
+    ### Attributes and properties:
         `host` (str): device host
         `port` (int): device port
         `timeout` (int): device timeout
@@ -52,7 +52,7 @@ class DobotDevice:
         `is_connected` (bool): whether the device is connected
         `verbose` (bool): verbosity of class
         
-    ### Methods
+    ### Methods:
         `connect`: connect to the device
         `disconnect`: disconnect from the device
         `reset`: reset the device

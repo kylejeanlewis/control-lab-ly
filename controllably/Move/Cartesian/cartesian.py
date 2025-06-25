@@ -25,7 +25,7 @@ class Gantry(GCode):
     """
     Gantry provides controls for a general cartesian robot.
     
-    ### Constructor
+    ### Constructor:
         `port` (str): serial port address
         `limits` (Sequence[Sequence[float]], optional): lower and upper limits of gantry, in terms of robot coordinate system. Defaults to ((0, 0, 0), (0, 0, 0)).
         `robot_position` (Position, optional): current position of the robot. Defaults to Position().
@@ -45,7 +45,7 @@ class Gantry(GCode):
         `verbose` (bool, optional): verbosity of class. Defaults to False.
         `simulation` (bool, optional): whether to simulate. Defaults to False.
         
-    ### Attributes and properties
+    ### Attributes and properties:
         `limits` (np.ndarray): lower and upper limits of gantry
         `movement_buffer` (int): buffer time after movement
         `movement_timeout` (int): timeout for movement
@@ -72,7 +72,7 @@ class Gantry(GCode):
         `worktool_position` (Position): work position of the tool end effector
         `position` (Position): work position of the tool end effector; alias for `worktool_position`
         
-    ### Methods
+    ### Methods:
         `query`: query the device
         `toggleCoolantValve`: toggle the coolant valve
         `connect`: connect to the device
