@@ -1,22 +1,48 @@
 site_name: Control-lab-ly
 theme:
-  name: readthedocs
+  name: material
+  features:
+    - content.code.copy
 plugins:
 - mkdocstrings:
     default_handler: python
     handlers:
       python:
         options:
-          docstring_style: google
-          show_root_full_path: false
-          show_root_heading: false
+          # General
           show_source: false
+          # Headings
+          # parameter_headings: true
+          show_root_heading: false
+          show_root_full_path: false
+          show_symbol_type_heading: true
+          show_symbol_type_toc: true
+          # Members
+          # Docstrings
+          docstring_style: google
+          docstring_section_style: spacy
+          merge_init_into_class: true
+          show_docstring_attributes: true
+          # Signatures
           show_signature: false
           show_signature_annotations: false
-          show_symbol_type_toc: true
           signature_crossrefs: true
+          # Extensions
           extensions:
           - docs/site/scripts/parse_docstring.py
+markdown_extensions:
+  # Admonitions
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  # Code blocks
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
 watch:
 - controllably/
 nav:
