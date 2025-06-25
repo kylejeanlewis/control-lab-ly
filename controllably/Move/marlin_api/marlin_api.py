@@ -198,14 +198,15 @@ class Marlin(SerialDevice):
         self.clearDeviceBuffer()
         responses = self.query('M114 R', multi_out=False)
         self.clearDeviceBuffer()
+        
+        status,current_position = 'Idle', np.array([0,0,0])
         # responses = self.query('M105', multi_out=False)      # Check the current temperature
         if self.flags.simulation:
-            return 'Idle', current_position, self._home_offset
+            return status, current_position, self._home_offset
         while len(responses)==0 or 'ok' not in responses[-1]:
             time.sleep(1)
             chunk = self.readAll()
             responses.extend(chunk)
-        status,current_position = 'Idle', np.array([0,0,0])
         relevant_responses = []
         for response in responses:
             response = response.strip()
@@ -214,7 +215,7 @@ class Marlin(SerialDevice):
             relevant_responses.append(response)
         xyz = relevant_responses[-1].split("E")[0].split(" ")[:-1]
         current_position = [float(c[2:]) for c in xyz]
-        return (status, current_position, self._home_offset)
+        return status, current_position, self._home_offset
     
     def halt(self) -> Position:         # TODO: Check if this is the correct implementation
         """
