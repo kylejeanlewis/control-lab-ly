@@ -267,7 +267,8 @@ def get_setup(
     if platform_type is None or len(platform_type.__annotations__) != len(setup):
         logger.warning('Unable to create typed Platform dataclass')
         logger.warning(f'{type(setup).__name__} has fields: {setup._fields}')
-        logger.warning(f"Platform dataclass has fields: {fields(platform_type)}") 
+        if platform_type is not None:
+            logger.warning(f'Platform type has fields: {fields(platform_type)}')
         logger.warning('Returning NamedTuple instead...')
         return setup
     
