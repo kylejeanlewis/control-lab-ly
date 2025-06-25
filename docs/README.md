@@ -134,7 +134,7 @@ For more advanced uses, Control-lab-ly provides a host of tools to streamline th
 
 ### 1.1 Dynamic object initialization
 Control-lab-ly allows users to store all their tool configuration data in a YAML file, providing a single source of truth for all projects using the same set up. The `config.yaml` file stores the configuration for all the tools in the set up, which can be parsed by Control-lab-ly to initialize the tools using `get_setup()`.
-```yaml
+```yaml title="config.yaml"
 MyDevice:                                   # user-defined name
   module: controllably.Move.Cartesian       # "from" ...
   class: Gantry                             # "import" ...
@@ -150,7 +150,7 @@ MyDevice:                                   # user-defined name
 
 ### 1.2 Reconfigurable complex tools
 Compound devices are similarly configured in the `config.yaml` file. The configuration details of the component tools are nested in `details`.
-```yaml
+```yaml title="config.yaml"
 MyCompoundDevice:                           # user-defined name
   module: controllably.Compound.LiquidMover
   class: LiquidMover
@@ -174,7 +174,7 @@ MyCompoundDevice:                           # user-defined name
 ```
 
 Lastly, you can define shortcuts (or aliases) at the end of `config.yaml` to easily access the nested components of compound devices.
-```yaml
+```yaml title="config.yaml"
 SHORTCUTS:
   LiquidDevice: 'MyCompoundDevice.liquid'
   MoverDevice: 'MyCompoundDevice.mover'
@@ -184,7 +184,8 @@ SHORTCUTS:
 ### 1.3 Modular positioning system
 Control-lab-ly allows users to easily combine multiple modules and switch between local and global coordinates. The `layout.json` file stores the layout configuration of your physical workspace (`Deck`).
 >*Optional: if your setup does not involve moving objects around in a pre-defined workspace,  a layout configuration may not be required*
-```json
+
+```json title="layout.json"
 {
     "metadata": {
         "displayName": "Example Layout (main)",
@@ -231,17 +232,21 @@ Control-lab-ly allows users to easily combine multiple modules and switch betwee
 }
 ```
 
-The size and position of the `Deck` is defined by the `dimensions`, and combination of `cornerOffset` and `orientation` respectively. 
+The size and position of the `Deck` is defined by the `dimensions`, and combination of `cornerOffset` and `orientation` respectively.
+
 - `dimensions` is the (x,y,z) dimensions with respect to the deck's own coordinate system. 
 - `cornerOffset` is the (x,y,z) coordinates of the bottom-left corner of the deck with respect to world coordinates (typically the origin). 
 - `orientation` is the (rz,ry,rx) rotation of the deck about the bottom-left corner with respect to world coordinates (typically the identity rotation or zero rotation).
 
 Within the deck, `slots` and `zones` can be defined.
+
 - `slots` are spaces where Labware can be placed. These Labware can be individual tools or vessel holders. Indexing of slots increments numerically, typically starting from 1. 
 - `zones` are regions of nested layouts. As such, a `Deck` of a smaller modular setup layout can be incorporated as part of a larger layout. Indexing of zones increments alphabetically, typically starting with 'A'.
 
-Here, the `dimensions`, `cornerOffset`, and `orientation` definitions apply similarly, except the latter two takes reference from the parent's origin and orientation. The filename definition in `labware_file` and `deck_file` can either be absolute filepaths, or relative to the project repository. 
+Here, the `dimensions`, `cornerOffset`, and `orientation` definitions apply similarly, except the latter two takes reference from the parent's origin and orientation. The filename definition in `labware_file` and `deck_file` can either be absolute filepaths, or relative to the project repository.
+
 > This package uses the same Labware files as those provided by [Opentrons](https://opentrons.com/), which can be found [here](https://labware.opentrons.com/), and custom Labware files can be created [here](https://labware.opentrons.com/create/). Additional fields can be added to the these Labware files to enable features such as plate stacking and collision avoidance.
+>
 > - `parameters.isStackable` is a boolean value defining if another Labware can be stacked above.
 > - `slotAbove` defines a new slot above the Labware, with similar subfields `slotAbove.name`, `slotAbove.dimensions`, `slotAbove.cornerOffset`, and `slotAbove.orientation`.
 > - `exclusionBuffer` is the offset from the lower and upper bounds of the Labware bounding box. i.e. [ [left, front, bottom], [right, back, top] ]
@@ -304,7 +309,7 @@ get_ports()          # Get a list of serial port addresses of your connect devic
 ```
 
 Next, populate the `registry.yaml` file with the relevant information.
-```yaml
+```yaml title="registry.yaml"
 '012345678901234':              # insert your machine's unique identifier
     cam_index:                  # camera index of the connected imaging devices
       __cam_01__: 1             # NOTE: retain leading and trailing double underscores
@@ -313,7 +318,7 @@ Next, populate the `registry.yaml` file with the relevant information.
 ```
 
 Lastly, change the value for the serial port address in the `config.yaml` file(s) to match the registry.
-```yaml
+```yaml title="config.yaml"
 MyDevice:                                   # user-defined name
   module: controllably.Move.Cartesian       # "from" ...
   class: Gantry                             # "import" ...
@@ -325,7 +330,7 @@ MyDevice:                                   # user-defined name
 
 ### 2.2 Linting and coding assists
 To help with development, linters such as Pylance provide suggestions while coding, based on the types of the objects. To make use of this feature, furnish the `__init__.py` file with the corresponding tool names and classes from the `config.yaml` file.
-```python
+```python title="__init__.py"
 from dataclasses import dataclass
 ...
 
