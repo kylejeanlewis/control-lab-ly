@@ -38,7 +38,7 @@ def within_volume(point: Sequence[float]) -> bool:
     Returns:
         bool: whether the point is within the robot's workspace
     """
-    assert len(point) == 3, f"Ensure point is a 3D coordinate"
+    assert len(point) == 3, "Ensure point is a 3D coordinate"
     x,y,z = point
     # XY-plane
     j1 = round(math.degrees(math.atan(x/(y + 1E-6))), 3)
@@ -250,8 +250,8 @@ class MG400(Dobot):
         Returns:
             np.ndarray: relevant rotation angles (in degrees) and/or distances (in mm)
         """
-        assert len(src_point) == 3 and len(dst_point) == 3, f"Ensure both points are 3D coordinates"
-        assert isinstance(src_point, np.ndarray) and isinstance(dst_point, np.ndarray), f"Ensure both points are numpy arrays"
+        assert len(src_point) == 3 and len(dst_point) == 3, "Ensure both points are 3D coordinates"
+        assert isinstance(src_point, np.ndarray) and isinstance(dst_point, np.ndarray), "Ensure both points are numpy arrays"
         distances = abs(dst_point - src_point)
         dx,dy,dz = distances[:3]
         j1_angle = abs( math.degrees(math.atan2(dy, dx)) )                    # joint 1

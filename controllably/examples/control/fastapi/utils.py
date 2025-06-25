@@ -129,7 +129,7 @@ class FastAPIWorkerClient:
         while not terminate.is_set():
             try:
                 response = requests.get(f"{url}/command/{target}")
-            except Exception as e:
+            except Exception:
                 logger.error('Connection Error')
                 raise ConnectionError
             if response.status_code == 200:
@@ -157,7 +157,7 @@ class FastAPIWorkerClient:
         reply_json = json.loads(reply)
         try:
             response = requests.post(f"{url}/reply", json=reply_json)
-        except Exception as e:
+        except Exception:
             logger.error('Connection Error')
             raise ConnectionError
         reply_id = response.json()
@@ -194,7 +194,7 @@ class FastAPIWorkerClient:
                 try:
                     time.sleep(0.1)
                     worker.receiveRequest(sender=sender)
-                except CONNECTION_ERRORS as e:
+                except CONNECTION_ERRORS:
                     logger.error(f'Connection Error: {worker.address}')
                     break
                 except InterruptedError:
@@ -263,7 +263,7 @@ class FastAPIUserClient:
         """
         try:
             response = requests.get(f"{self.url}/registry")
-        except Exception as e:
+        except Exception:
             logger.error('Connection Error')
             raise ConnectionError
         registry = response.json()
@@ -294,7 +294,7 @@ class FastAPIUserClient:
         command_json = json.loads(command)
         try:
             response = requests.post(f"{url}/command", json=command_json)
-        except Exception as e:
+        except Exception:
             logger.error('Connection Error')
             raise ConnectionError
         request_id = response.json()
@@ -319,7 +319,7 @@ class FastAPIUserClient:
         while not terminate.is_set():
             try:
                 response = requests.get(f"{url}/reply/{request_id}")
-            except Exception as e:
+            except Exception:
                 logger.error('Connection Error')
                 raise ConnectionError
             if response.status_code == 200:

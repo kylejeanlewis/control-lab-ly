@@ -12,7 +12,6 @@ This module contains the LED class.
 from __future__ import annotations
 import logging
 import threading
-import time
 
 # Local application imports
 from ...core.compound import Multichannel

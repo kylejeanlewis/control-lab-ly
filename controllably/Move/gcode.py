@@ -264,13 +264,13 @@ class GCode(Mover):
         Returns:
             Position: new tool/robot position
         """
-        assert isinstance(by, (Sequence, Position, np.ndarray)), f"Ensure `by` is a Sequence or Position or np.ndarray object"
+        assert isinstance(by, (Sequence, Position, np.ndarray)), "Ensure `by` is a Sequence or Position or np.ndarray object"
         rotation = True
         if isinstance(by, (Sequence, np.ndarray)):
             if len(by) == 6:
                 by = Position(by[:3], Rotation.from_euler('zyx', by[3:], degrees=True))
             else:
-                assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
+                assert len(by) == 3, "Ensure `by` is a 3-element sequence for x,y,z"
                 rotation = False
         # if isinstance(by, (Sequence, np.ndarray)):
         #     assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
@@ -353,13 +353,13 @@ class GCode(Mover):
         Returns:
             Position: new tool/robot position
         """
-        assert isinstance(to, (Sequence, Position, np.ndarray)), f"Ensure `to` is a Sequence or Position or np.ndarray object"
+        assert isinstance(to, (Sequence, Position, np.ndarray)), "Ensure `to` is a Sequence or Position or np.ndarray object"
         rotation = True
         if isinstance(to, (Sequence, np.ndarray)):
             if len(to) == 6:
                 to = Position(to[:3], Rotation.from_euler('zyx', to[3:], degrees=True))
             else:
-                assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
+                assert len(to) == 3, "Ensure `to` is a 3-element sequence for x,y,z"
                 rotation = False
         # if isinstance(to, (Sequence, np.ndarray)):
         #     assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"

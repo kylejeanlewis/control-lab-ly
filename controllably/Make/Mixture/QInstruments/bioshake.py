@@ -239,7 +239,7 @@ class BioShake(HeaterMixin, Maker):
             self.holdTemperature(temperature=temperature, duration=duration)
             self._logger.info(f"Holding at {self.set_temperature}°C for {duration} seconds")
             time.sleep(duration)
-            self._logger.info(f"End of temperature hold")
+            self._logger.info("End of temperature hold")
             # self.setTemperature(25, False)
         return
     

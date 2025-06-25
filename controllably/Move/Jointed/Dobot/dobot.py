@@ -201,13 +201,13 @@ class Dobot(RobotArm):
         Returns:
             Position: new tool/robot position
         """
-        assert isinstance(by, (Sequence, Position, np.ndarray)), f"Ensure `by` is a Sequence or Position or np.ndarray object"
+        assert isinstance(by, (Sequence, Position, np.ndarray)), "Ensure `by` is a Sequence or Position or np.ndarray object"
         rotation = True
         if isinstance(by, (Sequence, np.ndarray)):
             if len(by) == 6:
                 by = Position(by[:3], Rotation.from_euler('zyx', by[3:], degrees=True))
             else:
-                assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
+                assert len(by) == 3, "Ensure `by` is a 3-element sequence for x,y,z"
                 rotation = False
         # if isinstance(by, (Sequence, np.ndarray)):
         #     assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
@@ -271,13 +271,13 @@ class Dobot(RobotArm):
         Returns:
             Position: new tool/robot position
         """
-        assert isinstance(to, (Sequence, Position, np.ndarray)), f"Ensure `to` is a Sequence or Position or np.ndarray object"
+        assert isinstance(to, (Sequence, Position, np.ndarray)), "Ensure `to` is a Sequence or Position or np.ndarray object"
         rotation = True
         if isinstance(to, (Sequence, np.ndarray)):
             if len(to) == 6:
                 to = Position(to[:3], Rotation.from_euler('zyx', to[3:], degrees=True))
             else:
-                assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
+                assert len(to) == 3, "Ensure `to` is a 3-element sequence for x,y,z"
                 rotation = False
         # if isinstance(to, (Sequence, np.ndarray)):
         #     assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
@@ -448,9 +448,9 @@ class Dobot(RobotArm):
         Returns:
             Rotation: new tool/robot orientation
         """
-        assert isinstance(to, (Sequence, Rotation, np.ndarray)), f"Ensure `to` is a Sequence or Rotation or np.ndarray object"
+        assert isinstance(to, (Sequence, Rotation, np.ndarray)), "Ensure `to` is a Sequence or Rotation or np.ndarray object"
         if isinstance(to, (Sequence, np.ndarray)):
-            assert len(to) == 3, f"Ensure `to` is a 3-element sequence for c,b,a"
+            assert len(to) == 3, "Ensure `to` is a 3-element sequence for c,b,a"
         rotate_to = to if isinstance(to, Rotation) else Rotation.from_euler('zyx', to, degrees=True)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
         self._logger.info(f"Rotate To | {rotate_to} at speed factor {speed_factor}")
@@ -556,8 +556,8 @@ class Dobot(RobotArm):
         Returns:
             np.ndarray: relevant rotation angles (in degrees) and/or distances (in mm)
         """
-        assert len(src_point) == 3 and len(dst_point) == 3, f"Ensure both points are 3D coordinates"
-        assert isinstance(src_point, np.ndarray) and isinstance(dst_point, np.ndarray), f"Ensure both points are numpy arrays"
+        assert len(src_point) == 3 and len(dst_point) == 3, "Ensure both points are 3D coordinates"
+        assert isinstance(src_point, np.ndarray) and isinstance(dst_point, np.ndarray), "Ensure both points are numpy arrays"
         raise NotImplementedError
     
     def _get_move_wait_time(self, distances, speeds, accels = None):

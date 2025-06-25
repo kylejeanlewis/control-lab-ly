@@ -120,7 +120,7 @@ class TwoMagDevice(SerialDevice):
         Returns:
             tuple[str,str]: The version and mode of the device
         """
-        out: Data = self.query(f'sendstatus', address=self.address)
+        out: Data = self.query('sendstatus', address=self.address)
         status = out.data
         version_mode = status.split('_')
         if len(version_mode) == 2:
@@ -135,7 +135,7 @@ class TwoMagDevice(SerialDevice):
         Returns:
             bool: Whether the device was started 
         """
-        out: Data = self.query(f'start', address=self.address)
+        out: Data = self.query('start', address=self.address)
         data = out.data
         return data == 'START'
     
@@ -146,7 +146,7 @@ class TwoMagDevice(SerialDevice):
         Returns:
             bool: Whether the device was stopped
         """
-        out: Data = self.query(f'stop', address=self.address)
+        out: Data = self.query('stop', address=self.address)
         data = out.data
         return data == 'STOP'
         
@@ -175,7 +175,7 @@ class TwoMagDevice(SerialDevice):
         Returns:
             int: The speed of the device in RPM
         """
-        out: Data = self.query(f'sendrpm', address=self.address)
+        out: Data = self.query('sendrpm', address=self.address)
         data = out.data
         set_speed = int(data.replace('RPM','').replace('\x00', '').lstrip("0"))
         self.speed = set_speed
@@ -206,7 +206,7 @@ class TwoMagDevice(SerialDevice):
         Returns:
             int: The power of the device in percentage
         """
-        out: Data = self.query(f'sendpower', address=self.address)
+        out: Data = self.query('sendpower', address=self.address)
         data = out.data
         set_power = int(data.replace('POWER','').replace('\x00', '').lstrip("0"))
         self.power = set_power
@@ -219,7 +219,7 @@ class TwoMagDevice(SerialDevice):
         Returns:
             bool: Whether the device was set to default
         """
-        out: Data = self.query(f'setdefault', address=self.address)
+        out: Data = self.query('setdefault', address=self.address)
         data = out.data
         self.speed = self._default_speed
         self.power = self._default_power

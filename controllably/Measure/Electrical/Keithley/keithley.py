@@ -89,7 +89,7 @@ class Keithley(Measurer):
         connected = True
         try:
             _ = self.device.id
-        except VisaIOError as e:
+        except VisaIOError:
             connected = False
         self.flags.connected = connected
         return self.flags.connected

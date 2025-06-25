@@ -386,7 +386,7 @@ class TriContinentDevice(SerialDevice):
             immediate (bool, optional): Whether to execute the command immediately. Defaults to True.
         """
         speed = round(speed)
-        assert (0<=speed<=1000), f"Start speed must be an integer between 0 and 1000"
+        assert (0<=speed<=1000), "Start speed must be an integer between 0 and 1000"
         command = f'v{speed}'
         if immediate:
             self.run(command)
@@ -403,7 +403,7 @@ class TriContinentDevice(SerialDevice):
             immediate (bool, optional): Whether to execute the command immediately. Defaults to True.
         """
         speed = round(speed)
-        assert (0<=speed<=6000), f"Start speed must be an integer between 0 and 6000"
+        assert (0<=speed<=6000), "Start speed must be an integer between 0 and 6000"
         command = f'V{speed}'
         if immediate:
             self.run(command)
@@ -421,7 +421,7 @@ class TriContinentDevice(SerialDevice):
         """
         assert isinstance(valve,str)
         valve = valve.upper()
-        assert len(valve)==1 and (valve in 'IOBE'), f"Valve must be one of 'I', 'O', 'B', or 'E'"
+        assert len(valve)==1 and (valve in 'IOBE'), "Valve must be one of 'I', 'O', 'B', or 'E'"
         if immediate:
             self.run(valve)
         else:
@@ -436,7 +436,7 @@ class TriContinentDevice(SerialDevice):
             acceleration (int): The acceleration of the pump.
             immediate (bool, optional): Whether to execute the command immediately. Defaults to True.
         """
-        assert (ACCEL_MULTIPLIER<=acceleration<=20*ACCEL_MULTIPLIER), f"Acceleration code must be an integer between 2,500 and 50,000"
+        assert (ACCEL_MULTIPLIER<=acceleration<=20*ACCEL_MULTIPLIER), "Acceleration code must be an integer between 2,500 and 50,000"
         acceleration_code = int(acceleration/ACCEL_MULTIPLIER)
         command = f'L{acceleration_code}'
         if immediate:

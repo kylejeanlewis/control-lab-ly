@@ -39,7 +39,7 @@ def within_volume(point: Sequence[float]) -> bool:
     Returns:
         bool: whether the point is within the robot's workspace
     """
-    assert len(point) == 3, f"Ensure point is a 3D coordinate"
+    assert len(point) == 3, "Ensure point is a 3D coordinate"
     x,y,z = point
     # Z-axis
     if not (5 <= z <= 245):
@@ -294,8 +294,8 @@ class M1Pro(Dobot):
         Returns:
             np.ndarray: relevant rotation angles (in degrees) and/or distances (in mm)
         """
-        assert len(src_point) == 3 and len(dst_point) == 3, f"Ensure both points are 3D coordinates"
-        assert isinstance(src_point, np.ndarray) and isinstance(dst_point, np.ndarray), f"Ensure both points are numpy arrays"
+        assert len(src_point) == 3 and len(dst_point) == 3, "Ensure both points are 3D coordinates"
+        assert isinstance(src_point, np.ndarray) and isinstance(dst_point, np.ndarray), "Ensure both points are numpy arrays"
         right_handed = 2*(int(self.flags.right_handed)-0.5) # 1 if right-handed; -1 if left-handed
         x1,y1,z1 = src_point
         x2,y2,z2 = dst_point

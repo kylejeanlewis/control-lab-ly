@@ -95,7 +95,7 @@ def guard(mode:int = DEBUG) -> Callable:
             elif mode < DEBUG:  # SUPERVISED
                 logger.warning(f"[SUPERVISED] {str_call}")
                 time.sleep(0.1)
-                input(f"Press 'Enter' to continue")
+                input("Press 'Enter' to continue")
             else:               # DELAY
                 logger.warning(f"[DELAY] {str_call}")
                 logger.warning(f"Waiting for {mode} seconds")

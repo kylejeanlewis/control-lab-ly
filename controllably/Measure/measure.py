@@ -463,7 +463,7 @@ class ProgramDetails:
         text = str(self.signature)
         text += f"\n\n{self.description}"
         if len(self.parameter_descriptions):
-            text += f"\n\nArgs:"
+            text += "\n\nArgs:"
             for k,v in self.parameter_descriptions.items():
                 parameter = self.signature.parameters[k]
                 text += f"\n    {parameter.name} ({parameter.annotation}): {v}"
@@ -472,7 +472,7 @@ class ProgramDetails:
                 if parameter.default != inspect.Parameter.empty:
                     text += f" Defaults to {parameter.default}."
         if len(self.return_descriptions):
-            text += f"\n\nReturns:"
+            text += "\n\nReturns:"
             for k,v in self.return_descriptions.items():
                 key = ', '.join(k) if isinstance(k,tuple) else k
                 text += f"\n    {key}: {v}"

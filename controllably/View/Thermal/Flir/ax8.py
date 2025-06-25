@@ -22,7 +22,7 @@ from pyModbusTCP.client import ModbusClient # pip install pyModbusTCP
 
 # Local application imports
 from ...camera import Camera
-from .ax8_api.ax8_lib import BoxRegs, SpotMeterRegs
+from .ax8_api.ax8_lib import SpotMeterRegs
 
 BYTE_SIZE = 4
 MODBUS_PORT = 502
@@ -399,6 +399,6 @@ class AX8(Camera):
         Returns:
             str: RTSP feed URL
         """
-        assert encoding in ("avc", "mjpg", "mpeg4"), f"Choose encoding from 'avc', 'mjpg', 'mpeg4'"
+        assert encoding in ("avc", "mjpg", "mpeg4"), "Choose encoding from 'avc', 'mjpg', 'mpeg4'"
         overlay_tag = '' if overlay else "?overlay=off"
         return f'rtsp://{host}/{encoding}{overlay_tag}'

@@ -21,7 +21,6 @@ import numpy as np
 import cv2              # pip install opencv-python
 
 # Local application imports
-from .placeholder import PLACEHOLDER
 
 logger = logging.getLogger(__name__)
 logger.debug(f"Import: OK <{__name__}>")

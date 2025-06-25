@@ -418,8 +418,8 @@ class BaseDevice:
             data = self.connection.read().decode("utf-8", "replace") # Replace with specific implementation
             data = data.strip()
             self._logger.debug(f"Received: {data!r}")
-        except Exception as e: # Replace with specific exception
-            self._logger.debug(f"Failed to receive data")
+        except Exception: # Replace with specific exception
+            self._logger.debug("Failed to receive data")
         except KeyboardInterrupt:
             self._logger.debug("Received keyboard interrupt")
             self.disconnect()
@@ -441,7 +441,7 @@ class BaseDevice:
                 if not out:
                     break
         except Exception as e: # Replace with specific exception
-            self._logger.debug(f"Failed to receive data")
+            self._logger.debug("Failed to receive data")
             self._logger.debug(e)
         except KeyboardInterrupt:
             self._logger.debug("Received keyboard interrupt")
@@ -464,7 +464,7 @@ class BaseDevice:
         try:
             self.connection.write(data.encode('utf-8')) # Replace with specific implementation
             self._logger.debug(f"Sent: {data!r}")
-        except Exception as e: # Replace with specific exception
+        except Exception: # Replace with specific exception
             self._logger.debug(f"Failed to send: {data!r}")
             return False
         return True
@@ -1005,7 +1005,7 @@ class SerialDevice(BaseDevice):
             data = data.strip()
             self._logger.debug(f"[{self.port}] Received: {data!r}")
             self.serial.reset_output_buffer()
-        except serial.SerialException as e:
+        except serial.SerialException:
             self._logger.debug(f"[{self.port}] Failed to receive data")
         except KeyboardInterrupt:
             self._logger.debug("Received keyboard interrupt")
@@ -1038,7 +1038,7 @@ class SerialDevice(BaseDevice):
         try:
             self.serial.write(data.encode('utf-8'))
             self._logger.debug(f"[{self.port}] Sent: {data!r}")
-        except serial.SerialException as e:
+        except serial.SerialException:
             self._logger.debug(f"[{self.port}] Failed to send: {data!r}")
             return False
         return True

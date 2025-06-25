@@ -458,7 +458,7 @@ class Camera:
             self._logger.debug("Received keyboard interrupt")
             self.disconnect()
         except Exception as e: # Replace with specific exception
-            self._logger.debug(f"Failed to receive data")
+            self._logger.debug("Failed to receive data")
             self._logger.exception(e)
         if frame is None:
             frame = self.placeholder

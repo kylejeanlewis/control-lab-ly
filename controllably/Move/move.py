@@ -343,7 +343,7 @@ class Mover:
             speed_factor (float, optional): fraction of maximum speed to travel at. Defaults to None.
         """
         assert self.deck is not None, "Ensure deck is loaded"
-        assert self.current_zone_waypoints is not None, f"Robot is not currently in a zone"
+        assert self.current_zone_waypoints is not None, "Robot is not currently in a zone"
         
         zone, waypoints = self.current_zone_waypoints
         logging.info(f"Exiting zone: {zone}")
@@ -383,7 +383,7 @@ class Mover:
         Returns:
             bool: whether the target coordinates are feasible
         """
-        assert isinstance(coordinates, (Sequence, np.ndarray)), f"Ensure coordinates is a Sequence or np.ndarray object"
+        assert isinstance(coordinates, (Sequence, np.ndarray)), "Ensure coordinates is a Sequence or np.ndarray object"
         position = Position(coordinates)
         if external:
             ex_pos = position
@@ -416,7 +416,7 @@ class Mover:
         Args:
             deck (Deck): Deck layout object
         """
-        assert isinstance(deck, Deck), f"Ensure input is a Deck object"
+        assert isinstance(deck, Deck), "Ensure input is a Deck object"
         self.deck = deck
         try:
             self.setSafeHeight(height=self.safe_height)
@@ -466,7 +466,7 @@ class Mover:
         Returns:
             Position: new tool position
         """
-        assert axis.lower() in 'xyzabc', f"Ensure axis is one of 'x,y,z,a,b,c'"
+        assert axis.lower() in 'xyzabc', "Ensure axis is one of 'x,y,z,a,b,c'"
         default: dict[str, int|float] = dict(x=0, y=0, z=0, a=0, b=0, c=0)
         default.update({axis: by})
         vector = np.array([default[k] for k in 'xyz'])
@@ -495,13 +495,13 @@ class Mover:
         Returns:
             Position: new tool/robot position
         """
-        assert isinstance(by, (Sequence, Position, np.ndarray)), f"Ensure `by` is a Sequence or Position or np.ndarray object"
+        assert isinstance(by, (Sequence, Position, np.ndarray)), "Ensure `by` is a Sequence or Position or np.ndarray object"
         rotation = True
         if isinstance(by, (Sequence, np.ndarray)):
             if len(by) == 6:
                 by = Position(by[:3], Rotation.from_euler('zyx', by[3:], degrees=True))
             else:
-                assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
+                assert len(by) == 3, "Ensure `by` is a 3-element sequence for x,y,z"
                 rotation = False
         # if isinstance(by, (Sequence, np.ndarray)):
         #     assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
@@ -552,13 +552,13 @@ class Mover:
         Returns:
             Position: new tool/robot position
         """
-        assert isinstance(to, (Sequence, Position, np.ndarray)), f"Ensure `to` is a Sequence or Position or np.ndarray object"
+        assert isinstance(to, (Sequence, Position, np.ndarray)), "Ensure `to` is a Sequence or Position or np.ndarray object"
         rotation = True
         if isinstance(to, (Sequence, np.ndarray)):
             if len(to) == 6:
                 to = Position(to[:3], Rotation.from_euler('zyx', to[3:], degrees=True))
             else:
-                assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
+                assert len(to) == 3, "Ensure `to` is a 3-element sequence for x,y,z"
                 rotation = False
         # if isinstance(to, (Sequence, np.ndarray)):
         #     assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
@@ -663,7 +663,7 @@ class Mover:
         Returns:
             Rotation: new tool orientation
         """
-        assert axis.lower() in 'abc', f"Ensure axis is one of 'a,b,c'"
+        assert axis.lower() in 'abc', "Ensure axis is one of 'a,b,c'"
         default = dict(a=0, b=0, c=0)
         default.update({axis: by})
         rotate_angles = np.array([default[k] for k in 'cba'])
@@ -689,9 +689,9 @@ class Mover:
         Returns:
             Rotation: new tool/robot orientation
         """
-        assert isinstance(by, (Sequence, Rotation, np.ndarray)), f"Ensure `by` is a Sequence or Rotation or np.ndarray object"
+        assert isinstance(by, (Sequence, Rotation, np.ndarray)), "Ensure `by` is a Sequence or Rotation or np.ndarray object"
         if isinstance(by, (Sequence, np.ndarray)):
-            assert len(by) == 3, f"Ensure `by` is a 3-element sequence for c,b,a"
+            assert len(by) == 3, "Ensure `by` is a 3-element sequence for c,b,a"
         rotate_by = by if isinstance(by, Rotation) else Rotation.from_euler('zyx', by, degrees=True)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
         self._logger.info(f"Rotate By | {rotate_by} at speed factor {speed_factor}")
@@ -726,9 +726,9 @@ class Mover:
         Returns:
             Rotation: new tool/robot orientation
         """
-        assert isinstance(to, (Sequence, Rotation, np.ndarray)), f"Ensure `to` is a Sequence or Rotation or np.ndarray object"
+        assert isinstance(to, (Sequence, Rotation, np.ndarray)), "Ensure `to` is a Sequence or Rotation or np.ndarray object"
         if isinstance(to, (Sequence, np.ndarray)):
-            assert len(to) == 3, f"Ensure `to` is a 3-element sequence for c,b,a"
+            assert len(to) == 3, "Ensure `to` is a 3-element sequence for c,b,a"
         rotate_to = to if isinstance(to, Rotation) else Rotation.from_euler('zyx', to, degrees=True)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
         self._logger.info(f"Rotate To | {rotate_to} at speed factor {speed_factor}")
@@ -810,13 +810,13 @@ class Mover:
         Returns:
             Position: new tool/robot position
         """
-        assert isinstance(to, (Sequence, Position, np.ndarray)), f"Ensure `to` is a Sequence or Position or np.ndarray object"
+        assert isinstance(to, (Sequence, Position, np.ndarray)), "Ensure `to` is a Sequence or Position or np.ndarray object"
         rotation = True
         if isinstance(to, (Sequence, np.ndarray)):
             if len(to) == 6:
                 to = Position(to[:3], Rotation.from_euler('zyx', to[3:], degrees=True))
             else:
-                assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
+                assert len(to) == 3, "Ensure `to` is a 3-element sequence for x,y,z"
                 rotation = False
         # if isinstance(to, (Sequence, np.ndarray)):
         #     assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
@@ -893,7 +893,7 @@ class Mover:
         Returns:
             Position: old tool offset
         """
-        assert isinstance(offset, (Sequence, Position, np.ndarray)), f"Ensure `offset` is a Sequence or Position or np.ndarray object"
+        assert isinstance(offset, (Sequence, Position, np.ndarray)), "Ensure `offset` is a Sequence or Position or np.ndarray object"
         old_tool_offset = self.tool_offset
         self._tool_offset = Position(offset) if not isinstance(offset, Position) else offset
         return old_tool_offset
@@ -929,7 +929,7 @@ class Mover:
             dst_offset (Sequence[float] | np.ndarray, optional): offset from center of destination slot. Defaults to (0,0,0).
             speed_factor (float, optional): speed factor. Defaults to None.
         """
-        assert isinstance(self.deck, Deck), f"Ensure deck is loaded"
+        assert isinstance(self.deck, Deck), "Ensure deck is loaded"
         src_zone_name, src_slot_name = from_slot.split('.') if '.' in from_slot else ('',from_slot)
         dst_zone_name, dst_slot_name = to_slot.split('.') if '.' in to_slot else ('',to_slot)
         
@@ -938,9 +938,9 @@ class Mover:
         
         src_slot = src_zone.slots[src_slot_name]
         dst_slot = dst_zone.slots[dst_slot_name]
-        assert isinstance(src_slot.loaded_labware, Labware), f"Ensure source slot contains labware"
-        assert src_slot.loaded_labware.slot_above is None or src_slot.loaded_labware.slot_above.loaded_labware is None, f"Ensure source slot is topmost of stack"
-        assert dst_slot.loaded_labware is None, f"Ensure destination slot is empty"
+        assert isinstance(src_slot.loaded_labware, Labware), "Ensure source slot contains labware"
+        assert src_slot.loaded_labware.slot_above is None or src_slot.loaded_labware.slot_above.loaded_labware is None, "Ensure source slot is topmost of stack"
+        assert dst_slot.loaded_labware is None, "Ensure destination slot is empty"
         
         # Pick up Labware from source
         _ = self.enterZone(src_zone_name) if src_zone_name else None
@@ -968,7 +968,7 @@ class Mover:
         Returns:
             Position: new robot position
         """
-        assert (by is None) != (to is None), f"Ensure input only for one of `by` or `to`"
+        assert (by is None) != (to is None), "Ensure input only for one of `by` or `to`"
         rotation = self._has_rotation
         if isinstance(by, Position):
             self._robot_position.translate(by.coordinates)
@@ -984,7 +984,7 @@ class Mover:
         elif isinstance(to, Rotation):
             self._robot_position.Rotation = deepcopy(to)
         else:
-            raise ValueError(f"Ensure input is of type Position or Rotation")
+            raise ValueError("Ensure input is of type Position or Rotation")
         return self.robot_position
     
     def _draw_workspace(self, ax: plt.Axes, **kwargs) -> matplotlib.patches.Patch|None:

@@ -124,8 +124,8 @@ class RobotArm(Mover):
         return self._joint_position
     @joint_position.setter
     def joint_position(self, value: Sequence[float]|np.ndarray):
-        assert isinstance(value, (Sequence, np.ndarray)), f"Ensure `value` is a Sequence or np.ndarray object"
-        assert len(value) == 6, f"Ensure `value` is a 6-element sequence for j1~j6"
+        assert isinstance(value, (Sequence, np.ndarray)), "Ensure `value` is a Sequence or np.ndarray object"
+        assert len(value) == 6, "Ensure `value` is a 6-element sequence for j1~j6"
         self._joint_position = np.array(value)
         return
     
@@ -269,9 +269,9 @@ class RobotArm(Mover):
         Returns:
             Rotation: new tool/robot orientation
         """
-        assert isinstance(by, (Sequence, Rotation, np.ndarray)), f"Ensure `by` is a Sequence or Rotation or np.ndarray object"
+        assert isinstance(by, (Sequence, Rotation, np.ndarray)), "Ensure `by` is a Sequence or Rotation or np.ndarray object"
         if isinstance(by, (Sequence, np.ndarray)):
-            assert len(by) == 3, f"Ensure `by` is a 3-element sequence for c,b,a"
+            assert len(by) == 3, "Ensure `by` is a 3-element sequence for c,b,a"
         rotate_by = by if isinstance(by, Rotation) else Rotation.from_euler('zyx', by, degrees=True)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
         self._logger.info(f"Rotate By | {rotate_by} at speed factor {speed_factor}")
@@ -306,9 +306,9 @@ class RobotArm(Mover):
         Returns:
             Rotation: new tool/robot orientation
         """
-        assert isinstance(to, (Sequence, Rotation, np.ndarray)), f"Ensure `to` is a Sequence or Rotation or np.ndarray object"
+        assert isinstance(to, (Sequence, Rotation, np.ndarray)), "Ensure `to` is a Sequence or Rotation or np.ndarray object"
         if isinstance(to, (Sequence, np.ndarray)):
-            assert len(to) == 3, f"Ensure `to` is a 3-element sequence for c,b,a"
+            assert len(to) == 3, "Ensure `to` is a 3-element sequence for c,b,a"
         rotate_to = to if isinstance(to, Rotation) else Rotation.from_euler('zyx', to, degrees=True)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
         self._logger.info(f"Rotate To | {rotate_to} at speed factor {speed_factor}")
@@ -335,16 +335,16 @@ class RobotArm(Mover):
             by (Sequence[float] | Rotation | np.ndarray | None, optional): relative movement. Defaults to None.
             to (Sequence[float] | Rotation | np.ndarray | None, optional): absolute movement. Defaults to None.
         """
-        assert (by is None) != (to is None), f"Ensure input only for one of `by` or `to`"
+        assert (by is None) != (to is None), "Ensure input only for one of `by` or `to`"
         if by is not None:
             if isinstance(by, (Sequence, np.ndarray)):
-                assert len(by) == 6, f"Ensure `by` is a 6-element sequence for j1~j6"
+                assert len(by) == 6, "Ensure `by` is a 6-element sequence for j1~j6"
                 self.joint_position += np.array(by)
             elif isinstance(by, Rotation):
                 self.joint_position += np.array([0,0,0,*by.as_euler('zyx', degrees=True)])
         elif to is not None:
             if isinstance(to, (Sequence, np.ndarray)):
-                assert len(to) == 6, f"Ensure `to` is a 6-element sequence for j1~j6"
+                assert len(to) == 6, "Ensure `to` is a 6-element sequence for j1~j6"
                 self.joint_position = np.array(to)
             elif isinstance(to, Rotation):
                 self.joint_position = np.array([*self.joint_position[:3],*to.as_euler('zyx', degrees=True)])
