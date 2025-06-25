@@ -24,8 +24,9 @@ plugins:
           merge_init_into_class: true
           show_docstring_attributes: true
           # Signatures
-          show_signature: false
-          show_signature_annotations: false
+          show_signature: true
+          show_signature_annotations: true
+          separate_signature: true
           signature_crossrefs: true
           # Extensions
           extensions:
