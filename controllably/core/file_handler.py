@@ -7,14 +7,10 @@ Attributes:
 
 ## Functions:
     `create_folder`: Check and create folder if it does not exist
-    `get_git_info`: Get current git branch name, short commit hash, and commit datetime in UTC
-    `get_package_info`: Get package information (local, editable, source path)
     `init`: Add repository to `sys.path`, and get machine id and connected ports
-    `log_version_info`: Log version information of the package
     `read_config_file`: Read configuration file and return as dictionary
     `readable_duration`: Display time duration (s) as HH:MM:SS text
     `resolve_repo_filepath`: Resolve relative path to absolute path
-    `start_logging`: Start logging to file
     `start_project_here`: Create new project in destination directory
     `zip_files`: Zip files and return zip file path
 

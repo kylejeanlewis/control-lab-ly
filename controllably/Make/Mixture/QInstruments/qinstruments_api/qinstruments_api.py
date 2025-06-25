@@ -61,7 +61,6 @@ class QInstrumentsDevice(SerialDevice):
         `verbose` (bool): verbosity of class
     
     ### Methods:
-
     #### General
         `clear`: clear the input and output buffers
         `connect`: connect to the device

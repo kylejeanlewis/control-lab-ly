@@ -73,13 +73,13 @@ class LiquidMover(Compound):
         `is_connected` (bool): whether all parts are connected
         `verbose` (bool): verbosity of class
         
-        #### (For liquid handlers with replaceable tips)
-        `tip_approach_distance` (float): distance in mm from top to travel down to pick tip
-        `speed_factor_pick_tip` (float): speed factor to pick up tip
+    #### Tip replacement
         `bin_slots` (dict[int,Labware]): dictionary of bin slots
+        `current_tip_detail` (dict[str, str|np.ndarray]): dictionary of current tip details
+        `speed_factor_pick_tip` (float): speed factor to pick up tip
+        `tip_approach_distance` (float): distance in mm from top to travel down to pick tip
         `tip_racks` (dict[int,Labware]): dictionary of tip racks
         `tip_lists` (dict[int,list[str]]): dictionary of tip lists
-        `current_tip_detail` (dict[str, str|np.ndarray]): dictionary of current tip details
         
     ### Methods:
         `align`: align the tool tip to the target coordinates, while also considering any additional offset
@@ -87,14 +87,14 @@ class LiquidMover(Compound):
         `dispenseAt`: dispense specified volume at target location, at desired speed
         `touchTip`: touch the tip against the inner walls of the well
         
-        #### (For liquid handlers with replaceable tips)
-        `findTipRacks`: find all tip racks on the deck
-        `assignTipRack`: assign a tip rack by its slot
+    #### Tip replacement
         `assignBin`: assign a bin by its slot
+        `assignTipRack`: assign a tip rack by its slot
         `attachTip`: attach new pipette tip from next available rack position
         `attachTipAt`: attach new pipette tip from specified location
         `ejectTip`: eject the pipette tip at the bin
         `ejectTipAt`: eject the pipette tip at the specified location
+        `findTipRacks`: find all tip racks on the deck
         `resetTips`: reset (i.e. clear) all tip racks
         `returnTip`: return current tip to its original rack position
         `updateStartTip`: set the name of the first available pipette tip
