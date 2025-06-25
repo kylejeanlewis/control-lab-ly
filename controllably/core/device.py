@@ -551,9 +551,9 @@ class BaseDevice:
         parsed = {k:v for k,v in parse_out.named.items() if not k.startswith('_')}
         for key, value in data_type.__annotations__.items():
             try:
-                if value == int and not parsed[key].isnumeric():
+                if value is int and not parsed[key].isnumeric():
                     parsed[key] = float(parsed[key])
-                elif value == bool:
+                elif value is bool:
                     parsed[key] = parsed[key].lower() not in ['false', '0', 'no']
                 parsed[key] = value(parsed[key])
             except ValueError:
