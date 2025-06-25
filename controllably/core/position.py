@@ -46,8 +46,8 @@ from scipy.spatial.transform import Rotation
 from . import file_handler
 
 # Configure logging
-logger = logging.getLogger(__name__)
 from controllably import CustomLevelFilter
+logger = logging.getLogger(__name__)
 CustomLevelFilter().setModuleLevel(__name__, logging.INFO)
 
 MTP_DIMENSIONS = (127.76,85.48,0)

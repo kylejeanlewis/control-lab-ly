@@ -27,8 +27,8 @@ import numpy as np
 from .placeholder import PLACEHOLDER
 
 # Configure logging
-logger = logging.getLogger(__name__)
 from controllably import CustomLevelFilter
+logger = logging.getLogger(__name__)
 
 class Camera:
     """ 

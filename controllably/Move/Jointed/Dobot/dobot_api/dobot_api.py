@@ -24,8 +24,8 @@ from .....core import connection
 from .....external.Dobot_Arm import DobotApiDashboard, DobotApiMove
 
 # Configure logging
-logger = logging.getLogger(__name__)
 from controllably import CustomLevelFilter
+logger = logging.getLogger(__name__)
 
 DASHBOARD_PORT = 29999
 FEEDBACK_PORT = 30003

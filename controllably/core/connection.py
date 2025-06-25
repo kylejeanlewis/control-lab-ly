@@ -28,8 +28,8 @@ import uuid
 import serial.tools.list_ports                    # pip install pyserial
 
 # Configure logging
-logger = logging.getLogger(__name__)
 from controllably import CustomLevelFilter
+logger = logging.getLogger(__name__)
 CustomLevelFilter().setModuleLevel(__name__, logging.INFO)
 
 def get_addresses(registry:dict|None, mac_address: bool = True) -> dict|None:

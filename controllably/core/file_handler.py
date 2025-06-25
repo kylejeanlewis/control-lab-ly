@@ -36,8 +36,8 @@ import yaml
 from . import connection
 
 # Configure logging
-logger = logging.getLogger(__name__)
 from controllably import CustomLevelFilter
+logger = logging.getLogger(__name__)
 CustomLevelFilter().setModuleLevel(__name__, logging.INFO)
 
 TEMP_ZIP = Path('_temp.zip')

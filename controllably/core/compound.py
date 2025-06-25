@@ -36,8 +36,8 @@ from .device import Device
 from . import factory
 
 # Configure logging
-logger = logging.getLogger(__name__)
 from controllably import CustomLevelFilter
+logger = logging.getLogger(__name__)
 
 class Part(Protocol):
     """Protocol for Part (i.e. component tools)"""

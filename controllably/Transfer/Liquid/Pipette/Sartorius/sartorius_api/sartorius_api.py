@@ -32,8 +32,8 @@ from ......core.device import SerialDevice
 from . import sartorius_lib as lib
 
 # Configure logging
-logger = logging.getLogger(__name__)
 from controllably import CustomLevelFilter
+logger = logging.getLogger(__name__)
 CustomLevelFilter().setModuleLevel(__name__, logging.INFO)
 
 # READ_FORMAT = "{channel:1}{data}�\r"      # command template: <PRE><ADR><CODE><DATA><LRC><POST>

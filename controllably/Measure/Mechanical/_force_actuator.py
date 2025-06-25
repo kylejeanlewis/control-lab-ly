@@ -20,8 +20,8 @@ from ...core.device import StreamingDevice
 from .. import Program, ProgramDetails
 
 # Configure logging
-logger = logging.getLogger(__name__)
 from controllably import CustomLevelFilter
+logger = logging.getLogger(__name__)
 
 COLUMNS = ('Time', 'Displacement', 'Value', 'Factor', 'Baseline', 'Force')
 """Headers for output data from force sensor"""

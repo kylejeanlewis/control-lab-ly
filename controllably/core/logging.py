@@ -27,8 +27,8 @@ import subprocess
 from .file_handler import read_config_file
 
 # Configure logging
-logger = logging.getLogger(__name__)
 from controllably import CustomLevelFilter
+logger = logging.getLogger(__name__)
 CustomLevelFilter().setModuleLevel(__name__, logging.INFO)
 
 def get_git_info(directory: str = '.') -> tuple[str|None, str|None, datetime|None]:

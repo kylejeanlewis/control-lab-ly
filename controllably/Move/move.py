@@ -27,8 +27,8 @@ from ..core.device import Device
 from ..core.position import Deck, Labware, Position, BoundingVolume, get_transform, convert_to_position
 
 # Configure logging
-logger = logging.getLogger(__name__)
 from controllably import CustomLevelFilter
+logger = logging.getLogger(__name__)
 
 class Mover:
     """ 

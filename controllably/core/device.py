@@ -36,8 +36,8 @@ import parse
 import serial
 
 # Configure logging
-logger = logging.getLogger(__name__)
 from controllably import CustomLevelFilter
+logger = logging.getLogger(__name__)
 
 READ_FORMAT = "{data}\n"
 WRITE_FORMAT = "{data}\n"

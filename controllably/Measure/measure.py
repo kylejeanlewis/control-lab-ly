@@ -31,8 +31,8 @@ from ..core import datalogger, factory
 from ..core.device import StreamingDevice
 
 # Configure logging
-logger = logging.getLogger(__name__)
 from controllably import CustomLevelFilter
+logger = logging.getLogger(__name__)
 
 MAX_LEN = 100
 
