@@ -364,7 +364,7 @@ class BioShake(HeaterMixin, Maker):
             
         try: 
             self.ranges['speed'] = ( self.device.getShakeSpeedLimitMin(), self.device.getShakeSpeedLimitMax() )
-        except:
+        except AttributeError:
             self.ranges['speed'] = self.limits.get('speed', (0,9999))
         return
 

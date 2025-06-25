@@ -168,7 +168,7 @@ class Mover:
             self.rotate('a', 0)
         except NotImplementedError:
             self._has_rotation = False
-        except:
+        except Exception:
             pass
         return
     

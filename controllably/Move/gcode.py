@@ -301,7 +301,7 @@ class GCode(Mover):
         data = 'G91'
         try:    # NOTE: temporary for transition to new SerialDevice
             data = self.device.processInput(data)
-        except:
+        except Exception:
             pass
         self.device.write(data)
         for command in commands:
@@ -309,7 +309,7 @@ class GCode(Mover):
         data = 'G90'
         try:    # NOTE: temporary for transition to new SerialDevice
             data = self.device.processInput(data)
-        except:
+        except Exception:
             pass
         self.device.write(data)
         self.setSpeedFactor(self.speed_factor, persist=False)
@@ -378,7 +378,7 @@ class GCode(Mover):
         data = 'G90'
         try:    # NOTE: temporary for transition to new SerialDevice
             data = self.device.processInput(data)
-        except:
+        except Exception:
             pass
         self.device.write(data)
         for command in commands:

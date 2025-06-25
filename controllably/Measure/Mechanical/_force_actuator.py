@@ -528,7 +528,7 @@ class ForceActuator:
             success = self.device.write('H 0')
             if not success:
                 return False
-        except:
+        except Exception:
             pass
         else:
             time.sleep(1)
@@ -600,7 +600,7 @@ class ForceActuator:
             self.stream(True)
         try:
             self.device.write(f'G {to} {rpm}')
-        except:
+        except Exception:
             pass
         else:
             displacement = self.waitThreshold(to)
