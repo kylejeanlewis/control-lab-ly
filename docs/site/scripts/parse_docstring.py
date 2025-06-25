@@ -63,7 +63,7 @@ class DocstringCleaner(griffe.Extension):
         if mod.docstring:
             # If the node has a docstring, apply replacements
             docstring = mod.docstring.value
-            docstring = docstring.replace("## ", "")
             docstring = docstring.replace("### ", "")
+            docstring = docstring.replace("## ", "")
             docstring = docstring.replace("`", "")
             mod.docstring.value = docstring
