@@ -852,7 +852,7 @@ class Controller:
     # View side
     def transmitRequest(self, 
         command: Mapping[str, Any], 
-        target: Iterable[int]|None = None, 
+        target: Iterable[int|str]|None = None, 
         *, 
         private:bool = True, 
         priority: bool = False, 
@@ -863,7 +863,7 @@ class Controller:
         
         Args:
             command (Mapping[str, Any]): the command to transmit
-            target (Iterable[int]|None, optional): the target addresses. Defaults to None.
+            target (Iterable[int|str]|None, optional): the target addresses. Defaults to None.
             private (bool, optional): flag to indicate private transmission. Defaults to True.
             priority (bool, optional): flag to indicate high-priority transmission. Defaults to False.
             rank (int, optional): rank of the high-priority transmission. Defaults to None.
@@ -1038,12 +1038,12 @@ class Controller:
         return methods
     
     # Controller side
-    def relay(self, packet: str|bytes, callback_type:str, addresses: Iterable[int]|None = None):
+    def relay(self, packet: str|bytes|None, callback_type:str, addresses: Iterable[int]|None = None):
         """
         Relay a message
         
         Args:
-            packet (str|bytes): the message to relay
+            packet (str|bytes|None): the message to relay
             callback_type (str): the callback type
             addresses (Iterable[int]|None, optional): the target addresses. Defaults to None.
         """
@@ -1122,7 +1122,7 @@ class Controller:
             relay (bool, optional): flag to indicate relay. Defaults to False.
         """
         assert callback_type in self.callbacks, f"Invalid callback type: {callback_type}"
-        assert isinstance(callback, Callable), f"Invalid callback: {callback}"
+        assert callable(callback), f"Invalid callback: {callback}"
         key = address
         if key is None:
             key = id(callback)

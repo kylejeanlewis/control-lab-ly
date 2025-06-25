@@ -111,7 +111,7 @@ class Mover:
         `calibrate`: calibrate the internal and external coordinate systems
     """
     
-    _default_flags: SimpleNamespace[str,bool] = SimpleNamespace(busy=False, verbose=False)
+    _default_flags: SimpleNamespace = SimpleNamespace(busy=False, verbose=False)
     def __init__(self,
         *,
         robot_position: Position = Position(),
@@ -150,7 +150,7 @@ class Mover:
         
         # Category specific attributes
         self.deck = deck
-        self.workspace: BoundingVolume = workspace
+        self.workspace: BoundingVolume|None = workspace
         self.safe_height: float = safe_height if safe_height is not None else home_position.z
         self.saved_positions = saved_positions or dict()
         self.current_zone_waypoints: tuple[str, list[Position]]|None = None
@@ -467,7 +467,7 @@ class Mover:
             Position: new tool position
         """
         assert axis.lower() in 'xyzabc', f"Ensure axis is one of 'x,y,z,a,b,c'"
-        default = dict(x=0, y=0, z=0, a=0, b=0, c=0)
+        default: dict[str, int|float] = dict(x=0, y=0, z=0, a=0, b=0, c=0)
         default.update({axis: by})
         vector = np.array([default[k] for k in 'xyz'])
         rotation = np.array([default[k] for k in 'cba'])

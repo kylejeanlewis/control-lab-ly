@@ -98,10 +98,10 @@ class StreamingDevice(Protocol):
     def disconnect(self):
         """Disconnect from the device"""
     
-    def processInput(self, data:Any, format_in:str, **kwargs) -> str|None:
+    def processInput(self, data:Any, format_in:str|None=None, **kwargs) -> str|None:
         """Process the input"""
     
-    def processOutput(self, data:str, format_out:str, data_type:NamedTuple, timestamp: datetime|None, **kwargs) -> tuple[Any, datetime]:
+    def processOutput(self, data:str, format_out:str|None=None, data_type:NamedTuple|None=None, timestamp: datetime|None=None, **kwargs) -> tuple[Any, datetime]:
         """Process the output"""
 
     def query(self, data:Any, multi_out:bool = True, **kwargs) -> Any|None:

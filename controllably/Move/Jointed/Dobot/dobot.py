@@ -386,7 +386,7 @@ class Dobot(RobotArm):
         jog: bool = False,
         rapid: bool = False,
         robot: bool = True
-    ) -> Position:
+    ) -> np.ndarray:
         """
         Move the robot by target direction
 
