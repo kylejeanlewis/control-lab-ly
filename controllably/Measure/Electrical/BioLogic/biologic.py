@@ -49,7 +49,7 @@ def parse_docstring(program_class:BiologicProgram, verbose:bool = True) -> Progr
     parameter_descriptions: dict[str,str] = {}
     if doc is not None and 'Params are' in doc:
         arg_lines = doc.split(':param')[2].split('Params are', maxsplit=1)[1].splitlines()
-        arg_lines = [l.strip() for l in arg_lines if len(l)]
+        arg_lines = [arg_line.strip() for arg_line in arg_lines if len(arg_line)]
         args: dict[str,str] = {}
         previous_line_head = ''
         for line in arg_lines:

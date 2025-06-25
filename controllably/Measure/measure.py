@@ -383,16 +383,16 @@ class Program:
         ret_dict = dict()
         if doc is not None:
             description = doc.split('Args:')[0].split('Returns:')[0]
-            description = ' '.join([l.strip() for l in description.split('\n') if len(l.strip())])
+            description = ' '.join([line.strip() for line in description.split('\n') if len(line.strip())])
             
             if 'Args:' in doc:
                 args = doc.split('Args:',1)[1].split('Returns:')[0]
-                args = [l.split('Defaults',1)[0].strip() for l in args.split('\n') if len(l.strip())]
+                args = [line.split('Defaults',1)[0].strip() for line in args.split('\n') if len(line.strip())]
                 args_dict = {a.split(' ')[0]: a.split(':',1)[1].strip() for a in args}
             
             if 'Returns:' in doc:
                 ret = doc.split('Returns:',1)[1]
-                ret = [l.strip() for l in ret.split('\n') if len(l.strip())]
+                ret = [line.strip() for line in ret.split('\n') if len(line.strip())]
                 return_types, return_descriptions = [s for s in zip(*[r.split(':',1) for r in ret])]
                 ret_keys = [tuple([s.strip() for s in r.split(',')]) for r in return_types]
                 ret_keys = [r if len(r) > 1 else r[0] for r in ret_keys]

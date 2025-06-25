@@ -295,8 +295,8 @@ class LiquidMover(Compound):
         
         well_names = labware.listColumns() if use_by_columns else labware.listWells()
         well_name_list = []
-        for l in well_names:
-            well_name_list.extend(l)
+        for well_name in well_names:
+            well_name_list.extend(well_name)
         if start_tip is not None:
             assert start_tip in well_name_list, "Please enter a valid start tip."
             well_name_list = well_name_list[well_name_list.index(start_tip):]

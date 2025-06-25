@@ -173,7 +173,7 @@ class Gantry(GCode):
         
         settings = self.settings
         # Set limits if none provided
-        if not any([any(l) for l in limits]):
+        if not any([any(limit) for limit in limits]):
             coordinates = self.device._home_offset
             device_limits = np.array([settings.get('limit_x',0),settings.get('limit_y',0),settings.get('limit_z',0)])
             device_limits = device_limits * (coordinates/abs(coordinates)) if any(coordinates) else device_limits
