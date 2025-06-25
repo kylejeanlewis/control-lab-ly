@@ -60,6 +60,8 @@ nav:
         - biologic: site/api/Measure/Electrical/BioLogic/biologic.md
       - Keithley:
         - keithley: site/api/Measure/Electrical/Keithley/keithley.md
+        - programs:
+          - base_programs: site/api/Measure/Electrical/Keithley/programs/base_programs.md
     - Mechanical:
       - _force_actuator: site/api/Measure/Mechanical/_force_actuator.md
       - actuated_sensor: site/api/Measure/Mechanical/actuated_sensor.md
@@ -121,6 +123,8 @@ nav:
     - factory: site/api/core/factory.md
     - file_handler: site/api/core/file_handler.md
     - interpreter: site/api/core/interpreter.md
+    - log_filters: site/api/core/log_filters.md
+    - logging: site/api/core/logging.md
     - notification: site/api/core/notification.md
     - position: site/api/core/position.md
     - safety: site/api/core/safety.md
@@ -147,4 +151,3 @@ nav:
   - Attributions: ATTRIBUTIONS.md
   - License: LICENSE.md
   - Changelog: CHANGELOG.md
-
