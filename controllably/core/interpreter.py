@@ -47,7 +47,7 @@ class Interpreter:
             dict[str, Any]: command dictionary
         """
         command = packet
-        return command
+        return json.loads(command)
     
     @staticmethod
     def encodeData(data: Any) -> bytes:
@@ -60,7 +60,7 @@ class Interpreter:
         Returns:
             bytes: encoded message in bytes
         """
-        packet = data
+        packet = str(data).encode('utf-8')
         return packet
     
     @staticmethod
@@ -74,7 +74,7 @@ class Interpreter:
         Returns:
             bytes: request message in bytes
         """
-        request = command
+        request = str(command).encode('utf-8')
         return request
     
     @staticmethod
@@ -89,7 +89,7 @@ class Interpreter:
             dict[str, Any]: decoded data
         """
         data = packet
-        return data
+        return json.loads(data)
     
     
 class JSONInterpreter(Interpreter):
