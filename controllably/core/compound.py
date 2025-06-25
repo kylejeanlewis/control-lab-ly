@@ -346,7 +346,8 @@ class Ensemble(Compound):
             dict[int,Any]: dictionary of outputs
         """
         if kwargs_generator is None:
-            kwargs_generator = (lambda _i,_key,_part: dict())
+            def kwargs_generator(_i, _key, _part):
+                return (dict())
         with ThreadPoolExecutor(max_workers=max_workers) as e:
             futures = {}
             for i,(key,part) in enumerate(self.channels.items()):

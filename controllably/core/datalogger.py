@@ -151,7 +151,8 @@ def monitor_plot(
     assert kind in ('line','scatter'), "kind must be either 'line' or 'scatter'"
     from IPython.display import display, clear_output
     stop_trigger = stop_trigger if isinstance(stop_trigger, threading.Event) else threading.Event()
-    dataframe_maker = lambda _data_store: _data_store if isinstance(_data_store, pd.DataFrame) else None
+    def dataframe_maker(_data_store):
+        return _data_store if isinstance(_data_store, pd.DataFrame) else None
     dataframe_maker = dataframe_maker if callable(dataframe_maker) else functools.partial(get_dataframe, fields=(x,y))
     def inner():
         fig = plt.figure()

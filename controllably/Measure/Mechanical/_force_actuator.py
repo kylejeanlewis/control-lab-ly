@@ -397,8 +397,6 @@ class ForceActuator:
             if data is None:
                 return None
             data: MoveForceData = data
-            target = data.target
-            speed = data.speed
             displacement = data.displacement
             end_stop = data.end_stop
             value = data.value
@@ -633,7 +631,7 @@ class ForceActuator:
         Returns:
             bool: whether movement is successful (i.e. force threshold is not reached)
         """
-        if timeout != None:
+        if timeout is not None:
             default_timeout = self.touch_timeout
             self.touch_timeout = timeout
         speed = speed or self.max_speed
@@ -664,7 +662,7 @@ class ForceActuator:
             ...
         finally:
             self.force_threshold = _threshold
-            if timeout != None:
+            if timeout is not None:
                 self.touch_timeout = default_timeout
             # self.touch_timeout = touch_timeout
             time.sleep(2)

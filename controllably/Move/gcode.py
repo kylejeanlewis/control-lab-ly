@@ -265,17 +265,14 @@ class GCode(Mover):
             Position: new tool/robot position
         """
         assert isinstance(by, (Sequence, Position, np.ndarray)), "Ensure `by` is a Sequence or Position or np.ndarray object"
-        rotation = True
         if isinstance(by, (Sequence, np.ndarray)):
             if len(by) == 6:
                 by = Position(by[:3], Rotation.from_euler('zyx', by[3:], degrees=True))
             else:
                 assert len(by) == 3, "Ensure `by` is a 3-element sequence for x,y,z"
-                rotation = False
         # if isinstance(by, (Sequence, np.ndarray)):
         #     assert len(by) == 3, f"Ensure `by` is a 3-element sequence for x,y,z"
         move_by = by if isinstance(by, Position) else Position(by)
-        rotation = any(move_by.rotation)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
         self._logger.info(f"Move By | {move_by} at speed factor {speed_factor}")
         
@@ -283,7 +280,6 @@ class GCode(Mover):
         if robot:
             move_by = move_by
         else:
-            inv_tool_offset = self.tool_offset.invert()
             inv_calibrated_offset = self.calibrated_offset.invert()
             by_coordinates = inv_calibrated_offset.Rotation.apply(move_by.coordinates)
             by_rotation = move_by.Rotation
@@ -354,18 +350,15 @@ class GCode(Mover):
             Position: new tool/robot position
         """
         assert isinstance(to, (Sequence, Position, np.ndarray)), "Ensure `to` is a Sequence or Position or np.ndarray object"
-        rotation = True
         if isinstance(to, (Sequence, np.ndarray)):
             if len(to) == 6:
                 to = Position(to[:3], Rotation.from_euler('zyx', to[3:], degrees=True))
             else:
                 assert len(to) == 3, "Ensure `to` is a 3-element sequence for x,y,z"
-                rotation = False
         # if isinstance(to, (Sequence, np.ndarray)):
         #     assert len(to) == 3, f"Ensure `to` is a 3-element sequence for x,y,z"
         current_Rotation = self.robot_position.Rotation if robot else self.worktool_position.Rotation
         move_to = to if isinstance(to, Position) else Position(to, current_Rotation)
-        rotation = (move_to.Rotation == current_Rotation)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
         self._logger.info(f"Move To | {move_to} at speed factor {speed_factor}")
         

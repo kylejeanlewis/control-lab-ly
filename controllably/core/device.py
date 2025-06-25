@@ -802,7 +802,8 @@ class BaseDevice:
         if isinstance(sync_start, threading.Barrier):
             sync_start.wait()
         if not callable(callback):
-            callback = lambda _: None
+            def callback(_):
+                return None
         
         while self.stream_event.is_set():
             try:
