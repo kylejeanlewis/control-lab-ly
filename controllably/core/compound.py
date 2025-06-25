@@ -268,7 +268,7 @@ class Ensemble(Compound):
         elif isinstance(details,Sequence) and len(details) == 1:
             details = details*len(channels)
         assert len(channels) == len(details), "Ensure the number of channels match the number of part details"
-        assert type(cls._channel_class) == type, "Use the `factory` method to generate the desired class first"
+        assert type(cls._channel_class) is type, "Use the `factory` method to generate the desired class first"
         
         parent = cls._channel_class
         parts_list = [parent(final=False, **settings) for settings in details]
@@ -664,7 +664,7 @@ class Multichannel(Combined):
         elif isinstance(details,Sequence) and len(details) == 1:
             details = details*len(channels)
         assert len(channels) == len(details), "Ensure the number of channels match the number of part details"
-        assert type(cls._channel_class) == type, "Use the `factory` method to generate the desired class first"
+        assert type(cls._channel_class) is type, "Use the `factory` method to generate the desired class first"
         
         parent = cls._channel_class
         parts_list: list[Part] = []
