@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
+# Standard library imports
 from __future__ import annotations
 import ast
-import griffe
+import re
 from typing import Any
 
-class ClassDocstringCleaner(griffe.Extension):
+# Third-party imports
+import griffe
+
+
+class DocstringCleaner(griffe.Extension):
     """
     A Griffe VisitorExtension to clean ONLY class docstrings
     by removing '### ' and '`' substrings.
@@ -21,12 +26,24 @@ class ClassDocstringCleaner(griffe.Extension):
         if cls.docstring:
             # If the node has a docstring, apply replacements
             docstring = cls.docstring.value
-            # docstring = docstring.replace("## Attributes", "Attributes")
-            # docstring = docstring.replace("### Attributes", "Attributes")
+            
+            # Remove 'Constructor' section if it exists
+            pattern = r"### Constructor.*?### Attributes"
+            docstring = re.sub(pattern, "### Attributes", docstring, flags=re.DOTALL)
+            
+            # Replace specific substrings in the docstring
+            docstring = docstring.replace("### Attributes", "Attributes")
+            docstring = docstring.replace("## Attributes", "Attributes")
+            docstring = docstring.replace(" and properties", "")
             docstring = docstring.replace("### Methods", "Methods")
             docstring = docstring.replace("## Methods", "Methods")
             docstring = docstring.replace("`", "")
-            docstring = docstring.replace("and properties", "")
+            
+            # Remove lines containing '####' from the docstring
+            lines = docstring.splitlines()
+            filtered_lines = [line for line in lines if '####' not in line]
+            docstring = "\n".join(filtered_lines)
+            
             cls.docstring.value = docstring
         return
             
