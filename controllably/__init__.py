@@ -12,7 +12,7 @@ sys.path.insert(0, external_libs)
 del sys, os, external_libs
 
 # Import logging filters
-from ._log_filters import CustomLevelFilter, AppFilter
+from .core.log_filters import CustomLevelFilter, AppFilter
 
 # Import functions
 from .core.factory import get_setup
