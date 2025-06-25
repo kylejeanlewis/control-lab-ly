@@ -929,6 +929,7 @@ class Mover:
             dst_offset (Sequence[float] | np.ndarray, optional): offset from center of destination slot. Defaults to (0,0,0).
             speed_factor (float, optional): speed factor. Defaults to None.
         """
+        assert isinstance(self.deck, Deck), f"Ensure deck is loaded"
         src_zone_name, src_slot_name = from_slot.split('.') if '.' in from_slot else ('',from_slot)
         dst_zone_name, dst_slot_name = to_slot.split('.') if '.' in to_slot else ('',to_slot)
         
