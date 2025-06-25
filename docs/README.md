@@ -30,30 +30,30 @@ help(Gantry)
 
 ## Device support
 - Make
-  - (QInstruments) BioShake Orbital Shaker
-  - (Arduino-based devices)
-    - Multi-channel LED array
-    - Multi-channel spin-coater
-    - Peltier device
+    - (QInstruments) BioShake Orbital Shaker
+    - (Arduino-based devices)
+        - Multi-channel LED array
+        - Multi-channel spin-coater
+        - Peltier device
 - Measure
-  - (BioLogic) via `easy-biologic` (optional)
-  - (Keithley) via `PyMeasure` (optional)
-  - (Sentron) SI series pH meters
-  - (Arduino-based device) 
-    - Precision mass balance
-    - Load cell
+    - (BioLogic) via `easy-biologic` (optional)
+    - (Keithley) via `PyMeasure` (optional)
+    - (Sentron) SI series pH meters
+    - (Arduino-based device) 
+        - Precision mass balance
+        - Load cell
 - Move
-  - (Creality) Ender-3
-  - (Dobot) with `external/../dobot_api`
-    - M1 Pro
-    - MG400
-  - (Arduino-based device) gantry robot running on GRBL
+    - (Creality) Ender-3
+    - (Dobot) with `external/../dobot_api`
+        - M1 Pro
+        - MG400
+    - (Arduino-based device) gantry robot running on GRBL
 - Transfer
-  - (Sartorius) rLINE® dispensing modules
-  - (TriContinent) C Series syringe pumps
+    - (Sartorius) rLINE® dispensing modules
+    - (TriContinent) C Series syringe pumps
 - View
-  - (FLIR) AX8 thermal imaging camera via `pyModbusTCP` (optional)
-  - (General) Web cameras with `cv2`
+    - (FLIR) AX8 thermal imaging camera via `pyModbusTCP` (optional)
+    - (General) Web cameras with `cv2`
 ---
 
 ## Advanced Usage
