@@ -23,8 +23,8 @@ class ClassDocstringCleaner(griffe.Extension):
             docstring = cls.docstring.value
             # docstring = docstring.replace("## Attributes", "Attributes")
             # docstring = docstring.replace("### Attributes", "Attributes")
-            docstring = docstring.replace("## Methods", "Methods")
             docstring = docstring.replace("### Methods", "Methods")
+            docstring = docstring.replace("## Methods", "Methods")
             docstring = docstring.replace("`", "")
             docstring = docstring.replace("and properties", "")
             cls.docstring.value = docstring
