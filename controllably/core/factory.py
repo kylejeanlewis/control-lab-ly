@@ -377,10 +377,10 @@ def parse_configs(configs:dict, addresses:dict|None = None) -> dict:
         for key,value in settings.items():
             if key == 'details':
                 value = parse_configs(value, addresses=addresses)
-            if type(value) == str:
+            if type(value) is str:
                 if key in ('cam_index', 'port') and value.startswith('__'):
                     settings[key] = addresses.get(key, {}).get(settings[key], value)
-            if type(value) == dict:
+            if type(value) is dict:
                 if "tuple" in value:
                     settings[key] = tuple(value['tuple'])
                 elif "array" in value:
