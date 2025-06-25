@@ -80,10 +80,12 @@ def write_yaml_nav(structure, yaml_path):
     with open(yaml_path, 'w', encoding='utf-8') as f:
         yaml.dump(nav, f, sort_keys=False, allow_unicode=True)
 
-if __name__ == "__main__":
-    cwd = os.getcwd()
+def main():
     source_directory = r"c:\Users\leongcj\Documents\GitHub\control-lab-le\controllably"
     destination_directory = r"c:\Users\leongcj\Documents\GitHub\control-lab-le\docs\site\api"
     yaml_nav_path = os.path.join(destination_directory, "reference_nav.yaml")
     structure = crawl_and_generate_markdown(source_directory, destination_directory, import_base="controllably")
     write_yaml_nav(structure, yaml_nav_path)
+    
+if __name__ == "__main__":
+    main()

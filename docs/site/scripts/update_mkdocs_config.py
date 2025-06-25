@@ -25,7 +25,11 @@ def update_reference_nav(mkdocs_path, reference_nav_path):
     mkdocs['nav'] = nav
     save_yaml(mkdocs, mkdocs_path)
 
-if __name__ == "__main__":
+def main():
     mkdocs_path = r"c:\Users\leongcj\Documents\GitHub\control-lab-le\mkdocs.yaml"
     reference_nav_path = r"c:\Users\leongcj\Documents\GitHub\control-lab-le\docs\site\api\reference_nav.yaml"
     update_reference_nav(mkdocs_path, reference_nav_path)
+
+if __name__ == "__main__":
+    main()
+    
