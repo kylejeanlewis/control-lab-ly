@@ -144,7 +144,7 @@ def test_get_plans():
 @pytest.mark.parametrize("config, use_platform", [
     ({'tool': mock_module.TestClass()}, False),
     ({'tool': mock_module.TestClass()}, True),
-    ({'tool': mock_module.TestClass(), 'error':Exception('error')}, False)
+    ({'tool': mock_module.TestClass(), 'error':Exception}, False)
 ])
 def test_get_setup(config, use_platform, monkeypatch):
     monkeypatch.setattr('controllably.core.factory.load_setup_from_files', lambda *args,**kwargs: dict_to_named_tuple(config, 'TestClasses'))
@@ -164,7 +164,7 @@ def test_get_setup(config, use_platform, monkeypatch):
             assert 'tool' in setup._fields
             assert isinstance(setup.tool, mock_module.TestClass)
     else:
-        with pytest.raises(SystemExit):
+        with pytest.raises(RuntimeError):
             _ = get_setup('config_file', 'registry_file')
 
 def test_load_parts(monkeypatch, caplog):
