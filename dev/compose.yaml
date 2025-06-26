@@ -4,7 +4,7 @@ services:
     container_name: controllably-server
     build:
       context: .
-      dockerfile: ./Dockerfile
+      dockerfile: ./dev/Dockerfile
       target: runner
     ports:
       - 8000:8000
