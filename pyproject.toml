@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "control-lab-ly"
-version = "2.0.0-b"
+version = "2.0.0-rc"
 description = "Lab Equipment Automation Package"
 readme = "docs/README.md"
 authors = [
@@ -42,7 +42,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/kylejeanlewis/control-lab-le"
 GitHub = "https://github.com/kylejeanlewis/control-lab-le"
-Documentation = "https://github.com/kylejeanlewis/control-lab-le/blob/main/docs/README.md"
+Documentation = "https://kylejeanlewis.github.io/control-lab-le/"
 Changelog = "https://github.com/kylejeanlewis/control-lab-le/blob/main/docs/CHANGELOG.md"
 Tracker = "https://github.com/kylejeanlewis/control-lab-le/issues"
 
