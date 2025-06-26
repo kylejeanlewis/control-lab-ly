@@ -86,7 +86,7 @@ MyDevice:                                   # user-defined name
     setting_B: [[0,1,0],[-1,0,0]]
 ```
 
-???+ tip
+!!! tip
 
     A different serial port address or camera index may be used by different machines for the same device. See [**Section 2.1**](#21-managing-hardware-addresses) to find out how to manage the different addresses used by different machines.
 
@@ -191,7 +191,7 @@ Within the deck, `slots` and `zones` can be defined.
 
 Here, the `dimensions`, `cornerOffset`, and `orientation` definitions apply similarly, except the latter two takes reference from the parent's origin and orientation. The filename definition in `labware_file` and `deck_file` can either be absolute filepaths, or relative to the project repository. 
 
-???+ info
+!!! note
 
     This package uses the same Labware files as those provided by [Opentrons](https://opentrons.com/), which can be found [here](https://labware.opentrons.com/), and custom Labware files can be created [here](https://labware.opentrons.com/create/). Additional fields can be added to the these Labware files to enable features such as plate stacking and collision avoidance.
 
@@ -199,9 +199,9 @@ Here, the `dimensions`, `cornerOffset`, and `orientation` definitions apply simi
     - `slotAbove` defines a new slot above the Labware, with similar subfields `slotAbove.name`, `slotAbove.dimensions`, `slotAbove.cornerOffset`, and `slotAbove.orientation`.
     - `exclusionBuffer` is the offset from the lower and upper bounds of the Labware bounding box. (i.e. `[ [left, front, bottom], [right, back, top] ]`)
 
-    !!! warning
+!!! warning
 
-        Note: avoidance checks only apply to destination coordinates. **Does not** guarantee collision avoidance along intermediate path coordinates when using point-to-point move actions such as `move`, `moveBy` or `moveTo`. Use `safeMoveTo` instead.
+    Avoidance checks only apply to destination coordinates. **Does not** guarantee collision avoidance along intermediate path coordinates when using point-to-point move actions such as `move`, `moveBy` or `moveTo`. Use `safeMoveTo` instead.
 
 For zones, `entry_waypoints` lists a sequence of coordinates that defines a safe path a translation tool can take to transit into that particular zone.
 
