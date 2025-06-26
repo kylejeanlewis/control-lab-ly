@@ -142,13 +142,12 @@ class Position:
         `c` (float): euler angle c (rotation about z-axis)
     
     ### Methods:
+        `fromJSON`: create a `Position` object from string
+        `toJSON`: convert `Position` to string
         `apply`: apply `Position` to another `Position`
         `invert`: invert vector and rotation
         `orientate`: orientate self by a rotation
         `translate`: translate self by a vector
-    ### Static methods:
-        `fromJSON`: create a `Position` object from string
-        `toJSON`: convert `Position` to string
     """
     
     _coordinates: Sequence[float]|np.ndarray = (0,0,0)
@@ -548,11 +547,9 @@ class Labware:
         `is_tiprack` (bool): whether Labware is a tiprack
         `slot_above` (Slot|None): Slot above (for stackable Labware)
     
-    ### Class methods:
+    ### Methods:
         `fromConfigs`: factory method to load Labware details from dictionary
         `fromFile`: factory method to load Labware from file
-    
-    ### Methods:
         `fromTop`: offset from top of Labware
         `getAllPositions`: get all positions in Labware
         `getWell`: get `Well` using its name
@@ -1210,11 +1207,9 @@ class Deck:
         `at` (SimpleNamespace): namespace of all Slots
         `on` (SimpleNamespace): namespace of all nested Decks
         
-    ### Class methods:
+    ### Methods:
         `fromConfigs`: factory method to load Deck details from dictionary
         `fromFile`: factory method to load Deck from file
-        
-    ### Methods:
         `getAllPositions`: get all positions in Deck
         `getSlot`: get `Slot` using its name or index
         `isExcluded`: checks and returns whether the coordinates are in an excluded region

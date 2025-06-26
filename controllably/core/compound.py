@@ -77,10 +77,8 @@ class Compound:
         `is_connected` (bool): whether all parts are connected
         `verbose` (bool): verbosity of class
         
-    ## Class methods:
-        `fromConfig`: factory method to create Compound from configuration dictionary
-        
     ## Methods:
+        `fromConfig`: factory method to create Compound from configuration dictionary
         `connect`: connect to each component Part
         `disconnect`: disconnect from each component Part
         `resetFlags`: reset all flags to class attribute `_default_flags`
@@ -211,12 +209,10 @@ class Ensemble(Compound):
         `is_connected` (bool): whether all parts are connected
         `verbose` (bool): verbosity of class
         
-    ## Class methods:
+    ## Methods:
         `createParts`: factory method to instantiate Ensemble from channels and part details
         `factory`: factory method to generate Ensemble class from parent class
         `fromConfig`: factory method to create Compound from configuration dictionary
-        
-    ## Methods:
         `parallel`: execute function in parallel on all channels
         `connect`: connect to each component Part in parallel
         `disconnect`: disconnect from each component Part
@@ -462,10 +458,8 @@ class Combined:
         `is_connected` (bool): whether all parts are connected
         `verbose` (bool): verbosity of class
         
-    ## Class methods:
-        `fromConfig`: factory method to create Combined from configuration dictionary
-        
     ## Methods:
+        `fromConfig`: factory method to create Combined from configuration dictionary
         `connect`: connect to the device
         `disconnect`: disconnect from the device
         `resetFlags`: reset all flags to class attribute `_default_flags`
@@ -599,12 +593,10 @@ class Multichannel(Combined):
         `is_connected` (bool): whether all parts are connected
         `verbose` (bool): verbosity of class
         
-    ## Class methods:
+    ## Methods:
         `createParts`: factory method to instantiate Multichannel from channels and part details
         `factory`: factory method to generate Multichannel class from parent class
         `fromConfig`: factory method to create Combined from configuration dictionary
-        
-    ## Methods:
         `setActiveChannel`: set active channel
         `connect`: connect to the device
         `disconnect`: disconnect from the device

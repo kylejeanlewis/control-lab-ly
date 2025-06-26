@@ -35,11 +35,9 @@ class Notifier:
     ### Attributes and properties:
         `configs` (dict): configuration details for the notifier
     
-    ### Class methods:
+    ### Methods:
         `fromFile`: create a `Notifier` object from a configuration file
         `writeMessage`: write a message
-    
-    ### Methods:
         `notify`: write and send a message through chosen service
         `sendMessage`: send a message through chosen service
     """
@@ -142,12 +140,10 @@ class EmailNotifier(Notifier):
     ### Attributes and properties:
         `configs` (dict): configuration details for the notifier
         
-    ### Class methods:
+    ### Methods:
         `fromFile`: create a `Notifier` object from a configuration file
         `writeMessage`: write a message
         `writeEmail`: write an email message
-    
-    ### Methods:
         `notify`: write and send a message through chosen service
         `sendMessage`: send a message through chosen service
         `sendEmail`: send an email message through chosen server
