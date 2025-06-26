@@ -9,7 +9,7 @@ Lab Equipment Automation Package
 User-friendly package that simplifies the definition and control of reconfigurable setups for high-throughput experimentation and machine learning.
 
 ## Installation
-Control-lab-ly can be found on PyPI and can be easily installed with `pip install`.
+[Control-lab-ly](https://pypi.org/project/control-lab-ly/) can be found on PyPI and can be easily installed with `pip install`.
 ```shell
 $ python -m pip install control-lab-ly[all]
 ```
