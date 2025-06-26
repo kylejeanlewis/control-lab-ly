@@ -1,7 +1,9 @@
 name: Tests
 
 on:
-  - push
+  push:
+    branches:
+      - dev
 
 env:
   REPO_ROOT: ${{ github.workspace }}
