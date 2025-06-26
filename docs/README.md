@@ -250,7 +250,8 @@ Here, the `dimensions`, `cornerOffset`, and `orientation` definitions apply simi
 > - `parameters.isStackable` is a boolean value defining if another Labware can be stacked above.
 > - `slotAbove` defines a new slot above the Labware, with similar subfields `slotAbove.name`, `slotAbove.dimensions`, `slotAbove.cornerOffset`, and `slotAbove.orientation`.
 > - `exclusionBuffer` is the offset from the lower and upper bounds of the Labware bounding box. i.e. [ [left, front, bottom], [right, back, top] ]
->   - *Note: avoidance checks only apply to destination coordinates. **Does not** guarantee collision avoidance along intermediate path coordinates when using point-to-point move actions such as* `move`*,* `moveBy` *or* `moveTo`*. Use* `safeMoveTo` *instead.*
+
+> *WARNING: avoidance checks only apply to destination coordinates. **Does not** guarantee collision avoidance along intermediate path coordinates when using point-to-point move actions such as* `move`*,* `moveBy` *or* `moveTo`*. Use* `safeMoveTo` *instead.*
 
 For zones, `entry_waypoints` lists a sequence of coordinates that defines a safe path a translation tool can take to transit into that particular zone.
 
