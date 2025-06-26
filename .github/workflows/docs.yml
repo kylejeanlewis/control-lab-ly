@@ -11,13 +11,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4 # Action to checkout your repository code
+        uses: actions/checkout@v2 # Action to checkout your repository code
         with:
           # This is important for mkdocs-material and other themes that use git history
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5 # Action to set up Python environment
+        uses: actions/setup-python@v2 # Action to set up Python environment
         with:
           python-version: '3.12' # Use a recent Python version
 
