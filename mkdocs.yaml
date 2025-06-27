@@ -4,26 +4,25 @@ repo_url: https://github.com/kylejeanlewis/control-lab-le
 repo_name: kylejeanlewis/control-lab-le
 theme:
   name: material
-  # name: readthedocs
   features:
-    - content.code.copy
-    - search.suggest
-    - search.highlight
+  - content.code.copy
+  - search.suggest
+  - search.highlight
   palette:
-    - media: "(prefers-color-scheme)"
-      toggle:
-        icon: material/brightness-auto
-        name: Switch to light mode
-    - media: "(prefers-color-scheme: light)"
-      scheme: default 
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      toggle:
-        icon: material/brightness-4
-        name: Switch to system preference
+  - media: (prefers-color-scheme)
+    toggle:
+      icon: material/brightness-auto
+      name: Switch to light mode
+  - media: '(prefers-color-scheme: light)'
+    scheme: default
+    toggle:
+      icon: material/brightness-7
+      name: Switch to dark mode
+  - media: '(prefers-color-scheme: dark)'
+    scheme: slate
+    toggle:
+      icon: material/brightness-4
+      name: Switch to system preference
   icon:
     repo: fontawesome/brands/git-alt
 plugins:
@@ -32,43 +31,34 @@ plugins:
     handlers:
       python:
         options:
-          # General
           show_source: false
-          # Headings
-          # parameter_headings: true
           show_root_heading: false
           show_root_full_path: false
-          show_symbol_type_heading: true  # mkdocs-material
+          show_symbol_type_heading: true
           show_symbol_type_toc: true
-          # Members
-          # Docstrings
           docstring_style: google
           docstring_section_style: spacy
           merge_init_into_class: true
           show_docstring_attributes: true
-          # Signatures
           show_signature: true
           show_signature_annotations: true
           separate_signature: true
           signature_crossrefs: true
-          # Extensions
           extensions:
           - docs/site/scripts/parse_docstring.py
 - offline
 - search
 markdown_extensions:
-  # Admonitions
-  - admonition
-  - pymdownx.details
-  - pymdownx.superfences
-  # Code blocks
-  - pymdownx.highlight:
-      anchor_linenums: true
-      line_spans: __span
-      pygments_lang_class: true
-  - pymdownx.inlinehilite
-  - pymdownx.snippets
-  - pymdownx.superfences
+- admonition
+- pymdownx.details
+- pymdownx.superfences
+- pymdownx.highlight:
+    anchor_linenums: true
+    line_spans: __span
+    pygments_lang_class: true
+- pymdownx.inlinehilite
+- pymdownx.snippets
+- pymdownx.superfences
 watch:
 - controllably/
 nav:
@@ -112,8 +102,6 @@ nav:
         - biologic: site/api/Measure/Electrical/BioLogic/biologic.md
       - Keithley:
         - keithley: site/api/Measure/Electrical/Keithley/keithley.md
-        - programs:
-          - base_programs: site/api/Measure/Electrical/Keithley/programs/base_programs.md
     - Mechanical:
       - _force_actuator: site/api/Measure/Mechanical/_force_actuator.md
       - actuated_sensor: site/api/Measure/Mechanical/actuated_sensor.md
@@ -203,11 +191,10 @@ nav:
   - Attributions: ATTRIBUTIONS.md
   - License: LICENSE.md
   - Changelog: CHANGELOG.md
-
 extra:
   version:
-      provider: mike
+    provider: mike
   social:
-    - icon: fontawesome/brands/github
-      link: https://github.com/kylejeanlewis
-      name: Chang Jie on GitHub
+  - icon: fontawesome/brands/github
+    link: https://github.com/kylejeanlewis
+    name: Chang Jie on GitHub
