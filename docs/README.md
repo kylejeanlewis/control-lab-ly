@@ -378,6 +378,6 @@ class Platform:
 [Issues](https://github.com/kylejeanlewis/control-lab-le/issues) and feature requests are welcome!
 
 ## License
-This project is distributed under the [MIT License](https://github.com/kylejeanlewis/control-lab-le/blob/main/LICENSE).
+This project is distributed under the [MIT License](https://github.com/kylejeanlewis/control-lab-le/blob/main/docs/LICENSE.md).
 
 ---
