@@ -9,8 +9,8 @@ jobs:
     name: Build and Publish Python distribution to PyPI
     runs-on: ubuntu-latest # Run the job on an Ubuntu virtual machine
     environment:
-      name: testpypi
-      # url: https://pypi.org/project/control-lab-ly/
+      name: pypi
+      url: https://pypi.org/project/control-lab-ly/
     permissions:
       id-token: write
       contents: read
@@ -33,5 +33,5 @@ jobs:
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
+        # with:
+        #   repository-url: https://test.pypi.org/legacy/
