@@ -64,7 +64,6 @@ Major overhaul and package rebuilt from the ground. First released 27 Jun 2025.
 - [View.Classifiers] removed due to out of scope
 
 
-
 ## Version 1.3.2
 Feature enhancements, bug fixes and patches. First released 24 Apr 2024.
 ### Added
