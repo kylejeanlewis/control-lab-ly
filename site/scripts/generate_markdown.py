@@ -1,6 +1,34 @@
 # -*- coding: utf-8 -*-
 import os
+from pathlib import Path
+import shutil
 import yaml
+
+def remove_folder_if_exists(folder_path):
+    """
+    Removes a folder and all its contents if it exists.
+    Handles cases where the folder is not empty and may or may not exist.
+
+    Args:
+        folder_path (str): The path to the folder to be removed.
+    """
+    if not isinstance(folder_path, (str,Path)):
+        print(f"Error: Invalid folder_path type. Expected string, got {type(folder_path)}.")
+        return
+
+    print(f"Attempting to remove folder: '{folder_path}'")
+
+    try:
+        shutil.rmtree(folder_path)
+        print(f"Folder '{folder_path}' and its contents removed successfully.")
+    except FileNotFoundError:
+        print(f"Folder '{folder_path}' does not exist (or was already removed). No action needed.")
+    except OSError as e:
+        # Catch other potential OS errors (e.g., permissions issues, folder is a file)
+        print(f"Error removing folder '{folder_path}': {e}")
+    except Exception as e:
+        # Catch any other unexpected errors
+        print(f"An unexpected error occurred while trying to remove '{folder_path}': {e}")
 
 def get_import_path(py_path, src_dir, import_base="controllably"):
     rel_path = os.path.relpath(py_path, src_dir)
@@ -34,7 +62,7 @@ def crawl_and_generate_markdown(src_dir, dst_dir, import_base="controllably"):
     structure = {}
     for root, dirs, files in os.walk(src_dir):
         # Exclude 'external' folders from traversal
-        dirs[:] = [d for d in dirs if d.lower() != 'external']
+        dirs[:] = [d for d in dirs if d.lower() not in ('external', '__pycache__')]
         rel_dir = os.path.relpath(root, src_dir)
         dst_root = os.path.join(dst_dir, rel_dir)
         os.makedirs(dst_root, exist_ok=True)
@@ -81,8 +109,9 @@ def write_yaml_nav(structure, yaml_path):
         yaml.dump(nav, f, sort_keys=False, allow_unicode=True)
 
 def main():
-    source_directory = r"c:\Users\leongcj\Documents\GitHub\control-lab-le\controllably"
-    destination_directory = r"c:\Users\leongcj\Documents\GitHub\control-lab-le\docs\site\api"
+    source_directory = "controllably"
+    destination_directory = Path("docs/site/api")
+    remove_folder_if_exists(destination_directory)
     yaml_nav_path = os.path.join(destination_directory, "reference_nav.yaml")
     structure = crawl_and_generate_markdown(source_directory, destination_directory, import_base="controllably")
     write_yaml_nav(structure, yaml_nav_path)

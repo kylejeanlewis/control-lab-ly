@@ -34,8 +34,6 @@
       - biologic: site/api/Measure/Electrical/BioLogic/biologic.md
     - Keithley:
       - keithley: site/api/Measure/Electrical/Keithley/keithley.md
-      - programs:
-        - base_programs: site/api/Measure/Electrical/Keithley/programs/base_programs.md
   - Mechanical:
     - _force_actuator: site/api/Measure/Mechanical/_force_actuator.md
     - actuated_sensor: site/api/Measure/Mechanical/actuated_sensor.md

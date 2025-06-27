@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from pathlib import Path
 import yaml
 
 def load_yaml(path):
@@ -26,8 +28,8 @@ def update_reference_nav(mkdocs_path, reference_nav_path):
     save_yaml(mkdocs, mkdocs_path)
 
 def main():
-    mkdocs_path = r"c:\Users\leongcj\Documents\GitHub\control-lab-le\mkdocs.yaml"
-    reference_nav_path = r"c:\Users\leongcj\Documents\GitHub\control-lab-le\docs\site\api\reference_nav.yaml"
+    mkdocs_path = "mkdocs.yaml"
+    reference_nav_path = Path("docs/site/api/reference_nav.yaml")
     update_reference_nav(mkdocs_path, reference_nav_path)
 
 if __name__ == "__main__":

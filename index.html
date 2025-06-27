@@ -1632,75 +1632,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    
-    
-    
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3_2_2_2" >
-        
-          
-          <label class="md-nav__link" for="__nav_3_3_2_2_2" id="__nav_3_3_2_2_2_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    programs
-    
-  </span>
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_3_3_2_2_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_3_2_2_2">
-            <span class="md-nav__icon md-icon"></span>
-            programs
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="site/api/Measure/Electrical/Keithley/programs/base_programs.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    base_programs
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -4746,12 +4677,12 @@
 <h2 id="description">Description</h2>
 <p>User-friendly package that simplifies the definition and control of reconfigurable setups for high-throughput experimentation and machine learning.</p>
 <h2 id="installation">Installation</h2>
-<p>Control-lab-ly can be found on PyPI and can be easily installed with <code>pip install</code>.
+<p><a href="https://pypi.org/project/control-lab-ly/">Control-lab-ly</a> can be found on PyPI and can be easily installed with <code>pip install</code>.
 <div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>control-lab-ly<span class="o">[</span>all<span class="o">]</span>
 </span></code></pre></div></p>
 <h2 id="quickstart">Quickstart</h2>
 <p>Import the desired class from the library and initialize to use.
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span> <span class="nn">controllably.Move.Cartesian</span> <span class="kn">import</span> <span class="n">Gantry</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">controllably.Move.Cartesian</span><span class="w"> </span><span class="kn">import</span> <span class="n">Gantry</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">mover</span> <span class="o">=</span> <span class="n">Gantry</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">mover</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">mover</span><span class="o">.</span><span class="n">safeMoveTo</span><span class="p">((</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">))</span>
@@ -4807,10 +4738,10 @@
 <h2 id="advanced-usage">Advanced Usage</h2>
 <p>Setup initialization can be greatly simplified with Control-lab-ly.</p>
 <p>To access files / folders in the project repository as you would with an installed package, use the <code>init()</code> function to add the project directory into PATH.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span> <span class="nn">controllably</span> <span class="kn">import</span> <span class="n">init</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">controllably</span><span class="w"> </span><span class="kn">import</span> <span class="n">init</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">init</span><span class="p">(</span><span class="s1">&#39;project_root&#39;</span><span class="p">)</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="kn">from</span> <span class="nn">tools</span> <span class="kn">import</span> <span class="n">ToolSetup01</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">ToolSetup01</span>
 </span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">setup</span> <span class="o">=</span> <span class="n">ToolSetup01</span><span class="o">.</span><span class="n">setup</span><span class="p">()</span>
 </span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">setup</span><span class="o">.</span><span class="n">MoverDevice</span><span class="o">.</span><span class="n">loadDeckFromFile</span><span class="p">(</span><span class="n">ToolSetup01</span><span class="o">.</span><span class="n">LAYOUT_FILE</span><span class="p">)</span>
 </span></code></pre></div>
@@ -4852,7 +4783,7 @@
 </span><span id="__span-4-33"><a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>└── ...
 </span></code></pre></div></p>
 <p>Use <code>start_project_here(target_dir)</code> to generate the above file structure,
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span> <span class="nn">controllably</span> <span class="kn">import</span> <span class="n">start_project_here</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">controllably</span><span class="w"> </span><span class="kn">import</span> <span class="n">start_project_here</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">controllably</span><span class="o">.</span><span class="n">start_project_here</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
 </span></code></pre></div></p>
 <p>or the CLI to create the required directories.
@@ -4982,8 +4913,8 @@
 <p>For zones, <code>entry_waypoints</code> lists a sequence of coordinates that defines a safe path a translation tool can take to transit into that particular zone.</p>
 <h3 id="14-application-and-network-interoperability">1.4 Application and network interoperability</h3>
 <p>To allow control of the setups over the network, or with other applications, Control-lab-ly provides a way to access the attributes and methods over a communication layer. A <code>Controller</code> encodes and decodes requests and responses using an <code>Interpreter</code>, serializing the data to be sent.
-<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span> <span class="nn">controllably.core.control</span> <span class="kn">import</span> <span class="n">Controller</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="kn">from</span> <span class="nn">controllably.core.interpreter</span> <span class="kn">import</span> <span class="n">JSONInterpreter</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">controllably.core.control</span><span class="w"> </span><span class="kn">import</span> <span class="n">Controller</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">controllably.core.interpreter</span><span class="w"> </span><span class="kn">import</span> <span class="n">JSONInterpreter</span>
 </span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
 </span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="c1"># &#39;model&#39; controllers receives requests, triggers execution in registered objects, </span>
 </span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="c1"># and transmits the resultant data</span>
@@ -5018,7 +4949,7 @@
 <h3 id="21-managing-hardware-addresses">2.1 Managing hardware addresses</h3>
 <p>Hardware addresses may vary from machine to machine, especially for serial ports and cameras. To keep track of all the different port addresses, the machine ID and its corresponding port addresses are stored in <code>registry.yaml</code></p>
 <p>In the <code>tools</code> folder, a template of <code>registry.yaml</code> has been added to manage the machine-specific addresses of your connected devices (e.g. serial port and camera index). First, use the <code>get_node</code> and <code>get_ports</code> functions to identify your machine's ID and the serial port addresses of your tools.
-<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span> <span class="nn">controllably.core.connection</span> <span class="kn">import</span> <span class="n">get_node</span><span class="p">,</span> <span class="n">get_ports</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">controllably.core.connection</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_node</span><span class="p">,</span> <span class="n">get_ports</span>
 </span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="n">get_node</span><span class="p">()</span>           <span class="c1"># Get the unique identifier of your machine</span>
 </span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="n">get_ports</span><span class="p">()</span>          <span class="c1"># Get a list of serial port addresses of your connect devices</span>
 </span></code></pre></div></p>
@@ -5040,16 +4971,16 @@
 </span></code></pre></div></p>
 <h3 id="22-linting-and-coding-assists">2.2 Linting and coding assists</h3>
 <p>To help with development, linters such as Pylance provide suggestions while coding, based on the types of the objects. To make use of this feature, furnish the <code>__init__.py</code> file with the corresponding tool names and classes from the <code>config.yaml</code> file.
-<div class="language-python highlight"><span class="filename">__init__.py</span><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+<div class="language-python highlight"><span class="filename">__init__.py</span><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 </span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="o">...</span>
 </span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
 </span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="c1"># ========== Optional (for typing) ========== #</span>
-</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="kn">from</span> <span class="nn">controllably.Compound.LiquidMover</span> <span class="kn">import</span> <span class="n">LiquidMover</span>
-</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="kn">from</span> <span class="nn">controllably.Transfer.Liquid.Pipette.Sartorius</span> <span class="kn">import</span> <span class="n">Sartorius</span>
-</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="kn">from</span> <span class="nn">controllably.Move.Cartesian</span> <span class="kn">import</span> <span class="n">Gantry</span>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">controllably.Compound.LiquidMover</span><span class="w"> </span><span class="kn">import</span> <span class="n">LiquidMover</span>
+</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">controllably.Transfer.Liquid.Pipette.Sartorius</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sartorius</span>
+</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="kn">from</span><span class="w"> </span><span class="nn">controllably.Move.Cartesian</span><span class="w"> </span><span class="kn">import</span> <span class="n">Gantry</span>
 </span><span id="__span-17-8"><a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>
 </span><span id="__span-17-9"><a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="nd">@dataclass</span>
-</span><span id="__span-17-10"><a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="k">class</span> <span class="nc">Platform</span><span class="p">:</span>
+</span><span id="__span-17-10"><a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="k">class</span><span class="w"> </span><span class="nc">Platform</span><span class="p">:</span>
 </span><span id="__span-17-11"><a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>    <span class="n">MyCompoundDevice</span><span class="p">:</span> <span class="n">LiquidMover</span>
 </span><span id="__span-17-12"><a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>    <span class="n">LiquidDevice</span><span class="p">:</span> <span class="n">Sartorius</span>
 </span><span id="__span-17-13"><a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>    <span class="n">MoverDevice</span><span class="p">:</span> <span class="n">Gantry</span>
