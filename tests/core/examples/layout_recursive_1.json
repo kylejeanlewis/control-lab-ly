@@ -1,0 +1,24 @@
+{
+    "metadata": {
+        "displayName": "Example Layout (recursive 1)",
+        "displayCategory": "deck",
+        "displayVolumeUnits": "µL",
+        "displayLengthUnits": "mm",
+        "tags": []
+    },
+    "dimensions": [900,600,0],
+    "cornerOffset": [0,0,0],
+    "orientation": [0,0,0],
+    "slots": {},
+    "zones":{
+        "A":{ 
+            "dimensions": [600,300,0],
+            "cornerOffset": [600,600,0],
+            "orientation": [-90,0,0],
+            "deck_file": "control-lab-le/tests/core/examples/layout_recursive_2.json",
+            "entry_waypoints": [
+                [653.2, 224.6, 232]
+            ]
+        }
+    }
+}

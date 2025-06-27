@@ -1,0 +1,187 @@
+{
+    "ordering": [
+        [
+            "A1",
+            "B1",
+            "C1"
+        ],
+        [
+            "A2",
+            "B2",
+            "C2"
+        ],
+        [
+            "A3",
+            "B3",
+            "C3"
+        ],
+        [
+            "A4",
+            "B4",
+            "C4"
+        ]
+    ],
+    "brand": {
+        "brand": "AMDM",
+        "brandId": [
+            "AMDM"
+        ]
+    },
+    "metadata": {
+        "displayName": "AMDM 12 Well Plate 30000 µL",
+        "displayCategory": "wellPlate",
+        "displayVolumeUnits": "µL",
+        "tags": []
+    },
+    "dimensions": {
+        "xDimension": 128,
+        "yDimension": 85.85,
+        "zDimension": 72
+    },
+    "wells": {
+        "A1": {
+            "depth": 70,
+            "totalLiquidVolume": 30000,
+            "shape": "circular",
+            "diameter": 16.9,
+            "x": 21.8,
+            "y": 69.95,
+            "z": 4
+        },
+        "B1": {
+            "depth": 70,
+            "totalLiquidVolume": 30000,
+            "shape": "circular",
+            "diameter": 16.9,
+            "x": 21.8,
+            "y": 42.45,
+            "z": 4
+        },
+        "C1": {
+            "depth": 70,
+            "totalLiquidVolume": 30000,
+            "shape": "circular",
+            "diameter": 16.9,
+            "x": 21.8,
+            "y": 14.95,
+            "z": 4
+        },
+        "A2": {
+            "depth": 70,
+            "totalLiquidVolume": 30000,
+            "shape": "circular",
+            "diameter": 16.9,
+            "x": 49.9,
+            "y": 69.95,
+            "z": 4
+        },
+        "B2": {
+            "depth": 70,
+            "totalLiquidVolume": 30000,
+            "shape": "circular",
+            "diameter": 16.9,
+            "x": 49.9,
+            "y": 42.45,
+            "z": 4
+        },
+        "C2": {
+            "depth": 70,
+            "totalLiquidVolume": 30000,
+            "shape": "circular",
+            "diameter": 16.9,
+            "x": 49.9,
+            "y": 14.95,
+            "z": 4
+        },
+        "A3": {
+            "depth": 70,
+            "totalLiquidVolume": 30000,
+            "shape": "circular",
+            "diameter": 16.9,
+            "x": 78,
+            "y": 69.95,
+            "z": 4
+        },
+        "B3": {
+            "depth": 70,
+            "totalLiquidVolume": 30000,
+            "shape": "circular",
+            "diameter": 16.9,
+            "x": 78,
+            "y": 42.45,
+            "z": 4
+        },
+        "C3": {
+            "depth": 70,
+            "totalLiquidVolume": 30000,
+            "shape": "circular",
+            "diameter": 16.9,
+            "x": 78,
+            "y": 14.95,
+            "z": 4
+        },
+        "A4": {
+            "depth": 70,
+            "totalLiquidVolume": 30000,
+            "shape": "circular",
+            "diameter": 16.9,
+            "x": 106.1,
+            "y": 69.95,
+            "z": 4
+        },
+        "B4": {
+            "depth": 70,
+            "totalLiquidVolume": 30000,
+            "shape": "circular",
+            "diameter": 16.9,
+            "x": 106.1,
+            "y": 42.45,
+            "z": 4
+        },
+        "C4": {
+            "depth": 70,
+            "totalLiquidVolume": 30000,
+            "shape": "circular",
+            "diameter": 16.9,
+            "x": 106.1,
+            "y": 14.95,
+            "z": 4
+        }
+    },
+    "groups": [
+        {
+            "metadata": {
+                "wellBottomShape": "flat"
+            },
+            "wells": [
+                "A1",
+                "B1",
+                "C1",
+                "A2",
+                "B2",
+                "C2",
+                "A3",
+                "B3",
+                "C3",
+                "A4",
+                "B4",
+                "C4"
+            ]
+        }
+    ],
+    "parameters": {
+        "format": "irregular",
+        "quirks": [],
+        "isTiprack": false,
+        "isMagneticModuleCompatible": false,
+        "loadName": "amdm_12_wellplate_30000ul"
+    },
+    "namespace": "custom_beta",
+    "version": 1,
+    "schemaVersion": 2,
+    "cornerOffsetFromSlot": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+    }
+}

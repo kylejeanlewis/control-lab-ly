@@ -1,15 +1,3 @@
-"""
-This sub-package imports the base class for camera tools 
-and the class for image data.
-
-Modules:
-    Image
-
-Classes:
-    Camera (ABC)
-"""
-from .view_utils import Camera
-from . import image as Image
-
-from controllably import include_this_module
-include_this_module(get_local_only=False)
+# -*- coding: utf-8 -*-
+"""Sub package for the View functionalities of control-lab-ly."""
+from .camera import Camera

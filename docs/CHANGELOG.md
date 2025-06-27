@@ -1,5 +1,70 @@
 # Change Log
 
+## Version 2.0.0
+Major overhaul and package rebuilt from the ground. First released 27 Jun 2025.
+### Added
+- added `tests/` written with pytest
+- added test execution with tox
+- added documentation building with Mkdocs
+- added documentation hosting with ReadTheDocs
+- added proper logging facility with Python `logging` module
+- [core] new core modules and features added
+  - [control] added `TwoTierQueue` for queuing both priority and normal jobs; new `Controller` to relay data over a communication gap (either application-wise or network-wise) to enable remote calls; new `Proxy` to mimic object behavior that is on the other end of a Controller-Controller bridge 
+  - [datalogger] functions to trigger data streaming and recording, conversion of data sequence to Pandas dataframe, and live plotting of data
+  - [device] base classes for tools of different connection modes (e.g. serial, socket)
+  - [file_handler] added function to zip files, and add repository to sys.path
+  - [interpreter] added interpreters to serialize data for transfer over network (i.e. `JSONInterpreter`)
+  - [log_filters] added logging filters to selectively toggle the verbosity of individual objects
+  - [notification] added notifiers to send large data/files (i.e. `EmailNotifier`)
+  - [position] added `Position` class, consisting of a `numpy.ndarray` for 3D coordinates and a `scipy.spatial.transform.Rotation` for 3D rotation for better description of positioning in 3D space; added `Slot` that defines the available space on `Deck` for `Labware` to be placed on; `BoundingVolume` and `BoundingBox` to describe an envelope of space to avoid or stay within
+- [Make.Heat] added new `HeaterMixin` to augment objects with temperature control related methods
+- [Make.Mixture] added new class for magnetic stirrer `TwoMag`
+- [Measure.Electrical.BioLogic] added `BioLogic` via `easy-biologic` library
+- [Move] added a generic `GCode` that can use different variants of G-code (i.e. GRBL, Marlin)
+- [Transfer.Liquid.Pipette.Sartorius] added separate API module/class for direct implementation from manual
+- [View] added placeholder image as bytestring in .py file
+- [View] added `Camera.processImage()` method to allow user to define custom image processing callbacks, including detection algorithms
+- [external] added sub-package to contain required libraries written by external parties that are not installable through PyPI; credits documented in `docs/ATTRIBUTIONS.md`
+- [examples.control] added example implementations for `Controller` communication layers using FastAPI and sockets
+- [examples.gui] GUI example implementation in tkinter with only implementations for translation, liquid transfer, and vision
+- [example.sila] added XML generator for SiLA2 configuration files; refer to SiLA2 documentation for full usage of SiLA; Control-lab-ly simplifies the implementation definition step in using SiLA
+### Changed
+- consolidated packaging to single `pyproject.toml` file
+- move all `requirements_*.txt` files to `dev/`
+- change minimum Python version to 3.10 from 3.8
+- changed to `core` from `misc` sub-package to better reflect how these modules in `core` underpin the functionalities of Control-lab-ly
+- [core] clearer separation of scope in `core` modules
+  - [compound] new complex tool definitions described below, containing `Compound`, `Combined`, `Ensemble`, and `Multichannel`
+  - [connection] functions relating to getting the IP, port, and machine addresses
+  - [factory] functions to procedurally parse config files, retrieve object classes, initialize objects, and returning tool setups in preferred form (e.g. dict, namedtuple, NameSpace, dataclass)
+  - [file_handler] functions relating to file and folder creation, path resolution, and reading files
+  - [logging] makes use of Python native `logging` module to log messages from package
+  - [position] classes that define location (e.g. `Well`, `Labware`, `Deck`)
+  - [safety] unchanged
+- [core.compound] updated paradigm of how complex tools are defined, with `Compound` for multiple connections, dissimilar parts; `Ensemble` for multiple connections, similar parts; `Combined` for single connection, dissimilar parts (or use mixins); `Multichannel` for single connection, similar parts
+  - example implementation (using`Compound` and mixins) can be found in `Compound` sub-package, and (using `Ensemble` and `Multichannel`) in `Transfer.Liquid.Pump.TriContinent.tricontinent`
+- [core.device] all equipment API that does read/write actions inherits from these device classes that provide methods for parsing, connecting, read/write actions, streaming; takes in user-defined templates for read/write parsing
+- [Make.Light] uses `threading.Timer` for timing actions (via `core.device.TimedDeviceMixin`), instead of running a separate thread to count time
+- [Measure.Electrical.Keithley] updated code to leverage `PyMeasure` library
+- [Move] support for GRBL and Marlin separated into their respective APIs, and brought up to top level of `Move`, as G-code can also be used for jointed robots
+- [Move.Jointed.Dobot] moved dobot API into `external` sub-module (see above in the 'Added' section)
+- [Transfer.Liquid] reorganized tools based on type (i.e. Pump, Pipette), then brands
+- [Transfer.Substrate] generalized `GripperMixin` that can be used with any translation robot, instead of just Dobot attachments
+### Removed
+- removed `GUI` as a top-level sub-package; downgraded to an example implementation using tkinter (see above in 'Added' section)
+- removed reference guide GUI window in favor of a proper documentation site (i.e. GitHub Pages, ReadTheDocs)
+- [core.factory] removed registration of imported modules to keep track of modules
+- [Measure] simplify inheritance structure by removing `Programmable` class
+- [Measure.Electrical] removed Keithley programs that were based on old implementation (before PyMeasure)
+- [Measure.Mechanical] removed PiezoRobotics from tool list due to inactive development and use
+- [Transfer.Liquid] removed implementations for "syringe" and peristaltic pump due lack of use
+- [Transfer.Powder] removed due to lack of use
+- [Transfer.Substrate.Dobot] removed Dobot specific implementations; prefer mixins instead (see above in 'Changed' section)
+- [View] removed detection methods in `Camera` due to out of scope
+- [View.Classifiers] removed due to out of scope
+
+
+
 ## Version 1.3.2
 Feature enhancements, bug fixes and patches. First released 24 Apr 2024.
 ### Added

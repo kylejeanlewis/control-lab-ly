@@ -1,0 +1,34 @@
+name: Deploy documentation
+
+on:
+  push:
+    branches:
+      - main # Trigger this workflow when changes are pushed to the 'main' branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest # Run the job on an Ubuntu virtual machine
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2 # Action to checkout your repository code
+        with:
+          # This is important for mkdocs-material and other themes that use git history
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v2 # Action to set up Python environment
+        with:
+          python-version: '3.12' # Use a recent Python version
+
+      - name: Install Python dependencies and MkDocs
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r dev/requirements_docs.txt
+          python -m pip install -r dev/requirements_all.txt
+
+      - name: Generate the documentation Markdown files
+        run: python docs/site/scripts/__main__.py # Command to generate the documentation files
+
+      - name: Deploy MkDocs documentation
+        run: mkdocs gh-deploy --force # Command to build and deploy your documentation to the gh-pages branch

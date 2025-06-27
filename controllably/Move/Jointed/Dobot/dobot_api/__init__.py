@@ -1,1 +1,3 @@
-from .dobot_api import dobot_api_dashboard, dobot_api_feedback
+# -*- coding: utf-8 -*-
+"""Sub package for Dobot API"""
+from .dobot_api import DobotDevice

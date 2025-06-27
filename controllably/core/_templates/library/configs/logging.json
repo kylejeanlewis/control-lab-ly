@@ -1,0 +1,63 @@
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+        "simple":{
+            "format": "%(message)s"
+        },
+        "detailed": {
+            "format": "%(asctime)s %(levelname)s %(name)s: %(message)s",
+            "datefmt": "%Y-%m-%dT%H:%M:%S%z"
+        }
+    },
+    "handlers": {
+        "stdout":{
+            "class": "logging.StreamHandler",
+            "level": "DEBUG",
+            "formatter": "simple",
+            "filters": ["controllably_filter", "custom_console_filter"],
+            "stream": "ext://sys.stdout"
+        },
+        "stderr":{
+            "class": "logging.StreamHandler",
+            "level": "WARNING",
+            "formatter": "simple",
+            "filters": ["not_controllably_filter"],
+            "stream": "ext://sys.stderr"
+        },
+        "file_handler": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "level": "DEBUG",
+            "formatter": "detailed",
+            "filters": ["controllably_filter"],
+            "filename": "logs/session.log",
+            "maxBytes": 5242880
+        },
+        "queue_handler": {
+            "class": "logging.handlers.QueueHandler",
+            "handlers": ["file_handler"],
+            "respect_handler_level": true
+        }
+    },
+    "filters": {
+        "custom_console_filter": {
+            "()": "controllably.CustomLevelFilter",
+            "default_level_name": "WARNING"
+        },
+        "controllably_filter": {
+            "()": "controllably.AppFilter",
+            "app_root_name": "controllably"
+        },
+        "not_controllably_filter": {
+            "()": "controllably.AppFilter",
+            "app_root_name": "controllably",
+            "invert": true
+        }
+    },
+    "loggers": {
+        "root": {
+            "level": "DEBUG",
+            "handlers": ["stdout", "stderr", "queue_handler"]
+        }
+    }
+}

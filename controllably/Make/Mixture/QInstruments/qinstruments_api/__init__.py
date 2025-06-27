@@ -1,2 +1,4 @@
-from .qinstruments_api import QInstruments
-from .qinstruments_lib import ErrorCodes_BS, ErrorCodes_Q1_CP, ELMStateCode, ELMStateString, ShakeStateCode, ShakeStateString
+# -*- coding: utf-8 -*-
+"""Sub package for QInstruments tools."""
+from .qinstruments_api import QInstrumentsDevice
+from .qinstruments_api import FloatData
