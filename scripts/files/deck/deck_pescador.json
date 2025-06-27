@@ -15,25 +15,25 @@
             "dimensions": [600,300,0],
             "cornerOffset": [600,600,0],
             "orientation": [-90,0,0],
-            "deck_file": "control-lab-le/tests/files/deck/deck_overkill2.json"
+            "deck_file": "control-lab-ly/tests/files/deck/deck_overkill2.json"
         },
         "B":{ 
             "dimensions": [300,300,0],
             "cornerOffset": [300,300,0],
             "orientation": [0,0,0],
-            "deck_file": "control-lab-le/tests/files/deck/deck_dancefloor.json"
+            "deck_file": "control-lab-ly/tests/files/deck/deck_dancefloor.json"
         },
         "C":{ 
             "dimensions": [300,300,0],
             "cornerOffset": [0,300,0],
             "orientation": [0,0,0],
-            "deck_file": "control-lab-le/tests/files/deck/deck_fourfingers.json"
+            "deck_file": "control-lab-ly/tests/files/deck/deck_fourfingers.json"
         },
         "D":{ 
             "dimensions": [300,300,0],
             "cornerOffset": [300,300,0],
             "orientation": [-180,0,0],
-            "deck_file": "control-lab-le/tests/files/deck/deck_orionsbelt.json"
+            "deck_file": "control-lab-ly/tests/files/deck/deck_orionsbelt.json"
         }
     }
 }

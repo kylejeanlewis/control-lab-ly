@@ -33,7 +33,7 @@ def test_get_package_info():
     ...
 
 def test_init(monkeypatch):
-    repository_name = "control-lab-le"
+    repository_name = "control-lab-ly"
     monkeypatch.setattr('sys.path', [])
     target_dir = init(repository_name)
     assert repository_name in target_dir
@@ -74,13 +74,13 @@ def test_readable_duration():
     assert result == "1h 01min 01sec"
 
 @pytest.mark.parametrize("path", [
-    Path().absolute() / "control-lab-le/some/file/path",
-    "control-lab-le/some/file/path",
+    Path().absolute() / "control-lab-ly/some/file/path",
+    "control-lab-ly/some/file/path",
     "."
 ])
 def test_resolve_repo_filepath(path, monkeypatch):
     monkeypatch.setattr('os.getcwd', lambda : str(Path(HERE).parent))
-    repo_name = "control-lab-le"
+    repo_name = "control-lab-ly"
     root = Path(os.getcwd()).parent
     absolute_path = resolve_repo_filepath(path)
     assert absolute_path.is_absolute()

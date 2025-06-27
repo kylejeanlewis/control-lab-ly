@@ -15,13 +15,13 @@
             "dimensions": [600,300,0],
             "cornerOffset": [0,300,0],
             "orientation": [0,0,0],
-            "deck_file": "control-lab-le/tests/files/deck/deck_sample big.json"
+            "deck_file": "control-lab-ly/tests/files/deck/deck_sample big.json"
         },
         "D":{ 
             "dimensions": [300,300,0],
             "cornerOffset": [300,0,0],
             "orientation": [0,0,0],
-            "deck_file": "control-lab-le/tests/files/deck/deck_sample small.json"
+            "deck_file": "control-lab-ly/tests/files/deck/deck_sample small.json"
         }
     }
 }

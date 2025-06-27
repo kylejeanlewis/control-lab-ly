@@ -3,7 +3,7 @@ Lab Equipment Automation Package
 
 [![PyPI](https://img.shields.io/pypi/v/control-lab-ly)](https://pypi.org/project/control-lab-ly/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/control-lab-ly)](https://pypi.org/project/control-lab-ly/)
-![Tests](https://github.com/kylejeanlewis/control-lab-le/actions/workflows/tests.yml/badge.svg)
+![Tests](https://github.com/kylejeanlewis/control-lab-ly/actions/workflows/tests.yml/badge.svg)
 
 ## Description
 User-friendly package that simplifies the definition and control of reconfigurable setups for high-throughput experimentation and machine learning.
@@ -375,9 +375,9 @@ class Platform:
 
 
 ## How to Contribute
-[Issues](https://github.com/kylejeanlewis/control-lab-le/issues) and feature requests are welcome!
+[Issues](https://github.com/kylejeanlewis/control-lab-ly/issues) and feature requests are welcome!
 
 ## License
-This project is distributed under the [MIT License](https://github.com/kylejeanlewis/control-lab-le/blob/main/LICENSE.md).
+This project is distributed under the [MIT License](https://github.com/kylejeanlewis/control-lab-ly/blob/main/LICENSE.md).
 
 ---
