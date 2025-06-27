@@ -40,9 +40,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/kylejeanlewis/control-lab-ly"
+Homepage = "https://kylejeanlewis.github.io/control-lab-ly/"
 GitHub = "https://github.com/kylejeanlewis/control-lab-ly"
-Documentation = "https://kylejeanlewis.github.io/control-lab-ly/"
+Documentation = "https://control-lab-ly.readthedocs.io/en/latest/"
 Changelog = "https://github.com/kylejeanlewis/control-lab-ly/blob/main/docs/CHANGELOG.md"
 Tracker = "https://github.com/kylejeanlewis/control-lab-ly/issues"
 
