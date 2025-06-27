@@ -26,7 +26,7 @@
             "dimensions": [127.76,85.48,0],
             "cornerOffset": [10.5,106.5,0],
             "orientation": [0,0,0],
-            "labware_file": "control-lab-le/tests/files/labware/corning_24_wellplate_3400ul.json"
+            "labware_file": "control-lab-ly/tests/files/labware/corning_24_wellplate_3400ul.json"
         }
     },
     "zones":{}

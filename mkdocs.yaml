@@ -1,7 +1,7 @@
 site_name: Control-lab-ly
 copyright: Copyright &copy; 2022 - 2025 Chang Jie Leong
-repo_url: https://github.com/kylejeanlewis/control-lab-le
-repo_name: kylejeanlewis/control-lab-le
+repo_url: https://github.com/kylejeanlewis/control-lab-ly
+repo_name: kylejeanlewis/control-lab-ly
 theme:
   name: material
   features:

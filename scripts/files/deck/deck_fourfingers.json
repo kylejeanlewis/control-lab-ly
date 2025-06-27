@@ -20,7 +20,7 @@
             "dimensions": [127.76,85.48,0],
             "cornerOffset": [86.12,131.5,16],
             "orientation": [0,0,0],
-            "labware_file": "control-lab-le/tests/files/labware/pe_8x14_ct_v4.json"
+            "labware_file": "control-lab-ly/tests/files/labware/pe_8x14_ct_v4.json"
         }
     },
     "zones":{}
