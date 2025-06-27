@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main # Trigger this workflow when changes are pushed to the 'main' branch
+      - dev
 
 jobs:
   deploy:
