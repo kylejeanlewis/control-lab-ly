@@ -1,0 +1,46 @@
+{
+    "metadata": {
+        "displayName": "<Name of Layout",
+        "displayCategory": "deck",
+        "displayVolumeUnits": "µL",
+        "displayLengthUnits": "mm",
+        "tags": []
+    },
+    "dimensions": [600,300,0],
+    "cornerOffset": [0,0,0],
+    "orientation": [0,0,0],
+    "slots": {
+        "1": {
+            "dimensions": [127.76,85.48,0],
+            "cornerOffset": [10.5,6.5,0],
+            "orientation": [0,0,0],
+            "labware_file": "control-lab-le/../*.json"
+        },
+        "2": {
+            "dimensions": [127.76,85.48,0],
+            "cornerOffset": [160.5,6.5,0],
+            "orientation": [0,0,0],
+            "labware_file": "control-lab-le/../*.json",
+            "labware_boundary_buffer": [[-10,-10,-10],[10,10,10]]
+        },
+        "3": {
+            "dimensions": [127.76,85.48,0],
+            "cornerOffset": [310.5,6.5,0],
+            "orientation": [0,0,0]
+        },
+        "4": {
+            "dimensions": [127.76,85.48,0],
+            "cornerOffset": [160.5,106.5,0],
+            "orientation": [90,0,0],
+            "labware_file": "control-lab-le/../*.json"
+        }
+    },
+    "zones":{
+		"A":{ 
+            "dimensions": [600,600,0],
+            "cornerOffset": [300,600,0],
+            "orientation": [-90,0,0],
+            "deck_file": "control-lab-le/../layout_*.json"
+        }
+	}
+}

@@ -112,6 +112,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.venv_sila
 
 # Spyder project settings
 .spyderproject
@@ -134,3 +135,7 @@ dmypy.json
 # Local files and folders
 /library
 /archive
+/sila
+/docs/site/api
+
+/_controllably

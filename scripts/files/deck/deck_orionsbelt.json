@@ -1,0 +1,27 @@
+{
+    "metadata": {
+        "displayName": "Deck Orion's Belt",
+        "displayCategory": "deck",
+        "displayVolumeUnits": "µL",
+        "displayLengthUnits": "mm",
+        "tags": []
+    },
+    "dimensions": [300,300,0],
+    "cornerOffset": [0,0,0],
+    "orientation": [0,0,0],
+    "slots": {
+        "1": {
+            "dimensions": [127.76,85.48,0],
+            "cornerOffset": [86.12,6.5,0],
+            "orientation": [0,0,0],
+            "labware_file": ""
+        },
+        "2": {
+            "dimensions": [127.76,85.48,0],
+            "cornerOffset": [86.12,106.5,0],
+            "orientation": [0,0,0],
+            "labware_file": "control-lab-le/tests/files/labware/pe_8x14_ct_v4.json"
+        }
+    },
+    "zones":{}
+}

@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Feature SiLA2Version="1.0" FeatureVersion="1.0" MaturityLevel="Verified" Originator="controllably"
+         Category="demo"
+         xmlns="http://www.sila-standard.org" 
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://www.sila-standard.org https://gitlab.com/SiLA2/sila_base/raw/master/schema/FeatureDefinition.xsd">
+  <Identifier>Gantry</Identifier>
+  <DisplayName>Gantry</DisplayName>
+  <Description>
+    Example implementation of a Gantry feature. This feature is used to demonstrate the SiLA 2
+    capabilities.
+  </Description>
+  <Command>
+    <Identifier>Home</Identifier>
+    <DisplayName>Home</DisplayName>
+    <Description>Make the robot go home.</Description>
+    <Observable>No</Observable>
+    <Response>
+      <Identifier>Success</Identifier>
+      <DisplayName>Success</DisplayName>
+      <Description>Whether the robot successfully homed</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Response>
+  </Command>
+  <Command>
+    <Identifier>Move</Identifier>
+    <DisplayName>Move</DisplayName>
+    <Description>Move the robot in a specific axis by a specific value.</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>Axis</Identifier>
+      <DisplayName>Axis</DisplayName>
+      <Description>Axis to move</Description>
+      <DataType>
+        <Basic>String</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>By</Identifier>
+      <DisplayName>By</DisplayName>
+      <Description>Displacement to move</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>SpeedFactor</Identifier>
+      <DisplayName>SpeedFactor</DisplayName>
+      <Description>Fraction of maximum speed to travel at</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Jog</Identifier>
+      <DisplayName>Jog</DisplayName>
+      <Description>Whether to jog the robot</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Rapid</Identifier>
+      <DisplayName>Rapid</DisplayName>
+      <Description>Whether to move rapidly</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>Position</Identifier>
+      <DisplayName>Position</DisplayName>
+      <Description>New tool position</Description>
+      <DataType>
+        <Basic>String</Basic>
+      </DataType>
+    </Response>
+  </Command>
+  <Command>
+    <Identifier>MoveBy</Identifier>
+    <DisplayName>MoveBy</DisplayName>
+    <Description>Move the robot by target direction.</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>By</Identifier>
+      <DisplayName>By</DisplayName>
+      <Description>Displacement to move</Description>
+      <DataType>
+        <List>
+          <DataType>
+            <Basic>Real</Basic>
+          </DataType>
+        </List>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>SpeedFactor</Identifier>
+      <DisplayName>SpeedFactor</DisplayName>
+      <Description>Fraction of maximum speed to travel at</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Jog</Identifier>
+      <DisplayName>Jog</DisplayName>
+      <Description>Whether to jog the robot</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Rapid</Identifier>
+      <DisplayName>Rapid</DisplayName>
+      <Description>Whether to move rapidly</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Robot</Identifier>
+      <DisplayName>Robot</DisplayName>
+      <Description>Whether to move the robot</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>Position</Identifier>
+      <DisplayName>Position</DisplayName>
+      <Description>New tool/robot position</Description>
+      <DataType>
+        <Basic>String</Basic>
+      </DataType>
+    </Response>
+  </Command>
+  <Command>
+    <Identifier>MoveTo</Identifier>
+    <DisplayName>MoveTo</DisplayName>
+    <Description>Move the robot to target position.</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>To</Identifier>
+      <DisplayName>To</DisplayName>
+      <Description>Target position</Description>
+      <DataType>
+        <List>
+          <DataType>
+            <Basic>Real</Basic>
+          </DataType>
+        </List>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>SpeedFactor</Identifier>
+      <DisplayName>SpeedFactor</DisplayName>
+      <Description>Fraction of maximum speed to travel at</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Jog</Identifier>
+      <DisplayName>Jog</DisplayName>
+      <Description>Whether to jog the robot</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Rapid</Identifier>
+      <DisplayName>Rapid</DisplayName>
+      <Description>Whether to move rapidly</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Robot</Identifier>
+      <DisplayName>Robot</DisplayName>
+      <Description>Whether to move the robot</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>Position</Identifier>
+      <DisplayName>Position</DisplayName>
+      <Description>New tool/robot position</Description>
+      <DataType>
+        <Basic>String</Basic>
+      </DataType>
+    </Response>
+  </Command>
+  <Command>
+    <Identifier>MoveToSafeHeight</Identifier>
+    <DisplayName>MoveToSafeHeight</DisplayName>
+    <Description>Move the robot to safe height.</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>SpeedFactor</Identifier>
+      <DisplayName>SpeedFactor</DisplayName>
+      <Description>Fraction of maximum speed to travel at</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>Position</Identifier>
+      <DisplayName>Position</DisplayName>
+      <Description>New tool position</Description>
+      <DataType>
+        <Basic>String</Basic>
+      </DataType>
+    </Response>
+  </Command>
+  <Command>
+    <Identifier>SafeMoveTo</Identifier>
+    <DisplayName>SafeMoveTo</DisplayName>
+    <Description>Safe version of moveTo by moving in to safe height first.</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>To</Identifier>
+      <DisplayName>To</DisplayName>
+      <Description>Target position</Description>
+      <DataType>
+        <List>
+          <DataType>
+            <Basic>Real</Basic>
+          </DataType>
+        </List>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>SpeedFactorLateral</Identifier>
+      <DisplayName>SpeedFactorLateral</DisplayName>
+      <Description>Fraction of maximum speed to travel laterally at</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>SpeedFactorUp</Identifier>
+      <DisplayName>SpeedFactorUp</DisplayName>
+      <Description>Fraction of maximum speed to travel up at</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>SpeedFactorDown</Identifier>
+      <DisplayName>SpeedFactorDown</DisplayName>
+      <Description>Fraction of maximum speed to travel down at</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Jog</Identifier>
+      <DisplayName>Jog</DisplayName>
+      <Description>Whether to jog the robot</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>RotationBeforeLateral</Identifier>
+      <DisplayName>RotationBeforeLateral</DisplayName>
+      <Description>Whether to rotate before moving laterally</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Parameter>
+      <Identifier>Robot</Identifier>
+      <DisplayName>Robot</DisplayName>
+      <Description>Whether to move the robot</Description>
+      <DataType>
+        <Basic>Boolean</Basic>
+      </DataType>
+    </Parameter>
+    <Response>
+      <Identifier>Position</Identifier>
+      <DisplayName>Position</DisplayName>
+      <Description>New tool position</Description>
+      <DataType>
+        <Basic>String</Basic>
+      </DataType>
+    </Response>
+  </Command>
+  <Property>
+    <Identifier>RobotPosition</Identifier>
+    <DisplayName>RobotPosition</DisplayName>
+    <Description>Current position of the robot.</Description>
+    <Observable>No</Observable>
+    <DataType>
+      <Basic>String</Basic>
+    </DataType>
+  </Property>
+  <Property>
+    <Identifier>HomePosition</Identifier>
+    <DisplayName>HomePosition</DisplayName>
+    <Description>Home position of the robot.</Description>
+    <Observable>No</Observable>
+    <DataType>
+      <Basic>String</Basic>
+    </DataType>
+  </Property>
+  <Property>
+    <Identifier>Position</Identifier>
+    <DisplayName>Position</DisplayName>
+    <Description>Work position of the tool end effector.</Description>
+    <Observable>No</Observable>
+    <DataType>
+      <Basic>String</Basic>
+    </DataType>
+  </Property>
+</Feature>

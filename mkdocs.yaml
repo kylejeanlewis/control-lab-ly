@@ -1,0 +1,200 @@
+site_name: Control-lab-ly
+copyright: Copyright &copy; 2022 - 2025 Chang Jie Leong
+repo_url: https://github.com/kylejeanlewis/control-lab-le
+repo_name: kylejeanlewis/control-lab-le
+theme:
+  name: material
+  features:
+  - content.code.copy
+  - search.suggest
+  - search.highlight
+  palette:
+  - media: (prefers-color-scheme)
+    toggle:
+      icon: material/brightness-auto
+      name: Switch to light mode
+  - media: '(prefers-color-scheme: light)'
+    scheme: default
+    toggle:
+      icon: material/brightness-7
+      name: Switch to dark mode
+  - media: '(prefers-color-scheme: dark)'
+    scheme: slate
+    toggle:
+      icon: material/brightness-4
+      name: Switch to system preference
+  icon:
+    repo: fontawesome/brands/git-alt
+plugins:
+- mkdocstrings:
+    default_handler: python
+    handlers:
+      python:
+        options:
+          show_source: false
+          show_root_heading: false
+          show_root_full_path: false
+          show_symbol_type_heading: true
+          show_symbol_type_toc: true
+          docstring_style: google
+          docstring_section_style: spacy
+          merge_init_into_class: true
+          show_docstring_attributes: true
+          show_signature: true
+          show_signature_annotations: true
+          separate_signature: true
+          signature_crossrefs: true
+          extensions:
+          - docs/site/scripts/parse_docstring.py
+- offline
+- search
+markdown_extensions:
+- admonition
+- pymdownx.details
+- pymdownx.superfences
+- pymdownx.highlight:
+    anchor_linenums: true
+    line_spans: __span
+    pygments_lang_class: true
+- pymdownx.inlinehilite
+- pymdownx.snippets
+- pymdownx.superfences
+watch:
+- controllably/
+nav:
+- Getting Started:
+  - Overview: site/overview.md
+- Advanced Usage: site/advanced_usage.md
+- Reference:
+  - Compound:
+    - LiquidMover:
+      - liquidmover: site/api/Compound/LiquidMover/liquidmover.md
+    - VacuumMover:
+      - vacuummover: site/api/Compound/VacuumMover/vacuummover.md
+  - Make:
+    - Heat:
+      - heater_mixin: site/api/Make/Heat/heater_mixin.md
+      - peltier: site/api/Make/Heat/peltier.md
+    - Light:
+      - led: site/api/Make/Light/led.md
+    - Mixture:
+      - QInstruments:
+        - bioshake: site/api/Make/Mixture/QInstruments/bioshake.md
+        - qinstruments_api:
+          - qinstruments_api: site/api/Make/Mixture/QInstruments/qinstruments_api/qinstruments_api.md
+          - qinstruments_lib: site/api/Make/Mixture/QInstruments/qinstruments_api/qinstruments_lib.md
+      - TwoMag:
+        - twomag: site/api/Make/Mixture/TwoMag/twomag.md
+        - twomag_api:
+          - twomag_api: site/api/Make/Mixture/TwoMag/twomag_api/twomag_api.md
+          - twomag_lib: site/api/Make/Mixture/TwoMag/twomag_api/twomag_lib.md
+    - ThinFilm:
+      - spinner: site/api/Make/ThinFilm/spinner.md
+    - Vacuum:
+      - vacuum_mixin: site/api/Make/Vacuum/vacuum_mixin.md
+    - make: site/api/Make/make.md
+  - Measure:
+    - Chemical:
+      - Sentron:
+        - sentron: site/api/Measure/Chemical/Sentron/sentron.md
+    - Electrical:
+      - BioLogic:
+        - biologic: site/api/Measure/Electrical/BioLogic/biologic.md
+      - Keithley:
+        - keithley: site/api/Measure/Electrical/Keithley/keithley.md
+    - Mechanical:
+      - _force_actuator: site/api/Measure/Mechanical/_force_actuator.md
+      - actuated_sensor: site/api/Measure/Mechanical/actuated_sensor.md
+      - load_cell: site/api/Measure/Mechanical/load_cell.md
+    - Physical:
+      - balance: site/api/Measure/Physical/balance.md
+    - measure: site/api/Measure/measure.md
+  - Move:
+    - Cartesian:
+      - cartesian: site/api/Move/Cartesian/cartesian.md
+      - ender: site/api/Move/Cartesian/ender.md
+    - Jointed:
+      - Dobot:
+        - dobot: site/api/Move/Jointed/Dobot/dobot.md
+        - dobot_api:
+          - dobot_api: site/api/Move/Jointed/Dobot/dobot_api/dobot_api.md
+        - m1pro: site/api/Move/Jointed/Dobot/m1pro.md
+        - mg400: site/api/Move/Jointed/Dobot/mg400.md
+      - jointed: site/api/Move/Jointed/jointed.md
+    - gcode: site/api/Move/gcode.md
+    - grbl_api:
+      - grbl_api: site/api/Move/grbl_api/grbl_api.md
+      - grbl_lib: site/api/Move/grbl_api/grbl_lib.md
+    - marlin_api:
+      - marlin_api: site/api/Move/marlin_api/marlin_api.md
+    - move: site/api/Move/move.md
+  - Transfer:
+    - Liquid:
+      - Pipette:
+        - Sartorius:
+          - sartorius: site/api/Transfer/Liquid/Pipette/Sartorius/sartorius.md
+          - sartorius_api:
+            - sartorius_api: site/api/Transfer/Liquid/Pipette/Sartorius/sartorius_api/sartorius_api.md
+            - sartorius_lib: site/api/Transfer/Liquid/Pipette/Sartorius/sartorius_api/sartorius_lib.md
+      - Pump:
+        - TriContinent:
+          - tricontinent: site/api/Transfer/Liquid/Pump/TriContinent/tricontinent.md
+          - tricontinent_api:
+            - tricontinent_api: site/api/Transfer/Liquid/Pump/TriContinent/tricontinent_api/tricontinent_api.md
+            - tricontinent_lib: site/api/Transfer/Liquid/Pump/TriContinent/tricontinent_api/tricontinent_lib.md
+      - liquid: site/api/Transfer/Liquid/liquid.md
+    - Substrate:
+      - gripper_mixin: site/api/Transfer/Substrate/gripper_mixin.md
+  - View:
+    - Thermal:
+      - Flir:
+        - ax8: site/api/View/Thermal/Flir/ax8.md
+        - ax8_api:
+          - ax8_lib: site/api/View/Thermal/Flir/ax8_api/ax8_lib.md
+    - camera: site/api/View/camera.md
+    - image: site/api/View/image.md
+    - placeholder: site/api/View/placeholder.md
+  - core:
+    - compound: site/api/core/compound.md
+    - connection: site/api/core/connection.md
+    - control: site/api/core/control.md
+    - datalogger: site/api/core/datalogger.md
+    - device: site/api/core/device.md
+    - factory: site/api/core/factory.md
+    - file_handler: site/api/core/file_handler.md
+    - interpreter: site/api/core/interpreter.md
+    - log_filters: site/api/core/log_filters.md
+    - logging: site/api/core/logging.md
+    - notification: site/api/core/notification.md
+    - position: site/api/core/position.md
+    - safety: site/api/core/safety.md
+  - examples:
+    - control:
+      - fastapi:
+        - server: site/api/examples/control/fastapi/server.md
+        - utils: site/api/examples/control/fastapi/utils.md
+      - socket:
+        - server: site/api/examples/control/socket/server.md
+        - utils: site/api/examples/control/socket/utils.md
+    - gui:
+      - tkinter:
+        - gui: site/api/examples/gui/tkinter/gui.md
+        - move_gui: site/api/examples/gui/tkinter/move_gui.md
+        - transfer_gui: site/api/examples/gui/tkinter/transfer_gui.md
+        - view_gui: site/api/examples/gui/tkinter/view_gui.md
+    - sila:
+      - factory: site/api/examples/sila/factory.md
+- Contributing:
+  - Contribution Guidelines: CONTRIBUTING.md
+  - Code of Conduct: CODE_OF_CONDUCT.md
+- About:
+  - Attributions: ATTRIBUTIONS.md
+  - License: LICENSE.md
+  - Changelog: CHANGELOG.md
+extra:
+  version:
+    provider: mike
+  social:
+  - icon: fontawesome/brands/github
+    link: https://github.com/kylejeanlewis
+    name: Chang Jie on GitHub

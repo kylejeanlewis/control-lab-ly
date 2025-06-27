@@ -1,0 +1,5 @@
+pytest==7.4
+pytest-cov==2.11
+pytest-rerunfailures==15.0
+pytest-xdist==3.6
+tox==3.24

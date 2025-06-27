@@ -1,0 +1,31 @@
+syntax = "proto3";
+package controllably.core.messaging;
+
+// import "google/protobuf/any.proto";
+// import "google/protobuf/struct.proto";
+
+message Request {
+    string request_id = 1;
+    Address address = 2;
+    bool priority = 3;
+    int32 rank = 4;
+    string object_id = 5;
+    string method = 6;
+    repeated string args = 7;
+    map <string,string> kwargs = 8;
+};
+
+message Reply {
+    string reply_id = 1;
+    string request_id = 2;
+    Address address = 3;
+    bool priority = 4;
+    int32 rank = 5;
+    string status = 6;
+    // google.protobuf.Any data = 7;
+};
+
+message Address {
+    repeated string sender = 1;
+    repeated string target = 2;
+};

@@ -1,592 +1,346 @@
 # -*- coding: utf-8 -*-
+""" 
+This module provides a class to connect and interface with Dobot's arms
+
+Attributes:
+    DASHBOARD_PORT (int): port number for the dashboard API
+    FEEDBACK_PORT (int): port number for the feedback API
+    
+## Classes:
+    `DobotDevice`: DobotDevice provides methods to connect and interface with Dobot's arms
+    
+<i>Documentation last updated: 2025-02-22</i>
 """
-API from Dobot: [source](https://github.com/Dobot-Arm/TCP-IP-4Axis-Python)
-"""
+# Standard imports
+from __future__ import annotations
+from copy import deepcopy
+import logging
+import time
+from types import SimpleNamespace
+from typing import Any
 
-import socket
-from threading import Timer
-import numpy as np
+# Local imports
+from .....core import connection
+from .....external.Dobot_Arm import DobotApiDashboard, DobotApiMove
 
-# Port Feedback
-MyType=np.dtype([('len', np.int64, ), ('digital_input_bits', np.int64, ), 
-                ('digital_outputs', np.int64, ), ('robot_mode', np.int64, ), 
-                ('controller_timer', np.int64, ),('run_time', np.int64, ), 
-                ('test_value', np.int64, ), ('safety_mode', np.float64, ), 
-                ('speed_scaling', np.float64, ), ('linear_momentum_norm', np.float64, ),
-                ('v_main', np.float64, ), ('v_robot', np.float64, ), 
-                ('i_robot', np.float64, ), ('program_state', np.float64, ), 
-                ('safety_status', np.float64, ), ('tool_accelerometer_values', np.float64, (3,)), 
-                ('elbow_position', np.float64, (3,)), ('elbow_velocity', np.float64, (3,)), 
-                ('q_target', np.float64, (6,)), ('qd_target', np.float64,(6,)),
-                ('qdd_target', np.float64, (6,)), ('i_target', np.float64,(6,)), 
-                ('m_target', np.float64, (6,)), ('q_actual', np.float64, (6,)), 
-                ('qd_actual', np.float64, (6,)), ('i_actual', np.float64, (6,)), 
-                ('i_control', np.float64, (6,)), ('tool_vector_actual', np.float64, (6,)), 
-                ('TCP_speed_actual', np.float64, (6,)), ('TCP_force', np.float64, (6,)),
-                ('Tool_vector_target', np.float64, (6,)), ('TCP_speed_target', np.float64, (6,)), 
-                ('motor_temperatures', np.float64, (6,)), ('joint_modes', np.float64, (6,)), 
-                ('v_actual', np.float64, (6,)), ('dummy', np.float64, (9,6))
-                ])
+# Configure logging
+from controllably import CustomLevelFilter
+logger = logging.getLogger(__name__)
 
-class dobot_api_dashboard:
-    """
-    Define class dobot_api_dashboard to establish a connection to Dobot
-    """
-    def __init__(self, ip, port):
-        self.ip = ip
-        self.port = port
-        self.socket_dashboard = 0
+DASHBOARD_PORT = 29999
+FEEDBACK_PORT = 30003
 
-        if self.port == 29999:
-            try:     
-                self.socket_dashboard = socket.socket() 
-                self.socket_dashboard.connect((self.ip, self.port))
-            except socket.error:
-                print("Fail to setup socket connection !", socket.error)
-        else:
-            print("Connect to dashboard server need use port 29999 !")
-
-    def __delete__(self):
-        self.close()
-
-    def EnableRobot(self):
-        """
-        Enable the robot
-        """
-        string = "EnableRobot()"
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
+class DobotDevice:
+    """ 
+    DobotDevice provides methods to connect and interface with Dobot's arms
+    
+    ### Constructor:
+        `host` (str): IP address of Dobot
+        `port` (int, optional): port number. Defaults to None.
+        `timeout` (int, optional): timeout for connection. Defaults to 10.
+        `simulation` (bool, optional): whether to simulate the connection. Defaults to False.
+        `verbose` (bool, optional): whether to log debug messages. Defaults to False.
+    
+    ### Attributes and properties:
+        `host` (str): device host
+        `port` (int): device port
+        `timeout` (int): device timeout
+        `connection_details` (dict): connection details for the device
+        `dashboard_api` (DobotApiDashboard): dashboard API for the device
+        `move_api` (DobotApiMove): move API for the device
+        `flags` (SimpleNamespace[str, bool]): flags for the device
+        `is_connected` (bool): whether the device is connected
+        `verbose` (bool): verbosity of class
         
-    def DisableRobot(self):
-        """
-        Disabled the robot
-        """
-        string = "DisableRobot()"
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def ClearError(self):
-        """
-        Clear controller alarm information
-        """
-        string = "ClearError()"
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def ResetRobot(self):
-        """
-        Robot stop
-        """
-        string = "ResetRobot()"
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def SpeedFactor(self, speed):
-        """
-        Setting the Global rate   
-        speed:Rate value(Value range:1~100)
-        """
-        string = "SpeedFactor({:d})".format(speed)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8')) 
-        self.WaitReply()
-
-    def User(self, index):
-        """
-        Select the calibrated user coordinate system
-        index : Calibrated index of user coordinates
-        """
-        string = "User({:d})".format(index)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def Tool(self, index):
-        """
-        Select the calibrated tool coordinate system
-        index : Calibrated index of tool coordinates
-        """
-        string = "Tool({:d})".format(index)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def RobotMode(self):
-        """
-        View the robot status
-        """
-        string = "RobotMode()"
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def PayLoad(self, weight, inertia):
-        """
-        Setting robot load
-        weight : The load weight
-        inertia: The load moment of inertia
-        """
-        string = "PayLoad({:f},{:f})".format(weight,inertia)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def DO(self, index, status):
-        """
-        Set digital signal output (Queue instruction)
-        index : Digital output index (Value range:1~24)
-        status : Status of digital signal output port(0:Low level,1:High level
-        """
-        string = "DO({:d},{:d})".format(index,status)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def DOExecute(self, index, status):
-        """
-        Set digital signal output (Instructions immediately)
-        index : Digital output index (Value range:1~24)
-        status : Status of digital signal output port(0:Low level,1:High level)
-        """
-        string = "DOExecute({:d},{:d})".format(index,status)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def ToolDO(self, index, status):
-        """
-        Set terminal signal output (Queue instruction)
-        index : Terminal output index (Value range:1~2)
-        status : Status of digital signal output port(0:Low level,1:High level)
-        """
-        string = "ToolDO({:d},{:d})".format(index,status)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def ToolDOExecute(self, index, status):
-        """
-        Set terminal signal output (Instructions immediately)
-        index : Terminal output index (Value range:1~2)
-        status : Status of digital signal output port(0:Low level,1:High level)
-        """
-        string = "ToolDOExecute({:d},{:d})".format(index,status)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def AO(self, index, val):
-        """
-        Set analog signal output (Queue instruction)
-        index : Analog output index (Value range:1~2)
-        val : Voltage value (0~10)
-        """
-        string = "AO({:d},{:f})".format(index,val)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def AOExecute(self, index, val):
-        """
-        Set analog signal output (Instructions immediately)
-        index : Analog output index (Value range:1~2)
-        val : Voltage value (0~10)
-        """
-        string = "AOExecute({:d},{:f})".format(index,val)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def AccJ(self, speed):
-        """
-        Set joint acceleration ratio (Only for MovJ, MovJIO, MovJR, JointMovJ commands)
-        speed : Joint acceleration ratio (Value range:1~100)
-        """
-        string = "AccJ({:d})".format(speed)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def AccL(self, speed):
-        """
-        Set the coordinate system acceleration ratio (Only for MovL, MovLIO, MovLR, Jump, Arc, Circle commands)
-        speed : Cartesian acceleration ratio (Value range:1~100)
-        """
-        string = "AccL({:d})".format(speed)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def SpeedJ(self, speed):
-        """
-        Set joint speed ratio (Only for MovJ, MovJIO, MovJR, JointMovJ commands)
-        speed : Joint velocity ratio (Value range:1~100)
-        """
-        string = "SpeedJ({:d})".format(speed)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def SpeedL(self, speed):
-        """
-        Set the cartesian acceleration ratio (Only for MovL, MovLIO, MovLR, Jump, Arc, Circle commands)
-        speed : Cartesian acceleration ratio (Value range:1~100)
-        """
-        string = "SpeedL({:d})".format(speed)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def Arch(self, index):
-        """
-        Set the Jump gate parameter index (This index contains: start point lift height, maximum lift height, end point drop height)
-        index : Parameter index (Value range:0~9)
-        """
-        string = "Arch({:d})".format(index)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def CP(self, ratio):
-        """
-        Set smooth transition ratio
-        ratio : Smooth transition ratio (Value range:1~100)
-        """
-        string = "CP({:d})".format(ratio)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def LimZ(self, value):
-        """
-        Set the maximum lifting height of door type parameters
-        value : Maximum lifting height (Highly restricted:Do not exceed the limit position of the z-axis of the manipulator)
-        """
-        string = "LimZ({:d})".format(value)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def SetArmOrientation(self, r, d, n, cfg):
-        """
-        Set the hand command
-        r : Mechanical arm direction, forward/backward (1:forward -1:backward)
-        d : Mechanical arm direction, up elbow/down elbow (1:up elbow -1:down elbow)
-        n : Whether the wrist of the mechanical arm is flipped (1:The wrist does not flip -1:The wrist flip)
-        cfg :Sixth axis Angle identification
-            (1, - 2... : Axis 6 Angle is [0,-90] is -1; [90, 180] - 2; And so on
-            1, 2... : axis 6 Angle is [0,90] is 1; [90180] 2; And so on)
-        """
-        string = "SetArmOrientation({:d},{:d},{:d},{:d})".format(r,d,n,cfg)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def PowerOn(self):
-        """
-        Powering on the robot
-        Note: It takes about 10 seconds for the robot to be enabled after it is powered on.
-        """
-        string = "PowerOn()"
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def RunScript(self, project_name):
-        """
-        Run the script file
-        project_name :Script file name
-        """
-        string = "RunScript({:s})".format(project_name)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def StopScript(self):
-        """
-        Stop scripts
-        """
-        string = "StopScript()"
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def PauseScript(self):
-        """
-        Pause the script
-        """
-        string = "PauseScript()"
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def ContinueScript(self):
-        """
-        Continue running the script
-        """
-        string = "ContinueScript()"
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def GetHoldRegs(self, id, addr, count, type):
-        """
-        Read hold register
-        id :Secondary device NUMBER (A maximum of five devices can be supported. The value ranges from 0 to 4
-            Set to 0 when accessing the internal slave of the controller)
-        addr :Hold the starting address of the register (Value range:3095~4095)
-        count :Reads the specified number of types of data (Value range:1~16)
-        type :The data type
-            If null, the 16-bit unsigned integer (2 bytes, occupying 1 register) is read by default
-            "U16" : reads 16-bit unsigned integers (2 bytes, occupying 1 register)
-            "U32" : reads 32-bit unsigned integers (4 bytes, occupying 2 registers)
-            "F32" : reads 32-bit single-precision floating-point number (4 bytes, occupying 2 registers)
-            "F64" : reads 64-bit double precision floating point number (8 bytes, occupying 4 registers)
-        """
-        string = "GetHoldRegs({:d},{:d},{:d},{:s})".format(id,addr,count,type)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def SetHoldRegs(self, id, addr, count, table, type):
-        """
-        Write hold register
-        id :Secondary device NUMBER (A maximum of five devices can be supported. The value ranges from 0 to 4
-            Set to 0 when accessing the internal slave of the controller)
-        addr :Hold the starting address of the register (Value range:3095~4095)
-        count :Writes the specified number of types of data (Value range:1~16)
-        type :The data type
-            If null, the 16-bit unsigned integer (2 bytes, occupying 1 register) is read by default
-            "U16" : reads 16-bit unsigned integers (2 bytes, occupying 1 register)
-            "U32" : reads 32-bit unsigned integers (4 bytes, occupying 2 registers)
-            "F32" : reads 32-bit single-precision floating-point number (4 bytes, occupying 2 registers)
-            "F64" : reads 64-bit double precision floating point number (8 bytes, occupying 4 registers)
-        """
-        string = "SetHoldRegs({:d},{:d},{:d},{:d},{:s})".format(id,addr,count,table,type)
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
+    ### Methods:
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `reset`: reset the device
+        `clear`: clear the input and output buffers
+        `query`: query the device
+        `read`: read data from the device
+        `write`: write data to the device
+        `close`: close the connection to the device
+        `ClearError`: clear any errors on the device
+        `DisableRobot`: disable the robot
+        `EnableRobot`: enable the robot
+        `ResetRobot`: stop the robot
+        `SetArmOrientation`: set the handedness of the robot
+        `SpeedFactor`: set the speed factor of the robot
+        `GetAngle`: get the angle of the robot
+        `GetPose`: get the pose of the robot
+        `DOExecute`: execute a digital output
+        `JointMovJ`: move the robot to the specified joint coordinates
+        `MovJ`: move the robot to the specified cartesian coordinates
+        `RelMovJ`: move the robot by the specified joint offsets
+        `RelMovL`: move the robot by the specified cartesian offsets
+    """
     
-    def Sync(self):
-        """
-        Synchronization instructions
-        """
-        string = "Sync()"
-        print(string)
-        self.socket_dashboard.send(str.encode(string,'utf-8'))
-        self.WaitReply()
-
-    def WaitReply(self):
-        """
-        Read the return value
-        """
-        data = self.socket_dashboard.recv(1024)
-        print('receive:', bytes.decode(data,'utf-8'))
-
-    def close(self):
-        """
-        Close the port
-        """
-        if(self.socket_dashboard != 0):
-            self.socket_dashboard.close()
-
-
-class dobot_api_feedback:
-    """
-    Define class dobot_api_feedback to establish a connection to Dobot
-    """
-    def __init__(self, ip, port):
-        self.ip = ip
+    _default_flags: SimpleNamespace = SimpleNamespace(verbose=False, connected=False, simulation=False)
+    def __init__(self, 
+        host: str, 
+        port: int|None = None, 
+        timeout: int = 10, 
+        *, 
+        simulation: bool=False, 
+        verbose: bool = False, 
+        **kwargs
+    ):
+        self.host = host
         self.port = port
-        self.socket_feedback = 0 
+        self.timeout = timeout
+        self.dashboard_api: DobotApiDashboard|None = None
+        self.move_api: DobotApiMove|None = None
+        self.flags = deepcopy(self._default_flags)
+        self.flags.simulation = simulation
+        
+        self._logger = logger.getChild(f"{self.__class__.__name__}.{id(self)}")
+        self.verbose = verbose
+        return
+    
+    @property
+    def connection_details(self) -> dict:
+        """Connection details for the device"""
+        ports = tuple([s.port for s in (self.dashboard_api, self.move_api) if s is not None])
+        return {
+            'host': self.host,
+            'port': ports,
+            'timeout': self.timeout
+        }
+    
+    @property
+    def is_connected(self) -> bool:
+        """Whether the device is connected"""
+        connected = self.flags.connected
+        return connected
+    
+    @property
+    def verbose(self) -> bool:
+        """Verbosity of class"""
+        return self.flags.verbose
+    @verbose.setter
+    def verbose(self, value:bool):
+        assert isinstance(value,bool), "Ensure assigned verbosity is boolean"
+        self.flags.verbose = value
+        level = logging.DEBUG if value else logging.INFO
+        CustomLevelFilter().setModuleLevel(self._logger.name, level)
+        return
+    
+    def connect(self):
+        """Connect to the device"""
+        if self.is_connected:
+            return
+        if not connection.match_current_ip_address(self.host):
+            self._logger.warning(f"Device  IP Address: {self.host}")
+            raise ConnectionError("Ensure device is connected to the same network as the machine")
+        
+        start_time = time.perf_counter()
+        dashboard_api = DobotApiDashboard(self.host, DASHBOARD_PORT)
+        if time.perf_counter() - start_time > self.timeout:
+            raise ConnectionAbortedError(f"Failed to connect to {self.host} at {DASHBOARD_PORT}")
+        self.dashboard_api = dashboard_api
+        
+        start_time = time.perf_counter()
+        move_api = DobotApiMove(self.host, FEEDBACK_PORT)
+        if time.perf_counter() - start_time > self.timeout:
+            raise ConnectionAbortedError(f"Failed to connect to {self.host} at {FEEDBACK_PORT}")
+        self.move_api = move_api
+        self._logger.info(f"Connected to {self.host} at {DASHBOARD_PORT} and {FEEDBACK_PORT}")
+        
+        self.reset()
+        if isinstance(self.dashboard_api, DobotApiDashboard):
+            self.dashboard_api.User(0)
+            self.dashboard_api.Tool(0)
+        self.flags.connected = True
+        return
 
-        if self.port == 30003:
-            try:      
-                self.socket_feedback = socket.socket() 
-                self.socket_feedback.connect((self.ip, self.port))
-            except socket.error:
-                print("Fail to connect feedback server !", socket.error)
+    def disconnect(self):
+        """Disconnect from the device"""
+        if not self.is_connected:
+            return
+        try:
+            self.ResetRobot()
+            self.DisableRobot()
+            self.close()
+        except OSError as e:
+            self._logger.error(f"Failed to disconnect from {self.host}")
+            self._logger.debug(e)
         else:
-            print("Connect to feedback server need use port 30003 !")
-
-
-    def __del__(self):
-        self.close()
-
-    def MovJ(self,  x, y, z, a, b, c):
-        """
-        Joint motion interface (point-to-point motion mode)
-        x: A number in the Cartesian coordinate system x
-        y: A number in the Cartesian coordinate system y
-        z: A number in the Cartesian coordinate system z
-        a: A number in the Cartesian coordinate system a
-        b: A number in the Cartesian coordinate system b
-        c: A number in the Cartesian coordinate system c
-        """
-        string = "MovJ({:f},{:f},{:f},{:f},{:f},{:f})".format(x,y,z,a,b,c)
-        print(string)
-        self.socket_feedback.send(str.encode(string,'utf-8'))
+            self._logger.info(f"Disconnected from {self.host}")
+        self.flags.connected = False
+        return
     
-    def MovL(self, x, y, z, a, b, c):
-        """
-        Coordinate system motion interface (linear motion mode)
-        x: A number in the Cartesian coordinate system x
-        y: A number in the Cartesian coordinate system y
-        z: A number in the Cartesian coordinate system z
-        a: A number in the Cartesian coordinate system a
-        b: A number in the Cartesian coordinate system b
-        c: a number in the Cartesian coordinate system c
-        """
-        string = "MovL({:f},{:f},{:f},{:f},{:f},{:f})".format(x,y,z,a,b,c)
-        print(string)
-        self.socket_feedback.send(str.encode(string,'utf-8'))
-
-    def JointMovJ(self, j1, j2, j3, j4, j5, j6):
-        """
-        Joint motion interface (linear motion mode)
-        j1~j6:Point position values on each joint
-        """
-        string = "JointMovJ({:f},{:f},{:f},{:f},{:f},{:f})".format(j1,j2,j3,j4,j5,j6)
-        print(string)
-        self.socket_feedback.send(str.encode(string,'utf-8')) 
+    def reset(self):
+        """Reset the device"""
+        self.DisableRobot()
+        self.ClearError()
+        self.EnableRobot()
+        return
     
-    def Jump(self):
-        print("待定") 
-
-    def RelMovJ(self, offset1, offset2, offset3, offset4, offset5, offset6):
-        """
-        Offset motion interface (point-to-point motion mode)
-        j1~j6:Point position values on each joint
-        """
-        string = "RelMovJ({:f},{:f},{:f},{:f},{:f},{:f})".format(offset1,offset2,offset3,offset4,offset5,offset6)
-        print(string)
-        self.socket_feedback.send(str.encode(string,'utf-8'))
+    def clear(self):                                                    # NOTE: not implemented
+        """Clear the input and output buffers"""
+        raise NotImplementedError
     
-    def RelMovL(self, offsetX, offsetY, offsetZ):
+    def query(self, data:Any, lines:bool = True) -> list[str]|None:     # NOTE: not implemented
         """
-        Offset motion interface (point-to-point motion mode)
-        x: Offset in the Cartesian coordinate system x
-        y: offset in the Cartesian coordinate system y
-        z: Offset in the Cartesian coordinate system Z
-        """
-        string = "RelMovL({:f},{:f},{:f})".format(offsetX,offsetY,offsetZ)
-        print(string)
-        self.socket_feedback.send(str.encode(string,'utf-8'))
+        Query the device
 
-    def MovLIO(self, x, y, z, a, b, c, *dynParams):
-        """
-        Set the digital output port state in parallel while moving in a straight line
-        x: A number in the Cartesian coordinate system x
-        y: A number in the Cartesian coordinate system y
-        z: A number in the Cartesian coordinate system z
-        a: A number in the Cartesian coordinate system a
-        b: A number in the Cartesian coordinate system b
-        c: a number in the Cartesian coordinate system c
-        *dynParams :Parameter Settings(Mode、Distance、Index、Status)
-                    Mode :Set Distance mode (0: Distance percentage; 1: distance from starting point or target point)
-                    Distance :Runs the specified distance(If Mode is 0, the value ranges from 0 to 100;When Mode is 1, if the value is positive,
-                             it indicates the distance from the starting point. If the value of Distance is negative, it represents the Distance from the target point)
-                    Index :Digital output index (Value range:1~24)
-                    Status :Digital output state(Value range:0/1)
-        """
-        # example: MovLIO(0,50,0,0,0,0,(0,50,1,0),(1,1,2,1))
-        string = "MovLIO({:f},{:f},{:f},{:f},{:f},{:f}".format(x,y,z,a,b,c)
-        print(type(dynParams), dynParams)
-        for params in dynParams:
-            print(type(params), params)
-            string = string + ",{{{:d},{:d},{:d},{:d}}}".format(params[0],params[1],params[2],params[3])
-        string = string + ")"
-        print(string)
-        self.socket_feedback.send(str.encode(string,'utf-8')) 
+        Args:
+            data (Any): data to query
 
-    def MovJIO(self, x, y, z, a, b, c, *dynParams):
+        Returns:
+            list[str]|None: data read from the device, if any
         """
-        Set the digital output port state in parallel during point-to-point motion
-        x: A number in the Cartesian coordinate system x
-        y: A number in the Cartesian coordinate system y
-        z: A number in the Cartesian coordinate system z
-        a: A number in the Cartesian coordinate system a
-        b: A number in the Cartesian coordinate system b
-        c: a number in the Cartesian coordinate system c
-        *dynParams :Parameter Settings(Mode、Distance、Index、Status)
-                    Mode :Set Distance mode (0: Distance percentage; 1: distance from starting point or target point)
-                    Distance :Runs the specified distance(If Mode is 0, the value ranges from 0 to 100;When Mode is 1, if the value is positive,
-                             it indicates the distance from the starting point. If the value of Distance is negative, it represents the Distance from the target point)
-                    Index :Digital output index (Value range:1~24)
-                    Status :Digital output state(Value range:0/1)
-        """
-        # example: MovJIO(0,50,0,0,0,0,(0,50,1,0),(1,1,2,1))
-        string = "MovJIO({:f},{:f},{:f},{:f},{:f},{:f}".format(x,y,z,a,b,c)
-        print(string)
-        print(type(dynParams), dynParams)
-        for params in dynParams:
-            print(type(params), params)
-            string = string + ",{{{:d},{:d},{:d},{:d}}}".format(params[0],params[1],params[2],params[3])
-        string = string + ")"
-        print(string)
-        self.socket_feedback.send(str.encode(string,'utf-8'))  
- 
-    def Arc(self, x1, y1, z1, a1, b1, c1, x2, y2, z2, a2, b2, c2):
-        """
-        Circular motion instruction
-        x1, y1, z1, a1, b1, c1 :Is the point value of intermediate point coordinates
-        x2, y2, z2, a2, b2, c2 :Is the value of the end point coordinates
-        Note: This instruction should be used together with other movement instructions
-        """
-        string = "Arc({:f},{:f},{:f},{:f},{:f},{:f},{:f},{:f},{:f},{:f},{:f},{:f})".format(x1,y1,z1,a1,b1,c1,x2,y2,z2,a2,b2,c2)
-        print(string)
-        self.socket_feedback.send(str.encode(string,'utf-8'))
+        raise NotImplementedError
 
-    def Circle(self, count, x1, y1, z1, a1, b1, c1, x2, y2, z2, a2, b2, c2):
+    def read(self, lines:bool = False) -> str|list[str]:                # NOTE: not implemented
         """
-        Full circle motion command
-        count:Run laps
-        x1, y1, z1, a1, b1, c1 :Is the point value of intermediate point coordinates
-        x2, y2, z2, a2, b2, c2 :Is the value of the end point coordinates
-        Note: This instruction should be used together with other movement instructions
+        Read data from the device
+        
+        Args:
+            lines (bool, optional): whether to read multiple lines. Defaults to False.
+            
+        Returns:
+            str|list[str]: line(s) of data read from the device
         """
-        string = "Circle({:d},{:f},{:f},{:f},{:f},{:f},{:f},{:f},{:f},{:f},{:f},{:f},{:f})".format(count,x1,y1,z1,a1,b1,c1,x2,y2,z2,a2,b2,c2)
-        print(string)
-        self.socket_feedback.send(str.encode(string,'utf-8'))
-    
-    def ServoJ(self, j1, j2, j3, j4, j5, j6):
-        """
-        Dynamic follow command based on joint space
-        j1~j6:Point position values on each joint
-        """
-        string = "ServoJ({:f},{:f},{:f},{:f},{:f},{:f})".format(j1,j2,j3,j4,j5,j6)
-        print(string)
-        self.socket_feedback.send(str.encode(string,'utf-8'))
+        raise NotImplementedError
 
-    def ServoP(self, x, y, z, a, b, c):
+    def write(self, data:str) -> bool:                                  # NOTE: not implemented
         """
-        Dynamic following command based on Cartesian space
-        x, y, z, a, b, c :Cartesian coordinate point value
-        """
-        string = "ServoP({:f},{:f},{:f},{:f},{:f},{:f})".format(x,y,z,a,b,c)
-        print(string)
-        self.socket_feedback.send(str.encode(string,'utf-8'))
+        Write data to the device
 
-    def WaitReply(self):
+        Args:
+            data (str): data to write
+        
+        Returns:
+            bool: whether the write was successful
         """
-        30003 Port return value
-        """
-        all = self.socket_feedback.recv(10240)
-        data = all[0:1440]
-        a = np.frombuffer(data, dtype=MyType)
-        if hex((a['test_value'][0])) == '0x123456789abcdef':
-            print('robot_mode', a['robot_mode'])
-            print('tool_vector_actual', np.around(a['tool_vector_actual'], decimals=4))
-            print('q_actual', np.around(a['q_actual'], decimals=4))
-            print('test_value', a['test_value'])
-       
+        raise NotImplementedError
+
+    # Dobot API
     def close(self):
+        """Close the connection to the device"""
+        self._logger.debug("close")
+        if isinstance(self.dashboard_api, DobotApiDashboard):
+            self.dashboard_api.close()
+            self.dashboard_api = None
+        if isinstance(self.move_api, DobotApiMove):
+            self.move_api.close()
+            self.move_api = None
+        return
+
+    # Dashboard API
+    def ClearError(self):
+        """Clear any errors on the device"""
+        self._logger.debug("ClearError")
+        return self.dashboard_api.ClearError() if isinstance(self.dashboard_api, DobotApiDashboard) else None
+    
+    def DisableRobot(self):
+        """Disable the robot"""
+        self._logger.debug("DisableRobot")
+        return self.dashboard_api.DisableRobot() if isinstance(self.dashboard_api, DobotApiDashboard) else None
+    
+    def EnableRobot(self, *args):
+        """Enable the robot"""
+        self._logger.debug("EnableRobot")
+        return self.dashboard_api.EnableRobot(*args) if isinstance(self.dashboard_api, DobotApiDashboard) else None
+    
+    def ResetRobot(self):
+        """Stop the robot"""
+        self._logger.debug("ResetRobot")
+        return self.dashboard_api.ResetRobot() if isinstance(self.dashboard_api, DobotApiDashboard) else None
+    
+    def SetArmOrientation(self, right_handed:bool):
+        """ 
+        Set the handedness of the robot
+        
+        Args:
+            right_handed (bool): whether to select right-handed mode
         """
-        Close port
+        self._logger.debug(f"SetArmOrientation | {right_handed=}")
+        return self.dashboard_api.SetArmOrientation(int(right_handed)) if isinstance(self.dashboard_api, DobotApiDashboard) else None
+    
+    def SpeedFactor(self, speed_factor:int):
         """
-        if(self.socket_feedback != 0):
-            self.socket_feedback.close()
+        Set the speed factor of the robot
+        
+        Args:
+            speed_factor (int): speed factor to set
+        """
+        self._logger.debug(f"SpeedFactor | {speed_factor=}")
+        return self.dashboard_api.SpeedFactor(speed_factor) if isinstance(self.dashboard_api, DobotApiDashboard) else None
+    
+    def GetAngle(self):
+        """Get the angle of the robot"""
+        self._logger.debug("GetAngle")
+        return self.dashboard_api.GetAngle() if isinstance(self.dashboard_api, DobotApiDashboard) else None
+    
+    def GetPose(self):
+        """Get the pose of the robot"""
+        self._logger.debug("GetPose")
+        return self.dashboard_api.GetPose() if isinstance(self.dashboard_api, DobotApiDashboard) else None
+    
+    def DOExecute(self, channel:int, on:int):
+        """
+        Execute a digital output
+        
+        Args:
+            channel (int): channel of the digital output
+            on (int): whether to enable the digital output (1 or 0)
+        """
+        self._logger.debug(f"DOExecute | {channel=}, {on=}")
+        return self.dashboard_api.DOExecute(channel, on) if isinstance(self.dashboard_api, DobotApiDashboard) else None
+    
+    # Move API
+    def JointMovJ(self, j1:float, j2:float, j3:float, j4:float, *args):
+        """ 
+        Move the robot to the specified joint coordinates
+        
+        Args:
+            j1 (float): joint 1 coordinate
+            j2 (float): joint 2 coordinate
+            j3 (float): joint 3 coordinate
+            j4 (float): joint 4 coordinate
+        """
+        self._logger.debug(f"JointMovJ | {j1=}, {j2=}, {j3=}, {j4=}")
+        return self.move_api.JointMovJ(j1,j2,j3,j4, *args) if isinstance(self.move_api, DobotApiMove) else None    
+    
+    def MovJ(self, x:float, y:float, z:float, r:float, *args):
+        """
+        Move the robot to the specified cartesian coordinates
+        
+        Args:
+            x (float): x-coordinate
+            y (float): y-coordinate
+            z (float): z-coordinate
+            r (float): r-coordinate
+        """
+        self._logger.debug(f"MovJ | {x=}, {y=}, {z=}, {r=}")
+        return self.move_api.MovJ(x,y,z,r, *args) if isinstance(self.move_api, DobotApiMove) else None
+    
+    def RelMovJ(self, offset1:float, offset2:float, offset3:float, offset4:float, *args):
+        """
+        Move the robot by the specified joint offsets
+        
+        Args:
+            offset1 (float): joint 1 offset
+            offset2 (float): joint 2 offset
+            offset3 (float): joint 3 offset
+            offset4 (float): joint 4 offset
+        """
+        self._logger.debug(f"RelMovJ | {offset1=}, {offset2=}, {offset3=}, {offset4=}")
+        return self.move_api.RelMovJ(offset1,offset2,offset3,offset4, *args) if isinstance(self.move_api, DobotApiMove) else None
+    
+    def RelMovL(self, offsetX:float, offsetY:float, offsetZ:float, offsetR:float, *args):
+        """
+        Move the robot by the specified cartesian offsets
+        
+        Args:
+            offsetX (float): x offset
+            offsetY (float): y offset
+            offsetZ (float): z offset
+            offsetR (float): r offset
+        """
+        self._logger.debug(f"RelMovL | {offsetX=}, {offsetY=}, {offsetZ=}, {offsetR=}")
+        return self.move_api.RelMovL(offsetX,offsetY,offsetZ,offsetR, *args) if isinstance(self.move_api, DobotApiMove) else None
+    

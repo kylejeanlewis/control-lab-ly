@@ -1,0 +1,62 @@
+Device01:                                     # name of simple device (user-defined)
+  module: mock_module                             # device module
+  class: TestClass                                  # device class
+  settings:
+    port: __port_1__                          # port addresses defined in registry.yaml
+    setting_A: {'tuple': [300,0,200]}         # use keys to define the type of iterable
+    setting_B: {'array': [[0,1,0],[-1,0,0]]}  # only tuple and np.array supported
+
+Device02:                                     # name of 'Compound' device (user-defined)
+  module: mock_module                            # device module                            
+  class: TestCompoundClass                                  # device class
+  settings:
+    setting_C: 1                              # other settings for your 'Compound' device
+    details:                                    # nest part configuration settings here
+      part01:                                 # name of part
+        module: mock_module                       # part module
+        class: TestClass                            # part class
+        settings:
+          ip_address: '192.0.0.1'               # IP addresses do not vary between machines
+      part02: 
+        module: mock_module
+        class: TestClass
+        settings:
+          setting_D: 2                        # settings for your part device
+
+Device04:                                     # name of 'Compound' device (user-defined)
+  module: mock_module                            # device module                            
+  class: TestCombinedClass                                  # device class
+  settings:
+    setting_C: 1                              # other settings for your 'Compound' device
+    port: __port_1__                          # port addresses defined in registry.yaml
+    baudrate: 9600
+    details:                                    # nest part configuration settings here
+      part01:                                 # name of part
+        module: mock_module                       # part module
+        class: TestClass                            # part class
+        settings:
+          name: 'part1'               # IP addresses do not vary between machines
+      part02: 
+        module: mock_module
+        class: TestClass
+        settings:
+          name: 'part2'                      # settings for your part device
+
+DeviceFail:
+  module: mock_module                             # device module
+  class: TestClassNotExist                                  # device class
+  settings:
+    setting_E: 6
+
+DeviceError:
+  module: mock_module                             # device module
+  class: TestClassError                                  # device class
+  settings:
+    setting_E: 6
+
+SHORTCUTS:
+  shortcut1: 'Device02.part01'
+  shortcut2: 'Device02.part02'
+
+  shortcut3: 'Device03.part04'
+  shortcut4: 'Device01.part05'

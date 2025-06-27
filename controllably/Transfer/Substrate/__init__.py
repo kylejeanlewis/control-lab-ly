@@ -1,10 +1,3 @@
-"""
-This sub-package imports the base class for substrate gripper tools.
-
-Classes:
-    Gripper (ABC)
-"""
-from .substrate_utils import Gripper
-
-from controllably import include_this_module
-include_this_module(get_local_only=False)
+# -*- coding: utf-8 -*-
+"""Sub package for substrate handling."""
+from .gripper_mixin import GripperMixin
