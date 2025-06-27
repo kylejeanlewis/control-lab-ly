@@ -4,9 +4,9 @@ on:
   pull_request:
     branches:
       - dev
-  push:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
 
 env:
   REPO_ROOT: ${{ github.workspace }}
