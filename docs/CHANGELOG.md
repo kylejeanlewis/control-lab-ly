@@ -55,6 +55,7 @@ Major overhaul and package rebuilt from the ground. First released 27 Jun 2025.
 - removed reference guide GUI window in favor of a proper documentation site (i.e. GitHub Pages, ReadTheDocs)
 - [core.factory] removed registration of imported modules to keep track of modules
 - [Measure] simplify inheritance structure by removing `Programmable` class
+- [Measure.Electrical] removed Keithley programs that were based on old implementation (before PyMeasure)
 - [Measure.Mechanical] removed PiezoRobotics from tool list due to inactive development and use
 - [Transfer.Liquid] removed implementations for "syringe" and peristaltic pump due lack of use
 - [Transfer.Powder] removed due to lack of use
