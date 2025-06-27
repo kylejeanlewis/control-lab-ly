@@ -29,7 +29,7 @@ def update_reference_nav(mkdocs_path, reference_nav_path):
 
 def main():
     mkdocs_path = "mkdocs.yaml"
-    reference_nav_path = Path(r"docs\site\api\reference_nav.yaml")
+    reference_nav_path = Path("docs/site/api/reference_nav.yaml")
     update_reference_nav(mkdocs_path, reference_nav_path)
 
 if __name__ == "__main__":

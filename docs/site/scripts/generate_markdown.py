@@ -12,7 +12,7 @@ def remove_folder_if_exists(folder_path):
     Args:
         folder_path (str): The path to the folder to be removed.
     """
-    if not isinstance(folder_path, str):
+    if not isinstance(folder_path, (str,Path)):
         print(f"Error: Invalid folder_path type. Expected string, got {type(folder_path)}.")
         return
 
@@ -110,7 +110,7 @@ def write_yaml_nav(structure, yaml_path):
 
 def main():
     source_directory = "controllably"
-    destination_directory = Path(r"docs\site\api")
+    destination_directory = Path("docs/site/api")
     remove_folder_if_exists(destination_directory)
     yaml_nav_path = os.path.join(destination_directory, "reference_nav.yaml")
     structure = crawl_and_generate_markdown(source_directory, destination_directory, import_base="controllably")
