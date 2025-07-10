@@ -14,6 +14,7 @@ Attributes:
     `BaseDevice`: Base class for device connections
     `SerialDevice`: Class for serial device connections
     `SocketDevice`: Class for socket device connections
+    `WebsocketDevice`: Class for WebSocket device connections
 
 <i>Documentation last updated: 2025-02-22</i>
 """
@@ -34,6 +35,8 @@ from typing import Any, NamedTuple, Protocol, Callable
 # Third party imports
 import parse
 import serial
+import websockets
+from websockets.sync import client
 
 # Configure logging
 from controllably import CustomLevelFilter
@@ -1092,7 +1095,7 @@ class SocketDevice(BaseDevice):
     def __init__(self, 
         host:str, 
         port:int, 
-        timeout:int=0, 
+        timeout:int=1, 
         *, 
         byte_size: int = 1024,
         simulation:bool=False, 
@@ -1277,5 +1280,250 @@ class SocketDevice(BaseDevice):
         except OSError as e:
             self._logger.debug(f"[{self.host}] Failed to send: {data!r}")
             self._logger.debug(e)
+            return False
+        return True
+
+
+class WebsocketDevice(BaseDevice):
+    """
+    WebsocketDevice provides an interface for handling websocket devices
+    
+    ### Constructor:
+        `host` (str): host for the device
+        `port` (int): port for the device
+        `timeout` (int, optional): timeout for the device. Defaults to 1.
+        `simulation` (bool, optional): whether to simulate the device. Defaults to False.
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+    
+    ### Attributes and properties:
+        `host` (str): device host
+        `port` (int): device port
+        `uri` (str): URI for the device
+        `timeout` (int): device timeout
+        `connection_details` (dict): connection details for the device
+        `websocket` (websockets.sync.client.ClientConnection): client object for the device
+        `flags` (SimpleNamespace[str, bool]): flags for the device
+        `is_connected` (bool): whether the device is connected
+        `verbose` (bool): verbosity of class
+        
+    ### Methods:
+        `clear`: clear the input and output buffers, and reset the data queue and buffer
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `checkDeviceConnection`: check the connection to the device
+        `checkDeviceBuffer`: check the connection buffer
+        `clearDeviceBuffer`: clear the device input and output buffers
+        `read`: read data from the device
+        `readAll`: read all data from the device
+        `write`: write data to the device
+        `poll`: poll the device (i.e. write and read data)
+        `processInput`: process the input data
+        `processOutput`: process the output data
+        `query`: query the device (i.e. write and read data)
+        `startStream`: start the stream
+        `stopStream`: stop the stream
+        `stream`: toggle the stream
+        `showStream`: show the stream
+    """
+    
+    _default_flags: SimpleNamespace = SimpleNamespace(verbose=False, connected=False, simulation=False)
+    def __init__(self, 
+        host:str, 
+        port:int, 
+        timeout:int=1, 
+        *,
+        simulation:bool=False, 
+        verbose:bool = False, 
+        **kwargs
+    ):
+        """
+        Initialize SocketDevice class
+        
+        Args:
+            host (str): host for the device
+            port (int): port for the device
+            timeout (int, optional): timeout for the device. Defaults to 1.
+            simulation (bool, optional): whether to simulate the device. Defaults to False.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
+        super().__init__(simulation=simulation, verbose=verbose, **kwargs)
+        
+        self.host = host
+        self.port = port
+        self.uri = f"ws://{host}:{port}/" if self.port is not None else f"ws://{host}/"
+        self.timeout = timeout
+        self.connection: client.ClientConnection = client.connect(self.uri)
+        self._stream_buffer = ""
+        return
+
+    @property
+    def websocket(self) -> client.ClientConnection:
+        """Socket object for the device"""
+        return self.connection
+    @websocket.setter
+    def websocket(self, value:client.ClientConnection):
+        assert isinstance(value, client.ClientConnection), "Ensure connection is a ClientConnection object"
+        self.connection = value
+        return
+    
+    @property
+    def host(self) -> str:
+        """Device socket host"""
+        return self.connection_details.get('host', '')
+    @host.setter
+    def host(self, value:str):
+        self.connection_details['host'] = value
+        return
+    
+    @property
+    def port(self) -> str:
+        """Device socket port"""
+        return self.connection_details.get('port', '')
+    @port.setter
+    def port(self, value:str):
+        self.connection_details['port'] = value
+        return
+    
+    @property
+    def timeout(self) -> int:
+        """Device timeout"""
+        return self.connection_details.get('timeout', '')
+    @timeout.setter
+    def timeout(self, value:int):
+        self.connection_details['timeout'] = value
+        return
+   
+    def checkDeviceBuffer(self) -> bool:
+        """Check the connection buffer"""
+        return self.stream_event.is_set() or self._stream_buffer
+    
+    def checkDeviceConnection(self):
+        """Check the connection to the device"""
+        try:
+            connected = self.websocket.state == websockets.protocol.State.OPEN
+        except OSError:
+            self.flags.connected = False
+            return False
+        self.flags.connected = connected
+        return self.flags.connected
+    
+    def clearDeviceBuffer(self):
+        """Clear the device input and output buffers"""
+        self._stream_buffer = ""
+        while True:
+            try:
+                out = self.websocket.recv(self.timeout)
+                if isinstance(out, bytes):
+                    out = out.decode("utf-8", "replace")
+                out = out.strip('\r\n').replace('\uFFFD', '')
+            except OSError:
+                break
+            if not out:
+                break
+        return
+
+    def connect(self):
+        """Connect to the device"""
+        if self.is_connected:
+            return
+        try:
+            self.websocket = client.connect(self.uri)
+            self.clear()
+        except OSError as e:
+            self._logger.error(f"Failed to connect to {self.uri}")
+            self._logger.debug(e)
+        else:
+            self._logger.info(f"Connected to {self.uri}")
+            time.sleep(self.init_timeout)
+        self.flags.connected = True
+        return
+
+    def disconnect(self):
+        """Disconnect from the device"""
+        if not self.is_connected:
+            return
+        self.stopStream()
+        try:
+            self.websocket.close()
+        except OSError as e:
+            self._logger.error(f"Failed to disconnect from {self.uri}")
+            self._logger.debug(e)
+        else:
+            self._logger.info(f"Disconnected from {self.uri}")
+        self.flags.connected = False
+        return
+    
+    def read(self) -> str:
+        """Read data from the device"""
+        delimiter = self.read_format.replace(self.read_format.rstrip(), '')
+        data = self._stream_buffer
+        self._stream_buffer = ''
+        try:
+            out = self.websocket.recv(self.timeout)
+            if isinstance(out, bytes):
+                out = out.decode("utf-8", "replace")
+            out = out.strip(delimiter).replace('\uFFFD', '')
+            data += out
+            # if not out or delimiter in data:
+            #     break
+        except OSError as e:
+            if not data:
+                self._logger.debug(f"[{self.host}] Failed to receive data")
+                self._logger.debug(e)
+        except websockets.exceptions.ConnectionClosed as e:
+            self._logger.debug(f"[{self.host}] Connection closed while reading: {data!r}")
+            self._logger.debug(e)
+            self.flags.connected = False
+            return False
+        except KeyboardInterrupt:
+            self._logger.debug("Received keyboard interrupt")
+            self.disconnect()
+        if delimiter in data:
+            data, self._stream_buffer = data.split(delimiter, 1)
+        data = data.strip()
+        self._logger.debug(f"[{self.host}] Received: {data!r}")
+        return data
+    
+    def readAll(self) -> list[str]:
+        """Read all data from the device"""
+        delimiter = self.read_format.replace(self.read_format.rstrip(), '')
+        data = self._stream_buffer
+        self._stream_buffer = ''
+        try:
+            while True:
+                out = self.websocket.recv(self.timeout)
+                if isinstance(out, bytes):
+                    out = out.decode("utf-8", "replace")
+                out = out.replace('\uFFFD', '')
+                data += out
+        except OSError as e:
+            self._logger.debug(f"[{self.host}] Failed to receive data")
+            self._logger.debug(e)
+        except websockets.exceptions.ConnectionClosed as e:
+            self._logger.debug(f"[{self.host}] Connection closed while reading: {data!r}")
+            self._logger.debug(e)
+            self.flags.connected = False
+            return False
+        except KeyboardInterrupt:
+            self._logger.debug("Received keyboard interrupt")
+            self.disconnect()
+        data = data.strip()
+        self._logger.debug(f"[{self.host}] Received: {data!r}")
+        return [d for d in data.split(delimiter) if len(d)]
+    
+    def write(self, data:str) -> bool:
+        """Write data to the device"""
+        assert isinstance(data, str), "Ensure data is a string"
+        try:
+            self.websocket.send(data.encode('utf-8'))
+            self._logger.debug(f"[{self.host}] Sent: {data!r}")
+        except OSError as e:
+            self._logger.debug(f"[{self.host}] Failed to send: {data!r}")
+            self._logger.debug(e)
+            return False
+        except websockets.exceptions.ConnectionClosed as e:
+            self._logger.debug(f"[{self.host}] Connection closed while sending: {data!r}")
+            self._logger.debug(e)
+            self.flags.connected = False
             return False
         return True
