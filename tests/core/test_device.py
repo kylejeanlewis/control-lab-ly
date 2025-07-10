@@ -8,6 +8,7 @@ from typing import NamedTuple
 from unittest.mock import MagicMock
 
 import serial
+import websockets
 
 from ..context import controllably
 from controllably.core.device import (
@@ -568,6 +569,98 @@ def test_socket_device_read_all(socket_device):
     assert socket_device.is_connected
     data = socket_device.readAll()
     assert data == ['test_output']*9
+
+# @pytest.fixture
+# def websocket_device(monkeypatch):
+#     class MockWebsocket(websockets.sync.client.ClientConnection):
+#         def __init__(self, *args, **kwargs):
+#             super().__init__(*args, **kwargs)
+#             self._open = True
+#             self._waiting = False
+#             self.count = 0
+#         def close(self):
+#             self._open = False
+#         def connect(self, address):
+#             return None
+#         def sendall(self, data):
+#             if not self._open:
+#                 raise OSError
+#             return len(data) if data is not None else None
+#         def recv(self, bytesize = 1024):
+#             if not self._open:
+#                 raise OSError
+#             self.count += 1
+#             if self.count > 3:
+#                 return b''
+#             return b'test_output\ntest_output\ntest_output\n'
+#         def fileno(self):
+#             return 1 if self._open else -1
+#     monkeypatch.setattr(socket, 'socket', MockSocket)
+#     device = SocketDevice(host='127.0.0.1', port=12345, timeout=1)
+#     device._logger.handlers.clear()
+#     return device
+
+# def test_socket_device_init(socket_device):
+#     assert socket_device.host == '127.0.0.1'
+#     assert socket_device.port == 12345
+#     assert socket_device.timeout == 1
+
+# def test_socket_device_connect_disconnect(socket_device):
+#     socket_device.connect()
+#     assert socket_device.is_connected
+#     socket_device.connect()
+#     assert socket_device.is_connected
+    
+#     socket_device.disconnect()
+#     assert not socket_device.is_connected
+#     socket_device.disconnect()
+#     assert not socket_device.is_connected
+
+# def test_socket_device_connect_with_exceptions(socket_device,monkeypatch,caplog):
+#     assert not socket_device.is_connected
+#     monkeypatch.setattr(socket, 'create_connection', MagicMock(side_effect=OSError))
+#     with caplog.at_level(logging.ERROR):
+#         socket_device.connect()
+#         assert "Failed to connect to" in caplog.text
+        
+# def test_socket_device_disconnect_with_exceptions(socket_device,monkeypatch,caplog):
+#     socket_device.connect()
+#     assert socket_device.is_connected
+    
+#     monkeypatch.setattr(socket_device.connection, 'close', MagicMock(side_effect=OSError))
+#     with caplog.at_level(logging.ERROR):
+#         socket_device.disconnect()
+#         assert "Failed to disconnect from" in caplog.text
+        
+# def test_socket_device_read_write(socket_device, caplog):
+#     socket_device.connection._open = False
+#     assert not socket_device.is_connected
+#     success = socket_device.write('test_data\n')
+#     assert not success
+#     with caplog.at_level(logging.DEBUG):
+#         data = socket_device.read()
+#         assert data == ''
+#         assert "Failed to receive data" in caplog.text
+    
+#     socket_device.connect()
+#     socket_device.connection.count = 0
+#     assert socket_device.is_connected
+#     success = socket_device.write('test_data\n')
+#     assert success
+#     data = socket_device.read()
+#     assert data == 'test_output'
+    
+# def test_socket_device_read_all(socket_device):
+#     socket_device.connection._open = False
+#     assert not socket_device.is_connected
+#     data = socket_device.readAll()
+#     assert data == []
+#     socket_device.connect()
+#     socket_device.connection.count = 0
+#     assert socket_device.is_connected
+#     data = socket_device.readAll()
+#     assert data == ['test_output']*9
+
 
 if __name__ == "__main__":
     pytest.main()
