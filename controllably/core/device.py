@@ -30,7 +30,7 @@ from string import Formatter
 import threading
 import time
 from types import SimpleNamespace
-from typing import Any, NamedTuple, Protocol, Callable
+from typing import Any, NamedTuple, Protocol, Callable, Type
 
 # Third party imports
 import parse
@@ -828,6 +828,35 @@ class BaseDevice:
         return
 
 
+class AnyDevice(BaseDevice):
+    def __init__(self, *args, **kwargs):
+        class_ = self.__determine_subclass(*args, **kwargs)
+        self.__subclass = class_(*args, **kwargs)
+        return
+    
+    def __getattribute__(self, name):
+        if name in ('_AnyDevice__subclass','_AnyDevice__determine_subclass'):
+            return super().__getattribute__(name)
+        try:
+            subclass = super().__getattribute__('_AnyDevice__subclass')
+            attr = getattr(subclass, name)
+            return attr
+        except AttributeError:
+            return super().__getattribute__(name)
+
+    @classmethod
+    def __determine_subclass(cls, *args, **kwargs) -> Type[BaseDevice]:
+        """Determine the appropriate subclass based on the provided arguments"""
+        if 'baudrate' in kwargs:
+            return SerialDevice
+        elif 'host' in kwargs:
+            if 'bytesize' in kwargs:
+                return SocketDevice
+            else:
+                return WebsocketDevice
+        return BaseDevice
+
+
 class SerialDevice(BaseDevice):
     """
     SerialDevice provides an interface for handling serial devices
@@ -1122,6 +1151,7 @@ class SocketDevice(BaseDevice):
         
         self._current_socket_ref = -1
         self._stream_buffer = ""
+        # self.connect()
         return
 
     @property
