@@ -28,7 +28,7 @@ from types import SimpleNamespace
 from typing import NamedTuple, Any
 
 # Local application imports
-from ......core.device import SerialDevice
+from ......core.device import SerialDevice, AnyDevice
 from . import sartorius_lib as lib
 
 # Configure logging
@@ -47,7 +47,7 @@ STEP_RESOLUTION = 10
 RESPONSE_TIME = 1.03
 """Delay between sending a command and receiving a response, in seconds"""
 
-class SartoriusDevice(SerialDevice):
+class SartoriusDevice(AnyDevice):
     """ 
     Sartorius pipette device class
     

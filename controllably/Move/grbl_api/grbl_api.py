@@ -24,7 +24,7 @@ from typing import Any, Sequence, NamedTuple
 import numpy as np
 
 # Local application imports
-from ...core.device import SerialDevice
+from ...core.device import SerialDevice, AnyDevice
 from ...core.position import Position
 from .grbl_lib import Alarm, Error, Setting, Status
 
@@ -35,7 +35,7 @@ READ_FORMAT = "{data}\n"
 WRITE_FORMAT = "{data}\n"
 Data = NamedTuple("Data", [("data", str), ("channel", int)])
 
-class GRBL(SerialDevice):
+class GRBL(AnyDevice):
     """
     GRBL class for controlling CNC machines using the GRBL firmware.
     Refer to https://github.com/gnea/grbl/tree/master/doc/markdown for more information on the GRBL firmware.

@@ -27,7 +27,7 @@ from types import SimpleNamespace
 from typing import NamedTuple, Any
 
 # Local application imports
-from ......core.device import SerialDevice
+from ......core.device import SerialDevice, AnyDevice
 from .tricontinent_lib import ErrorCode, StatusCode
 
 MAX_CHANNELS = 15
@@ -42,7 +42,7 @@ BoolData = NamedTuple("BoolData", [("data", bool), ("channel", int)])
 FloatData = NamedTuple("FloatData", [("data", float), ("channel", int)])
 IntData = NamedTuple("IntData", [("data", int), ("channel", int)])
 
-class TriContinentDevice(SerialDevice):
+class TriContinentDevice(AnyDevice):
     """ 
     TriContinent pump device class.
     

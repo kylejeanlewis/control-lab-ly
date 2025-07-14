@@ -23,7 +23,7 @@ from types import SimpleNamespace
 from typing import Any, NamedTuple
 
 # Local application imports
-from .....core.device import SerialDevice
+from .....core.device import SerialDevice, AnyDevice
 from .qinstruments_lib import ELMStateCode, ELMStateString, ShakeStateCode, ShakeStateString
 
 READ_FORMAT = "{data}\r"
@@ -33,7 +33,7 @@ BoolData = NamedTuple("BoolData", [("data", bool)])
 FloatData = NamedTuple("FloatData", [("data", float)])
 IntData = NamedTuple("IntData", [("data", int)])
 
-class QInstrumentsDevice(SerialDevice):
+class QInstrumentsDevice(AnyDevice):
     """
     QInstrumentsDevice provides an interface for available actions to control devices from QInstruments, including orbital shakers,
     heat plates, and cold plates.
