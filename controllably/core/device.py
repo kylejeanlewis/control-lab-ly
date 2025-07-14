@@ -847,13 +847,13 @@ class AnyDevice(BaseDevice):
     @classmethod
     def __determine_subclass(cls, *args, **kwargs) -> Type[BaseDevice]:
         """Determine the appropriate subclass based on the provided arguments"""
-        if 'baudrate' in kwargs:
-            return SerialDevice
-        elif 'host' in kwargs:
+        if 'host' in kwargs:
             if 'bytesize' in kwargs:
                 return SocketDevice
             else:
                 return WebsocketDevice
+        elif 'baudrate' in kwargs:
+            return SerialDevice
         return BaseDevice
 
 
