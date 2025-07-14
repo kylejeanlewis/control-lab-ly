@@ -1244,7 +1244,7 @@ class SocketDevice(BaseDevice):
         except KeyboardInterrupt:
             self._logger.debug("Received keyboard interrupt")
             self.disconnect()
-        if delimiter in data:
+        if delimiter and delimiter in data:
             data, self._stream_buffer = data.split(delimiter, 1)
         data = data.strip()
         self._logger.debug(f"[{self.host}] Received: {data!r}")
@@ -1269,7 +1269,7 @@ class SocketDevice(BaseDevice):
             self.disconnect()
         data = data.strip()
         self._logger.debug(f"[{self.host}] Received: {data!r}")
-        return [d for d in data.split(delimiter) if len(d)]
+        return [d for d in data.split(delimiter) if len(d)] if delimiter else [data]
     
     def write(self, data:str) -> bool:
         """Write data to the device"""
@@ -1352,8 +1352,12 @@ class WebsocketDevice(BaseDevice):
         self.port = port
         self.uri = f"ws://{host}:{port}/" if self.port is not None else f"ws://{host}/"
         self.timeout = timeout
-        self.connection: client.ClientConnection = client.connect(self.uri)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        p = websockets.client.ClientProtocol('localhost')
+        self.connection: client.ClientConnection = client.ClientConnection(s,p)
+        
         self._stream_buffer = ""
+        # self.connect()
         return
 
     @property
@@ -1428,7 +1432,7 @@ class WebsocketDevice(BaseDevice):
             return
         try:
             self.websocket = client.connect(self.uri)
-            self.clear()
+            # self.clear()
         except OSError as e:
             self._logger.error(f"Failed to connect to {self.uri}")
             self._logger.debug(e)
@@ -1471,14 +1475,18 @@ class WebsocketDevice(BaseDevice):
                 self._logger.debug(f"[{self.host}] Failed to receive data")
                 self._logger.debug(e)
         except websockets.exceptions.ConnectionClosed as e:
-            self._logger.debug(f"[{self.host}] Connection closed while reading: {data!r}")
-            self._logger.debug(e)
-            self.flags.connected = False
+            # self._logger.debug(f"[{self.host}] Connection closed while reading: {data!r}")
+            # self._logger.debug(e)
+            # self.flags.connected = False
+            self.connect()
+            if self.is_connected:
+                self.read()
+                return self.read()
             return False
         except KeyboardInterrupt:
             self._logger.debug("Received keyboard interrupt")
             self.disconnect()
-        if delimiter in data:
+        if delimiter and delimiter in data:
             data, self._stream_buffer = data.split(delimiter, 1)
         data = data.strip()
         self._logger.debug(f"[{self.host}] Received: {data!r}")
@@ -1497,33 +1505,43 @@ class WebsocketDevice(BaseDevice):
                 out = out.replace('\uFFFD', '')
                 data += out
         except OSError as e:
-            self._logger.debug(f"[{self.host}] Failed to receive data")
-            self._logger.debug(e)
+            if not data:
+                self._logger.debug(f"[{self.host}] Failed to receive data")
+                self._logger.debug(e)
         except websockets.exceptions.ConnectionClosed as e:
-            self._logger.debug(f"[{self.host}] Connection closed while reading: {data!r}")
-            self._logger.debug(e)
-            self.flags.connected = False
+            # self._logger.debug(f"[{self.host}] Connection closed while reading: {data!r}")
+            # self._logger.debug(e)
+            # self.flags.connected = False
+            self.connect()
+            if self.is_connected:
+                self.read()
+                return self.readAll()
             return False
         except KeyboardInterrupt:
             self._logger.debug("Received keyboard interrupt")
             self.disconnect()
         data = data.strip()
         self._logger.debug(f"[{self.host}] Received: {data!r}")
-        return [d for d in data.split(delimiter) if len(d)]
+        return [d for d in data.split(delimiter) if len(d)] if delimiter else [data]
     
     def write(self, data:str) -> bool:
         """Write data to the device"""
         assert isinstance(data, str), "Ensure data is a string"
         try:
-            self.websocket.send(data.encode('utf-8'))
+            self.websocket.send(data)
+            # self.websocket.send(data.encode('utf-8'))
             self._logger.debug(f"[{self.host}] Sent: {data!r}")
         except OSError as e:
             self._logger.debug(f"[{self.host}] Failed to send: {data!r}")
             self._logger.debug(e)
             return False
         except websockets.exceptions.ConnectionClosed as e:
-            self._logger.debug(f"[{self.host}] Connection closed while sending: {data!r}")
-            self._logger.debug(e)
-            self.flags.connected = False
+            # self._logger.debug(f"[{self.host}] Connection closed while sending: {data!r}")
+            # self._logger.debug(e)
+            # self.flags.connected = False
+            self.connect()
+            if self.is_connected:
+                self.read()
+                return self.write(data)
             return False
         return True
