@@ -615,16 +615,20 @@ class BaseDevice:
         while True:
             if time.perf_counter() - start_time > timeout:
                 break
-            raw_out = self.read()
+            # raw_out = self.read()
             now = datetime.now() if timestamp else None
-            if raw_out == '' or raw_out.strip() == '':
-                continue
+            # if raw_out == '' or raw_out.strip() == '':
+            #     continue
             start_time = time.perf_counter()
-            out, now = self.processOutput(raw_out, format_out, data_type, now)
-            if not out:
-                continue
-            data_out = (out, now) if timestamp else out
-            all_data.append(data_out)
+            # out, now = self.processOutput(raw_out, format_out, data_type, now)
+            # if not out:
+            #     continue
+            # data_out = (out, now) if timestamp else out
+            # all_data.append(data_out)
+            
+            raw_out = self.readAll()
+            processed_out = [self.processOutput(out, format_out, data_type, now) for out in raw_out]
+            all_data.extend([(out, now) if timestamp else out for out,now in processed_out])
             if not self.checkDeviceBuffer():
                 break
         return all_data
@@ -829,20 +833,25 @@ class BaseDevice:
 
 
 class AnyDevice(BaseDevice):
-    def __init__(self, *args, **kwargs):
-        class_ = self.__determine_subclass(*args, **kwargs)
-        self.__subclass = class_(*args, **kwargs)
-        return
+    def __new__(cls, *args, **kwargs):
+        class_ = cls.__determine_subclass(*args, **kwargs)
+        name = f'{cls.__name__}_{class_.__name__}'
+        attrs = dict()
+        base_attrs = {attr: getattr(BaseDevice, attr) for attr in BaseDevice.__dict__}
+        subclass_attrs = {attr: getattr(class_, attr) for attr in class_.__dict__}
+        cls_attrs = {attr: getattr(cls, attr) for attr in cls.__dict__}
+        attrs.update(base_attrs)
+        attrs.update(subclass_attrs)
+        attrs.update(cls_attrs)
+        attrs.pop('__dict__', None)
+        new_class = type(name, (cls, class_), attrs)
+        print(attrs)
+        return super(AnyDevice,cls).__new__(new_class)
     
-    def __getattribute__(self, name):
-        if name in ('_AnyDevice__subclass','_AnyDevice__determine_subclass'):
-            return super().__getattribute__(name)
-        try:
-            subclass = super().__getattribute__('_AnyDevice__subclass')
-            attr = getattr(subclass, name)
-            return attr
-        except AttributeError:
-            return super().__getattribute__(name)
+    def __init__(self, *args, **kwargs):
+        if isinstance(self,WebsocketDevice):
+            kwargs['timeout'] = 0.1
+        return super().__init__(*args, **kwargs)
 
     @classmethod
     def __determine_subclass(cls, *args, **kwargs) -> Type[BaseDevice]:
@@ -855,7 +864,7 @@ class AnyDevice(BaseDevice):
         elif 'baudrate' in kwargs:
             return SerialDevice
         return BaseDevice
-
+    
 
 class SerialDevice(BaseDevice):
     """
@@ -1360,7 +1369,7 @@ class WebsocketDevice(BaseDevice):
     def __init__(self, 
         host:str, 
         port:int, 
-        timeout:int=1, 
+        timeout:int=0.1, 
         *,
         simulation:bool=False, 
         verbose:bool = False, 
@@ -1382,9 +1391,10 @@ class WebsocketDevice(BaseDevice):
         self.port = port
         self.uri = f"ws://{host}:{port}/" if self.port is not None else f"ws://{host}/"
         self.timeout = timeout
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        p = websockets.client.ClientProtocol('localhost')
-        self.connection: client.ClientConnection = client.ClientConnection(s,p)
+        self.connection: client.ClientConnection = client.connect(uri=self.uri)
+        # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # p = websockets.client.ClientProtocol('localhost')
+        # self.connection: client.ClientConnection = client.ClientConnection(s,p)
         
         self._stream_buffer = ""
         # self.connect()
@@ -1444,6 +1454,7 @@ class WebsocketDevice(BaseDevice):
     def clearDeviceBuffer(self):
         """Clear the device input and output buffers"""
         self._stream_buffer = ""
+        # self.readAll()
         while True:
             try:
                 out = self.websocket.recv(self.timeout)
@@ -1451,6 +1462,8 @@ class WebsocketDevice(BaseDevice):
                     out = out.decode("utf-8", "replace")
                 out = out.strip('\r\n').replace('\uFFFD', '')
             except OSError:
+                break
+            except websockets.exceptions.ConnectionClosed:
                 break
             if not out:
                 break
@@ -1533,6 +1546,8 @@ class WebsocketDevice(BaseDevice):
                 if isinstance(out, bytes):
                     out = out.decode("utf-8", "replace")
                 out = out.replace('\uFFFD', '')
+                if not out:
+                    break
                 data += out
         except OSError as e:
             if not data:
