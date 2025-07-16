@@ -845,7 +845,6 @@ class AnyDevice(BaseDevice):
         attrs.update(cls_attrs)
         attrs.pop('__dict__', None)
         new_class = type(name, (cls, class_), attrs)
-        print(attrs)
         return super(AnyDevice,cls).__new__(new_class)
     
     def __init__(self, *args, **kwargs):
