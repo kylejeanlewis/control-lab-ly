@@ -360,10 +360,10 @@ class BaseDevice:
         try:
             self.connection.open() # Replace with specific implementation
         except Exception as e: # Replace with specific exception
-            self._logger.error(f"Failed to connect to {...}") # Replace with specific log message
+            self._logger.error("Failed to connect to {...}") # Replace with specific log message
             self._logger.debug(e)
         else:
-            self._logger.info(f"Connected to {...}") # Replace with specific log message
+            self._logger.info("Connected to {...}") # Replace with specific log message
             time.sleep(self.init_timeout)
         self.flags.connected = True
         return
@@ -376,10 +376,10 @@ class BaseDevice:
         try:
             self.connection.close() # Replace with specific implementation
         except Exception as e: # Replace with specific exception
-            self._logger.error(f"Failed to disconnect from {...}") # Replace with specific log message
+            self._logger.error("Failed to disconnect from {...}") # Replace with specific log message
             self._logger.debug(e)
         else:
-            self._logger.info(f"Disconnected from {...}") # Replace with specific log message
+            self._logger.info("Disconnected from {...}") # Replace with specific log message
         self.flags.connected = False
         return
     
@@ -615,19 +615,12 @@ class BaseDevice:
         while True:
             if time.perf_counter() - start_time > timeout:
                 break
-            # raw_out = self.read()
-            now = datetime.now() if timestamp else None
-            # if raw_out == '' or raw_out.strip() == '':
-            #     continue
-            start_time = time.perf_counter()
-            # out, now = self.processOutput(raw_out, format_out, data_type, now)
-            # if not out:
-            #     continue
-            # data_out = (out, now) if timestamp else out
-            # all_data.append(data_out)
-            
             raw_out = self.readAll()
+            now = datetime.now() if timestamp else None
+            start_time = time.perf_counter()
+            
             processed_out = [self.processOutput(out, format_out, data_type, now) for out in raw_out]
+            processed_out = [(out, now) for out, now in processed_out if out is not None]
             all_data.extend([(out, now) if timestamp else out for out,now in processed_out])
             if not self.checkDeviceBuffer():
                 break
