@@ -395,6 +395,14 @@ def parse_configs(configs:dict, addresses:dict|None = None) -> dict:
     """
     addresses = {} if addresses is None else addresses
     for name, details in configs.items():
+        if 'module' not in details or 'class' not in details:
+            config_name = details.get('config_name', name)
+            config_file = Path(details.get('config_file', ''))
+            config_file = file_handler.resolve_repo_filepath(config_file) if not config_file.is_absolute() else config_file
+            if config_file.is_file():
+                sub_configs = file_handler.read_config_file(config_file)
+                details.update(sub_configs[config_name])
+        
         settings = details.get('settings', {})
         
         for key,value in settings.items():
