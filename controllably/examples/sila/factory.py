@@ -33,6 +33,7 @@ Attributes:
 # Standard library imports
 import inspect
 import logging
+from pathlib import Path
 import re
 from typing import Callable, Any
 import xml.etree.ElementTree as ET
@@ -53,7 +54,7 @@ type_mapping = {
 }
 BASIC_TYPES = tuple(type_mapping.values())
 
-def create_xml(prime: Any):
+def create_xml(prime: Any, directory: str = ".") -> None:
     """
     Write the XML data to a file.
     
@@ -64,7 +65,7 @@ def create_xml(prime: Any):
     tree = ET.ElementTree(feature)
     ET.indent(tree, space="  ", level=0) # Using 2 spaces for indentation
     filename = feature.find('Identifier').text
-    tree.write(f"{filename}.xml", encoding="utf-8", xml_declaration=True)
+    tree.write(Path(directory)/f"{filename}.xml", encoding="utf-8", xml_declaration=True)
     logger.warning(f"XML file '{filename}.xml' generated successfully.\n")
     logger.warning('1) Remove any unnecessary commands and properties.')
     logger.warning('2) Verify the data types, replacing the "Any" fields as needed.')
