@@ -995,8 +995,11 @@ class SerialDevice(BaseDevice):
     
     def clearDeviceBuffer(self):
         """Clear the device input and output buffers"""
-        self.serial.reset_input_buffer()
-        self.serial.reset_output_buffer()
+        try:
+            self.serial.reset_input_buffer()
+            self.serial.reset_output_buffer()
+        except serial.PortNotOpenError as e:
+            self._logger.error(e)
         return
 
     def connect(self):
