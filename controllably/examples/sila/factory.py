@@ -33,6 +33,7 @@ Attributes:
 # Standard library imports
 import inspect
 import logging
+import os
 from pathlib import Path
 import re
 from typing import Callable, Any
@@ -54,23 +55,29 @@ type_mapping = {
 }
 BASIC_TYPES = tuple(type_mapping.values())
 
-def create_xml(prime: Any, directory: str = ".") -> None:
+def create_xml(prime: Any, directory: str = ".") -> Path:
     """
     Write the XML data to a file.
     
     Args:
         prime (Any): The SiLA2 feature class or instance to generate XML for.
+        directory (str): The directory where the XML file will be saved. Defaults to the current directory.
+    
+    Returns:
+        Path: The path to the generated XML file.
     """
     feature = write_feature(prime)
     tree = ET.ElementTree(feature)
     ET.indent(tree, space="  ", level=0) # Using 2 spaces for indentation
     filename = feature.find('Identifier').text
-    tree.write(Path(directory)/f"{filename}.xml", encoding="utf-8", xml_declaration=True)
-    logger.warning(f"XML file '{filename}.xml' generated successfully.\n")
+    filepath = Path(directory)/f"{filename}.sila.xml"
+    os.makedirs(filepath.parent, exist_ok=True)  # Ensure the directory exists
+    tree.write(filepath, encoding="utf-8", xml_declaration=True)
+    logger.warning(f"\nXML file '{filename}.sila.xml' generated successfully.")
     logger.warning('1) Remove any unnecessary commands and properties.')
     logger.warning('2) Verify the data types, replacing the "Any" fields as needed.')
-    logger.warning('3) Fill in the "DESCRIPTION" fields in the XML file.')
-    return
+    logger.warning('3) Fill in the "DESCRIPTION" fields in the XML file.\n')
+    return filepath
         
 def write_feature(prime: Any) -> ET.Element:
     """
@@ -83,8 +90,11 @@ def write_feature(prime: Any) -> ET.Element:
         ET.Element: The root element of the XML structure for the SiLA2 feature.
     """
     class_name = prime.__name__ if inspect.isclass(prime) else prime.__class__.__name__
+    module_name = prime.__module__ if inspect.isclass(prime) else prime.__class__.__module__
     feature = ET.Element("Feature")
-    feature = write_header(feature)
+    originator = module_name.split('.')[0] if '.' in module_name else module_name
+    category = [m for m in module_name.split('.') if m[0].isupper()][0]
+    feature = write_header(feature, originator=originator, category=category)
     feature = write_identifier(feature, class_name)
     feature = write_display_name(feature, class_name)
     feature = write_description(feature, prime.__doc__)
