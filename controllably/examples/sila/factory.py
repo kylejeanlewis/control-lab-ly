@@ -94,7 +94,7 @@ def write_feature(prime: Any) -> ET.Element:
     feature = ET.Element("Feature")
     originator = module_name.split('.')[0] if '.' in module_name else module_name
     category = [m for m in module_name.split('.') if m[0].isupper()][0]
-    feature = write_header(feature, originator=originator, category=category)
+    feature = write_header(feature, originator=originator, category=category.lower())
     feature = write_identifier(feature, class_name)
     feature = write_display_name(feature, class_name)
     feature = write_description(feature, prime.__doc__)
