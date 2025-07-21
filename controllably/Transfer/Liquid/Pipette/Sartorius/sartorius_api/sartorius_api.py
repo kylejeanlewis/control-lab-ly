@@ -419,6 +419,7 @@ class SartoriusDevice(AnyDevice):
             self._logger.warning(f'Received: {model_name}')
             self._logger.warning("Defaulting to: BRL0")
             self._logger.warning(f"Valid models are: {', '.join(lib.Model._member_names_)}")
+            return 'BRL0'
         return out.data
     
     def getVolumeResolution(self) -> float:
