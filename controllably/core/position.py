@@ -198,7 +198,9 @@ class Position:
     
     def toJSON(self, *, scalar_first: bool = False) -> str:
         order = 'wxyz' if scalar_first else 'xyzw'
-        return f"Position({tuple(self._coordinates)}, {tuple(self.Rotation.as_quat(scalar_first=scalar_first))} [{order}])"
+        coord = tuple(map(float, self._coordinates))
+        quat = tuple(map(float, self.Rotation.as_quat(scalar_first=scalar_first)))
+        return f"Position({coord}, {quat} [{order}])"
         
     @property
     def coordinates(self) -> np.ndarray[float]:
