@@ -27,6 +27,7 @@ Attributes:
     `write_command`: Writes a command element for a SiLA2 feature.
     `write_parameter`: Writes a parameter element for a SiLA2 command.
     `write_response`: Writes a response element for a SiLA2 command.
+    `resolve_annotation_type`: Resolves the type of a SiLA2 feature based on its annotations.
     
 <i>Documentation last updated: 2025-06-11</i>
 """
@@ -36,7 +37,7 @@ import logging
 import os
 from pathlib import Path
 import re
-from typing import Callable, Any
+from typing import Callable, Any, Sequence
 import xml.etree.ElementTree as ET
 
 logger = logging.getLogger(__name__)
@@ -51,8 +52,13 @@ type_mapping = {
     "datetime.time": "Time",
     "datetime.datetime": "Timestamp",
     "list": "List",
+    "tuple": "List",
+    "set": "List",
+    "Sequence": "List",
+    "np.ndarray": "List",  # Assuming numpy arrays are treated as lists
     "Any": "Any",
 }
+LIST_LIKE = ("list", "tuple", "set", "Sequence", "np.ndarray")
 BASIC_TYPES = tuple(type_mapping.values())
 
 def create_xml(prime: Any, directory: str = ".") -> Path:
@@ -94,7 +100,7 @@ def write_feature(prime: Any) -> ET.Element:
     feature = ET.Element("Feature")
     originator = module_name.split('.')[0] if '.' in module_name else module_name
     category = [m for m in module_name.split('.') if m[0].isupper()][0]
-    feature = write_header(feature, originator=originator, category=category)
+    feature = write_header(feature, originator=originator, category=category.lower())
     feature = write_identifier(feature, class_name)
     feature = write_display_name(feature, class_name)
     feature = write_description(feature, prime.__doc__)
@@ -111,7 +117,9 @@ def write_feature(prime: Any) -> ET.Element:
             properties.append(attr_name)
     
     for attr_name in properties:
-        feature = write_property(attr_name, feature)
+        attr_type = type(getattr(prime, attr_name))
+        data_type = type_mapping.get(attr_type.__name__, "Any")
+        feature = write_property(attr_name, feature, data_type=data_type)
     for attr in commands:
         feature = write_command(attr, feature)
     
@@ -281,13 +289,12 @@ def write_data_type(
     Returns:
         ET.Element: The parent element with the data type added.
     """
-    is_list = is_list or data_type.lower() == "list"
+    is_list = is_list or data_type.startswith("List")
     data_type_ = ET.SubElement(parent, "DataType")
     if is_list:
         list_ = ET.SubElement(data_type_, "List")
-        data_type_1 = ET.SubElement(list_, "DataType")
-        basic_ = ET.SubElement(data_type_1, "Basic")
-        basic_.text = data_type if data_type.lower() != "list" else "Any"
+        inner_data_type = data_type[5:-1] if data_type.startswith("List[") else "Any"
+        list_ = write_data_type(list_, inner_data_type)
     else:
         basic_ = ET.SubElement(data_type_, "Basic")
         basic_.text = data_type
@@ -296,6 +303,7 @@ def write_data_type(
 def write_property(
     attr_name: str,
     parent: ET.Element,
+    data_type: str = "Any",
     *,
     description: str = "DESCRIPTION",
     observable: bool = False,
@@ -306,6 +314,7 @@ def write_property(
     Args:
         attr_name (str): The name of the property attribute.
         parent (ET.Element): The parent XML element to append the property to.
+        data_type (str, optional): The data type of the property. Defaults to "Any".
         description (str, optional): The description of the property. Defaults to "DESCRIPTION".
         observable (bool, optional): Whether the property is observable or not. Defaults to False.
         
@@ -317,7 +326,7 @@ def write_property(
     property_ = write_display_name(property_, attr_name)
     property_ = write_description(property_, description or "DESCRIPTION")
     property_ = write_observable(property_, observable)
-    property_ = write_data_type(property_)
+    property_ = write_data_type(property_, data_type)
     return parent
     
 def write_command(
@@ -349,9 +358,14 @@ def write_command(
         if param.annotation is inspect.Parameter.empty:
             data_type = "Any"
         else:
-            data_type = type_mapping.get(str(param.annotation), "Any")
+            annotated_types = [pa.strip() for pa in str(param.annotation).split('|')]
+            data_type = resolve_annotation_type(annotated_types)
         command_ = write_parameter(command_, param.name, param.name, data_type)
-    command_ = write_response(command_)
+    
+    if signature.return_annotation is not inspect.Parameter.empty:
+        return_types = [rt.strip() for rt in str(signature.return_annotation).split('|')]
+        return_data_type = resolve_annotation_type(return_types)
+        command_ = write_response(command_, data_type=return_data_type)
     return parent
     
 def write_parameter(
@@ -409,3 +423,30 @@ def write_response(
     response_ = write_description(response_, description or "DESCRIPTION")
     response_ = write_data_type(response_, data_type)
     return parent
+
+def resolve_annotation_type(annotations: Sequence[str]) -> str:
+    """ 
+    Resolves the type of a SiLA2 feature based on its annotations.
+    
+    Args:
+        annotations (Sequence[str]): A sequence of annotations that describe the type.
+        
+    Returns:
+        str: The resolved type of the SiLA2 feature.
+    """
+    candidate_types = []
+    for annotation in annotations:
+        if annotation in type_mapping:
+            candidate_types.append(type_mapping[annotation])
+        elif annotation.startswith(LIST_LIKE):
+            if "[" not in annotation:
+                return "List"
+            inner_annotation = annotation[:-1].split('[',1)[1]
+            inner_type = resolve_annotation_type([inner_annotation])
+            return f"List[{inner_type}]"
+        else:
+            candidate_types.append("Any")
+    candidate_types = list(set(candidate_types))  # Remove duplicates
+    if 'Integer' in candidate_types and 'Real' in candidate_types:
+        candidate_types.remove('Integer')
+    return candidate_types[0]
