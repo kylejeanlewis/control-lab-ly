@@ -8,6 +8,7 @@ on an 'original_object' attribute, and ensures that the server implementation fi
     `ImplementationTransformer`: An AST transformer that modifies method bodies in a specific class.
     
 ## Functions:
+    `copy_from_existing`: Copies the content from an existing SiLA2 implementation or XML file to a new file.
     `modify_generated_file`: Modifies the specified Python template file to replace NotImplementedError calls.
     `modify_server_file`: Modifies the SiLA2 server implementation file to set the name, description, and server type.
 """
@@ -236,6 +237,36 @@ class ImplementationTransformer(ast.NodeTransformer):
         return False
     
 
+def copy_from_existing(
+    filepath: Path|str, 
+    library: Path|str
+) -> None:
+    """
+    Copies the content from an existing SiLA2 implementation or XML file to a new file.
+    
+    Args:
+        filepath (Path|str): Path to the file where content should be copied.
+        library (Path|str): Path to the library directory containing existing SiLA2 files.
+    """
+    filepath = Path(filepath)
+    library = Path(library)
+    
+    if not library.exists():
+        logger.error(f"Provided library path '{library}' does not exist.")
+        return
+    if not filepath.is_file():
+        logger.error(f"Provided path '{filepath}' is not a file.")
+        return
+    
+    found_paths = []
+    for file_path in library.rglob(filepath.name):
+        if file_path.is_file(): # Ensure it's a file, not a directory
+            found_paths.append(file_path)
+    if len(found_paths) == 1:
+        logger.info("Copying content from existing SiLA2 file.")
+        filepath.write_text(found_paths[0].read_text())  # Copy content from library
+    return
+
 def modify_generated_file(
     generated_filepath: Path, 
     target_class_name: str, 
@@ -270,12 +301,14 @@ def modify_generated_file(
         new_code = new_code.replace("raise NotImplementedError", "raise NotImplementedError  # TODO")
         generated_filepath.write_text(new_code)
         template_filepath.write_text(source_code)  # Save the original template file
-        print(f"\nSuccessfully modified '{generated_filepath.name}'.")
+        logger.warning(f"\n'{generated_filepath.name}' modified successfully.")
+        logger.warning('1) Check inputs and outputs.')
+        logger.warning('2) Remove the NotImplementedError after verifying implementation.\n')
 
     except FileNotFoundError:
-        print(f"Error: Generated file '{generated_filepath}' not found.")
+        logger.error(f"Error: Generated file '{generated_filepath}' not found.")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.warning(f"An error occurred: {e}")
     return new_code    
 
 def modify_server_file(server_filepath: Path|str, setup_name: str):
