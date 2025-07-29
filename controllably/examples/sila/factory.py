@@ -12,6 +12,7 @@ Attributes:
     BASIC_TYPES (tuple): A tuple of basic SiLA2 data types.
     
 ## Functions:
+    `create_setup_sila_package`: Generates a SiLA2 package from a setup class, creating XML files and modifying server and implementation code.
     `create_xml`: Generates an XML file for the given SiLA2 feature class.
     `write_feature`: Writes the XML structure for a SiLA2 feature based on a Python class.
     `write_header`: Writes the header information for the SiLA2 feature XML.
@@ -44,7 +45,7 @@ from typing import Callable, Any, Sequence
 import xml.etree.ElementTree as ET
 
 # Local application imports
-from .modifier import modify_server_file, modify_generated_file
+from .modifier import modify_server_file, modify_generated_file, copy_from_existing
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,16 @@ def create_setup_sila_package(
     library:Path|str|None = None,
     skip_checks: bool = False
 ):
+    """
+    Generate a SiLA2 package from a setup class, creating XML files and modifying server and implementation code.
+    
+    Args:
+        setup (Any): The setup class or instance to generate the SiLA2 package from.
+        setup_name (str): The name of the setup, used for naming the generated package.
+        dst_folder (Path|str): The destination folder where the SiLA2 package will be created.
+        library (Path|str|None): Optional path to an existing library to copy XML and implementation files from.
+        skip_checks (bool): If True, skips checks for 'Any' data types and unimplemented methods.
+    """
     dst_folder = Path(dst_folder)
     output_directory = dst_folder/setup_name
     
@@ -81,20 +92,24 @@ def create_setup_sila_package(
     xml_paths: dict[tuple[str,str], Path] = {}
     impl_paths: dict[tuple[str,str], Path] = {}
     for name, value in setup.__dict__.items():
-        print(name)
         xml_path = create_xml(value, output_directory/'xml')
         class_name: str = value.__class__.__name__
         xml_paths[(class_name,name)] = xml_path
         impl_paths[(class_name,name)] = output_directory/f'{setup_name}_sila'/'feature_implementations'/f'{class_name.lower()}_impl.py'
-        
+    
+    # Copy existing library xml files if provided
+    if library:
+        for xml_path in xml_paths.values():
+            copy_from_existing(xml_path, library)  # Copy from existing library if available
+    
     # Ensure all Any data types are replaced appropriately
     any_text = "<Basic>Any</Basic>"
     xml_paths_with_any = [xml_path for xml_path in xml_paths.values() if any_text in xml_path.read_text()]
     while len(xml_paths_with_any):
         if skip_checks:
             break
-        print('\n'.join(list(map(str,xml_paths_with_any))))
-        print('\n')
+        logger.warning('\n'.join(list(map(str,xml_paths_with_any))))
+        logger.warning('\n')
         time.sleep(0.1)
         input("Some XML files still contain 'Any' data types. Please replace them with appropriate types in the setup class.")
         xml_paths_with_any = [xml_path for xml_path in xml_paths.values() if any_text in xml_path.read_text()]
@@ -107,20 +122,26 @@ def create_setup_sila_package(
         '--output-directory', str(output_directory),
         *[str(path) for path in xml_paths.values()]
     ], stdout=open('stdout.log', 'a'), stderr=open('stderr.log', 'a'), check=True)
+    logger.warning(f"'{setup_name}_sila' package generated successfully in {output_directory}.")
     
     # Modify Server and Implementation code
     modify_server_file(output_directory/f'{setup_name}_sila'/'server.py', setup_name=setup_name)
     for (class_name, object_name), impl_path in impl_paths.items():
         modify_generated_file(impl_path, class_name, object_name, setup_name=setup_name)
 
+    # Copy existing library implementation files if provided
+    if library:
+        for impl_path in impl_paths.values():
+            copy_from_existing(impl_path, library)  # Copy from existing library if available
+    
     # Check if any methods are not implemented
     not_implemented_text = "raise NotImplementedError  # TODO"
     impl_paths_with_not_implemented = [impl_path for impl_path in impl_paths.values() if not_implemented_text in impl_path.read_text()]
     while len(impl_paths_with_not_implemented):
         if skip_checks:
             break
-        print('\n'.join(list(map(str,impl_paths_with_not_implemented))))
-        print('\n')
+        logger.warning('\n'.join(list(map(str,impl_paths_with_not_implemented))))
+        logger.warning('\n')
         time.sleep(0.1)
         input("Some implementation files still contain 'NotImplementedError'. Please implement them in the setup class.")
         impl_paths_with_not_implemented = [impl_path for impl_path in impl_paths.values() if not_implemented_text in impl_path.read_text()]
@@ -132,6 +153,7 @@ def create_setup_sila_package(
         str(output_directory),
         '--config-settings', 'editable_mode=strict'
     ], stdout=open('stdout.log', 'a'), stderr=open('stderr.log', 'a'), check=True)
+    logger.warning(f"'{setup_name}_sila' package installed successfully.")
     return
 
 def create_xml(prime: Any, directory: str = ".") -> Path:
@@ -148,11 +170,11 @@ def create_xml(prime: Any, directory: str = ".") -> Path:
     feature = write_feature(prime)
     tree = ET.ElementTree(feature)
     ET.indent(tree, space="  ", level=0) # Using 2 spaces for indentation
-    filename = feature.find('Identifier').text
-    filepath = Path(directory)/f"{filename}.sila.xml"
+    class_name = feature.find('Identifier').text
+    filepath = Path(directory)/f"{class_name}.sila.xml"
     os.makedirs(filepath.parent, exist_ok=True)  # Ensure the directory exists
     tree.write(filepath, encoding="utf-8", xml_declaration=True)
-    logger.warning(f"\nXML file '{filename}.sila.xml' generated successfully.")
+    logger.warning(f"\n'{class_name}.sila.xml' generated successfully.")
     logger.warning('1) Remove any unnecessary commands and properties.')
     logger.warning('2) Verify the data types, replacing the "Any" fields as needed.')
     logger.warning('3) Fill in the "DESCRIPTION" fields in the XML file.\n')
