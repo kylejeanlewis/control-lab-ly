@@ -296,7 +296,7 @@ class Mover:
         return
     
     @property
-    def speed_max(self) -> dict[str, float]:
+    def speed_max(self) -> float:
         """Maximum speed(s) of robot"""
         return self._speed_max
     @speed_max.setter
