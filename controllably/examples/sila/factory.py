@@ -88,7 +88,7 @@ def create_setup_sila_package(
     dst_folder = Path(dst_folder)
     output_directory = dst_folder/setup_name
     
-    # Create SiLA xml files
+    # 1. Create SiLA xml files
     xml_paths: dict[tuple[str,str], Path] = {}
     impl_paths: dict[tuple[str,str], Path] = {}
     for name, value in setup.__dict__.items():
@@ -97,62 +97,78 @@ def create_setup_sila_package(
         xml_paths[(class_name,name)] = xml_path
         impl_paths[(class_name,name)] = output_directory/f'{setup_name}_sila'/'feature_implementations'/f'{class_name.lower()}_impl.py'
     
-    # Copy existing library xml files if provided
+    # 1a. Copy existing library xml files if provided
     if library:
         for xml_path in xml_paths.values():
             copy_from_existing(xml_path, library)  # Copy from existing library if available
     
-    # Ensure all Any data types are replaced appropriately
+    # 1b. Ensure all Any data types are replaced appropriately
     any_text = "<Basic>Any</Basic>"
     xml_paths_with_any = [xml_path for xml_path in xml_paths.values() if any_text in xml_path.read_text()]
     while len(xml_paths_with_any):
-        if skip_checks:
+        if skip_checks or text.strip().lower() == 'skip':
             break
         logger.warning('\n'.join(list(map(str,xml_paths_with_any))))
         logger.warning('\n')
         time.sleep(0.1)
-        input("Some XML files still contain 'Any' data types. Please replace them with appropriate types in the setup class.")
+        text = input("Some XML files still contain 'Any' data types. Replace with appropriate types or type 'skip' to ignore.")
         xml_paths_with_any = [xml_path for xml_path in xml_paths.values() if any_text in xml_path.read_text()]
     
-    # Generate Sila2 package
-    subprocess.run([
+    # 2. Generate Sila2 package
+    result = subprocess.run([
         'sila2-codegen', 
         'new-package',
         '--package-name', f'{setup_name}_sila',
         '--output-directory', str(output_directory),
         *[str(path) for path in xml_paths.values()]
-    ], stdout=open('stdout.log', 'a'), stderr=open('stderr.log', 'a'), check=True)
+    ], check=True, capture_output=True, text=True)
+    if result.stderr:
+        for line in result.stderr.splitlines():
+            logger.error(line)
+        raise RuntimeError(f"Failed to generate SiLA2 package: {result.stderr}")
     logger.warning(f"'{setup_name}_sila' package generated successfully in {output_directory}.")
     
-    # Modify Server and Implementation code
+    # 3. Modify Server and Implementation code
     modify_server_file(output_directory/f'{setup_name}_sila'/'server.py', setup_name=setup_name)
     for (class_name, object_name), impl_path in impl_paths.items():
         modify_generated_file(impl_path, class_name, object_name, setup_name=setup_name)
 
-    # Copy existing library implementation files if provided
+    # 3a. Copy existing library implementation files if provided
     if library:
         for impl_path in impl_paths.values():
             copy_from_existing(impl_path, library)  # Copy from existing library if available
     
-    # Check if any methods are not implemented
+    # 3b. Check if any methods are not implemented
     not_implemented_text = "raise NotImplementedError  # TODO"
     impl_paths_with_not_implemented = [impl_path for impl_path in impl_paths.values() if not_implemented_text in impl_path.read_text()]
     while len(impl_paths_with_not_implemented):
-        if skip_checks:
+        if skip_checks or text.strip().lower() == 'skip':
             break
         logger.warning('\n'.join(list(map(str,impl_paths_with_not_implemented))))
         logger.warning('\n')
         time.sleep(0.1)
-        input("Some implementation files still contain 'NotImplementedError'. Please implement them in the setup class.")
+        text = input("Some implementation files still contain 'NotImplementedError'. Implement them or type 'skip' to ignore.")
         impl_paths_with_not_implemented = [impl_path for impl_path in impl_paths.values() if not_implemented_text in impl_path.read_text()]
     
-    # Install newly generated Sila2 package
-    subprocess.run([
+    # 4. Install newly generated Sila2 package
+    result = subprocess.run([
         sys.executable, '-m',
         'pip', 'install', '-e',
         str(output_directory),
         '--config-settings', 'editable_mode=strict'
-    ], stdout=open('stdout.log', 'a'), stderr=open('stderr.log', 'a'), check=True)
+    ], check=True, capture_output=True, text=True)
+    if result.stderr:
+        error_flag = False
+        pip_dependency_notice = (
+            '[notice] A new release of pip is available:',
+            '[notice] To update, run: python.exe -m pip install --upgrade pip'
+        )
+        for line in result.stderr.splitlines():
+            logger.error(line)
+            if line and not line.startswith(pip_dependency_notice):
+                error_flag = True
+        if error_flag:
+            raise RuntimeError(f"Failed to install SiLA2 package: {result.stderr}")
     logger.warning(f"'{setup_name}_sila' package installed successfully.")
     return
 
@@ -194,7 +210,12 @@ def write_feature(prime: Any) -> ET.Element:
     module_name = prime.__module__ if inspect.isclass(prime) else prime.__class__.__module__
     feature = ET.Element("Feature")
     originator = module_name.split('.')[0] if '.' in module_name else module_name
-    category = [m for m in module_name.split('.') if m[0].isupper()][0]
+    try:
+        category = [m for m in module_name.split('.') if m[0].isupper()][0]
+    except IndexError:
+        idx = 1 if len(module_name.split('.')) > 1 else -1
+        category = module_name.split('.')[idx]
+    category = to_pascal_case(category)
     feature = write_header(feature, originator=originator, category=category.lower())
     feature = write_identifier(feature, class_name)
     feature = write_display_name(feature, class_name)
