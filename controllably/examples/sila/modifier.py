@@ -302,7 +302,7 @@ def modify_generated_file(
         generated_filepath.write_text(new_code)
         template_filepath.write_text(source_code)  # Save the original template file
         logger.warning(f"\n'{generated_filepath.name}' modified successfully.")
-        logger.warning('1) Check inputs and outputs.')
+        logger.warning('1) Check the types of inputs and outputs.')
         logger.warning('2) Remove the NotImplementedError after verifying implementation.\n')
 
     except FileNotFoundError:
