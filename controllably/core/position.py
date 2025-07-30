@@ -174,6 +174,19 @@ class Position:
         return np.allclose(self.coordinates, value.coordinates) and np.allclose(self.Rotation.as_quat(), value.Rotation.as_quat())
     
     @staticmethod
+    def fromArray(value:Sequence|np.ndarray) -> Position:
+        """
+        Create a `Position` object from coordinates and rotation
+
+        Args:
+            value (Sequence[float]|numpy.ndarray): x,y,z coordinates or [x,y,z,rotation]
+
+        Returns:
+            Position: `Position` object
+        """
+        return convert_to_position(value)
+    
+    @staticmethod
     def fromJSON(value:str) -> Position:
         """
         Create a `Position` object from string
@@ -270,17 +283,18 @@ class Position:
         rotation = self.Rotation.as_euler('zyx', degrees=self.degrees)
         return rotation[0]
     
-    def apply(self, other:Position) -> Position:
+    def apply(self, other:Position, inplace:bool = True) -> Position:
         """
         Apply self to other `Position`, first translating and then orientating
 
         Args:
             other (Position): other `Position`
+            inplace (bool, optional): whether to update self in place. Defaults to True.
 
         Returns:
             Position: other `Position` transformed by self
         """
-        return other.translate(self.coordinates).orientate(self.Rotation)
+        return other.translate(self.coordinates, inplace=inplace).orientate(self.Rotation, inplace=inplace)
     
     def invert(self) -> Position:
         """
