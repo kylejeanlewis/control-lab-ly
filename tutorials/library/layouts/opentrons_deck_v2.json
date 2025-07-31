@@ -1,0 +1,81 @@
+{
+    "metadata": {
+        "displayName": "Opentrons deck v2",
+        "displayCategory": "deck",
+        "displayVolumeUnits": "µL",
+        "displayLengthUnits": "mm",
+        "tags": []
+    },
+    "dimensions": [400,400,0],
+    "cornerOffset": [0,0,0],
+    "orientation": [0,0,0],
+    "slots": {
+        "1": {
+            "dimensions": [127.88,85.6,0],
+            "cornerOffset": [0,0,0],
+            "orientation": [0,0,0],
+            "labware_file": ""
+        },
+        "2": {
+            "dimensions": [127.88,85.6,0],
+            "cornerOffset": [132.5,0,0],
+            "orientation": [0,0,0],
+            "labware_file": ""
+        },
+        "3": {
+            "dimensions": [127.88,85.6,0],
+            "cornerOffset": [264.5,0,0],
+            "orientation": [0,0,0],
+            "labware_file": ""
+        },
+        "4": {
+            "dimensions": [127.88,85.6,0],
+            "cornerOffset": [0,90.5,0],
+            "orientation": [0,0,0],
+            "labware_file": ""
+        },
+        "5": {
+            "dimensions": [127.88,85.6,0],
+            "cornerOffset": [132.5,90.5,0],
+            "orientation": [0,0,0],
+            "labware_file": ""
+        },
+        "6": {
+            "dimensions": [127.88,85.6,0],
+            "cornerOffset": [264.5,90.5,0],
+            "orientation": [0,0,0],
+            "labware_file": ""
+        },
+        "7": {
+            "dimensions": [127.88,85.6,0],
+            "cornerOffset": [0,181,0],
+            "orientation": [0,0,0],
+            "labware_file": ""
+        },
+        "8": {
+            "dimensions": [127.88,85.6,0],
+            "cornerOffset": [132.5,181,0],
+            "orientation": [0,0,0],
+            "labware_file": ""
+        },
+        "9": {
+            "dimensions": [127.88,85.6,0],
+            "cornerOffset": [264.5,181,0],
+            "orientation": [0,0,0],
+            "labware_file": ""
+        },
+        "10": {
+            "dimensions": [127.88,85.6,0],
+            "cornerOffset": [0,271.5,0],
+            "orientation": [0,0,0],
+            "labware_file": ""
+        },
+        "11": {
+            "dimensions": [127.88,85.6,0],
+            "cornerOffset": [132.5,271.5,0],
+            "orientation": [0,0,0],
+            "labware_file": ""
+        }
+    },
+    "zones":{}
+}
