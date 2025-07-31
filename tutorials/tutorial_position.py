@@ -372,16 +372,16 @@ slot_01.loadLabware(wellplate)
 wellplate.slot_above.loadLabware(wellplate_1)
 wellplate_1.slot_above.loadLabware(wellplate_2)
 wellplate_2.slot_above.loadLabware(wellplate_3)
-print(f'{slot_01.stack=}')
 layout.show()
+slot_01.stack
 
 # %%
 removed_wellplate = slot_01.slot_above.slot_above.slot_above.removeLabware()
 removed_wellplate_1 = slot_01.slot_above.slot_above.removeLabware()
 removed_wellplate_2 = slot_01.slot_above.removeLabware()
 removed_wellplate_3 = slot_01.removeLabware()
-print(f'{slot_01.stack=}')
 layout.show()
+slot_01.stack
 
 # %%
 print(f'{removed_wellplate==wellplate_3=}')
