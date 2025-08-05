@@ -389,4 +389,147 @@ print(f'{removed_wellplate_1==wellplate_2=}')
 print(f'{removed_wellplate_2==wellplate_1=}')
 print(f'{removed_wellplate_3==wellplate=}')
 
+# %% [markdown]
+# Lastly, the `BoundingVolume` and `BoundingBox` classes are used to represent
+# bounding volumes and boxes in 3D space. These classes are useful for defining
+# the spatial limits of objects in a coordinate system, such as the dimensions of a
+# labware or the workspace. It can also be used to define the exclusion zone for 
+# a robot arm to avoid collisions with other objects in the workspace.
+# 
+# The `BoundingVolume` class can be created using a parametric function that defines
+# the conditions for being inside or outside the volume. The `parametric_function`
+# parameter is a dictionary that can contain keys like 'positive' or 'negative',
+# each mapping to a function that takes a point in space and returns a boolean.
+
+# %%
+from controllably.core.position import BoundingVolume, BoundingBox
+
+def less_than_zero(point):
+    return any(a < 0 for a in point)
+vol = BoundingVolume(parametric_function={"negative": less_than_zero})
+
+# %% [markdown]
+# The volume has the `contains` method that checks if a point is inside the volume.
+# The `contains` method takes a point as input and returns a boolean indicating whether
+# the point is inside the volume. It can also be used with the `in` operator to check
+# if a point is inside the volume.
+
+# %%
+inside_point = (-1, -2, -3)
+outside_point = (0.001, 0.02, 0.3)
+
+print(f'{vol.contains(inside_point)=}')
+print(f'{vol.contains(outside_point)=}')
+print(f'{outside_point in vol=}')
+
+# %% [markdown]
+# The `BoundingBox` class is a subclass of `BoundingVolume` that represents a
+# rectangular bounding box in 3D space. It is defined by its reference position 
+# (i.e. bottom left corner), dimensions (length, width, height), and an optional buffer
+# (padding) around the box. The buffer can be specified as a tuple of three values
+# to define the padding in each direction.
+
+# %%
+box_1 = BoundingBox(
+    reference=Position((0, 0, 0)),
+    dimensions=(10, 20, 30),
+)
+box_1b = BoundingBox(
+    reference=Position((0, 0, 0)),
+    dimensions=(10, 20, 30),
+    buffer=((-1, -2, -3), (1, 2, 3))
+)
+print(f'{(0,0,0) in box_1=}')       # True, on the edge of the box
+print(f'{(-1,-2,-3) in box_1=}')    # False, outside the box
+print(f'{(-1,-2,-3) in box_1b=}')   # True, inside the box with buffer
+print(f'{(-1,-2,-4) in box_1b=}')   # False, outside the box with buffer
+print(f'{(10,20,30) in box_1=}')    # True, on the edge of the box
+print(f'{(11,22,33) in box_1=}')    # False, outside the box
+print(f'{(11,22,33) in box_1b=}')   # True, inside the box with buffer
+print(f'{(12,22,33) in box_1b=}')   # False, outside the box with buffer
+
+# %% [markdown]
+# These `BoundingBox` objects can be added together using the `+` operator,
+# which combines their dimensions and buffers to create a new bounding box that
+# encompasses both boxes. The resulting box will have a reference position at the
+# bottom left corner of the overall volume, and its dimensions will be the maximum
+# dimensions of the two boxes, taking into account the buffers.
+
+# %%
+boxes_11b = box_1 + box_1b
+print(f'{type(boxes_11b)==BoundingBox=}')
+print(f'{(0,0,0) in boxes_11b=}')       # True, on the edge of the box
+print(f'{(-1,-2,-3) in boxes_11b=}')    # True, inside the box with buffer
+print(f'{(-1,-2,-4) in boxes_11b=}')    # False, outside the box with buffer
+print(f'{(10,20,30) in boxes_11b=}')    # True, on the edge of the box
+print(f'{(11,22,33) in boxes_11b=}')    # True, inside the box with buffer
+print(f'{(12,22,33) in boxes_11b=}')    # False, outside the box with buffer
+
+# %% [markdown]
+# When the `BoundingBox` objects are added together, the resulting volume will be 
+# a `BoundingBox` if the boxes are aligned along one of the axes. If the boxes are not 
+# aligned, the resulting volume will be a `BoundingVolume` that encompasses both boxes.
+
+# %%
+box_2x = BoundingBox(
+    reference=Position((10, 0, 0)),
+    dimensions=(10, 20, 30)
+)
+boxes_12x = box_1 + box_2x
+print(f'{type(boxes_12x)==BoundingBox=}')
+print(f'{(0,0,0) in boxes_12x=}')       # True, on the edge of the box
+print(f'{(-1,-2,-3) in boxes_12x=}')    # False, outside the combined box
+print(f'{(10,20,30) in boxes_12x=}')    # True, inside combined box
+print(f'{(20,20,30) in boxes_12x=}')    # True, inside the combined box
+print(f'{(21,20,30) in boxes_12x=}')    # False, outside the combined box
+
+# %%
+box_2y_y = BoundingBox(
+    reference=Position((0, 20, 0)),
+    dimensions=(10, 40, 30)
+)
+boxes_12y_y = box_1 + box_2y_y
+print(f'{type(boxes_12y_y)==BoundingBox=}')
+print(f'{(0,0,0) in boxes_12y_y=}')       # True, on the edge of the box
+print(f'{(-1,-2,-3) in boxes_12y_y=}')    # False, outside the combined box
+print(f'{(10,20,30) in boxes_12y_y=}')    # True, inside combined box
+print(f'{(10,60,30) in boxes_12y_y=}')    # True, inside the combined box
+print(f'{(10,61,30) in boxes_12y_y=}')    # False, outside the combined box
+
+# %%
+box_2xy = BoundingBox(
+    reference=Position((10, 20, 0)),
+    dimensions=(10, 20, 30)
+)
+boxes_12xy = box_1 + box_2xy
+print(f'{type(boxes_12xy)==BoundingBox=}')
+print(f'{type(boxes_12xy)==BoundingVolume=}')
+
+# %%
+box_2y_x = BoundingBox(
+    reference=Position((0, 20, 0)),
+    dimensions=(20, 20, 30)
+)
+boxes_12y_x = box_1 + box_2y_x
+print(f'{type(boxes_12y_x)==BoundingBox=}')
+print(f'{type(boxes_12y_x)==BoundingVolume=}')
+
+# %%
+box_2yz_z = BoundingBox(
+    reference=Position((0, 20, 30)),
+    dimensions=(10, 20, 40)
+)
+boxes_12yz_z = box_1 + box_2yz_z
+print(f'{type(boxes_12yz_z)==BoundingBox=}')
+print(f'{type(boxes_12yz_z)==BoundingVolume=}')
+
+# %%
+box_plus_vol = box_1 + vol
+print(f'{type(box_plus_vol)==BoundingBox=}')
+print(f'{type(box_plus_vol)==BoundingVolume=}')
+print(f'{(0,0,0) in box_plus_vol=}')       # True, inside the combined volume
+print(f'{(-1,-2,-3) in box_plus_vol=}')    # True, inside the combined volume
+print(f'{(10,20,30) in box_plus_vol=}')    # True, on the edge of the combined volume
+print(f'{(11,20,30) in box_plus_vol=}')    # False, outside the combined volume
+
 # %%
