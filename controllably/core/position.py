@@ -1588,7 +1588,7 @@ class BoundingVolume:
     parametric_function: dict[str, Callable[[Sequence[float],Any], bool]]
     
     def __post_init__(self):
-        assert isinstance(self.parametric_function, dict) and len(self.parametric_function) == 1, "Please input a single parametric function"
+        assert isinstance(self.parametric_function, dict) and len(self.parametric_function) >= 1, "Please input at least one parametric function"
         func = list(self.parametric_function.values())[0]
         assert callable(func), "Please input a valid parametric function"
         # signature = inspect.signature(func)
@@ -1687,7 +1687,7 @@ class BoundingBox(BoundingVolume):
             return super().__add__(other)
         if not sum([int(np.isclose(sd,od)) for sd,od in zip(self.dimensions, other.dimensions)]) >= 2:
             return super().__add__(other)
-        if not sum([int(np.isclose(self.reference.coordinates[i], other.reference.coordinates[i])) for i in range(3)]) == 2:
+        if not sum([int(np.isclose(self.reference.coordinates[i], other.reference.coordinates[i])) for i in range(3)]) >= 2:
             return super().__add__(other)
         if not np.allclose(self.reference.Rotation.as_quat(), other.reference.Rotation.as_quat()):
             return super().__add__(other)
