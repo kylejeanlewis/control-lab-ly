@@ -94,6 +94,7 @@ def create_setup_sila_package(
     for name, value in setup.__dict__.items():
         xml_path = create_xml(value, output_directory/'xml')
         class_name: str = value.__class__.__name__
+        class_name = to_pascal_case(class_name)
         xml_paths[(class_name,name)] = xml_path
         impl_paths[(class_name,name)] = output_directory/f'{setup_name}_sila'/'feature_implementations'/f'{class_name.lower()}_impl.py'
     
@@ -105,13 +106,14 @@ def create_setup_sila_package(
     # 1b. Ensure all Any data types are replaced appropriately
     any_text = "<Basic>Any</Basic>"
     xml_paths_with_any = [xml_path for xml_path in xml_paths.values() if any_text in xml_path.read_text()]
+    input_any = "skip" if skip_checks else ""
     while len(xml_paths_with_any):
-        if skip_checks or text.strip().lower() == 'skip':
+        if skip_checks or input_any.strip().lower() == 'skip':
             break
         logger.warning('\n'.join(list(map(str,xml_paths_with_any))))
         logger.warning('\n')
         time.sleep(0.1)
-        text = input("Some XML files still contain 'Any' data types. Replace with appropriate types or type 'skip' to ignore.")
+        input_any = input("Some XML files still contain 'Any' data types. Replace with appropriate types or type 'skip' to ignore.")
         xml_paths_with_any = [xml_path for xml_path in xml_paths.values() if any_text in xml_path.read_text()]
     
     # 2. Generate Sila2 package
@@ -141,13 +143,14 @@ def create_setup_sila_package(
     # 3b. Check if any methods are not implemented
     not_implemented_text = "raise NotImplementedError  # TODO"
     impl_paths_with_not_implemented = [impl_path for impl_path in impl_paths.values() if not_implemented_text in impl_path.read_text()]
+    input_impl = "skip" if skip_checks else ""
     while len(impl_paths_with_not_implemented):
-        if skip_checks or text.strip().lower() == 'skip':
+        if skip_checks or input_impl.strip().lower() == 'skip':
             break
         logger.warning('\n'.join(list(map(str,impl_paths_with_not_implemented))))
         logger.warning('\n')
         time.sleep(0.1)
-        text = input("Some implementation files still contain 'NotImplementedError'. Implement them or type 'skip' to ignore.")
+        input_impl = input("Some implementation files still contain 'NotImplementedError'. Implement them or type 'skip' to ignore.")
         impl_paths_with_not_implemented = [impl_path for impl_path in impl_paths.values() if not_implemented_text in impl_path.read_text()]
     
     # 4. Install newly generated Sila2 package
