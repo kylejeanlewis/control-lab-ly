@@ -309,7 +309,7 @@ def modify_generated_file(
         logger.error(f"Error: Generated file '{generated_filepath}' not found.")
     except Exception as e:
         logger.warning(f"An error occurred: {e}")
-    return new_code    
+    return    
 
 def modify_server_file(server_filepath: Path|str, setup_name: str):
     """
