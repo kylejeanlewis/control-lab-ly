@@ -254,6 +254,11 @@ def get_setup(
     n_errors = len(errors)
     if n_errors and not silent_fail:
         logger.error(f'Errors occurred for: {", ".join(errors.keys())}')
+        for _,part in setup._asdict():
+            try:
+                part.disconnect()
+            except:
+                pass
         raise RuntimeError(f"{n_errors} error(s) during initialization", setup)
     
     if platform_type is None or len(platform_type.__annotations__) != len(setup):
