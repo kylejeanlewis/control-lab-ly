@@ -47,7 +47,7 @@ STEP_RESOLUTION = 10
 RESPONSE_TIME = 1.03
 """Delay between sending a command and receiving a response, in seconds"""
 
-class SartoriusDevice(AnyDevice):
+class SartoriusDevice(SerialDevice):
     """ 
     Sartorius pipette device class
     
