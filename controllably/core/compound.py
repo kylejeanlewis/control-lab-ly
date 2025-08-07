@@ -40,23 +40,15 @@ from controllably import CustomLevelFilter
 logger = logging.getLogger(__name__)
 
 class Part(Protocol):
-    """Protocol for Part (i.e. component tools)"""
     device: Any
     connection_details: dict
     is_busy: bool
     is_connected: bool
     verbose: bool
-    def connect(self):
-        """Connect to the device"""
-    
-    def disconnect(self):
-        """Disconnect from the device"""
-    
-    def resetFlags(self):
-        """Reset all flags to class attribute `_default_flags`"""
-
-    def shutdown(self):
-        """Shutdown the device"""
+    def connect(self):...
+    def disconnect(self):...
+    def resetFlags(self):...
+    def shutdown(self):...
 
 
 class Compound:

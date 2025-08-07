@@ -47,38 +47,21 @@ WRITE_FORMAT = "{data}\n"
 Data = NamedTuple("Data", [("data", str)])
 
 class Device(Protocol):
-    """Protocol for device connection classes"""
     connection: Any|None
     connection_details: dict
     is_connected: bool
     verbose: bool
-    def clear(self):
-        """Clear the input and output buffers"""
-
-    def connect(self):
-        """Connect to the device"""
-
-    def disconnect(self):
-        """Disconnect from the device"""
-
-    def processInput(self, data:Any, format_in:str, **kwargs) -> str|None:
-        """Process the input"""
-    
-    def processOutput(self, data:str, format_out:str, data_type:NamedTuple, timestamp: datetime|None, **kwargs) -> tuple[Any, datetime]:
-        """Process the output"""
-
-    def query(self, data:Any, multi_out:bool = True, **kwargs) -> Any|None:
-        """Query the device"""
-
-    def read(self) -> str|None:
-        """Read data from the device"""
-
-    def write(self, data:str) -> bool:
-        """Write data to the device"""
+    def clear(self):...
+    def connect(self):...
+    def disconnect(self):...
+    def processInput(self, data:Any, format_in:str, **kwargs) -> str|None:...
+    def processOutput(self, data:str, format_out:str, data_type:NamedTuple, timestamp: datetime|None, **kwargs) -> tuple[Any, datetime]:...
+    def query(self, data:Any, multi_out:bool = True, **kwargs) -> Any|None:...
+    def read(self) -> str|None:...
+    def write(self, data:str) -> bool:...
 
 
 class StreamingDevice(Protocol):
-    """Protocol for device connection classes"""
     connection: Any|None
     connection_details: dict
     is_connected: bool
@@ -89,44 +72,19 @@ class StreamingDevice(Protocol):
     show_event: threading.Event
     stream_event: threading.Event
     threads: dict
-    def clear(self):
-        """Clear the input and output buffers, and reset the data queue and buffer"""
-        
-    def clearDeviceBuffer(self):
-        """Clear the device input and output buffers"""
-
-    def connect(self):
-        """Connect to the device"""
-
-    def disconnect(self):
-        """Disconnect from the device"""
-    
-    def processInput(self, data:Any, format_in:str|None=None, **kwargs) -> str|None:
-        """Process the input"""
-    
-    def processOutput(self, data:str, format_out:str|None=None, data_type:NamedTuple|None=None, timestamp: datetime|None=None, **kwargs) -> tuple[Any, datetime]:
-        """Process the output"""
-
-    def query(self, data:Any, multi_out:bool = True, **kwargs) -> Any|None:
-        """Query the device"""
-
-    def read(self) -> str|None:
-        """Read data from the device"""
-
-    def write(self, data:str) -> bool:
-        """Write data to the device"""
-
-    def startStream(self, data:str|None = None, buffer:deque|None = None, **kwargs):
-        """Start the stream"""
-    
-    def stopStream(self):
-        """Stop the stream"""
-    
-    def stream(self, on:bool, data:str|None = None, buffer:deque|None = None, **kwargs):
-        """Toggle the stream"""
-    
-    def showStream(self, on:bool):
-        """Show the stream"""
+    def clear(self):...
+    def clearDeviceBuffer(self):...
+    def connect(self):...
+    def disconnect(self):...
+    def processInput(self, data:Any, format_in:str|None=None, **kwargs) -> str|None:...
+    def processOutput(self, data:str, format_out:str|None=None, data_type:NamedTuple|None=None, timestamp: datetime|None=None, **kwargs) -> tuple[Any, datetime]:...
+    def query(self, data:Any, multi_out:bool = True, **kwargs) -> Any|None:...
+    def read(self) -> str|None:...
+    def write(self, data:str) -> bool:...
+    def startStream(self, data:str|None = None, buffer:deque|None = None, **kwargs):...
+    def stopStream(self):...
+    def stream(self, on:bool, data:str|None = None, buffer:deque|None = None, **kwargs):...
+    def showStream(self, on:bool):...
 
 
 class TimedDeviceMixin:

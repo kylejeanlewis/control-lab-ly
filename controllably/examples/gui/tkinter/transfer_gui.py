@@ -39,29 +39,14 @@ class Liquid(Protocol):
     channel: int
     reagent: str
     volume: float
-    def aspirate(self, volume:float, speed:float|None = None, reagent:str|None= None, *args, **kwargs):
-        raise NotImplementedError
-    
-    def blowout(self, *args, **kwargs):
-        raise NotImplementedError
-    
-    def dispense(self, volume:float, speed:float|None = None, *args, **kwargs):
-        raise NotImplementedError
-    
-    def empty(self, speed:float|None = None, *args, **kwargs):
-        raise NotImplementedError
-    
-    def fill(self, speed:float|None = None, reagent:str|None = None, *args, **kwargs):
-        raise NotImplementedError
-    
-    def isTipOn(self) -> bool:
-        raise NotImplementedError
-    
-    def eject(self, *args, **kwargs):
-        raise NotImplementedError
-    
-    def attach(self, *args, **kwargs):
-        raise NotImplementedError
+    def aspirate(self, volume:float, speed:float|None = None, reagent:str|None= None, *args, **kwargs):...
+    def blowout(self, *args, **kwargs):...
+    def dispense(self, volume:float, speed:float|None = None, *args, **kwargs):...
+    def empty(self, speed:float|None = None, *args, **kwargs):...
+    def fill(self, speed:float|None = None, reagent:str|None = None, *args, **kwargs):...
+    def isTipOn(self) -> bool:...
+    def eject(self, *args, **kwargs):...
+    def attach(self, *args, **kwargs):...
 
 
 class LiquidPanel(Panel):

@@ -41,25 +41,14 @@ BUTTON_WIDTH = 6
 class View(Protocol):
     frame_rate: int|float
     frame_size: tuple[int,int]
-    def connectFeed(self):
-        raise NotImplementedError
-    
-    def disconnectFeed(self):
-        raise NotImplementedError
-    
-    def getFrame(self) -> tuple[bool, np.ndarray]:
-        raise NotImplementedError
-    
+    def connectFeed(self):...
+    def disconnectFeed(self):...
+    def getFrame(self) -> tuple[bool, np.ndarray]:...
     @staticmethod
-    def loadImageFile(filename: str) -> np.ndarray:
-        raise NotImplementedError
-    
+    def loadImageFile(filename: str) -> np.ndarray:...
     @staticmethod
-    def saveFrame(frame: np.ndarray, filename: str|None = None) -> bool:
-        raise NotImplementedError
-    
-    def setFrameSize(self, size:Iterable[int] = (10_000,10_000)):
-        raise NotImplementedError
+    def saveFrame(frame: np.ndarray, filename: str|None = None) -> bool:...
+    def setFrameSize(self, size:Iterable[int] = (10_000,10_000)):...
 
 
 class ViewPanel(Panel):
