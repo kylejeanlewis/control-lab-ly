@@ -229,7 +229,7 @@ class SartoriusDevice(SerialDevice):
         super().connect()
         if self.flags.simulation:
             self.position = self.home_position
-        if self.checkDeviceConnection():
+        if self.is_connected:
             self.getInfo()
             self.reset()
         return
@@ -398,11 +398,12 @@ class SartoriusDevice(SerialDevice):
         self.speed_code_out = self.getOutSpeedCode()
         
         model_name = model or self.model
+        self.model = model_name.split('-')[0]
         model_info = lib.Model[model_name.split('-')[0]].value
         self.info = model_info
         if self.volume_resolution != model_info.resolution:
             self._logger.warning(f"Resolution mismatch: {self.volume_resolution=} | {model_info.resolution=}")
-            # self._logger.warning("Check library values.")
+            self._logger.warning(f"Using library value... ({model_info.resolution})")
             self.volume_resolution = model_info.resolution
         return model_info
     
