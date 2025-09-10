@@ -42,7 +42,7 @@ BoolData = NamedTuple("BoolData", [("data", bool), ("channel", int)])
 FloatData = NamedTuple("FloatData", [("data", float), ("channel", int)])
 IntData = NamedTuple("IntData", [("data", int), ("channel", int)])
 
-class TriContinentDevice(AnyDevice):
+class TriContinentDevice(SerialDevice):
     """ 
     TriContinent pump device class.
     
