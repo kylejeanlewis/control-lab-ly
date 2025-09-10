@@ -105,25 +105,25 @@ class TriContinent(LiquidHandler):
         return self.device.position * self.volume_resolution
     
     @property
-    def start_speed(self):
+    def start_speed(self) -> int|str:
         """Start speed of the pump"""
         self.setChannel()
         return self.device.start_speed
     
     @property
-    def acceleration(self):
+    def acceleration(self) -> int|str:
         """Acceleration of the pump"""
         self.setChannel()
         return self.device.acceleration
     
     @property
-    def valve_position(self):
+    def valve_position(self) -> str|None:
         """Valve position of the pump"""
         self.setChannel()
         return self.device.valve_position
     
     @property
-    def init_status(self):
+    def init_status(self) -> bool|str:
         """Initialization status of the pump"""
         self.setChannel()
         return self.device.init_status
