@@ -12,6 +12,44 @@ class Part:
     def resetFlags(self):...
     def shutdown(self):...
 
+class TriContinent:
+    volume: float
+    start_speed: int|str
+    acceleration: int|str
+    valve_position: str|None
+    init_status: bool|str
+    def connect(self): ...
+    def aspirate(self, 
+        volume: float, 
+        speed: float|None = None, 
+        reagent: str|None = None,
+        *,
+        start_speed: int|None = None,
+        pullback: bool = False,
+        delay: int = 0, 
+        pause: bool = False, 
+        ignore: bool = False,
+        blocking: bool = True,
+        **kwargs
+    ) -> bool: ...
+    def dispense(self, 
+        volume: float, 
+        speed: float|None = None, 
+        *,
+        start_speed: int|None = None,
+        blowout: bool = False,
+        delay: int = 0, 
+        pause: bool = False, 
+        ignore: bool = False,
+        blocking: bool = True,
+        **kwargs
+    ) -> bool: ...
+    def getState(self) -> dict[str, int|str|bool]: ...
+    def home(self): ...
+    def setSpeed(self, speed: float): ...
+    def reverse(self): ...
+    def setChannel(self): ...
+
 class Multi_TriContinent:
     volume: float
     start_speed: int|str
