@@ -70,7 +70,8 @@ def guard(mode:int = DEBUG) -> Callable:
         Callable: wrapped function
     """
     global safety_mode
-    mode = safety_mode if safety_mode is not None else mode
+    if mode != SUPERVISED:
+        mode = safety_mode if safety_mode is not None else mode
     assert isinstance(mode, int), f"mode must be an integer, not {type(mode)}"
     def inner(func:Callable) -> Callable:
         """
