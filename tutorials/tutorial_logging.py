@@ -7,7 +7,7 @@ from controllably.core.logging import (
 
 # %%
 log_file = f'example_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log'
-start_logging(log_dir='logs', log_file=log_file)
+start_logging(log_dir='output/logs', log_file=log_file)
 
 # %%
 get_git_info()
