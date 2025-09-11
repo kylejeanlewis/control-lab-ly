@@ -180,6 +180,7 @@ def zip_files(filepaths: Iterable[Path], zip_filepath: str|Path|None = None) -> 
     filepaths = list(set(list(filepaths)))
     zip_filepath = zip_filepath or TEMP_ZIP
     zip_filepath = Path(zip_filepath)
+    os.makedirs(zip_filepath.parent, exist_ok=True)
     with ZipFile(zip_filepath, 'w') as z:
         for filepath in filepaths:
             z.write(filepath, filepath.name)
