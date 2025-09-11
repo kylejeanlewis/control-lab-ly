@@ -34,12 +34,15 @@ class Notifier:
         
     ### Attributes and properties:
         `configs` (dict): configuration details for the notifier
+        `decoder` (str): decoder for the app password
+        `decoder_options` (list[str]): available decoder options
     
     ### Methods:
         `fromFile`: create a `Notifier` object from a configuration file
         `writeMessage`: write a message
         `notify`: write and send a message through chosen service
         `sendMessage`: send a message through chosen service
+        `setDecoder`: set the decoder for the app password
     """
     
     def __init__(self, configs: dict):
@@ -53,7 +56,11 @@ class Notifier:
         assert 'service' in configs, "Service details not found in configuration file"
         assert 'message' in configs, "Message details not found in configuration file"
         self.configs = configs
+        self.decoder: str = 'base64'
         self._app_password: Path|None = None
+        self._decoder_functions: dict[str, function[str|bytes, str]] = dict(
+            base64 = lambda x: base64.b64decode(x).decode("ascii")
+        )
         pass
     
     def __enter__(self):
@@ -66,6 +73,16 @@ class Notifier:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._app_password = None
         return
+    
+    @property
+    def decoder_options(self) -> list[str]:
+        """ 
+        Get the available decoder options
+        
+        Returns:
+            list[str]: list of available decoder options
+        """
+        return list(self._decoder_functions.keys())
     
     @classmethod
     def fromFile(cls, config_file: str|Path) -> Notifier:
@@ -126,8 +143,22 @@ class Notifier:
             assert isinstance(_app_password, (bytes,Path)), "App password not found"
         if isinstance(_app_password, Path):
             _app_password = self._app_password.read_bytes().strip()
+        unencrypted_password = self._decoder_functions[self.decoder](_app_password)
         ... # Replace with implementation
         raise NotImplementedError
+    
+    def setDecoder(self, decoder: str, decoder_function: function|None = None):
+        """ 
+        Set the decoder for the app password
+        
+        Args:
+            decoder (str): decoder to be used
+        """
+        if decoder_function is not None and callable(decoder_function):
+            self._decoder_functions[decoder] = decoder_function
+        assert decoder in self._decoder_functions, f"Decoder '{decoder}' not found"
+        self.decoder = decoder
+        return
 
 
 class EmailNotifier(Notifier):
@@ -139,6 +170,8 @@ class EmailNotifier(Notifier):
         
     ### Attributes and properties:
         `configs` (dict): configuration details for the notifier
+        `decoder` (str): decoder for the app password
+        `decoder_options` (list[str]): available decoder options
         
     ### Methods:
         `fromFile`: create a `Notifier` object from a configuration file
@@ -147,6 +180,7 @@ class EmailNotifier(Notifier):
         `notify`: write and send a message through chosen service
         `sendMessage`: send a message through chosen service
         `sendEmail`: send an email message through chosen server
+        `setDecoder`: set the decoder for the app password
     """
     
     def __init__(self, configs: dict):
@@ -235,11 +269,12 @@ class EmailNotifier(Notifier):
             assert isinstance(_app_password, (bytes,Path)), "App password not found"
         if isinstance(_app_password, Path):
             _app_password = self._app_password.read_bytes().strip()
+        unencrypted_password = self._decoder_functions[self.decoder](_app_password)
         
         # Email server connection
         with smtplib.SMTP(service_config['server'], service_config['port']) as server:
             if service_config['tls']:
                 server.starttls()
-            server.login(username, base64.b64decode(_app_password).decode("ascii"))
+            server.login(username, unencrypted_password)
             server.send_message(message)
         return
