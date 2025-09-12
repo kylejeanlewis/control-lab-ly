@@ -254,7 +254,7 @@ def get_setup(
     n_errors = len(errors)
     if n_errors and not silent_fail:
         logger.error(f'Errors occurred for: {", ".join(errors.keys())}')
-        for _,part in setup._asdict():
+        for _,part in setup._asdict().items():
             try:
                 part.disconnect()
             except:
