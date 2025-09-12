@@ -1342,7 +1342,7 @@ class WebsocketDevice(BaseDevice):
         
         self.host = host
         self.port = port
-        self.uri = f"ws://{host}:{port}/" if self.port is not None else f"ws://{host}/"
+        self.uri = f"wss://{host}:{port}/" if self.port is not None else f"wss://{host}/"
         self.timeout = timeout
         self.connection: client.ClientConnection = client.connect(uri=self.uri)
         # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
