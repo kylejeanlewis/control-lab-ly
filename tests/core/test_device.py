@@ -585,13 +585,13 @@ def test_socket_device_read_all(socket_device):
 
 @pytest.fixture(scope='module')
 def websocket_device():
-    device = WebsocketDevice('echo.websocket.events', None, timeout=0.5)
+    device = WebsocketDevice('echo.websocket.org', None, timeout=0.5)
     device.disconnect()
     device._logger.handlers.clear()
     return device
 
 def test_websocket_device_init(websocket_device):
-    assert websocket_device.host == 'echo.websocket.events'
+    assert websocket_device.host == 'echo.websocket.org'
     assert websocket_device.port is None
     assert websocket_device.timeout == 0.5
 
