@@ -10,28 +10,24 @@
 from collections import deque
 from datetime import datetime
 import threading
-from typing import NamedTuple
 
 from controllably.core.datalogger import get_dataframe, record, stream, monitor_plot
 
+from tutorial_plugins import OTHER_FORMAT, OtherData
+
 # %% [markdown]
-# Define a `NamedTuple` for our data and create a sample data store.
+# Using the named tuple `OtherData` for our data to create a sample data store.
 
 # %%
-Data = NamedTuple('Data', [
-    ('int_field', int), 
-    ('float_field', float),
-    ('string_field', str)
-])
-FIELD_NAMES = Data._fields
-READ_FORMAT = '{int_field};{float_field};{string_field}'
+print(OTHER_FORMAT)
+FIELD_NAMES = OtherData._fields
 print(FIELD_NAMES)
 
 # %%
 # Example data store: a list of (Data, timestamp) tuples
 sample_data = [
-    (Data(1, 2.0, 'abc'), datetime(2025, 3, 21, 10, 0, 0)),
-    (Data(3, 4.0, 'def'), datetime(2025, 3, 21, 10, 1, 0))
+    (OtherData('abc', 1, 2.0, True), datetime(2025, 3, 21, 10, 0, 0)),
+    (OtherData('def', 3, 4.0, False), datetime(2025, 3, 21, 10, 1, 0))
 ]
 sample_data
 
@@ -49,26 +45,12 @@ df
 
 # %%
 import time
-import random
 from controllably.core.device import BaseDevice
+from tutorial_plugins import MockConnection
 
-class MockConnection:
-    def __init__(self):
-        self._open = False
-        self._waiting = False
-        self.count = 0
-    def open(self):
-        self._open = True
-    def is_open(self):
-        return self._open
-    def read(self):
-        time.sleep(0.01)
-        return f'{random.randint(0,1000)};{random.random():.5};test_output\n'.encode()
-
-device = BaseDevice()
+device = BaseDevice(data_type=OtherData, read_format=OTHER_FORMAT)
 device.connection = MockConnection()
-device.data_type = Data
-device.read_format = READ_FORMAT
+device.connect()
 device.buffer.clear()
 
 # %% [markdown]
@@ -125,7 +107,7 @@ get_dataframe(store, FIELD_NAMES)
 device.buffer.clear()
 
 store = record(True, device=device)
-stop_trigger = monitor_plot(store, 'int_field', kind='line')
+stop_trigger = monitor_plot(store, 'intdata', kind='line')
 time.sleep(3)
 record(False, device=device)
 stop_trigger.set()
@@ -139,7 +121,7 @@ store = deque(maxlen=100)
 recording = threading.Event()
 
 record(True, device=device, data_store=store, event=recording)
-monitor_plot(store, 'int_field', stop_trigger=recording)
+monitor_plot(store, 'intdata', stop_trigger=recording)
 time.sleep(5)
 record(False, device=device, event=recording)
 time.sleep(1)
@@ -155,7 +137,7 @@ recording = threading.Event()
 
 record(True, device=device, data_store=store, event=recording)
 stop_monitor = monitor_plot(
-    store, 'int_field', 'float_field', 
+    store, 'intdata', 'floatdata', 
     kind='scatter', lapsed_counts=100
 )
 time.sleep(3)
@@ -172,7 +154,7 @@ store = deque()
 recording = threading.Event()
 
 record(True, device=device, data_store=store, event=recording)
-stop_monitor = monitor_plot(store, 'int_field')
+stop_monitor = monitor_plot(store, 'intdata')
 time.sleep(3)
 stop_monitor.set()
 time.sleep(1)
