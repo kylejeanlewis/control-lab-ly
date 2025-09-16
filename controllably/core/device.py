@@ -315,13 +315,14 @@ class BaseDevice:
         """Connect to the device"""
         if self.is_connected:
             return
+        connection_details = repr(self.connection_details) if self.connection_details else '{...}'
         try:
             self.connection.open() # Replace with specific implementation
         except Exception as e: # Replace with specific exception
-            self._logger.error("Failed to connect to {...}") # Replace with specific log message
+            self._logger.error(f"Failed to connect to {connection_details}") # Replace with specific log message
             self._logger.debug(e)
         else:
-            self._logger.info("Connected to {...}") # Replace with specific log message
+            self._logger.info(f"Connected to {connection_details}") # Replace with specific log message
             time.sleep(self.init_timeout)
         self.flags.connected = True
         return
@@ -331,13 +332,14 @@ class BaseDevice:
         if not self.is_connected:
             return
         self.stopStream()
+        connection_details = repr(self.connection_details) if self.connection_details else '{...}'
         try:
             self.connection.close() # Replace with specific implementation
         except Exception as e: # Replace with specific exception
-            self._logger.error("Failed to disconnect from {...}") # Replace with specific log message
+            self._logger.error(f"Failed to disconnect from {connection_details}") # Replace with specific log message
             self._logger.debug(e)
         else:
-            self._logger.info("Disconnected from {...}") # Replace with specific log message
+            self._logger.info(f"Disconnected from {connection_details}") # Replace with specific log message
         self.flags.connected = False
         return
     
