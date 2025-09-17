@@ -76,10 +76,11 @@ print(f'{limited_queue.qsize()=}')
 from controllably.core.control import Controller, Proxy
 from controllably.core.interpreter import JSONInterpreter
 
-
 # %%
 queue_proxy = Proxy(TwoTierQueue, 'QUEUE1')
 limited_queue_proxy = Proxy(TwoTierQueue, 'QUEUE2')
+print(f'{issubclass(type(queue_proxy), TwoTierQueue)=}')
+print(f'{issubclass(type(limited_queue_proxy), TwoTierQueue)=}')
 
 # %%
 # 'model' controllers receives requests, triggers execution in registered objects, 
