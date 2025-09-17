@@ -78,7 +78,7 @@ class TwoTierQueue:
         self.normal_queue = queue.Queue()
         self.high_priority_queue = queue.PriorityQueue()
         self.last_used_queue_normal = True
-        self.priority_counter = 0
+        self.priority_counter = 1
         return
 
     def qsize(self):
@@ -105,9 +105,9 @@ class TwoTierQueue:
             rank (int, optional): rank of the high-priority item. Defaults to None.
         """
         if priority or rank is not None:
-            self.priority_counter += 1
             rank = self.priority_counter if rank is None else rank
             self.put_priority(item, rank, block=block, timeout=timeout)
+            self.priority_counter += 1
         else:
             self.put_queue(item, block=block, timeout=timeout)
         return
@@ -211,7 +211,7 @@ class TwoTierQueue:
         self.normal_queue = queue.Queue()
         self.high_priority_queue = queue.PriorityQueue()
         self.last_used_queue_normal = True
-        self.priority_counter = 0
+        self.priority_counter = 1
         return
 
 
@@ -531,6 +531,8 @@ class Controller:
         assert self.role in ('model', 'both'), "Only the model can receive requests"
         if packet is None:
             sender = sender or 'main'
+            if sender not in self.callbacks['listen']:
+                return
             packet = self.callbacks['listen'][sender](**kwargs)
         command = self.interpreter.decodeRequest(packet)
         sender = command.get('address', {}).get('sender', [])
@@ -897,6 +899,8 @@ class Controller:
         assert self.role in ('view', 'both'), "Only the view can receive data"
         if packet is None:
             sender = sender or 'main'
+            if sender not in self.callbacks['listen']:
+                return
             packet = self.callbacks['listen'][sender](**kwargs)
         data = self.interpreter.decodeData(packet)
         sender = data.get('address', {}).get('sender', [])
