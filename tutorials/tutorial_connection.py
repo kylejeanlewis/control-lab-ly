@@ -1,4 +1,4 @@
-# %%[markdown]
+# %% [markdown]
 # # Connection utility functions
 # 
 # The `controllably.core.connection` module provides utility functions to manage and retrieve connection information for devices. 
