@@ -297,7 +297,9 @@ class Ensemble(Compound):
             details = [details[k]['settings'] for k in sorted(details.keys())]
         config['details'] = details
         # parts = factory.load_parts(details)
-        return cls(**config)
+        instance = cls(**config)
+        instance.connect()
+        return instance
     
     @property
     def channels(self) -> dict[int,Part]:
@@ -697,7 +699,9 @@ class Multichannel(Combined):
             details = [details[k]['settings'] for k in sorted(details.keys())]
         config['details'] = details
         # parts = factory.load_parts(details)
-        return cls(**config)
+        instance = cls(**config)
+        instance.connect()
+        return instance
     
     @property
     def channel(self) -> int:
