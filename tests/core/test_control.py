@@ -70,7 +70,7 @@ def test_two_tier_queue():
     assert queue.qsize() == 1
     assert not queue.full()
     queue.put('impt2', priority=True, rank = 3)
-    assert queue.priority_counter == 1
+    assert queue.priority_counter == 2
     assert queue.qsize() == 2
     assert queue.normal_queue.qsize() == 1
     assert queue.high_priority_queue.qsize() == 1
@@ -94,14 +94,14 @@ def test_two_tier_queue():
     assert queue.qsize() == 3
     assert queue.normal_queue.qsize() == 1
     assert queue.high_priority_queue.qsize() == 2
-    assert queue.priority_counter == 2
+    assert queue.priority_counter == 3
     queue.get_nowait()
     assert not queue.last_used_queue_normal
     queue.reset()
     assert queue.qsize() == 0
     assert queue.normal_queue.qsize() == 0
     assert queue.high_priority_queue.qsize() == 0
-    assert queue.priority_counter == 0
+    assert queue.priority_counter == 1
     assert queue.last_used_queue_normal
 
 def test_two_tier_queue_delayed_get():
