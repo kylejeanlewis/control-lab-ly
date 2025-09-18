@@ -1,0 +1,30 @@
+this_simple_tool:                                     # name of simple device (user-defined)
+  module: tutorial_plugins                             # device module
+  class: DeviceTemplate                                  # device class
+  settings:
+    name: 'this_simple_tool_name'
+
+compound_tool:                                     # name of 'Compound' device (user-defined)
+  module: controllably.core.compound                             # device module                            
+  class: Compound                                  # device class
+  settings:
+    value: 1                              # other settings for your 'Compound' device
+    details:                                    # nest part configuration settings here
+      part1:                                 # name of part
+        module: tutorial_plugins                       # part module
+        class: PartOne                            # part class
+        settings:
+          name: 'part_1_name'               # IP addresses do not vary between machines
+      part2: 
+        module: tutorial_plugins
+        class: PartTwo
+        settings:
+          name: 'part_2_name'                        # settings for your part device
+
+other_tool:
+  config_file: 'control-lab-ly/tutorials/tools/tutorial_setup/config.yaml'  # path to other device config file
+  config_name: 'simple_tool'  # name of device in other config file
+
+SHORTCUTS:
+  part_one: 'compound_tool.part1'
+  part_two: 'compound_tool.part2'
