@@ -22,15 +22,15 @@ LAYOUT_FILE = HERE/"layout.json"
 REGISTRY_FILE = CONFIGS/"registry.yaml"
 
 # ========== Optional (for typing) ========== #
-# from controllably.core.compound import Compound
-# from ...tutorial_plugins import DeviceTemplate, PartOne, PartTwo
+from controllably.core.compound import Compound
+from tutorial_plugins import DeviceTemplate, PartOne, PartTwo
 
 @dataclass
 class Platform:
-    # simple_tool: DeviceTemplate
-    # compound_tool: Compound
-    # part_one: PartOne
-    # part_two: PartTwo
+    simple_tool: DeviceTemplate
+    compound_tool: Compound
+    part_one: PartOne
+    part_two: PartTwo
     ...
     # Add fields and types here
     # _tool_name: _tool_class
