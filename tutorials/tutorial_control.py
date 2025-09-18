@@ -312,4 +312,36 @@ second_proxy.bindController(hns_user)
 second_proxy.put_nowait("extra_task")
 print(f'{second_proxy.get_nowait()=}')
 
+# %% [markdown]
+# # Examples
+# Further examples of how to setup different kinds of communication pathways like sockets and fastapi
+# can be found in `control-lab-ly/scripts/control`.
+# 
+# ## Sockets
+# Sockets can be used for inter-process communication (IPC) on the same machine or over a network.
+# 
+# On the worker side, refer to the following for the respective modes of operation:
+# - Peer-to-Peer: `control-lab-ly/scripts/control/socket/socket_server_worker.py`
+# - Hub-and-Spoke: 
+#   - `control-lab-ly/scripts/control/socket/start_socket_hub_worker.py`
+#   - `control-lab-ly/scripts/control/socket/socket_client_worker.py`
+# 
+# On the User side, refer to `control-lab-ly/scripts/control/socket/start_socket_user.py`.
+# 
+# ## FastAPI
+# The only mode of operation is Hub-and-Spoke.
+# Refer to the following for the respective sides:
+# - Hub: `control-lab-ly/scripts/control/fastapi/start_fastapi_server.py`
+# - Worker: `control-lab-ly/scripts/control/fastapi/fastapi_client_worker.py`
+# - User: `control-lab-ly/scripts/control/fastapi/fastapi_client_user.py`
+# 
+# ## SiLA2
+# SiLA2 is a standard for laboratory device communication.
+# Refer to the documentation at `control-lab-ly/controllably/examples/sila/readme.md` for more details.
+# 
+# 1. Generate the SiLA2 package for your setup using `control-lab-ly/scripts/control/sila/sila_demo/generate_sila_package.py`.
+# 2. Start the SiLA2 server using `control-lab-ly/scripts/control/sila/sila_demo/server.py`.
+# 3. Use the SiLA2 client to interact with the server using `control-lab-ly/scripts/control/sila/sila_demo/client.py`.
+
+
 # %%
