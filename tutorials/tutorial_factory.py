@@ -24,15 +24,16 @@ from controllably.core.factory import (
     get_setup
 )
 # %%
-DeviceTemplate = get_class('tutorial_plugins','DeviceTemplate')
+DeviceTemplateClass = get_class('tutorial_plugins','DeviceTemplate')
+DeviceTemplateClass
 
 # %%
-device_instance = create(DeviceTemplate, name="ExamplePart")
+device_instance = create(DeviceTemplateClass, name="ExamplePart")
 device_instance
 
 # %%
 config = {
-    'device_type': DeviceTemplate,
+    'device_type': DeviceTemplateClass,
     'name': 'ConfiguredPart'
 }
 device_from_config = create_from_config(config)
@@ -101,6 +102,54 @@ configs = {
 }
 parsed_configs = parse_configs(configs, addresses)
 parsed_configs
+
+# %%
+from controllably.core.connection import get_node
+registry = {
+    'machine_id':
+        {
+            get_node(): addresses
+        }
+}
+registry
+
+# %%
+get_plans(configs=configs, registry=registry)
+
+# %%
+setup_namedtuple = load_setup_from_files(
+    config_file = 'tools/tutorial_setup/config.yaml',
+    registry_file = 'tools/registry.yaml'
+)
+setup_namedtuple
+
+# %%
+setup_dict = load_setup_from_files(
+    config_file = 'tools/tutorial_setup/config.yaml',
+    registry_file = 'tools/registry.yaml',
+    create_tuple = False
+)
+setup_dict
+
+# %%
+from dataclasses import dataclass
+
+from controllably.core.compound import Compound
+from tutorial_plugins import DeviceTemplate, PartOne, PartTwo
+
+@dataclass
+class Platform:
+    simple_tool: DeviceTemplate
+    compound_tool:Compound
+    part_one: PartOne
+    part_two: PartTwo
+
+# %%
+new_setup = get_setup(
+    config_file = 'tools/tutorial_setup/config.yaml',
+    registry_file = 'tools/registry.yaml',
+    platform_type = Platform
+)
 
 # %%
 from controllably.core.factory import (
