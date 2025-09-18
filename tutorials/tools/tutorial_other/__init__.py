@@ -27,7 +27,7 @@ from tutorial_plugins import DeviceTemplate, PartOne, PartTwo
 
 @dataclass
 class Platform:
-    simple_tool: DeviceTemplate
+    this_simple_tool: DeviceTemplate
     compound_tool: Compound
     other_tool: DeviceTemplate
     part_one: PartOne
