@@ -5,7 +5,7 @@ documented on [SiLA2's documentation page](https://sila2.gitlab.io/sila_python/c
 ## A. Install dependencies
 Install the Python implementation of the SiLA2 standard and the cryptography library for secure communications.
 ```shell
-$ python -m pip install sila[codegen] cryptography
+$ python -m pip install sila2[codegen] cryptography
 ```
 
 ## B. Install this repository as an editable package
@@ -19,8 +19,7 @@ import importlib
 from pathlib import Path
 
 from controllably.examples.sila.factory import create_setup_sila_package
-s
-ROOT = Path('.')                # Root of repository
+ROOT = Path(r'~\lab-dance')
 SETUP_NAME = 'claw_machine'
 
 # Initialize the setup
@@ -48,16 +47,25 @@ Refer to [details below](#details-on-package-creation) for further information.
 ## D. Start Server
 ```python
 import atexit
+from pathlib import Path
 import subprocess
 import sys
 
+from controllably.core.connection import get_host
+from controllably.core.file_handler import create_folder
+
+SETUP_NAME = 'claw_machine'
+HOST = get_host()
+PORT = 50052
+
+folder_name = create_folder('logs')
 process = subprocess.Popen([
     sys.executable, '-m', f'{SETUP_NAME}_sila',
-    '--ip-address', '127.0.0.1',
-    '--port', '50052',
-    '--ca-export-file', str(ROOT/'ca.pem'),
+    '--ip-address', HOST,
+    '--port', str(PORT),
     # '--insecure',
-], stdout=open('stdout.log', 'a'), stderr=open('stderr.log', 'a'))
+    '--ca-export-file', str(Path(__file__).parent/'ca.pem'),
+], stdout=open(f'{folder_name}/stdout.log', 'a'), stderr=open(f'{folder_name}/stderr.log', 'a'))
 
 atexit.register(process.wait)  # Ensure we wait for the process to terminate
 atexit.register(process.terminate)  # Ensure the process is terminated on exit
@@ -65,18 +73,19 @@ atexit.register(process.terminate)  # Ensure the process is terminated on exit
 
 ## E. Connect Client
 ```python
-import importlib
+from pathlib import Path
+from controllably.core.connection import get_host
 from controllably.core.position import Position
+from sila2.client import SilaClient
 
-# Import the Client class
-Client = importlib.import_module(f'{SETUP_NAME}_sila').Client
-# Equivalent to:
-# >>> from claw_machine_sila import Client
+SETUP_NAME = 'claw_machine'
+HOST = get_host()
+PORT = 50052
 
-client = Client(
-    '127.0.0.1', 50052,
-    root_certs = open(ROOT/'ca.pem', 'rb').read(),
+client = SilaClient(
+    HOST, PORT,
     # insecure = True,
+    root_certs = open(Path(__file__).parent/'ca.pem', 'rb').read(),
 )
 ```
 
@@ -148,4 +157,4 @@ subprocess.run([
 ```
 
 ## Universal SiLA client
-https://gitlab.com/SiLA2/universal-sila-client/sila_universal_client 
+https://gitlab.com/SiLA2/universal-sila-client/sila_universal_client#run-the-pre-compiled-application
