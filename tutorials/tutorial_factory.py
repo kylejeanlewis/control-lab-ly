@@ -1,17 +1,9 @@
 # %% [markdown]
-# create, create_from_config
-# get_class, load_parts
-# parse_configs, get_plans
-# dict_to_named_tuple, load_setup_from_files
-# get_setup
-
-# get_imported_modules
-# get_method_names
-
-# %% [markdown]
 # # Using the Factory Module
 
 # %%
+import pprint
+
 from controllably.core.factory import (
     get_class,
     create,
@@ -53,7 +45,7 @@ part_configs = {
     }
 }
 loaded_parts = load_parts(part_configs)
-loaded_parts
+pprint.pprint(loaded_parts)
 
 # %%
 named_tuple = dict_to_named_tuple(loaded_parts, 'setup')
@@ -101,7 +93,7 @@ configs = {
     }
 }
 parsed_configs = parse_configs(configs, addresses)
-parsed_configs
+pprint.pprint(parsed_configs)
 
 # %%
 from controllably.core.connection import get_node
@@ -111,10 +103,11 @@ registry = {
             get_node(): addresses
         }
 }
-registry
+pprint.pprint(registry)
 
 # %%
-get_plans(configs=configs, registry=registry)
+plans = get_plans(configs=configs, registry=registry)
+pprint.pprint(plans)
 
 # %%
 setup_namedtuple = load_setup_from_files(
@@ -129,7 +122,7 @@ setup_dict = load_setup_from_files(
     registry_file = 'tools/registry.yaml',
     create_tuple = False
 )
-setup_dict
+pprint.pprint(setup_dict)
 
 # %%
 from dataclasses import dataclass
@@ -159,7 +152,7 @@ from controllably.core.factory import (
 
 # %%
 imported_modules = get_imported_modules()
-imported_modules
+pprint.pprint(imported_modules)
 
 # %%
 my_methods = get_method_names(DeviceTemplate)
