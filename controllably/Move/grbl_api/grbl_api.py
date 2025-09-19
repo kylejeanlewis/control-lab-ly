@@ -35,7 +35,7 @@ READ_FORMAT = "{data}\n"
 WRITE_FORMAT = "{data}\n"
 Data = NamedTuple("Data", [("data", str), ("channel", int)])
 
-class GRBL(AnyDevice):
+class GRBL(SerialDevice):
     """
     GRBL class for controlling CNC machines using the GRBL firmware.
     Refer to https://github.com/gnea/grbl/tree/master/doc/markdown for more information on the GRBL firmware.

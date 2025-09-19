@@ -33,7 +33,7 @@ BoolData = NamedTuple("BoolData", [("data", bool)])
 FloatData = NamedTuple("FloatData", [("data", float)])
 IntData = NamedTuple("IntData", [("data", int)])
 
-class QInstrumentsDevice(AnyDevice):
+class QInstrumentsDevice(SerialDevice):
     """
     QInstrumentsDevice provides an interface for available actions to control devices from QInstruments, including orbital shakers,
     heat plates, and cold plates.
