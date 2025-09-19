@@ -166,6 +166,7 @@ class Mover:
         self._has_rotation = True
         try:
             self.rotate('a', 0)
+            self.device.clear()
         except NotImplementedError:
             self._has_rotation = False
         except Exception:
