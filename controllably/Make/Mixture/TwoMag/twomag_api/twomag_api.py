@@ -25,7 +25,7 @@ READ_FORMAT = "{status}_{data}_{address:.1}\r"
 WRITE_FORMAT = "{data}_{address}\r"
 Data = NamedTuple("Data", [("data", str), ("status", str), ("address", str)])
 
-class TwoMagDevice(AnyDevice):
+class TwoMagDevice(SerialDevice):
     """
     Class for the 2Mag device
     
