@@ -1,0 +1,27 @@
+{
+    "metadata": {
+        "displayName": "Optical breadboard",
+        "displayCategory": "deck",
+        "displayVolumeUnits": "µL",
+        "displayLengthUnits": "mm",
+        "tags": []
+    },
+    "dimensions": [300,300,0],
+    "cornerOffset": [0,0,0],
+    "orientation": [0,0,0],
+    "slots": {
+        "1": {
+            "dimensions": [127.76,85.48,0],
+            "cornerOffset": [83.62,34.0,15],
+            "orientation": [0,0,0],
+            "labware_file": ""
+        },
+        "2": {
+            "dimensions": [127.76,85.48,0],
+            "cornerOffset": [83.62,134.0,15],
+            "orientation": [0,0,0],
+            "labware_file": ""
+        }
+    },
+    "zones":{}
+}

@@ -377,6 +377,8 @@ class Platform:
 ## How to Contribute
 [Issues](https://github.com/kylejeanlewis/control-lab-ly/issues) and feature requests are welcome!
 
+Check the [Contributing](https://github.com/kylejeanlewis/control-lab-ly/blob/main//docs/CONTRIBUTING.md) document to see how to contribute to this project.
+
 ## License
 This project is distributed under the [MIT License](https://github.com/kylejeanlewis/control-lab-ly/blob/main/LICENSE.md).
 

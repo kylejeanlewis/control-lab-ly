@@ -1,7 +1,18 @@
 # %%
+from pathlib import Path
+from controllably.core.connection import get_host
+from controllably.core.position import Position
 from sila2.client import SilaClient
 
-client = SilaClient("127.0.0.1", 50052, insecure=True)
+SETUP_NAME = 'claw_machine'
+HOST = get_host()
+PORT = 50052
+
+client = SilaClient(
+    HOST, PORT,
+    # insecure = True,
+    root_certs = open(Path(__file__).parent/'ca.pem', 'rb').read(),
+)
 
 # %%
 client.Gantry.Position.get()

@@ -153,8 +153,6 @@ def start_project_here(dst:Path|str|None = None):
     dst = Path.cwd() if dst is None else Path(dst)
     logger.info(f"Creating new project in: {dst}")
     for directory in src.iterdir():
-        # if directory.is_dir() and directory.name == 'messaging':
-        #     continue
         new_dst = dst / directory.name
         if new_dst.exists():
             logger.warning(f"Folder/file already exists: {new_dst}")
@@ -182,6 +180,7 @@ def zip_files(filepaths: Iterable[Path], zip_filepath: str|Path|None = None) -> 
     filepaths = list(set(list(filepaths)))
     zip_filepath = zip_filepath or TEMP_ZIP
     zip_filepath = Path(zip_filepath)
+    os.makedirs(zip_filepath.parent, exist_ok=True)
     with ZipFile(zip_filepath, 'w') as z:
         for filepath in filepaths:
             z.write(filepath, filepath.name)

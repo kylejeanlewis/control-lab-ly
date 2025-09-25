@@ -165,7 +165,7 @@ def test_get_setup(config, use_platform, monkeypatch):
             assert isinstance(setup.tool, mock_module.TestClass)
     else:
         with pytest.raises(RuntimeError):
-            _ = get_setup('config_file', 'registry_file')
+            _ = get_setup('config.yaml', 'registry.yaml')
 
 def test_load_parts(monkeypatch, caplog):
     new_modules = sys.modules

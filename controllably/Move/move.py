@@ -166,6 +166,7 @@ class Mover:
         self._has_rotation = True
         try:
             self.rotate('a', 0)
+            self.device.clear()
         except NotImplementedError:
             self._has_rotation = False
         except Exception:
@@ -296,7 +297,7 @@ class Mover:
         return
     
     @property
-    def speed_max(self) -> dict[str, float]:
+    def speed_max(self) -> float:
         """Maximum speed(s) of robot"""
         return self._speed_max
     @speed_max.setter
@@ -687,7 +688,7 @@ class Mover:
             assert len(by) == 3, "Ensure `by` is a 3-element sequence for c,b,a"
         rotate_by = by if isinstance(by, Rotation) else Rotation.from_euler('zyx', by, degrees=True)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
-        self._logger.info(f"Rotate By | {rotate_by} at speed factor {speed_factor}")
+        self._logger.info(f"Rotate By | {rotate_by.as_euler('zyx', degrees=True)} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
         rotate_by = rotate_by               # not affected by robot or tool coordinates for rotation
@@ -724,7 +725,7 @@ class Mover:
             assert len(to) == 3, "Ensure `to` is a 3-element sequence for c,b,a"
         rotate_to = to if isinstance(to, Rotation) else Rotation.from_euler('zyx', to, degrees=True)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
-        self._logger.info(f"Rotate To | {rotate_to} at speed factor {speed_factor}")
+        self._logger.info(f"Rotate To | {rotate_to.as_euler('zyx', degrees=True)} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
         if robot:

@@ -1,0 +1,28 @@
+recipients: &recipients
+  - recipient01@gmail.com
+  - recipient02@gmail.com
+
+email: &message
+  headers:
+    From: sender@gmail.com
+    To: *recipients
+    Subject: Data from {experiment} ({timestamp})
+  attachment_name: data-{experiment}-{timestamp}.zip
+  content: |
+    Dear all,
+
+    Attached are the data files collected from {experiment} that began at {timestamp}
+
+    Regards,
+    Sender
+
+smtp: &service
+  server: smtp.gmail.com
+  port: 587
+  tls: True
+
+credentials:
+  username: sender@gmail.com
+  keyfile: ~/.key
+service: *service
+message: *message

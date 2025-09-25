@@ -40,23 +40,15 @@ from controllably import CustomLevelFilter
 logger = logging.getLogger(__name__)
 
 class Part(Protocol):
-    """Protocol for Part (i.e. component tools)"""
     device: Any
     connection_details: dict
     is_busy: bool
     is_connected: bool
     verbose: bool
-    def connect(self):
-        """Connect to the device"""
-    
-    def disconnect(self):
-        """Disconnect from the device"""
-    
-    def resetFlags(self):
-        """Reset all flags to class attribute `_default_flags`"""
-
-    def shutdown(self):
-        """Shutdown the device"""
+    def connect(self):...
+    def disconnect(self):...
+    def resetFlags(self):...
+    def shutdown(self):...
 
 
 class Compound:
@@ -305,7 +297,9 @@ class Ensemble(Compound):
             details = [details[k]['settings'] for k in sorted(details.keys())]
         config['details'] = details
         # parts = factory.load_parts(details)
-        return cls(**config)
+        instance = cls(**config)
+        instance.connect()
+        return instance
     
     @property
     def channels(self) -> dict[int,Part]:
@@ -332,7 +326,7 @@ class Ensemble(Compound):
         
         Args:
             method_name (str): method name to be executed
-            kwargs_generator (Callable[[int,int,Part], dict[str,Any]]|None): function to generate kwargs for each channel. Defaults to None.
+            kwargs_generator (Callable[[int,int,Part], dict[str,Any]]|None): function to generate kwargs for each channel using indices, channels, and Parts. Defaults to None.
             channels (Iterable[int]): channels to execute on
             max_workers (int, optional): maximum number of workers. Defaults to 4.
             timeout (int|float, optional): timeout for each worker. Defaults to 120.
@@ -379,7 +373,7 @@ class Ensemble(Compound):
         func_name = method.__name__
         if func_name.endswith("__") and not func_name.startswith("__"):
             return method
-        def func(self, *args, channel: int|Sequence[int]|None = None, **kwargs) -> list|None:
+        def func(self, *args, channel: int|Sequence[int]|None = None, **kwargs) -> dict|None:
             outs = dict()
             for chn,obj in cls._get_channel(self, channel).items():
                 obj_method: Callable = getattr(obj, func_name)
@@ -497,7 +491,7 @@ class Combined:
         return
     
     @classmethod
-    def fromConfig(cls, config:dict) -> Type[Combined]:
+    def fromConfig(cls, config:dict) -> Combined:
         """
         Factory method to create Combined from configuration dictionary
         
@@ -505,13 +499,12 @@ class Combined:
             config (dict): configuration dictionary
             
         Returns:
-            Type[Combined]: instance of Combined (or its subclasses)
+            Combined: instance of Combined (or its subclasses)
         """
         details = config.pop('details')
         device = factory.create_from_config(config)
-        # parts = {name:factory.load_parts(settings, device=device) for name,settings in details.items()}
-        for settings in details.values():
-            settings['device'] = device
+        for part_config in details.values():
+            part_config['settings']['device'] = device
         parts = factory.load_parts(details)
         return cls(device=device, parts=parts, **config)
     
@@ -706,7 +699,9 @@ class Multichannel(Combined):
             details = [details[k]['settings'] for k in sorted(details.keys())]
         config['details'] = details
         # parts = factory.load_parts(details)
-        return cls(**config)
+        instance = cls(**config)
+        instance.connect()
+        return instance
     
     @property
     def channel(self) -> int:
@@ -736,7 +731,7 @@ class Multichannel(Combined):
         func_name = method.__name__
         if func_name.endswith("__") and not func_name.startswith("__"):
             return method
-        def func(self, *args, channel: int|Sequence[int]|None = None, **kwargs) -> list|None:
+        def func(self, *args, channel: int|Sequence[int]|None = None, **kwargs) -> dict|None:
             outs = dict()
             for chn,obj in cls._get_channel(self, channel).items():
                 cls.setActiveChannel(self, chn)

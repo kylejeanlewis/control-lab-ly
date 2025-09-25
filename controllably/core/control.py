@@ -78,7 +78,7 @@ class TwoTierQueue:
         self.normal_queue = queue.Queue()
         self.high_priority_queue = queue.PriorityQueue()
         self.last_used_queue_normal = True
-        self.priority_counter = 0
+        self.priority_counter = 1
         return
 
     def qsize(self):
@@ -105,9 +105,9 @@ class TwoTierQueue:
             rank (int, optional): rank of the high-priority item. Defaults to None.
         """
         if priority or rank is not None:
-            self.priority_counter += 1
             rank = self.priority_counter if rank is None else rank
             self.put_priority(item, rank, block=block, timeout=timeout)
+            self.priority_counter += 1
         else:
             self.put_queue(item, block=block, timeout=timeout)
         return
@@ -211,7 +211,7 @@ class TwoTierQueue:
         self.normal_queue = queue.Queue()
         self.high_priority_queue = queue.PriorityQueue()
         self.last_used_queue_normal = True
-        self.priority_counter = 0
+        self.priority_counter = 1
         return
 
 
@@ -220,11 +220,11 @@ class Proxy:
     A proxy class to handle remote method calls.
     
     ### Constructor:
-        `prime` (Callable): the object to create a proxy for
+        `prime` (object): the object to create a proxy for
         `object_id` (str|None, optional): the ID of the object. Defaults to None.
         
     ### Attributes:
-        `prime` (Callable): the object to create a proxy for
+        `prime` (object): the object to create a proxy for
         `object_id` (str): the ID of the object
         `controller` (Controller): the controller bound to the proxy
         `remote` (bool): flag to indicate remote method calls
@@ -237,16 +237,16 @@ class Proxy:
         `releaseController`: release the controller from the proxy
     """
     
-    def __new__(cls, prime:Callable, object_id:str|None = None):
+    def __new__(cls, prime:object, object_id:str|None = None):
         new_class = cls.factory(prime, object_id)
         return super(Proxy,cls).__new__(new_class)
     
-    def __init__(self, prime:Callable, object_id:str|None = None):
+    def __init__(self, prime:object, object_id:str|None = None):
         """
         Initialize the Proxy class.
         
         Args:
-            prime (Callable): the object to create a proxy for
+            prime (object): the object to create a proxy for
             object_id (str|None, optional): the ID of the object. Defaults to None.
         """
         self.prime = prime
@@ -256,12 +256,12 @@ class Proxy:
         return
     
     @classmethod
-    def factory(cls, prime:Callable, object_id:str|None = None) -> Type[Proxy]:
+    def factory(cls, prime:object, object_id:str|None = None) -> Type[Proxy]:
         """
         Factory method to create a new class with methods and properties of the prime object.
         
         Args:
-            prime (Callable): the object to create a proxy for
+            prime (object): the object to create a proxy for
             object_id (str|None, optional): the ID of the object. Defaults to None.
             
         Returns:
@@ -289,7 +289,7 @@ class Proxy:
         Returns:
             Callable: the method emitter
         """
-        def methodEmitter(self, *args, **kwargs):
+        def methodEmitter(self: Proxy, *args, **kwargs):
             if not self.remote:
                 if inspect.isclass(self.prime):
                     raise TypeError('This Proxy was created with a class, not instance.')
@@ -332,7 +332,7 @@ class Proxy:
         Returns:
             property: the property emitter
         """
-        def getterEmitter(self) -> Any:
+        def getterEmitter(self: Proxy) -> Any:
             if not self.remote:
                 if inspect.isclass(self.prime):
                     raise TypeError('This Proxy was created with a class, not instance.')
@@ -349,7 +349,7 @@ class Proxy:
         getterEmitter.__name__ = attr_name
         getterEmitter.__doc__ = f"Property {attr_name}"
         
-        def setterEmitter(self, value: Any):
+        def setterEmitter(self: Proxy, value: Any):
             if not self.remote:
                 if inspect.isclass(self.prime):
                     raise TypeError('This Proxy was created with a class, not instance.')
@@ -531,6 +531,8 @@ class Controller:
         assert self.role in ('model', 'both'), "Only the model can receive requests"
         if packet is None:
             sender = sender or 'main'
+            if sender not in self.callbacks['listen']:
+                return
             packet = self.callbacks['listen'][sender](**kwargs)
         command = self.interpreter.decodeRequest(packet)
         sender = command.get('address', {}).get('sender', [])
@@ -897,6 +899,8 @@ class Controller:
         assert self.role in ('view', 'both'), "Only the view can receive data"
         if packet is None:
             sender = sender or 'main'
+            if sender not in self.callbacks['listen']:
+                return
             packet = self.callbacks['listen'][sender](**kwargs)
         data = self.interpreter.decodeData(packet)
         sender = data.get('address', {}).get('sender', [])

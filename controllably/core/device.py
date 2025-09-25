@@ -14,6 +14,7 @@ Attributes:
     `BaseDevice`: Base class for device connections
     `SerialDevice`: Class for serial device connections
     `SocketDevice`: Class for socket device connections
+    `WebsocketDevice`: Class for WebSocket device connections
 
 <i>Documentation last updated: 2025-02-22</i>
 """
@@ -29,11 +30,13 @@ from string import Formatter
 import threading
 import time
 from types import SimpleNamespace
-from typing import Any, NamedTuple, Protocol, Callable
+from typing import Any, NamedTuple, Protocol, Callable, Type
 
 # Third party imports
 import parse
 import serial
+import websockets
+from websockets.sync import client
 
 # Configure logging
 from controllably import CustomLevelFilter
@@ -44,38 +47,21 @@ WRITE_FORMAT = "{data}\n"
 Data = NamedTuple("Data", [("data", str)])
 
 class Device(Protocol):
-    """Protocol for device connection classes"""
     connection: Any|None
     connection_details: dict
     is_connected: bool
     verbose: bool
-    def clear(self):
-        """Clear the input and output buffers"""
-
-    def connect(self):
-        """Connect to the device"""
-
-    def disconnect(self):
-        """Disconnect from the device"""
-
-    def processInput(self, data:Any, format_in:str, **kwargs) -> str|None:
-        """Process the input"""
-    
-    def processOutput(self, data:str, format_out:str, data_type:NamedTuple, timestamp: datetime|None, **kwargs) -> tuple[Any, datetime]:
-        """Process the output"""
-
-    def query(self, data:Any, multi_out:bool = True, **kwargs) -> Any|None:
-        """Query the device"""
-
-    def read(self) -> str|None:
-        """Read data from the device"""
-
-    def write(self, data:str) -> bool:
-        """Write data to the device"""
+    def clear(self):...
+    def connect(self):...
+    def disconnect(self):...
+    def processInput(self, data:Any, format_in:str, **kwargs) -> str|None:...
+    def processOutput(self, data:str, format_out:str, data_type:NamedTuple, timestamp: datetime|None, **kwargs) -> tuple[Any, datetime]:...
+    def query(self, data:Any, multi_out:bool = True, **kwargs) -> Any|None:...
+    def read(self) -> str|None:...
+    def write(self, data:str) -> bool:...
 
 
 class StreamingDevice(Protocol):
-    """Protocol for device connection classes"""
     connection: Any|None
     connection_details: dict
     is_connected: bool
@@ -86,44 +72,19 @@ class StreamingDevice(Protocol):
     show_event: threading.Event
     stream_event: threading.Event
     threads: dict
-    def clear(self):
-        """Clear the input and output buffers, and reset the data queue and buffer"""
-        
-    def clearDeviceBuffer(self):
-        """Clear the device input and output buffers"""
-
-    def connect(self):
-        """Connect to the device"""
-
-    def disconnect(self):
-        """Disconnect from the device"""
-    
-    def processInput(self, data:Any, format_in:str|None=None, **kwargs) -> str|None:
-        """Process the input"""
-    
-    def processOutput(self, data:str, format_out:str|None=None, data_type:NamedTuple|None=None, timestamp: datetime|None=None, **kwargs) -> tuple[Any, datetime]:
-        """Process the output"""
-
-    def query(self, data:Any, multi_out:bool = True, **kwargs) -> Any|None:
-        """Query the device"""
-
-    def read(self) -> str|None:
-        """Read data from the device"""
-
-    def write(self, data:str) -> bool:
-        """Write data to the device"""
-
-    def startStream(self, data:str|None = None, buffer:deque|None = None, **kwargs):
-        """Start the stream"""
-    
-    def stopStream(self):
-        """Stop the stream"""
-    
-    def stream(self, on:bool, data:str|None = None, buffer:deque|None = None, **kwargs):
-        """Toggle the stream"""
-    
-    def showStream(self, on:bool):
-        """Show the stream"""
+    def clear(self):...
+    def clearDeviceBuffer(self):...
+    def connect(self):...
+    def disconnect(self):...
+    def processInput(self, data:Any, format_in:str|None=None, **kwargs) -> str|None:...
+    def processOutput(self, data:str, format_out:str|None=None, data_type:NamedTuple|None=None, timestamp: datetime|None=None, **kwargs) -> tuple[Any, datetime]:...
+    def query(self, data:Any, multi_out:bool = True, **kwargs) -> Any|None:...
+    def read(self) -> str|None:...
+    def write(self, data:str) -> bool:...
+    def startStream(self, data:str|None = None, buffer:deque|None = None, **kwargs):...
+    def stopStream(self):...
+    def stream(self, on:bool, data:str|None = None, buffer:deque|None = None, **kwargs):...
+    def showStream(self, on:bool):...
 
 
 class TimedDeviceMixin:
@@ -354,13 +315,14 @@ class BaseDevice:
         """Connect to the device"""
         if self.is_connected:
             return
+        connection_details = repr(self.connection_details) if self.connection_details else '{...}'
         try:
             self.connection.open() # Replace with specific implementation
         except Exception as e: # Replace with specific exception
-            self._logger.error(f"Failed to connect to {...}") # Replace with specific log message
+            self._logger.error(f"Failed to connect to {connection_details}") # Replace with specific log message
             self._logger.debug(e)
         else:
-            self._logger.info(f"Connected to {...}") # Replace with specific log message
+            self._logger.info(f"Connected to {connection_details}") # Replace with specific log message
             time.sleep(self.init_timeout)
         self.flags.connected = True
         return
@@ -370,13 +332,14 @@ class BaseDevice:
         if not self.is_connected:
             return
         self.stopStream()
+        connection_details = repr(self.connection_details) if self.connection_details else '{...}'
         try:
             self.connection.close() # Replace with specific implementation
         except Exception as e: # Replace with specific exception
-            self._logger.error(f"Failed to disconnect from {...}") # Replace with specific log message
+            self._logger.error(f"Failed to disconnect from {connection_details}") # Replace with specific log message
             self._logger.debug(e)
         else:
-            self._logger.info(f"Disconnected from {...}") # Replace with specific log message
+            self._logger.info(f"Disconnected from {connection_details}") # Replace with specific log message
         self.flags.connected = False
         return
     
@@ -612,16 +575,13 @@ class BaseDevice:
         while True:
             if time.perf_counter() - start_time > timeout:
                 break
-            raw_out = self.read()
+            raw_out = self.readAll()
             now = datetime.now() if timestamp else None
-            if raw_out == '' or raw_out.strip() == '':
-                continue
             start_time = time.perf_counter()
-            out, now = self.processOutput(raw_out, format_out, data_type, now)
-            if not out:
-                continue
-            data_out = (out, now) if timestamp else out
-            all_data.append(data_out)
+            
+            processed_out = [self.processOutput(out, format_out, data_type, now) for out in raw_out]
+            processed_out = [(out, now) for out, now in processed_out if out is not None]
+            all_data.extend([(out, now) if timestamp else out for out,now in processed_out])
             if not self.checkDeviceBuffer():
                 break
         return all_data
@@ -825,6 +785,39 @@ class BaseDevice:
         return
 
 
+class AnyDevice(BaseDevice):
+    def __new__(cls, *args, **kwargs):
+        class_ = cls.__determine_subclass(*args, **kwargs)
+        name = f'{cls.__name__}_{class_.__name__}'
+        attrs = dict()
+        base_attrs = {attr: getattr(BaseDevice, attr) for attr in BaseDevice.__dict__}
+        subclass_attrs = {attr: getattr(class_, attr) for attr in class_.__dict__}
+        cls_attrs = {attr: getattr(cls, attr) for attr in cls.__dict__}
+        attrs.update(base_attrs)
+        attrs.update(subclass_attrs)
+        attrs.update(cls_attrs)
+        attrs.pop('__dict__', None)
+        new_class = type(name, (cls, class_), attrs)
+        return super(AnyDevice,cls).__new__(new_class)
+    
+    def __init__(self, *args, **kwargs):
+        if isinstance(self,WebsocketDevice):
+            kwargs['timeout'] = 0.1
+        return super().__init__(*args, **kwargs)
+
+    @classmethod
+    def __determine_subclass(cls, *args, **kwargs) -> Type[BaseDevice]:
+        """Determine the appropriate subclass based on the provided arguments"""
+        if 'host' in kwargs:
+            if 'bytesize' in kwargs:
+                return SocketDevice
+            else:
+                return WebsocketDevice
+        elif 'baudrate' in kwargs:
+            return SerialDevice
+        return BaseDevice
+    
+
 class SerialDevice(BaseDevice):
     """
     SerialDevice provides an interface for handling serial devices
@@ -962,8 +955,11 @@ class SerialDevice(BaseDevice):
     
     def clearDeviceBuffer(self):
         """Clear the device input and output buffers"""
-        self.serial.reset_input_buffer()
-        self.serial.reset_output_buffer()
+        try:
+            self.serial.reset_input_buffer()
+            self.serial.reset_output_buffer()
+        except serial.PortNotOpenError as e:
+            self._logger.error(e)
         return
 
     def connect(self):
@@ -1092,7 +1088,7 @@ class SocketDevice(BaseDevice):
     def __init__(self, 
         host:str, 
         port:int, 
-        timeout:int=0, 
+        timeout:int=1, 
         *, 
         byte_size: int = 1024,
         simulation:bool=False, 
@@ -1119,6 +1115,7 @@ class SocketDevice(BaseDevice):
         
         self._current_socket_ref = -1
         self._stream_buffer = ""
+        # self.connect()
         return
 
     @property
@@ -1241,7 +1238,7 @@ class SocketDevice(BaseDevice):
         except KeyboardInterrupt:
             self._logger.debug("Received keyboard interrupt")
             self.disconnect()
-        if delimiter in data:
+        if delimiter and delimiter in data:
             data, self._stream_buffer = data.split(delimiter, 1)
         data = data.strip()
         self._logger.debug(f"[{self.host}] Received: {data!r}")
@@ -1266,7 +1263,7 @@ class SocketDevice(BaseDevice):
             self.disconnect()
         data = data.strip()
         self._logger.debug(f"[{self.host}] Received: {data!r}")
-        return [d for d in data.split(delimiter) if len(d)]
+        return [d for d in data.split(delimiter) if len(d)] if delimiter else [data]
     
     def write(self, data:str) -> bool:
         """Write data to the device"""
@@ -1277,5 +1274,274 @@ class SocketDevice(BaseDevice):
         except OSError as e:
             self._logger.debug(f"[{self.host}] Failed to send: {data!r}")
             self._logger.debug(e)
+            return False
+        return True
+
+
+class WebsocketDevice(BaseDevice):
+    """
+    WebsocketDevice provides an interface for handling websocket devices
+    
+    ### Constructor:
+        `host` (str): host for the device
+        `port` (int): port for the device
+        `timeout` (int, optional): timeout for the device. Defaults to 1.
+        `simulation` (bool, optional): whether to simulate the device. Defaults to False.
+        `verbose` (bool, optional): verbosity of class. Defaults to False.
+    
+    ### Attributes and properties:
+        `host` (str): device host
+        `port` (int): device port
+        `uri` (str): URI for the device
+        `timeout` (int): device timeout
+        `connection_details` (dict): connection details for the device
+        `websocket` (websockets.sync.client.ClientConnection): client object for the device
+        `flags` (SimpleNamespace[str, bool]): flags for the device
+        `is_connected` (bool): whether the device is connected
+        `verbose` (bool): verbosity of class
+        
+    ### Methods:
+        `clear`: clear the input and output buffers, and reset the data queue and buffer
+        `connect`: connect to the device
+        `disconnect`: disconnect from the device
+        `checkDeviceConnection`: check the connection to the device
+        `checkDeviceBuffer`: check the connection buffer
+        `clearDeviceBuffer`: clear the device input and output buffers
+        `read`: read data from the device
+        `readAll`: read all data from the device
+        `write`: write data to the device
+        `poll`: poll the device (i.e. write and read data)
+        `processInput`: process the input data
+        `processOutput`: process the output data
+        `query`: query the device (i.e. write and read data)
+        `startStream`: start the stream
+        `stopStream`: stop the stream
+        `stream`: toggle the stream
+        `showStream`: show the stream
+    """
+    
+    _default_flags: SimpleNamespace = SimpleNamespace(verbose=False, connected=False, simulation=False)
+    def __init__(self, 
+        host:str, 
+        port:int, 
+        timeout:int=0.1, 
+        *,
+        simulation:bool=False, 
+        verbose:bool = False, 
+        **kwargs
+    ):
+        """
+        Initialize SocketDevice class
+        
+        Args:
+            host (str): host for the device
+            port (int): port for the device
+            timeout (int, optional): timeout for the device. Defaults to 1.
+            simulation (bool, optional): whether to simulate the device. Defaults to False.
+            verbose (bool, optional): verbosity of class. Defaults to False.
+        """
+        super().__init__(simulation=simulation, verbose=verbose, **kwargs)
+        
+        self.host = host
+        self.port = port
+        self.uri = f"wss://{host}:{port}/" if self.port is not None else f"wss://{host}/"
+        self.timeout = timeout
+        self.connection: client.ClientConnection = client.connect(uri=self.uri)
+        # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # p = websockets.client.ClientProtocol('localhost')
+        # self.connection: client.ClientConnection = client.ClientConnection(s,p)
+        
+        self._stream_buffer = ""
+        # self.connect()
+        return
+
+    @property
+    def websocket(self) -> client.ClientConnection:
+        """Socket object for the device"""
+        return self.connection
+    @websocket.setter
+    def websocket(self, value:client.ClientConnection):
+        assert isinstance(value, client.ClientConnection), "Ensure connection is a ClientConnection object"
+        self.connection = value
+        return
+    
+    @property
+    def host(self) -> str:
+        """Device socket host"""
+        return self.connection_details.get('host', '')
+    @host.setter
+    def host(self, value:str):
+        self.connection_details['host'] = value
+        return
+    
+    @property
+    def port(self) -> str:
+        """Device socket port"""
+        return self.connection_details.get('port', '')
+    @port.setter
+    def port(self, value:str):
+        self.connection_details['port'] = value
+        return
+    
+    @property
+    def timeout(self) -> int:
+        """Device timeout"""
+        return self.connection_details.get('timeout', '')
+    @timeout.setter
+    def timeout(self, value:int):
+        self.connection_details['timeout'] = value
+        return
+   
+    def checkDeviceBuffer(self) -> bool:
+        """Check the connection buffer"""
+        return self.stream_event.is_set() or self._stream_buffer
+    
+    def checkDeviceConnection(self):
+        """Check the connection to the device"""
+        try:
+            connected = self.websocket.state == websockets.protocol.State.OPEN
+        except OSError:
+            self.flags.connected = False
+            return False
+        self.flags.connected = connected
+        return self.flags.connected
+    
+    def clearDeviceBuffer(self):
+        """Clear the device input and output buffers"""
+        self._stream_buffer = ""
+        # self.readAll()
+        while True:
+            try:
+                out = self.websocket.recv(self.timeout)
+                if isinstance(out, bytes):
+                    out = out.decode("utf-8", "replace")
+                out = out.strip('\r\n').replace('\uFFFD', '')
+            except OSError:
+                break
+            except websockets.exceptions.ConnectionClosed:
+                break
+            if not out:
+                break
+        return
+
+    def connect(self):
+        """Connect to the device"""
+        if self.is_connected:
+            return
+        try:
+            self.websocket = client.connect(self.uri)
+            # self.clear()
+        except OSError as e:
+            self._logger.error(f"Failed to connect to {self.uri}")
+            self._logger.debug(e)
+        else:
+            self._logger.info(f"Connected to {self.uri}")
+            time.sleep(self.init_timeout)
+        self.flags.connected = True
+        return
+
+    def disconnect(self):
+        """Disconnect from the device"""
+        if not self.is_connected:
+            return
+        self.stopStream()
+        try:
+            self.websocket.close()
+        except OSError as e:
+            self._logger.error(f"Failed to disconnect from {self.uri}")
+            self._logger.debug(e)
+        else:
+            self._logger.info(f"Disconnected from {self.uri}")
+        self.flags.connected = False
+        return
+    
+    def read(self) -> str:
+        """Read data from the device"""
+        delimiter = self.read_format.replace(self.read_format.rstrip(), '')
+        data = self._stream_buffer
+        self._stream_buffer = ''
+        try:
+            out = self.websocket.recv(self.timeout)
+            if isinstance(out, bytes):
+                out = out.decode("utf-8", "replace")
+            out = out.strip(delimiter).replace('\uFFFD', '')
+            data += out
+            # if not out or delimiter in data:
+            #     break
+        except OSError as e:
+            if not data:
+                self._logger.debug(f"[{self.host}] Failed to receive data")
+                self._logger.debug(e)
+        except websockets.exceptions.ConnectionClosed as e:
+            # self._logger.debug(f"[{self.host}] Connection closed while reading: {data!r}")
+            # self._logger.debug(e)
+            # self.flags.connected = False
+            self.connect()
+            if self.is_connected:
+                self.read()
+                return self.read()
+            return False
+        except KeyboardInterrupt:
+            self._logger.debug("Received keyboard interrupt")
+            self.disconnect()
+        if delimiter and delimiter in data:
+            data, self._stream_buffer = data.split(delimiter, 1)
+        data = data.strip()
+        self._logger.debug(f"[{self.host}] Received: {data!r}")
+        return data
+    
+    def readAll(self) -> list[str]:
+        """Read all data from the device"""
+        delimiter = self.read_format.replace(self.read_format.rstrip(), '')
+        data = self._stream_buffer
+        self._stream_buffer = ''
+        try:
+            while True:
+                out = self.websocket.recv(self.timeout)
+                if isinstance(out, bytes):
+                    out = out.decode("utf-8", "replace")
+                out = out.replace('\uFFFD', '')
+                if not out:
+                    break
+                data += out
+        except OSError as e:
+            if not data:
+                self._logger.debug(f"[{self.host}] Failed to receive data")
+                self._logger.debug(e)
+        except websockets.exceptions.ConnectionClosed as e:
+            # self._logger.debug(f"[{self.host}] Connection closed while reading: {data!r}")
+            # self._logger.debug(e)
+            # self.flags.connected = False
+            self.connect()
+            if self.is_connected:
+                self.read()
+                return self.readAll()
+            return False
+        except KeyboardInterrupt:
+            self._logger.debug("Received keyboard interrupt")
+            self.disconnect()
+        data = data.strip()
+        self._logger.debug(f"[{self.host}] Received: {data!r}")
+        return [d for d in data.split(delimiter) if len(d)] if delimiter else [data]
+    
+    def write(self, data:str) -> bool:
+        """Write data to the device"""
+        assert isinstance(data, str), "Ensure data is a string"
+        try:
+            self.websocket.send(data)
+            # self.websocket.send(data.encode('utf-8'))
+            self._logger.debug(f"[{self.host}] Sent: {data!r}")
+        except OSError as e:
+            self._logger.debug(f"[{self.host}] Failed to send: {data!r}")
+            self._logger.debug(e)
+            return False
+        except websockets.exceptions.ConnectionClosed as e:
+            # self._logger.debug(f"[{self.host}] Connection closed while sending: {data!r}")
+            # self._logger.debug(e)
+            # self.flags.connected = False
+            self.connect()
+            if self.is_connected:
+                self.read()
+                return self.write(data)
             return False
         return True

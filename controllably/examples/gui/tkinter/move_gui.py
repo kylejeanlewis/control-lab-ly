@@ -35,23 +35,12 @@ BUTTON_WIDTH = 6
 
 class Move(Protocol):
     position: Position
-    def move(self, axis:str, by:int|float, **kwargs):
-        raise NotImplementedError
-    
-    def safeMoveTo(self, to, **kwargs):
-        raise NotImplementedError
-    
-    def rotate(self, axis:str, by:int|float, **kwargs):
-        raise NotImplementedError
-    
-    def rotateTo(self, to, **kwargs):
-        raise NotImplementedError
-    
-    def home(self):
-        raise NotImplementedError
-    
-    def moveToSafeHeight(self):
-        raise NotImplementedError
+    def move(self, axis:str, by:int|float, **kwargs):...
+    def safeMoveTo(self, to, **kwargs):...
+    def rotate(self, axis:str, by:int|float, **kwargs):...
+    def rotateTo(self, to, **kwargs):...
+    def home(self):...
+    def moveToSafeHeight(self):...
 
 
 class MovePanel(Panel):

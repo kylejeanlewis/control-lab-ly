@@ -174,6 +174,19 @@ class Position:
         return np.allclose(self.coordinates, value.coordinates) and np.allclose(self.Rotation.as_quat(), value.Rotation.as_quat())
     
     @staticmethod
+    def fromArray(value:Sequence|np.ndarray) -> Position:
+        """
+        Create a `Position` object from coordinates and rotation
+
+        Args:
+            value (Sequence[float]|numpy.ndarray): x,y,z coordinates or [x,y,z,rotation]
+
+        Returns:
+            Position: `Position` object
+        """
+        return convert_to_position(value)
+    
+    @staticmethod
     def fromJSON(value:str) -> Position:
         """
         Create a `Position` object from string
@@ -198,7 +211,9 @@ class Position:
     
     def toJSON(self, *, scalar_first: bool = False) -> str:
         order = 'wxyz' if scalar_first else 'xyzw'
-        return f"Position({tuple(self._coordinates)}, {tuple(self.Rotation.as_quat(scalar_first=scalar_first))} [{order}])"
+        coord = tuple(map(float, self._coordinates))
+        quat = tuple(map(float, self.Rotation.as_quat(scalar_first=scalar_first)))
+        return f"Position({coord}, {quat} [{order}])"
         
     @property
     def coordinates(self) -> np.ndarray[float]:
@@ -268,17 +283,18 @@ class Position:
         rotation = self.Rotation.as_euler('zyx', degrees=self.degrees)
         return rotation[0]
     
-    def apply(self, other:Position) -> Position:
+    def apply(self, other:Position, inplace:bool = True) -> Position:
         """
         Apply self to other `Position`, first translating and then orientating
 
         Args:
             other (Position): other `Position`
+            inplace (bool, optional): whether to update self in place. Defaults to True.
 
         Returns:
             Position: other `Position` transformed by self
         """
-        return other.translate(self.coordinates).orientate(self.Rotation)
+        return other.translate(self.coordinates, inplace=inplace).orientate(self.Rotation, inplace=inplace)
     
     def invert(self) -> Position:
         """
@@ -580,12 +596,17 @@ class Labware:
         self.y = dimensions.get('yDimension', 0)/2
         self.z = dimensions.get('zDimension', 0)/2
         self._dimensions = (self.x*2,self.y*2,self.z*2)
-        self._is_stackable = self._details.get('parameters',{}).get('isStackable', False)
         self.is_tiprack = self._details.get('parameters',{}).get('isTiprack', False)
         self._ordering = self._details.get('ordering', [[]])
         self._wells = {name:Well(name=name, _details=details, parent=self) for name,details in self._details.get('wells',{}).items()}
         
-        buffer = self._details.get('exclusionBuffer', ((0,0,0),(0,0,0)))
+        controllably_details = self._details.get('controllably', {})
+        is_stackable = controllably_details.get('parameters',{}).get('isStackable', None) 
+        is_stackable = self._details.get('parameters',{}).get('isStackable', False) if is_stackable is None else is_stackable
+        self._is_stackable = is_stackable
+        
+        buffer = controllably_details.get('exclusionBuffer', None)
+        buffer = self._details.get('exclusionBuffer', ((0,0,0),(0,0,0))) if buffer is None else buffer
         self.exclusion_zone = BoundingBox(
             reference=self.bottom_left_corner, 
             dimensions=self._dimensions, 
@@ -597,10 +618,12 @@ class Labware:
         return
     
     def __repr__(self) -> str:
-        return f"{self.name} ({self.__class__.__name__}:{id(self)}) -> {self.parent.name} ({self.parent.__class__.__name__}:{id(self.parent)})" 
+        parent_info = "None" if self.parent is None else f"{self.parent.name} ({self.parent.__class__.__name__}:{id(self.parent)})"
+        return f"{self.name} ({self.__class__.__name__}:{id(self)}) -> {parent_info}" 
     
     def __str__(self) -> str:
-        return f"{self.name} ({len(self._wells)}x) on {self.parent.name}" 
+        parent_info = "" if self.parent is None else f"on {self.parent.name}"
+        return f"{self.name} ({len(self._wells)}x) {parent_info}" 
     
     @classmethod
     def fromConfigs(cls, details:dict[str, Any], parent:Slot|None = None) -> Labware:
@@ -798,7 +821,8 @@ class Labware:
         Returns:
             Slot|None: Slot above
         """
-        details_above = self._details.get('slotAbove',{})
+        details_above = self._details.get('controllably',{}).get('slotAbove',None)
+        details_above = self._details.get('slotAbove',{}) if details_above is None else details_above
         assert self.is_stackable, "Labware is not stackable"
         assert len(details_above) > 0, "No details for Slot above"
         below_name = self.parent.name if isinstance(self.parent, Slot) else 'slot'
@@ -1103,6 +1127,7 @@ class Slot:
             assert self.loaded_labware.slot_above.loaded_labware is None, "Another Labware is stacked above"
             self.loaded_labware.slot_above.slot_below = None
         labware = self.loaded_labware
+        labware.parent = None
         self.loaded_labware = None
         self._delete_slot_above()
         return labware
@@ -1563,7 +1588,7 @@ class BoundingVolume:
     parametric_function: dict[str, Callable[[Sequence[float],Any], bool]]
     
     def __post_init__(self):
-        assert isinstance(self.parametric_function, dict) and len(self.parametric_function) == 1, "Please input a single parametric function"
+        assert isinstance(self.parametric_function, dict) and len(self.parametric_function) >= 1, "Please input at least one parametric function"
         func = list(self.parametric_function.values())[0]
         assert callable(func), "Please input a valid parametric function"
         # signature = inspect.signature(func)
@@ -1662,7 +1687,7 @@ class BoundingBox(BoundingVolume):
             return super().__add__(other)
         if not sum([int(np.isclose(sd,od)) for sd,od in zip(self.dimensions, other.dimensions)]) >= 2:
             return super().__add__(other)
-        if not sum([int(np.isclose(self.reference.coordinates[i], other.reference.coordinates[i])) for i in range(3)]) == 2:
+        if not sum([int(np.isclose(self.reference.coordinates[i], other.reference.coordinates[i])) for i in range(3)]) >= 2:
             return super().__add__(other)
         if not np.allclose(self.reference.Rotation.as_quat(), other.reference.Rotation.as_quat()):
             return super().__add__(other)

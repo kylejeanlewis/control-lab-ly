@@ -46,23 +46,15 @@ logger = logging.getLogger(__name__)
 CustomLevelFilter().setModuleLevel(__name__, logging.INFO)
 
 class Part(Protocol):
-    """Protocol for Part (i.e. component tools)"""
     device: Any
     connection_details: dict
     is_busy: bool
     is_connected: bool
     verbose: bool
-    def connect(self):
-        """Connect to the device"""
-    
-    def disconnect(self):
-        """Disconnect from the device"""
-    
-    def resetFlags(self):
-        """Reset all flags to class attribute `_default_flags`"""
-
-    def shutdown(self):
-        """Shutdown the device"""
+    def connect(self):...
+    def disconnect(self):...
+    def resetFlags(self):...
+    def shutdown(self):...
 
 
 def create(obj:Callable, *args, **kwargs) -> object:
@@ -161,15 +153,15 @@ def get_class(module_name:str, class_name:str) -> Type[object]:
         Type: target Class
     """
     try:
-        _module = importlib.import_module(module_name)
-        _class = getattr(_module, class_name)
+        module_ = importlib.import_module(module_name)
+        class_ = getattr(module_, class_name)
     except ModuleNotFoundError as e:
         logger.error(f"Module not found: {module_name}")
         raise e
     except AttributeError as e:
         logger.error(f"Class not found: {class_name}")
         raise e
-    return _class
+    return class_
 
 def get_imported_modules(interested_modules:str|Sequence[str]|None = None) -> dict:
     """
@@ -262,6 +254,11 @@ def get_setup(
     n_errors = len(errors)
     if n_errors and not silent_fail:
         logger.error(f'Errors occurred for: {", ".join(errors.keys())}')
+        for _,part in setup._asdict().items():
+            try:
+                part.disconnect()
+            except:
+                pass
         raise RuntimeError(f"{n_errors} error(s) during initialization", setup)
     
     if platform_type is None or len(platform_type.__annotations__) != len(setup):
@@ -283,12 +280,12 @@ def get_setup(
         return setup
     return new_platform
 
-def load_parts(configs:dict, **kwargs) -> dict:
+def load_parts(configs:dict[str,dict], **kwargs) -> dict:
     """
     Load all parts of compound tools from configuration
 
     Args:
-        configs (dict): dictionary of configuration parameters
+        configs (dict[str,dict]): dictionary of configuration parameters
 
     Returns:
         dict: dictionary of part tools
@@ -308,9 +305,27 @@ def load_parts(configs:dict, **kwargs) -> dict:
         module_name = details.get('module')
         class_name = details.get('class')
         
+        if not module_name or not class_name:
+            config_name = details.get('config_name', name)
+            config_file = Path(details.get('config_file', ''))
+            config_file = file_handler.resolve_repo_filepath(config_file) if not config_file.is_absolute() else config_file
+            if config_file.is_file():
+                sub_configs = file_handler.read_config_file(config_file)
+                details.update(sub_configs[config_name])
+            else:
+                error_message = f"Config file does not exist: {config_file}"
+                logger.error(error_message)
+                error = FileNotFoundError(error_message)
+                errors.append(error)
+                parts[name] = error
+                continue
+            module_name = details.get('module')
+            class_name = details.get('class')
+            settings = details.get('settings', {})
+        
         try:
-            _class = get_class(module_name, class_name)
-            part: Part = create(_class, **settings)
+            class_ = get_class(module_name, class_name)
+            part: Part = create(class_, **settings)
             parts[name] = part
             if not part.is_connected:
                 part.connect()
@@ -345,18 +360,23 @@ def load_setup_from_files(
     shortcuts = plans.pop('SHORTCUTS',{})
     setup = load_parts(configs=plans)
     
+    shortcut_errors = 0
     for name,value in shortcuts.items():
+        prefix = "" if shortcut_errors else "\n"
         parent, child = value.split('.')
         tool = setup.get(parent, None)
         if tool is None:
-            logger.warning(f"Tool does not exist ({parent})")
+            logger.warning(f"{prefix}Tool does not exist ({parent})")
+            shortcut_errors += 1
             continue
         if not hasattr(tool, '_parts'):
-            logger.warning(f"Tool ({parent}) does not have parts")
+            logger.warning(f"{prefix}Tool ({parent}) does not have parts")
+            shortcut_errors += 1
             continue
         setup[name] = getattr(tool.parts, child)
     if create_tuple:
-        return dict_to_named_tuple(setup, tuple_name=config_file.stem)
+        tuple_name = config_file.stem.replace('config', '') or config_file.parent.stem
+        return dict_to_named_tuple(setup, tuple_name=tuple_name)
     return setup
 
 def parse_configs(configs:dict, addresses:dict|None = None) -> dict:
@@ -372,6 +392,14 @@ def parse_configs(configs:dict, addresses:dict|None = None) -> dict:
     """
     addresses = {} if addresses is None else addresses
     for name, details in configs.items():
+        if 'module' not in details or 'class' not in details:
+            config_name = details.get('config_name', name)
+            config_file = Path(details.get('config_file', ''))
+            config_file = file_handler.resolve_repo_filepath(config_file) if not config_file.is_absolute() else config_file
+            if config_file.is_file():
+                sub_configs = file_handler.read_config_file(config_file)
+                details.update(sub_configs[config_name])
+        
         settings = details.get('settings', {})
         
         for key,value in settings.items():
