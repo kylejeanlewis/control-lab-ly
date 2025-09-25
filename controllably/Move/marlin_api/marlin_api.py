@@ -31,7 +31,7 @@ READ_FORMAT = "{data}\n"
 WRITE_FORMAT = "{data}\n"
 Data = NamedTuple("Data", [("data", str), ("channel", int)])
 
-class Marlin(AnyDevice):
+class Marlin(SerialDevice):
     """
     Marlin class provides methods to interact with the Marlin firmware.
     Refer to https://marlinfw.org/meta/gcode/ for more information on the Marlin firmware.
