@@ -31,53 +31,20 @@ MOVEMENT_BUFFER = 0
 MOVEMENT_TIMEOUT = 30
 
 class GCodeDevice(Protocol):
-    """Protocol for G-code devices"""
     connection_details: dict
     is_connected: bool
     verbose: bool
-    def clear(self):
-        """Clear the input and output buffers"""
-        raise NotImplementedError
-
-    def connect(self):
-        """Connect to the device"""
-        raise NotImplementedError
-
-    def disconnect(self):
-        """Disconnect from the device"""
-        raise NotImplementedError
-
-    def query(self, data:Any, multi_out:bool = True, **kwargs) -> list[str]|None:
-        """Query the device"""
-        raise NotImplementedError
-
-    def read(self) -> str:
-        """Read data from the device"""
-        raise NotImplementedError
-    
-    def readAll(self) -> list[str]:
-        """Read all data from the device"""
-        raise NotImplementedError
-
-    def write(self, data:str) -> bool:
-        """Write data to the device"""
-        raise NotImplementedError
-
-    def getSettings(self) -> dict[str, int|float|str]:
-        """Check the settings of the device"""
-        raise NotImplementedError
-    
-    def halt(self) -> Position:
-        """Halt the device"""
-        raise NotImplementedError
-    
-    def home(self, axis:str|None = None, **kwargs) -> bool:
-        """Home the device"""
-        raise NotImplementedError
-    
-    def setSpeedFactor(self, speed_factor:float|int, **kwargs):
-        """Set the speed factor of the device"""
-        raise NotImplementedError
+    def clear(self):...
+    def connect(self):...
+    def disconnect(self):...
+    def query(self, data:Any, multi_out:bool = True, **kwargs) -> list[str]|None:...
+    def read(self) -> str:...
+    def readAll(self) -> list[str]:...
+    def write(self, data:str) -> bool:...
+    def getSettings(self) -> dict[str, int|float|str]:...
+    def halt(self) -> Position:...
+    def home(self, axis:str|None = None, **kwargs) -> bool:...
+    def setSpeedFactor(self, speed_factor:float|int, **kwargs):...
     
 
 class GCode(Mover):

@@ -1,36 +1,14 @@
 # %%
-import numpy as np
 import pandas as pd
-import plotly.express as px
-import time
 
-from init import library
-from controllably import Factory, Helper, guide_me
-
-from controllably.Measure.Electrical.Keithley import KeithleyDevice
-from controllably.Measure.Mechanical import LoadCell
-
-from leapfrog.Measure.Electrical.BioLogic import BioLogic, programs
+from easy_biologic.base_programs import PEIS, GEIS
+from controllably.Measure.Electrical.BioLogic import BioLogic
 from leapfrog.Analyse.Data.Impedance import ImpedanceSpectrum
-# %%
-sensor = LoadCell(
-    device = KeithleyDevice('192.109.209.100'),
-    verbose = True
-)
 
-# %%
-sensor.clearCache()
-sensor.toggleRecord(True)
-# sensor.verbose = False
-# %%
-sensor.toggleRecord(False)
-px.scatter(sensor.buffer_df, 'Time', 'Value')
-# %%
-sensor.buffer_df.to_csv("data/test_sensor_calibrate.csv")
 # %%
 bio = BioLogic('192.109.209.128')
 # %%
-bio.loadProgram(programs.PEIS)
+bio.loadProgram(PEIS)
 # %%
 """PEIS"""
 parameters = dict(
@@ -63,12 +41,10 @@ bio.program.data
 bio.buffer_df.to_csv(f"data/test_polymer_sample_20230810_recipe_2_t-10,3_1GHz.csv")
 coin_cell = 10.75 # mm
 # %%
-import numpy as np
 import pandas as pd
 import plotly.express as px
-import time
-from init import library
 from leapfrog.Analyse.Data.Impedance import ImpedanceSpectrum
+
 # %%
 eis_files = {}
 for i in (2,3,4,5,6):
@@ -84,18 +60,6 @@ fig = px.scatter(big_df, x='Real', y='Imaginary', color='run')
 fig['layout']['yaxis']['autorange'] = "reversed"
 fig.show()
 
-# %%
-from controllably.Measure.Physical import MassBalance
-me = MassBalance('COM18', verbose = True)
-me.zero()
-# %%
-me.clearCache()
-me.toggleRecord(True)
-# %%
-me.toggleRecord(False)
-px.scatter(me.buffer_df, 'Time', 'Mass')
-# %%
-me.buffer_df.to_csv("data/test_balance calibration for sensor.csv")
 # %%
 eis_files = {}
 for i in (0,1):

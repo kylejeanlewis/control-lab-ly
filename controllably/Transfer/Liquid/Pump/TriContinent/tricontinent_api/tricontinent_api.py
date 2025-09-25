@@ -27,7 +27,7 @@ from types import SimpleNamespace
 from typing import NamedTuple, Any
 
 # Local application imports
-from ......core.device import SerialDevice
+from ......core.device import SerialDevice, AnyDevice
 from .tricontinent_lib import ErrorCode, StatusCode
 
 MAX_CHANNELS = 15

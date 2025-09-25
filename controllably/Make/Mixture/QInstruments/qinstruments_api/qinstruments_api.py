@@ -23,7 +23,7 @@ from types import SimpleNamespace
 from typing import Any, NamedTuple
 
 # Local application imports
-from .....core.device import SerialDevice
+from .....core.device import SerialDevice, AnyDevice
 from .qinstruments_lib import ELMStateCode, ELMStateString, ShakeStateCode, ShakeStateString
 
 READ_FORMAT = "{data}\r"
@@ -43,7 +43,9 @@ class QInstrumentsDevice(SerialDevice):
         `baudrate` (int, optional): baudrate for the device. Defaults to 9600.
         `timeout` (int, optional): timeout for the device. Defaults to 1.
         `init_timeout` (int, optional): timeout for initialization. Defaults to 5.
-        `message_end` (str, optional): message end character. Defaults to '\\r'.
+        `data_type` (NamedTuple, optional): data type for data. Defaults to Data.
+        `read_format` (str, optional): format for reading data. Defaults to READ_FORMAT.
+        `write_format` (str, optional): format for writing data. Defaults to WRITE_FORMAT.
         `simulation` (bool, optional): whether to simulate the device. Defaults to False.
         `verbose` (bool, optional): verbosity of class. Defaults to False.
     

@@ -3,26 +3,28 @@ import logging
 
 from ..context import controllably
 from controllably.core import safety
-from controllably.core.safety import set_level, reset_level, guard
+from controllably.core.safety import (
+    get_safety_level, set_safety_level, reset_safety_level, guard, SafetyLevel
+)
 
 
 @pytest.mark.parametrize("mode", ["DEBUG", "DELAY", "SUPERVISED"])
-def test_set_level(mode):
-    value = getattr(safety, mode)
-    set_level(value)
-    assert safety.safety_mode == value
+def test_set_safety_level(mode):
+    value = getattr(SafetyLevel, mode)
+    set_safety_level(value)
+    assert get_safety_level() == value
 
 @pytest.mark.parametrize("mode", ["DEBUG", "DELAY", "SUPERVISED"])
-def test_reset_level(mode):
-    value = getattr(safety, mode)
-    set_level(value)
-    assert safety.safety_mode == value
-    reset_level()
-    assert safety.safety_mode is None
+def test_reset_safety_level(mode):
+    value = getattr(SafetyLevel, mode)
+    set_safety_level(value)
+    assert get_safety_level() == value
+    reset_safety_level()
+    assert get_safety_level() is None
 
 @pytest.mark.parametrize("mode", ["DEBUG", "DELAY", "SUPERVISED"])
 def test_guard(mode, caplog, monkeypatch):
-    value = getattr(safety, mode)
+    value = getattr(SafetyLevel, mode)
     @guard(value)
     def dummy_function():
         return "Executed"

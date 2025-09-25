@@ -8,10 +8,11 @@ from typing import NamedTuple
 from unittest.mock import MagicMock
 
 import serial
+from websockets.sync import client
 
 from ..context import controllably
 from controllably.core.device import (
-    BaseDevice, SerialDevice, SocketDevice, TimedDeviceMixin, Data, READ_FORMAT, WRITE_FORMAT)
+    BaseDevice, SerialDevice, SocketDevice, WebsocketDevice, TimedDeviceMixin, Data, READ_FORMAT, WRITE_FORMAT)
 
 OtherData = NamedTuple('OtherData', [('strdata', str),('intdata', int),('floatdata', float),('booldata', bool)])
 OTHER_FORMAT = '{strdata},{intdata},{floatdata},{booldata}\n'
@@ -48,6 +49,7 @@ def base_device():
                 return b''
             return b'test_output\ntest_output\ntest_output\n'
     device.connection = MockConnection()
+    device.__del__ = lambda: None
     return device
 
 
@@ -174,6 +176,13 @@ class TestBaseDevice:
                 return next(buffer_iter)
             except StopIteration:
                 return ''
+        def buffer_read_all():
+            nonlocal count, now, collect_now
+            count = len(buffer)
+            now = datetime.now()
+            collect_now = [now] * count
+            return buffer
+        monkeypatch.setattr(base_device, 'readAll', buffer_read_all)
         monkeypatch.setattr(base_device, 'read', buffer_read)
         monkeypatch.setattr(base_device, 'checkDeviceBuffer', lambda: bool(len(buffer)-count))
         assert not base_device.is_connected
@@ -209,6 +218,13 @@ class TestBaseDevice:
                 return next(buffer_iter)
             except StopIteration:
                 return ''
+        def buffer_read_all():
+            nonlocal count, now, collect_now
+            count = len(buffer)
+            now = datetime.now()
+            collect_now = [now] * count
+            return buffer
+        monkeypatch.setattr(base_device, 'readAll', buffer_read_all)
         monkeypatch.setattr(base_device, 'read', buffer_read)
         monkeypatch.setattr(base_device, 'checkDeviceBuffer', lambda: bool(len(buffer)-count))
 
@@ -371,8 +387,6 @@ def test_timed_device_mixin_set_value_delayed(timed_device):
     timed_device.stopTimer(timer, event)
     # assert (time.perf_counter() - start_time) < 0.9*delay
     assert timed_device.value == '10'
-
-
 
 @pytest.fixture
 def serial_device(monkeypatch):
@@ -568,6 +582,78 @@ def test_socket_device_read_all(socket_device):
     assert socket_device.is_connected
     data = socket_device.readAll()
     assert data == ['test_output']*9
+
+@pytest.fixture(scope='module')
+def websocket_device():
+    device = WebsocketDevice('echo.websocket.org', None, timeout=0.5)
+    device.disconnect()
+    device._logger.handlers.clear()
+    return device
+
+def test_websocket_device_init(websocket_device):
+    assert websocket_device.host == 'echo.websocket.org'
+    assert websocket_device.port is None
+    assert websocket_device.timeout == 0.5
+
+def test_websocket_device_connect_disconnect(websocket_device):
+    websocket_device.connect()
+    assert websocket_device.is_connected
+    websocket_device.connect()
+    assert websocket_device.is_connected
+    
+    websocket_device.disconnect()
+    assert not websocket_device.is_connected
+    websocket_device.disconnect()
+    assert not websocket_device.is_connected
+
+def test_websocket_device_connect_with_exceptions(websocket_device,monkeypatch,caplog):
+    websocket_device.disconnect()
+    assert not websocket_device.is_connected
+    monkeypatch.setattr(client, 'connect', MagicMock(side_effect=OSError))
+    with caplog.at_level(logging.ERROR):
+        websocket_device.connect()
+        assert "Failed to connect to" in caplog.text
+        
+def test_websocket_device_disconnect_with_exceptions(websocket_device,monkeypatch,caplog):
+    websocket_device.connect()
+    assert websocket_device.is_connected
+    
+    monkeypatch.setattr(websocket_device.connection, 'close', MagicMock(side_effect=OSError))
+    with caplog.at_level(logging.ERROR):
+        websocket_device.disconnect()
+        assert "Failed to disconnect from" in caplog.text
+        
+def test_websocket_device_read_write(websocket_device, caplog):
+    websocket_device.disconnect()
+    assert not websocket_device.is_connected
+    # success = websocket_device.write('test_data\n')
+    # assert not success
+    # with caplog.at_level(logging.DEBUG):
+    #     data = websocket_device.read()
+    #     assert data == ''
+    #     assert "Failed to receive data" in caplog.text
+    
+    websocket_device.connect()
+    websocket_device.clearDeviceBuffer()
+    assert websocket_device.is_connected
+    success = websocket_device.write('test_data\n')
+    assert success
+    data = websocket_device.read()
+    assert data == 'test_data'
+    
+def test_websocket_device_read_all(websocket_device):
+    websocket_device.connect()
+    websocket_device.clearDeviceBuffer()
+    assert websocket_device.is_connected
+    data = websocket_device.readAll()
+    assert data == []
+    websocket_device.connect()
+    
+    for _ in range(5):
+        websocket_device.write('test_data\n')
+    data = websocket_device.readAll()
+    assert data == ['test_data']*5
+
 
 if __name__ == "__main__":
     pytest.main()

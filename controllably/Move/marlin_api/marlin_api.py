@@ -21,8 +21,7 @@ from typing import Any, NamedTuple
 import numpy as np
 
 # Local application imports
-# from ...core.connection import SerialDevice
-from ...core.device import SerialDevice
+from ...core.device import SerialDevice, AnyDevice
 from ...core.position import Position
 
 LOOP_INTERVAL = 0.1

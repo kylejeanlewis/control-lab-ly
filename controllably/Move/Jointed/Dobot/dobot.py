@@ -446,7 +446,7 @@ class Dobot(RobotArm):
             assert len(to) == 3, "Ensure `to` is a 3-element sequence for c,b,a"
         rotate_to = to if isinstance(to, Rotation) else Rotation.from_euler('zyx', to, degrees=True)
         speed_factor = self.speed_factor if speed_factor is None else speed_factor
-        self._logger.info(f"Rotate To | {rotate_to} at speed factor {speed_factor}")
+        self._logger.info(f"Rotate To | {rotate_to.as_euler('zyx', degrees=True)} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
         if robot:

@@ -1,0 +1,200 @@
+{
+    "ordering": [
+        [
+            "A1",
+            "B1",
+            "C1"
+        ],
+        [
+            "A2",
+            "B2",
+            "C2"
+        ],
+        [
+            "A3",
+            "B3",
+            "C3"
+        ],
+        [
+            "A4",
+            "B4",
+            "C4"
+        ]
+    ],
+    "brand": {
+        "brand": "Corning",
+        "brandId": [
+            "3336",
+            "3512",
+            "3513"
+        ]
+    },
+    "metadata": {
+        "displayName": "Corning 12 Well Plate 6900 µL",
+        "displayCategory": "wellPlate",
+        "displayVolumeUnits": "µL",
+        "tags": []
+    },
+    "dimensions": {
+        "xDimension": 127.88,
+        "yDimension": 85.6,
+        "zDimension": 20.02
+    },
+    "wells": {
+        "A1": {
+            "depth": 17.4,
+            "totalLiquidVolume": 6900,
+            "shape": "circular",
+            "diameter": 22.73,
+            "x": 24.94,
+            "y": 68.81,
+            "z": 2.62
+        },
+        "B1": {
+            "depth": 17.4,
+            "totalLiquidVolume": 6900,
+            "shape": "circular",
+            "diameter": 22.73,
+            "x": 24.94,
+            "y": 42.8,
+            "z": 2.62
+        },
+        "C1": {
+            "depth": 17.4,
+            "totalLiquidVolume": 6900,
+            "shape": "circular",
+            "diameter": 22.73,
+            "x": 24.94,
+            "y": 16.79,
+            "z": 2.62
+        },
+        "A2": {
+            "depth": 17.4,
+            "totalLiquidVolume": 6900,
+            "shape": "circular",
+            "diameter": 22.73,
+            "x": 50.95,
+            "y": 68.81,
+            "z": 2.62
+        },
+        "B2": {
+            "depth": 17.4,
+            "totalLiquidVolume": 6900,
+            "shape": "circular",
+            "diameter": 22.73,
+            "x": 50.95,
+            "y": 42.8,
+            "z": 2.62
+        },
+        "C2": {
+            "depth": 17.4,
+            "totalLiquidVolume": 6900,
+            "shape": "circular",
+            "diameter": 22.73,
+            "x": 50.95,
+            "y": 16.79,
+            "z": 2.62
+        },
+        "A3": {
+            "depth": 17.4,
+            "totalLiquidVolume": 6900,
+            "shape": "circular",
+            "diameter": 22.73,
+            "x": 76.96,
+            "y": 68.81,
+            "z": 2.62
+        },
+        "B3": {
+            "depth": 17.4,
+            "totalLiquidVolume": 6900,
+            "shape": "circular",
+            "diameter": 22.73,
+            "x": 76.96,
+            "y": 42.8,
+            "z": 2.62
+        },
+        "C3": {
+            "depth": 17.4,
+            "totalLiquidVolume": 6900,
+            "shape": "circular",
+            "diameter": 22.73,
+            "x": 76.96,
+            "y": 16.79,
+            "z": 2.62
+        },
+        "A4": {
+            "depth": 17.4,
+            "totalLiquidVolume": 6900,
+            "shape": "circular",
+            "diameter": 22.73,
+            "x": 102.97,
+            "y": 68.81,
+            "z": 2.62
+        },
+        "B4": {
+            "depth": 17.4,
+            "totalLiquidVolume": 6900,
+            "shape": "circular",
+            "diameter": 22.73,
+            "x": 102.97,
+            "y": 42.8,
+            "z": 2.62
+        },
+        "C4": {
+            "depth": 17.4,
+            "totalLiquidVolume": 6900,
+            "shape": "circular",
+            "diameter": 22.73,
+            "x": 102.97,
+            "y": 16.79,
+            "z": 2.62
+        }
+    },
+    "groups": [
+        {
+            "metadata": {
+                "wellBottomShape": "flat"
+            },
+            "wells": [
+                "A1",
+                "B1",
+                "C1",
+                "A2",
+                "B2",
+                "C2",
+                "A3",
+                "B3",
+                "C3",
+                "A4",
+                "B4",
+                "C4"
+            ]
+        }
+    ],
+    "parameters": {
+        "format": "irregular",
+        "quirks": [],
+        "isTiprack": false,
+        "isMagneticModuleCompatible": false,
+        "loadName": "corning_12_wellplate_6900ul"
+    },
+    "namespace": "custom_beta",
+    "version": 1,
+    "schemaVersion": 2,
+    "cornerOffsetFromSlot": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+    },
+    "controllably": {
+        "parameters": {
+            "isStackable": true
+        },
+        "exclusionBuffer":[[0,0,0],[0,0,-14]],
+        "slotAbove": {
+            "dimensions": [127.53,85.47,0],
+            "cornerOffset": [0,0,14.2],
+            "orientation": [0,0,0]
+        }
+    }
+}

@@ -118,6 +118,7 @@ class Panel:
         """
         widget = self.widget if isinstance(self.widget, tk.Tk) else None
         self.widget = None
+        self.drawn = False
         return widget
     
     def show(self, title:str = ''):

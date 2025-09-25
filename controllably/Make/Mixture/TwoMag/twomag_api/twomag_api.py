@@ -18,7 +18,7 @@ import string
 from typing import NamedTuple, Any
 
 # Local application imports
-from .....core.device import SerialDevice
+from .....core.device import SerialDevice, AnyDevice
 from .twomag_lib import ErrorCode
 
 READ_FORMAT = "{status}_{data}_{address:.1}\r"
