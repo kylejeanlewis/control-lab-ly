@@ -1638,6 +1638,75 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3_2_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3_2_2_2" id="__nav_3_3_2_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    programs
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_3_3_2_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3_2_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            programs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Measure/Electrical/Keithley/programs/base_programs.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    base_programs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -4333,6 +4402,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#controllably.core.position.Position.fromArray" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;fromArray
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#controllably.core.position.Position.fromJSON" class="md-nav__link">
     <span class="md-ellipsis">
       <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;fromJSON
@@ -5189,6 +5267,29 @@
   
   <span class="md-ellipsis">
     factory
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/sila/modifier.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    modifier
     
   </span>
   
@@ -6067,6 +6168,15 @@
   <a href="#controllably.core.position.Position.apply" class="md-nav__link">
     <span class="md-ellipsis">
       <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;apply
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#controllably.core.position.Position.fromArray" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;fromArray
     </span>
   </a>
   
@@ -11129,7 +11239,7 @@
 
   
       dataclass
-   (controllably.core.position.Position)" href="#controllably.core.position.Position">Position</a></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            Position
+   (controllably.core.position.Position)" href="#controllably.core.position.Position">Position</a></span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="n"><span title="bool">bool</span></span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            Position
 
 
   
@@ -11171,6 +11281,26 @@
               </p>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>inplace</code>
+            </td>
+            <td class="doc-param-details">
+              <div class="doc-md-description">
+                <p>whether to update self in place. Defaults to True.</p>
+              </div>
+              <p>
+                  <span class="doc-param-annotation">
+                    <b>TYPE:</b>
+                      <code><span title="bool">bool</span></code>
+                  </span>
+                  <span class="doc-param-default">
+                    <b>DEFAULT:</b>
+                      <code>True</code>
+                  </span>
+              </p>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -11190,6 +11320,96 @@
             <td class="doc-returns-details">
               <div class="doc-md-description">
                 <p>other <code>Position</code> transformed by self</p>
+              </div>
+                <p>
+                  <span class="doc-returns-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="            Position
+
+
+  
+      dataclass
+   (controllably.core.position.Position)" href="#controllably.core.position.Position">Position</a></code>
+                  </span>
+                </p>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="controllably.core.position.Position.fromArray" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">fromArray</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
+  </span>
+
+</h3>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">fromArray</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n"><span title="typing.Sequence">Sequence</span></span> <span class="o">|</span> <span class="n"><span title="numpy.ndarray">ndarray</span></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            Position
+
+
+  
+      dataclass
+   (controllably.core.position.Position)" href="#controllably.core.position.Position">Position</a></span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Create a <code>Position</code> object from coordinates and rotation</p>
+
+
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">PARAMETER</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>value</code>
+            </td>
+            <td class="doc-param-details">
+              <div class="doc-md-description">
+                <p>x,y,z coordinates or [x,y,z,rotation]</p>
+              </div>
+              <p>
+                  <span class="doc-param-annotation">
+                    <b>TYPE:</b>
+                      <code><span title="typing.Sequence">Sequence</span>[<span title="float">float</span>] | <span title="numpy.ndarray">ndarray</span></code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">RETURNS</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>Position</code>
+            </td>
+            <td class="doc-returns-details">
+              <div class="doc-md-description">
+                <p><code>Position</code> object</p>
               </div>
                 <p>
                   <span class="doc-returns-annotation">

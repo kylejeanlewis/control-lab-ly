@@ -1638,6 +1638,75 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3_2_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3_2_2_2" id="__nav_3_3_2_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    programs
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_3_3_2_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3_2_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            programs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Measure/Electrical/Keithley/programs/base_programs.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    base_programs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -4311,6 +4380,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/sila/modifier.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    modifier
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -5007,13 +5099,13 @@ The first element of each tuple is a NamedTuple, the second element is a datetim
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">show</span><span class="p">:</span> <span class="n"><span title="bool">bool</span></span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">clear_cache</span><span class="p">:</span> <span class="n"><span title="bool">bool</span></span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="o">*</span><span class="p">,</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">device</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            StreamingDevice (controllably.core.device.StreamingDevice)" href="device.html#controllably.core.device.StreamingDevice">StreamingDevice</a></span><span class="p">,</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">data_store</span><span class="p">:</span> <span class="n"><span title="collections.deque">deque</span></span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">device</span><span class="p">:</span> <span class="n"><span title="controllably.core.device.StreamingDevice">StreamingDevice</span></span><span class="p">,</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">data_store</span><span class="p">:</span> <span class="n"><span title="collections.deque">deque</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">split_stream</span><span class="p">:</span> <span class="n"><span title="bool">bool</span></span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">callback</span><span class="p">:</span> <span class="n"><span title="typing.Callable">Callable</span></span><span class="p">[[</span><span class="n"><span title="str">str</span></span><span class="p">],</span> <span class="n"><span title="typing.Any">Any</span></span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">query</span><span class="p">:</span> <span class="n"><span title="typing.Any">Any</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">event</span><span class="p">:</span> <span class="n"><span title="threading.Event">Event</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="p">)</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="collections.deque">deque</span></span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -5096,7 +5188,7 @@ The first element of each tuple is a NamedTuple, the second element is a datetim
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            StreamingDevice (controllably.core.device.StreamingDevice)" href="device.html#controllably.core.device.StreamingDevice">StreamingDevice</a></code>
+                      <code><span title="controllably.core.device.StreamingDevice">StreamingDevice</span></code>
                   </span>
               </p>
             </td>
@@ -5107,12 +5199,16 @@ The first element of each tuple is a NamedTuple, the second element is a datetim
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
-                <p>data cache</p>
+                <p>data cache. If None, the device buffer will be used. Defaults to None.</p>
               </div>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><span title="collections.deque">deque</span></code>
+                      <code><span title="collections.deque">deque</span> | None</code>
+                  </span>
+                  <span class="doc-param-default">
+                    <b>DEFAULT:</b>
+                      <code>None</code>
                   </span>
               </p>
             </td>
@@ -5181,6 +5277,34 @@ The first element of each tuple is a NamedTuple, the second element is a datetim
     </table>
 
 
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">RETURNS</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>deque</code>
+            </td>
+            <td class="doc-returns-details">
+              <div class="doc-md-description">
+                <p>data cache if provided, else device buffer</p>
+              </div>
+                <p>
+                  <span class="doc-returns-annotation">
+                    <b>TYPE:</b>
+                      <code><span title="collections.deque">deque</span></code>
+                  </span>
+                </p>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
     </div>
 
 </div>
@@ -5197,13 +5321,13 @@ The first element of each tuple is a NamedTuple, the second element is a datetim
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">on</span><span class="p">:</span> <span class="n"><span title="bool">bool</span></span><span class="p">,</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">show</span><span class="p">:</span> <span class="n"><span title="bool">bool</span></span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="o">*</span><span class="p">,</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">device</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            StreamingDevice (controllably.core.device.StreamingDevice)" href="device.html#controllably.core.device.StreamingDevice">StreamingDevice</a></span><span class="p">,</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">data_store</span><span class="p">:</span> <span class="n"><span title="collections.deque">deque</span></span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">device</span><span class="p">:</span> <span class="n"><span title="controllably.core.device.StreamingDevice">StreamingDevice</span></span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">data_store</span><span class="p">:</span> <span class="n"><span title="collections.deque">deque</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">split_stream</span><span class="p">:</span> <span class="n"><span title="bool">bool</span></span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">callback</span><span class="p">:</span> <span class="n"><span title="typing.Callable">Callable</span></span><span class="p">[[</span><span class="n"><span title="str">str</span></span><span class="p">],</span> <span class="n"><span title="typing.Any">Any</span></span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">query</span><span class="p">:</span> <span class="n"><span title="typing.Any">Any</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">event</span><span class="p">:</span> <span class="n"><span title="threading.Event">Event</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="p">)</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="collections.deque">deque</span></span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -5266,7 +5390,7 @@ The first element of each tuple is a NamedTuple, the second element is a datetim
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            StreamingDevice (controllably.core.device.StreamingDevice)" href="device.html#controllably.core.device.StreamingDevice">StreamingDevice</a></code>
+                      <code><span title="controllably.core.device.StreamingDevice">StreamingDevice</span></code>
                   </span>
               </p>
             </td>
@@ -5277,12 +5401,16 @@ The first element of each tuple is a NamedTuple, the second element is a datetim
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
-                <p>data cache</p>
+                <p>data cache. If None, the device buffer will be used. Defaults to None.</p>
               </div>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><span title="collections.deque">deque</span></code>
+                      <code><span title="collections.deque">deque</span> | None</code>
+                  </span>
+                  <span class="doc-param-default">
+                    <b>DEFAULT:</b>
+                      <code>None</code>
                   </span>
               </p>
             </td>
@@ -5345,6 +5473,34 @@ The first element of each tuple is a NamedTuple, the second element is a datetim
                       <code>None</code>
                   </span>
               </p>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">RETURNS</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>deque</code>
+            </td>
+            <td class="doc-returns-details">
+              <div class="doc-md-description">
+                <p>data cache if provided, else device buffer</p>
+              </div>
+                <p>
+                  <span class="doc-returns-annotation">
+                    <b>TYPE:</b>
+                      <code><span title="collections.deque">deque</span></code>
+                  </span>
+                </p>
             </td>
           </tr>
       </tbody>
