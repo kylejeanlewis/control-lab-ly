@@ -1,5 +1,26 @@
 # Change Log
 
+## Version 2.1.0
+Fix bugs and updated with new features, including convenience functions for working with SiLA. First released 29 Sep 2025.
+### Added
+- [core.device] added `AnyDevice` and `WebsocketDevice`
+- [core.factory] added functionality to `load_parts()` to reference parts defined in separate YAML file using `config_file` and `config_name` fields
+- [core.notification] added parameter to define the decoder function; defaults to `base64.b64decode()`
+- [core.position] added `convert_to_position()` into `Position.fromArray()`
+- [examples.sila] added functions to create new SiLA packges, resolve annotation types, and modify implementation code for the generated package
+- added new tests, tutorial files and code
+### Changed
+- [Transfer.Liquid.Pipette.Sartorius] update how the model name is parsed
+- [core.connection] update `get_addresses()` to cover both MAC address and non Mac address references
+- [core.control] update the priority counter of `TwoTierQueue`
+- [core.factory] update `get_setup()` to disconnect devices upon setup failure
+- [core.safety] updated module to support dynamic changing of safety levels
+- [examples.gui.tkinter.gui] bug fix
+- updated tests, documentation, and type hints
+### Removed
+- removed unused and outdated script files in `scripts/`
+
+
 ## Version 2.0.0
 Major overhaul and package rebuilt from the ground. First released 27 Jun 2025.
 ### Added
