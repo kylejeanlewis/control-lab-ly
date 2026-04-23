@@ -601,7 +601,10 @@ class SartoriusDevice(SerialDevice):
         Returns:
             str: response from the device
         """
-        return self.zero()
+        position = self.home_position
+        out = self.moveTo(position)
+        
+        return out
     
     def move(self, steps:int) -> str:
         """
@@ -656,7 +659,7 @@ class SartoriusDevice(SerialDevice):
         # self.getPosition()
         return out.data
     
-    def zero(self) -> str:
+    def zero(self,eject=True) -> str:
         """
         Zero the plunger position
         
@@ -670,7 +673,8 @@ class SartoriusDevice(SerialDevice):
         out: Data = self.query('RZ')
         self.position = 0
         time.sleep(2)
-        self.eject()
+        if eject:
+            self.eject()
         return out.data
     
     def reset(self) -> str:
