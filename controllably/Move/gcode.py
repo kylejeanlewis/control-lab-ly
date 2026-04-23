@@ -195,6 +195,7 @@ class GCode(Mover):
         """
         timeout = self.movement_timeout if timeout is None else timeout
         self.moveToSafeHeight()
+        time.sleep(0.1)
         success = self.device.home(axis=axis, timeout=timeout)
         time.sleep(self.movement_buffer)
         if not success:
