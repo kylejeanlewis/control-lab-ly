@@ -406,13 +406,17 @@ def parse_configs(configs:dict, addresses:dict|None = None) -> dict:
             if key == 'details':
                 value = parse_configs(value, addresses=addresses)
             if type(value) is str:
-                if key in ('cam_index', 'port') and value.startswith('__'):
+                if key=='port' and value.startswith('__'):
                     settings[key] = addresses.get(key, {}).get(settings[key], value)
             if type(value) is dict:
-                if "tuple" in value:
+                if key == 'connection_details':
+                    if value['feed_source'].startswith('__'):
+                        settings[key]['feed_source'] = addresses.get('feed_source',{}).get(settings[key]['feed_source'], value['feed_source'])
+                elif "tuple" in value:
                     settings[key] = tuple(value['tuple'])
                 elif "array" in value:
                     settings[key] = np.array(value['array'])
+                
 
         configs[name] = details
     return configs
