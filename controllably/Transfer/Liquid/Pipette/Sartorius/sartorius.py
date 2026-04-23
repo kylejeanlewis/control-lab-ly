@@ -10,7 +10,6 @@ This module contains the Sartorius class.
 # Standard library imports
 from __future__ import annotations
 import time
-
 # Local application imports
 from ...liquid import LiquidHandler
 from .sartorius_api import SartoriusDevice, interpolate_speed
@@ -192,7 +191,7 @@ class Sartorius(LiquidHandler):
             if not self.device.flags.simulation and out != 'ok':
                 return False
             remaining_steps -= step
-            sleep_time = max(move_time + delay - (time.perf_counter()-start_time), 0)
+            sleep_time = max(move_time +  parameters['delay'] - (time.perf_counter()-start_time), 0)
             time.sleep(sleep_time)
         
         # Update values
@@ -255,7 +254,7 @@ class Sartorius(LiquidHandler):
             if not self.device.flags.simulation and out != 'ok':
                 return False
             remaining_steps -= step
-            sleep_time = max(move_time + delay - (time.perf_counter()-start_time), 0)
+            sleep_time = max(move_time +  parameters['delay'] - (time.perf_counter()-start_time), 0)
             time.sleep(sleep_time)
         
         # Update values
