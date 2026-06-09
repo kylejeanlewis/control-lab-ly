@@ -26,6 +26,7 @@ from ..core.position import Position
 from . import Mover
 from .grbl_api import GRBL
 from .marlin_api import Marlin
+from .reprap_api import RepRap
 
 MOVEMENT_BUFFER = 0
 MOVEMENT_TIMEOUT = 30
@@ -151,7 +152,7 @@ class GCode(Mover):
         """
         device_type = globals().get(device_type_name, GRBL)
         super().__init__(device_type=device_type, port=port, baudrate=baudrate, verbose=verbose, **kwargs)
-        assert isinstance(self.device, (GRBL,Marlin)), "Ensure device is of type `GRBL` or `Marlin`"
+        assert isinstance(self.device, (GRBL,Marlin,RepRap)), "Ensure device is of type `GRBL` or `Marlin`"
         self.device: GRBL|Marlin = self.device
         self.movement_buffer = movement_buffer if movement_buffer is not None else MOVEMENT_BUFFER
         self.movement_timeout = movement_timeout if movement_timeout is not None else MOVEMENT_TIMEOUT
@@ -204,6 +205,7 @@ class GCode(Mover):
         else:
             xyz = [(coord if axis.upper()!=ax else 0) for coord,ax in zip(self.robot_position.coordinates,'XYZ')]
         self.updateRobotPosition(to=Position(xyz))
+        time.sleep(0.1)
         if any(self.home_position.coordinates):
             self.moveTo(self.home_position, self.speed_factor, robot=True)
         self.updateRobotPosition(to=self.home_position)
