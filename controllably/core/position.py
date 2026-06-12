@@ -105,14 +105,16 @@ def get_transform(initial_points: np.ndarray, final_points:np.ndarray) -> tuple[
     # align centroids
     initial_centroid = initial_points[0]
     final_centroid = final_points[0]
-    translation = final_centroid - initial_centroid
     
     # center points
     initial_vectors = initial_points - initial_centroid
     final_vectors = final_points - final_centroid
     # align vectors
     rotation = Rotation.align_vectors(final_vectors, initial_vectors)[0]
-    
+
+    translation = rotation.inv().apply(final_centroid) - initial_centroid
+
+
     scale = np.linalg.norm(final_vectors) / np.linalg.norm(initial_vectors)
     return Position(translation, rotation), scale
 
