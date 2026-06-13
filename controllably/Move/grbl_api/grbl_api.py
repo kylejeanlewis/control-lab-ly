@@ -22,6 +22,7 @@ from typing import Any, Sequence, NamedTuple
 
 # Third-party imports
 import numpy as np
+import re
 
 # Local application imports
 from ...core.device import SerialDevice, AnyDevice
@@ -215,6 +216,32 @@ class GRBL(SerialDevice):
         settings = {}
         if self.flags.simulation:
             return settings
+        # for response in responses:
+        #     response = response.strip()
+        #     if '=' not in response or len(response) < 3:
+        #         continue
+        #     setting,value = response.split("=")
+        #     setting_int = int(setting[1:]) if setting[1:].isnumeric() else setting[1:]
+        #     setting_ = f'sc{setting_int}'
+        #     if setting_ not in Setting.__members__:
+        #         continue
+        #     self._logger.debug(f"[{setting}]: {Setting[setting_].value.message} = {value}")
+        #     negative = value.startswith('-')
+        #     if negative:
+        #             value = value[1:]
+        #     value: int|float|str = int(value) if value.isnumeric() else (float(value) if value.replace('.','',1).isdigit() else value)
+        #     settings[setting] = value * ((-1)**int(negative)) if isinstance(value, (int,float)) else value
+        # settings['max_accel_x'] = settings.get('$120', 0)
+        # settings['max_accel_y'] = settings.get('$121', 0)
+        # settings['max_accel_z'] = settings.get('$122', 0)
+        # settings['max_speed_x'] = settings.get('$110', 0)/60
+        # settings['max_speed_y'] = settings.get('$111', 0)/60
+        # settings['max_speed_z'] = settings.get('$112', 0)/60
+        # settings['limit_x'] = settings.get('$130', 0)
+        # settings['limit_y'] = settings.get('$131', 0)
+        # settings['limit_z'] = settings.get('$132', 0)
+        # settings['homing_pulloff'] = settings.get('$27', 0)
+
         for response in responses:
             response = response.strip()
             if '=' not in response or len(response) < 3:
@@ -225,12 +252,15 @@ class GRBL(SerialDevice):
             if setting_ not in Setting.__members__:
                 continue
             self._logger.debug(f"[{setting}]: {Setting[setting_].value.message} = {value}")
-            negative = value.startswith('-')
-            if negative:
-                    value = value[1:]
-            value: int|float|str = int(value) if value.isnumeric() else (float(value) if value.replace('.','',1).isdigit() else value)
-            settings[setting] = value * ((-1)**int(negative)) if isinstance(value, (int,float)) else value
-        settings['max_accel_x'] = settings.get('$120', 0)
+
+            if re.findall(r"-?\d+(?:\.\d+)?", value):
+                value = re.findall(r"(?<![A-Za-z^])-?\d+(?:\.\d+)?", value)
+                if len(value) == 1:
+                    value = int(value[0]) if value[0].isdigit() else float(value[0])
+                else:
+                    value = [int(v) if v.isdigit() else float(v) for v in value]
+            settings[setting] = value
+                # settings['max_accel_x'] = settings.get('$120', 0)
         settings['max_accel_y'] = settings.get('$121', 0)
         settings['max_accel_z'] = settings.get('$122', 0)
         settings['max_speed_x'] = settings.get('$110', 0)/60
