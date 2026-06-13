@@ -152,8 +152,8 @@ class GCode(Mover):
         """
         device_type = globals().get(device_type_name, GRBL)
         super().__init__(device_type=device_type, port=port, baudrate=baudrate, verbose=verbose, **kwargs)
-        assert isinstance(self.device, (GRBL,Marlin,RepRap)), "Ensure device is of type `GRBL` or `Marlin`"
-        self.device: GRBL|Marlin = self.device
+        assert isinstance(self.device, (GRBL,Marlin,RepRap)), "Ensure device is of type `GRBL`, `Marlin`, or `RepRap`"
+        self.device: GRBL|Marlin|RepRap = self.device
         self.movement_buffer = movement_buffer if movement_buffer is not None else MOVEMENT_BUFFER
         self.movement_timeout = movement_timeout if movement_timeout is not None else MOVEMENT_TIMEOUT
         self.settings = dict()
@@ -196,6 +196,7 @@ class GCode(Mover):
         """
         timeout = self.movement_timeout if timeout is None else timeout
         self.moveToSafeHeight()
+        time.sleep(1)
         success = self.device.home(axis=axis, timeout=timeout)
         time.sleep(self.movement_buffer)
         if not success:
