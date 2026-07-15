@@ -1015,7 +1015,7 @@ class SerialDevice(BaseDevice):
         data = ''
         try:
             while True:
-                out = self.serial.readline().decode("utf-8", "replace").replace('\uFFFD', '')
+                out = self.serial.read_all().decode("utf-8", "replace").replace('\uFFFD', '')
                 data += out
                 if not out:
                     break
