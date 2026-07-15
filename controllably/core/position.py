@@ -114,8 +114,22 @@ def get_transform(initial_points: np.ndarray, final_points:np.ndarray) -> tuple[
 
     translation = rotation.inv().apply(final_centroid) - initial_centroid
 
-
+    # Detect per-axis inversions by checking vector alignment along each axis
+    scale_vector = np.ones(3)
+    for axis in range(3):
+        # Sum of signed projections along this axis indicates alignment direction
+        axis_alignment = np.sum(initial_vectors[:, axis] * final_vectors[:, axis])
+        if axis_alignment < 0:
+            scale_vector[axis] = -1
+    
+    # Encode per-axis inversions into rotation matrix via reflection
+    reflection = np.diag(scale_vector)
+    rotation_matrix = rotation.as_matrix() @ reflection
+    rotation = Rotation.from_matrix(rotation_matrix)
+    
+    # Calculate magnitude of scale (always positive)
     scale = np.linalg.norm(final_vectors) / np.linalg.norm(initial_vectors)
+    
     return Position(translation, rotation), scale
 
 @dataclass
