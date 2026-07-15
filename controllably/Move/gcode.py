@@ -351,6 +351,7 @@ class GCode(Mover):
         except Exception:
             pass
         self.device.write(data)
+        self.device.read()
         for command in commands:
             self.query(command, jog=jog, wait=True)
         self.setSpeedFactor(self.speed_factor, persist=False)
