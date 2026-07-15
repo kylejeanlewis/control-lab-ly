@@ -388,7 +388,7 @@ class BaseDevice:
             self.disconnect()
         return data
     
-    def readAll(self) -> list[str]:
+    def readAll(self, wait=False) -> list[str]:
         """
         Read all data from the device
         
@@ -540,6 +540,7 @@ class BaseDevice:
         format_out: str|None = None,
         data_type: NamedTuple|None = None,
         timestamp: bool = False,
+        wait: bool = False,
         **kwargs
     ) -> Any | None:
         """
@@ -553,6 +554,7 @@ class BaseDevice:
             format_out (str|None, optional): format for the output data. Defaults to None.
             data_type (NamedTuple|None, optional): data type for the data. Defaults to None.
             timestamp (bool, optional): whether to return the timestamp. Defaults to False.
+            wait (bool, optional): whether to wait for the device to be idle. Defaults to False.
             
         Returns:
             Any|None: queried data
@@ -575,7 +577,7 @@ class BaseDevice:
         while True:
             if time.perf_counter() - start_time > timeout:
                 break
-            raw_out = self.readAll()
+            raw_out = self.readAll(wait=wait)
             now = datetime.now() if timestamp else None
             start_time = time.perf_counter()
             
@@ -1009,16 +1011,20 @@ class SerialDevice(BaseDevice):
             self.disconnect()
         return data
     
-    def readAll(self) -> list[str]:
+    def readAll(self, wait=False) -> list[str]:
         """Read all data from the device"""
         delimiter = self.read_format.replace(self.read_format.rstrip(), '')
         data = ''
         try:
             while True:
-                out = self.serial.readline().decode("utf-8", "replace").replace('\uFFFD', '')
+                out = self.serial.read_all().decode("utf-8", "replace").replace('\uFFFD', '')
                 data += out
-                if not out:
-                    break
+                if wait:
+                    if 'ok' in out:
+                        break
+                else:
+                    if not out:
+                        break
         except serial.SerialException as e:
             self._logger.debug(f"[{self.port}] Failed to receive data")
             self._logger.debug(e)
