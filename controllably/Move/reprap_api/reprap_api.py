@@ -318,12 +318,14 @@ class RepRap(SerialDevice):
         """
         if data.startswith('F'):
             data = f'G1 {data}'
-        out: Data|list[Data] = super().query(data, multi_out=multi_out, timeout=timeout, **kwargs)
+        if wait:
+            data += ' M400'
+        out: Data|list[Data] = super().query(data, multi_out=multi_out, timeout=timeout, wait=wait, **kwargs)
         if isinstance(out,list):
             data_out = [(response.data if response is not None else None) for response in out]
         else:
             data_out = [(out.data if out is not None else None)]
-        if wait:
+
             ...
             # success = self._wait_for_idle()
             # if not success:
