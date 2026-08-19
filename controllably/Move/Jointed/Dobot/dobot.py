@@ -281,7 +281,7 @@ class Dobot(RobotArm):
         self._logger.info(f"Move To | {move_to} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
-        move_to = move_to if robot else self.transformToolToRobot(self.transformWorkToRobot(move_to, self.calibrated_offset), self.tool_offset)
+        move_to = move_to if robot else self.transformToolToRobot(self.transformWorkToRobot(move_to, self.calibrated_offset, self.scale), self.tool_offset)
         if not self.isFeasible(move_to.coordinates, external=False, tool_offset=False):
             self._logger.warning(f"Target position {move_to} is not feasible")
             return self.robot_position if robot else self.worktool_position

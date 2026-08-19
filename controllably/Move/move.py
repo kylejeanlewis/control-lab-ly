@@ -159,7 +159,7 @@ class Mover:
         self._home_position = home_position if isinstance(home_position, Position) else convert_to_position(home_position)
         self._tool_offset = tool_offset if isinstance(tool_offset, Position) else convert_to_position(tool_offset)
         self._calibrated_offset = calibrated_offset if isinstance(calibrated_offset, Position) else convert_to_position(calibrated_offset)
-        self._scale = scale
+        self._scale = float(scale) if np.isscalar(scale) else np.array(scale, dtype=float)
         
         self._speed_factor = 1.0
         self._speed_max = speed_max
@@ -277,7 +277,7 @@ class Mover:
         return self.worktool_position
     
     @property
-    def scale(self) -> float:
+    def scale(self) -> float|np.ndarray:
         """Factor to scale the basis vectors by"""
         return self._scale
     
@@ -563,7 +563,7 @@ class Mover:
         self._logger.info(f"Move To | {move_to} at speed factor {speed_factor}")
         
         # Convert to robot coordinates
-        move_to = move_to if robot else self.transformToolToRobot(self.transformWorkToRobot(move_to, self.calibrated_offset), self.tool_offset)
+        move_to = move_to if robot else self.transformToolToRobot(self.transformWorkToRobot(move_to, self.calibrated_offset, self.scale), self.tool_offset)
         if not self.isFeasible(move_to.coordinates, external=False, tool_offset=False):
             self._logger.warning(f"Target position {move_to} is not feasible")
             return self.robot_position if robot else self.worktool_position
@@ -855,7 +855,7 @@ class Mover:
         if isinstance(self.deck, Deck):
             deck_heights = {name: max(bounds.bounds[:,2]) for name,bounds in self.deck.exclusion_zone.items()}
             heights_list = [height for height in deck_heights.values()]
-            worktool_height = self.transformRobotToWork(self.transformRobotToTool(Position((0,0,height)),self.tool_offset),self.calibrated_offset).z
+            worktool_height = self.transformRobotToWork(self.transformRobotToTool(Position((0,0,height)),self.tool_offset),self.calibrated_offset,self.scale).z
             if len(heights_list) > 0:
                 assert worktool_height >= max(set(heights_list)), f"Ensure safe height is above all deck heights: {deck_heights}"
         self.safe_height = height
@@ -1018,7 +1018,8 @@ class Mover:
     @staticmethod
     def calibrate(
         internal_points: np.ndarray,
-        external_points: np.ndarray
+        external_points: np.ndarray,
+        normal_axis: Sequence[float] | np.ndarray | None = None
     ) -> tuple[Position,float]:
         """
         Calibrate the internal and external coordinate systems
@@ -1026,11 +1027,17 @@ class Mover:
         Args:
             internal_points (np.ndarray): internal points
             external_points (np.ndarray): external points
+            normal_axis (Sequence[float] | np.ndarray | None, optional): constrained normal axis.
+                Use to improve rotational stability in calibration.
             
         Returns:
             tuple[Position,float]: calibrated offset and scale
         """
-        return get_transform(internal_points, external_points)
+        return get_transform(
+            internal_points,
+            external_points,
+            normal_axis=normal_axis
+        )
     
     @staticmethod
     def transformRobotToWork(
@@ -1051,9 +1058,9 @@ class Mover:
         """
         translate = offset.coordinates
         rotate = offset.Rotation
-        scale = scale
-        # Translate-Rotate-Scale
-        coordinates = scale*rotate.apply(translate+internal_position.coordinates)
+        scale = np.array(scale, dtype=float) if not np.isscalar(scale) else float(scale)
+        # Rotate-Scale-Translate (translation is in external/work frame)
+        coordinates = translate + scale*rotate.apply(internal_position.coordinates)
         rotation = rotate * internal_position.Rotation
         return Position(coordinates, rotation)
     
@@ -1074,12 +1081,12 @@ class Mover:
         Returns:
             Position: robot position
         """
-        inv_scale = 1 / scale
+        inv_scale = 1 / (np.array(scale, dtype=float) if not np.isscalar(scale) else float(scale))
         inv_offset = offset.invert()
         inv_rotate = inv_offset.Rotation
-        inv_translate = inv_offset.coordinates
-        # Invert: Scale-Rotate-Translate
-        coordinates = inv_translate+inv_rotate.apply(inv_scale*external_position.coordinates)
+        translate = offset.coordinates
+        # Invert: untranslate -> unscale -> unrotate
+        coordinates = inv_rotate.apply(inv_scale*(external_position.coordinates - translate))
         rotation = inv_rotate * external_position.Rotation
         return Position(coordinates, rotation)
     

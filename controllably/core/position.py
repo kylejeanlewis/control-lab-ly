@@ -86,13 +86,19 @@ def convert_to_position(value:Sequence|np.ndarray) -> Position:
     rotation = Rotation.from_euler('zyx',value[1],degrees=True) if len(value[1]) == 3 else Rotation.from_quat(value[1])
     return Position(value[0], rotation)
 
-def get_transform(initial_points: np.ndarray, final_points:np.ndarray) -> tuple[Position,float]:
+def get_transform(
+    initial_points: np.ndarray,
+    final_points: np.ndarray,
+    normal_axis: Sequence[float] | np.ndarray | None = None
+) -> tuple[Position,float]:
     """
     Get transformation matrix from initial to final points, with the first point in each set being the center of rotation.
 
     Args:
         initial_points (numpy.ndarray): initial points
         final_points (numpy.ndarray): final points
+        normal_axis (Sequence[float] | numpy.ndarray | None, optional): constrained normal axis.
+            When provided, rotation is additionally anchored to this axis.
 
     Returns:
         tuple[Position,float]: transformation Position (i.e. vector and rotation) and scale factor
@@ -100,20 +106,52 @@ def get_transform(initial_points: np.ndarray, final_points:np.ndarray) -> tuple[
     assert isinstance(initial_points, np.ndarray) and isinstance(final_points, np.ndarray), "Please input numpy arrays"
     assert initial_points.shape == final_points.shape, "Initial and final points must have the same shape"
     assert initial_points.shape[1] == 3, "Please input 3D points"
-    assert initial_points.shape[0]%2 == 0, "Even number of points required"
+    assert initial_points.shape[0] >= 3, "At least 3 points are required"
     
     # align centroids
     initial_centroid = initial_points[0]
     final_centroid = final_points[0]
-    translation = final_centroid - initial_centroid
     
     # center points
     initial_vectors = initial_points - initial_centroid
     final_vectors = final_points - final_centroid
-    # align vectors
-    rotation = Rotation.align_vectors(final_vectors, initial_vectors)[0]
     
-    scale = np.linalg.norm(final_vectors) / np.linalg.norm(initial_vectors)
+    initial_norms = np.linalg.norm(initial_vectors, axis=1)
+    final_norms = np.linalg.norm(final_vectors, axis=1)
+    nonzero = (initial_norms > 0) & (final_norms > 0)
+    assert np.any(nonzero), "At least one non-zero calibration vector is required"
+
+    scale_values = final_norms[nonzero] / initial_norms[nonzero]
+    scale_magnitude = float(np.mean(scale_values))
+    scaled_initial_vectors = initial_vectors * scale_magnitude
+
+    # align vectors using the positive scale magnitude only; axis inversions stay in scale
+    align_initial = scaled_initial_vectors[nonzero]
+    align_final = final_vectors[nonzero]
+    if normal_axis is not None:
+        normal_axis = np.asarray(normal_axis, dtype=float)
+        assert normal_axis.shape == (3,), "normal_axis must be a 3-element vector"
+        axis_norm = np.linalg.norm(normal_axis)
+        assert axis_norm > 0, "normal_axis must be non-zero"
+        normal_axis = normal_axis / axis_norm
+        constraint_weight = 10.0 * max(np.max(final_norms[nonzero]), np.max(initial_norms[nonzero]))
+        align_initial = np.vstack([align_initial, constraint_weight * normal_axis])
+        align_final = np.vstack([align_final, constraint_weight * normal_axis])
+    rotation = Rotation.align_vectors(align_final, align_initial)[0]
+
+    rotated_vectors = rotation.apply(scaled_initial_vectors[nonzero])
+    scale = np.ones(3) * scale_magnitude
+    for axis in range(3):
+        axis_mask = np.abs(rotated_vectors[:, axis]) > 1e-9
+        if np.any(axis_mask):
+            axis_ratios = final_vectors[nonzero][axis_mask, axis] / rotated_vectors[axis_mask, axis]
+            scale[axis] = scale_magnitude * np.sign(np.mean(axis_ratios))
+
+    # Use external-frame translation: external = scale * R(internal) + translation
+    translation = final_centroid - scale * rotation.apply(initial_centroid)
+    
+    if np.allclose(scale, scale[0]):
+        return Position(translation, rotation), float(scale[0])
     return Position(translation, rotation), scale
 
 @dataclass
